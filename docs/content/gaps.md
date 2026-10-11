@@ -21,3 +21,16 @@ Phases append rows; the client closes them. Status: open, received, done.
 | 14 | "From" prices per service and per restoration tier, if shown | pricing, tiers | client | open |
 | 15 | Confirm the four stats from the old site (13 years, 7 dentists, 4 clinics, 10 insurers) | trust band | client | open |
 | 16 | Confirm the mobile number is the WhatsApp and Telegram number | sticky bar | client | open |
+| 17 | Is the first consultation free? The old site has a «مشاورهٔ رایگان» button | booking chips, hero copy | client | open |
+| 18 | Callback promise: how fast does reception call back during hours, and from which number? | booking success copy | client | open |
+| 19 | Emergency: can staff call urgent requests first at opening time («در اولین ساعت کاری»)? | emergency copy | client | open |
+| 20 | Name on the clinic signage (canonical name for GBP, schema, footer) | NAP consistency | client | open |
+| 21 | Is the new host in Iran or abroad? Is inbound traffic from outside Iran open (Googlebot)? | risk R1, phase 3 | client | open |
+| 22 | Video files from the old site: clinic tour (about 48 s) and three patient testimonials | home, testimonials | client | open |
+| 23 | Logo variants: vertical lockup, horizontal lockup with «کلینیک دندانپزشکی دیجیتال», white version (all SVG) | header, footer, OG | client | open |
+| 24 | Unidentified round social icon with a check mark in the old footer | footer socials | client | open |
+| 25 | First-visit promise on the old site («پاکسازی ملایم» if needed): still true? | first-visit guide | client | open |
+| 26 | Specialists on the team: orthodontist? pediatric dentist? oral surgeon? (GBP categories and service claims) | GBP, service pages | client | open |
+| 27 | Scope checks: wisdom-tooth surgery, gum grafts, clear aligners, digital smile design software | keyword map "(verify)" terms | client | open |
+| 28 | Evidence for the «اولین کلینیک دیجیتال جنوب تهران» claim, or approval to keep it as a slogan at the client's risk | home H1, risk R6 | client | open |
+| 29 | Profiles on nobat.ir, doctoreto.com, paziresh24.com: existing or to create | local SEO | client | open |
