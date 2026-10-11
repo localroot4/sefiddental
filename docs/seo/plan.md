@@ -59,7 +59,7 @@ page and two articles. Every article links to one service page and one guide.
 | Dentist | `Physician` with medicalSpecialty, memberOf, image, worksFor |
 | Blog post | `Article` with author (Person), reviewedBy, datePublished, dateModified, image; `FAQPage` when FAQs exist |
 | Gallery | `ImageGallery` or `ItemList` |
-| Testimonials | `VideoObject` per video with transcript summary |
+| Testimonial sections (home, about, service pages) | `VideoObject` per video with transcript summary |
 
 Validate with Google's Rich Results Test when the network allows; otherwise
 with a schema validator in CI.

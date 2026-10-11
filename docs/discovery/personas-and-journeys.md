@@ -9,7 +9,7 @@ validate them with the receptionist after launch (what do callers ask first?).
 
 | Field | Detail |
 |---|---|
-| Profile | 22-40, works or studies, phone-first, follows clinics on Instagram |
+| Profile | 22-45, works or studies, phone-first, follows clinics on Instagram |
 | Goal | Whiter, even front teeth that look natural; often before an event |
 | Fears | A fake "piano key" result; damage to healthy teeth; hidden costs; regret |
 | Triggers | A friend's result, an Instagram reel, an upcoming wedding or photo |
@@ -23,7 +23,7 @@ validate them with the receptionist after launch (what do callers ask first?).
 
 | Field | Detail |
 |---|---|
-| Profile | 40-65, lives or works in south or central Tehran, often referred by family |
+| Profile | 35-65, lives or works in south or central Tehran, often referred by family |
 | Goal | Replace a missing tooth or fix a broken one so he can eat normally |
 | Fears | Pain, surgery, cost, being sold treatment he does not need |
 | Triggers | Pain, a broken crown, a dentist's earlier recommendation |

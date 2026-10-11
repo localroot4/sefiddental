@@ -122,22 +122,23 @@ than twice on one page. Max two consecutive image-plus-text splits.
 | Code | Family | Where |
 |---|---|---|
 | A | Asymmetric split hero, text start, masked image end; stacked on phones | home, service pages |
-| B | Trust band: 4 verified facts in one quiet row | under the hero |
-| C | Bento with exact cell count (5 cells: 3 categories plus orthodontics and pediatric dentistry) | services hub, home |
+| B | Fact row: 3-6 short verified facts in one quiet row (trust band on home, facts on services, insurers on pricing) | home, service, dentist, pricing, about |
+| C | Grid or bento with exactly as many cells as items (home and hub: 5 cells, 3 categories plus orthodontics and pediatric dentistry) | home, hubs, related items, financing |
 | D | Pinned morph section (SVG tooth morphing through the 3 restoration tiers), stepper on phones | home, restoration page |
 | E | Compare slider for before/after | home, gallery, service pages |
 | F | Horizontal snap carousel on phones, 3-up grid on desktop | dentists |
-| G | Patient journey: horizontal pan on desktop, vertical steps on phones | home, patient guide |
-| H | Video testimonial cards with poster frames and consent note | home, testimonials |
+| G | Patient journey: pinned horizontal pan on desktop, vertical steps on phones (home only). G-static: vertical steps with diamond markers, no pinning | home (G); service pages and about (G-static) |
+| H | Video testimonial cards with poster frames and consent note | home, about, service pages |
 | I | FAQ accordion with a sticky aside (call, WhatsApp, book) | service pages, pricing |
-| J | Inline booking block with static map and hours | home bottom, contact |
+| J | Inline booking block with static map and hours. J-form: the same block without the map | most templates (J); address page (J-form) |
 
 Two more families are defined in `docs/ia.md` section 6: K (reading
 column) and L (focused task). Section order for every template lives in
 `docs/ia.md`; home is A, B, C, D, E, F, G (first-visit journey), H, I (FAQ),
 J, footer.
 Hero stack: at most four text elements: optional short label, headline,
-subtext, two CTAs («رزرو نوبت» primary, «تماس با کلینیک» secondary).
+subtext, two CTAs («رزرو نوبت» primary, secondary per `docs/conversion.md`
+section 3).
 Navigation: desktop one line, max 72 px high: خدمات (mega menu), پزشکان,
 قبل و بعد, هزینه و پرداخت, تماس, then theme toggle, phone and «رزرو نوبت».
 Phones: logo, call icon, menu button, full-screen drawer with grouped
@@ -163,19 +164,11 @@ Pagination. Article parts: table of contents, callout, sources list, author
 box, reviewer box, updated date, reading time. Map block. Footer. Skeletons.
 Empty states. 404 and error pages.
 
-Booking form, one screen: phone (required, numeric keypad, Persian and Arabic
-digits accepted and normalized, Iranian mobile validation), name (optional),
-service chips (optional, prefilled from the current page), preferred time
-chips (صبح / عصر / هر زمان), optional note behind «توضیح بیشتر», consent line,
-one submit. Success: confirmation with the callback window (ساعات کاری ۱۰ تا
-۲۰), call and WhatsApp fallbacks, a check icon drawn with a stroke animation.
-Error: inline, below the field, says what happened and what to do.
-
-Emergency form: three or four triage toggles (درد شدیدی که با مسکن آرام نمی‌شود،
-تورم صورت یا تب، ضربه و شکستگی، خونریزی که بند نمی‌آید), phone, big call button
-during opening hours, text «در صورت امکان همان روز نوبت می‌دهیم», safety note
-to call ۱۱۵ when swelling affects breathing or swallowing. Rate limit one
-request per phone per day. Flagged red in admin.
+Booking form and emergency form: fields, microcopy, states, abuse rules and
+page order are specified in `docs/conversion.md` sections 5 and 7. Visual
+rules here: chips are native radios styled as pills, 44 px tall; the check
+icon on success draws with a stroke animation (static under reduced motion);
+the emergency safety box uses the warning token and an icon, never red.
 
 ## 8. Motion system
 

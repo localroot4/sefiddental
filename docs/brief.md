@@ -132,7 +132,7 @@ Research to apply (cite in reports, apply in design):
 Pages (Persian slugs; the sitemap is `docs/ia.md`):
 
 - خانه
-- خدمات hub, 4 categories plus 2 standalone services, one page per service,
+- خدمات hub, 3 categories plus 2 standalone services, one page per service,
   including the tiered «ترمیم دندان» page (معمولی / VIP / CIP) with a short
   alias route `/vip`
 - پزشکان hub and one profile page per dentist
@@ -140,7 +140,7 @@ Pages (Persian slugs; the sitemap is `docs/ia.md`):
 - قبل و بعد gallery, consent-only, filterable by service
 - راهنمای بیمار hub: اولین مراجعه، ترس از دندانپزشکی، مراقبت‌های بعد از درمان
 - اورژانس: gated emergency request plus call
-- درباره ما, تماس با ما (static map, direction deep links, hours, access notes)
+- درباره ما, آدرس و ساعات (static map, direction deep links, hours, access notes)
 - رزرو نوبت page, booking modal reachable from every CTA, thank-you page
 - مقالات (articles) with categories, tags, dentist authors, reviewer, sources
 - حریم خصوصی, 404, 500 and maintenance pages, all branded

@@ -1,209 +1,270 @@
-# Service taxonomy. Source of truth for seeders, navigation and SEO.
-# Fields marked TODO are written in phase 6 and reviewed by the client.
-# Slugs are Persian and final unless the client objects. Keys are stable.
+# Service taxonomy. Source of truth for seeders, navigation and SEO fields.
+# Revised in phase 1 (see docs/ia.md and docs/seo/keyword-map.md, which mirror
+# nav_label, h1 and seo_title). Fields marked TODO are written in phase 6 and
+# reviewed by the client. Keys are stable; slugs are final unless the client
+# objects before seeding.
+#
+# booking_group maps a service to one of the eight booking chips
+# (docs/conversion.md 5.1): exam, cosmetic, implant, restore, root_canal,
+# ortho, kids, other. The exact service_key also travels in a hidden field.
 
 categories:
   - key: cosmetic
     title: خدمات زیبایی دندان
-    short: زیبایی
+    nav_label: زیبایی
     slug: زیبایی
     accent: warm          # category icon accent only, never UI chrome
     order: 1
     summary: TODO
-  - key: replacement
-    title: جایگزینی دندان
-    short: جایگزینی
-    slug: جایگزینی-دندان
+  - key: surgery-replacement
+    title: جراحی و جایگزینی دندان
+    nav_label: جراحی و جایگزینی دندان
+    slug: جراحی-و-جایگزینی-دندان
     accent: brand
     order: 2
     summary: TODO
   - key: restorative
     title: درمان و نگهداری دندان
-    short: درمان
+    nav_label: درمان و نگهداری
     slug: درمان-دندان
     accent: green
     order: 3
     summary: TODO
   - key: orthodontics
     title: ارتودنسی
-    slug: ارتودنسی
+    slug: null            # standalone: resolves to the service page
+    standalone: true
     accent: sky
     order: 4
-    standalone: true      # category and service are the same page
-    summary: TODO
   - key: pediatric
     title: دندانپزشکی کودکان
-    slug: دندانپزشکی-کودکان
+    slug: null
+    standalone: true
     accent: yellow
     order: 5
-    standalone: true
-    summary: TODO
 
 services:
   # ---- cosmetic ----
   - key: ceramic-laminate
     category: cosmetic
-    title: لمینت سرامیکی
+    nav_label: لمینت سرامیکی
+    h1: لمینت سرامیکی دندان
+    seo_title: لمینت سرامیکی؛ مراحل و هزینه
     slug: لمینت-سرامیکی
+    booking_group: cosmetic
     priority: 1
-    search_terms: [لمینت دندان, لمینت سرامیکی, قیمت لمینت, لمینت جنوب تهران]
+    search_terms: [لمینت سرامیکی, لمینت دندان, قیمت لمینت دندان, لمینت دندان جنوب تهران, عوارض لمینت]
     summary: TODO
     sessions: TODO
     duration: TODO
     price_from: null
   - key: composite-veneer
     category: cosmetic
-    title: ونیر کامپوزیت (کامپوزیت دندان)
+    nav_label: کامپوزیت دندان
+    h1: کامپوزیت دندان (ونیر کامپوزیت)
+    seo_title: کامپوزیت دندان؛ مراحل و هزینه
     slug: کامپوزیت-دندان
+    booking_group: cosmetic
     priority: 1
-    search_terms: [کامپوزیت دندان, ونیر کامپوزیت, قیمت کامپوزیت دندان, کامپوزیت یا لمینت]
+    search_terms: [کامپوزیت دندان, ونیر کامپوزیت, قیمت کامپوزیت دندان, ماندگاری کامپوزیت, کامپوزیت دندان جنوب تهران]
     summary: TODO
     price_from: null
   - key: bleaching
     category: cosmetic
-    title: بلیچینگ دندان
+    nav_label: بلیچینگ دندان
+    h1: بلیچینگ دندان
+    seo_title: بلیچینگ و سفید کردن دندان
     slug: بلیچینگ-دندان
+    booking_group: cosmetic
     priority: 2
-    search_terms: [بلیچینگ دندان, سفید کردن دندان, قیمت بلیچینگ]
+    search_terms: [بلیچینگ دندان, سفید کردن دندان, قیمت بلیچینگ, عوارض بلیچینگ]
     summary: TODO
     price_from: null
   - key: diastema
     category: cosmetic
-    title: بستن دیاستم (فاصلهٔ بین دندان‌ها)
+    nav_label: بستن دیاستم
+    h1: بستن دیاستم (فاصلهٔ بین دندان‌ها)
+    seo_title: بستن دیاستم دندان
     slug: بستن-دیاستم
+    booking_group: cosmetic
     priority: 3
-    search_terms: [بستن دیاستم, فاصله بین دندان ها, بستن فاصله دندان]
+    search_terms: [بستن دیاستم, فاصله بین دندان های جلو, دیاستم دندان]
     summary: TODO
     price_from: null
   - key: gum-lift
     category: cosmetic
-    title: لیفت لثه
+    nav_label: لیفت لثه
+    h1: لیفت لثه و اصلاح لبخند لثه‌ای
+    seo_title: لیفت لثه و لبخند لثه‌ای
     slug: لیفت-لثه
+    booking_group: cosmetic
     priority: 3
-    search_terms: [لیفت لثه, اصلاح لبخند لثه ای, لبخند لثه ای]
+    search_terms: [لیفت لثه, لبخند لثه ای, جراحی زیبایی لثه, کانتورینگ لثه]
     summary: TODO
     price_from: null
   - key: smile-design
     category: cosmetic
-    title: اصلاح طرح لبخند
+    nav_label: طراحی لبخند
+    h1: طراحی لبخند (اصلاح طرح لبخند)
+    seo_title: طراحی لبخند؛ مراحل و هزینه
     slug: طراحی-لبخند
+    booking_group: cosmetic
     priority: 2
-    search_terms: [طراحی لبخند, اصلاح طرح لبخند, طراحی لبخند دیجیتال]
+    search_terms: [طراحی لبخند, اصلاح طرح لبخند, هزینه طراحی لبخند]
     summary: TODO
     price_from: null
 
-  # ---- replacement ----
+  # ---- surgery and replacement ----
   - key: implant
-    category: replacement
-    title: ایمپلنت دندان
+    category: surgery-replacement
+    nav_label: ایمپلنت دندان
+    h1: ایمپلنت دندان
+    seo_title: ایمپلنت دندان؛ مراحل و هزینه
     slug: ایمپلنت-دندان
+    booking_group: implant
     priority: 1
-    search_terms: [ایمپلنت دندان, قیمت ایمپلنت, ایمپلنت جنوب تهران, ایمپلنت دیجیتال]
+    search_terms: [ایمپلنت دندان, قیمت ایمپلنت دندان, ایمپلنت جنوب تهران, مراحل ایمپلنت, ماندگاری ایمپلنت]
     summary: TODO
     price_from: null
   - key: overdenture
-    category: replacement
-    title: اوردنچر
+    category: surgery-replacement
+    nav_label: اوردنچر
+    h1: اوردنچر (دندان مصنوعی متکی به ایمپلنت)
+    seo_title: اوردنچر؛ دندان مصنوعی روی ایمپلنت
     slug: اوردنچر
+    booking_group: implant
     priority: 3
-    search_terms: [اوردنچر, دندان مصنوعی روی ایمپلنت]
+    search_terms: [اوردنچر, دندان مصنوعی روی ایمپلنت, قیمت اوردنچر]
     summary: TODO
     price_from: null
   - key: oral-surgery
-    category: replacement
-    title: جراحی فک و دندان
-    slug: جراحی-دندان-و-فک
+    category: surgery-replacement
+    nav_label: جراحی دندان عقل و فک
+    h1: جراحی دندان عقل و فک
+    seo_title: جراحی دندان عقل و فک
+    slug: جراحی-دندان-عقل-و-فک
+    booking_group: other
     priority: 3
-    search_terms: [جراحی دندان عقل, جراحی فک, کشیدن دندان عقل نهفته]
+    scope_to_verify: wisdom-tooth surgery and jaw surgery (gap 27)
+    search_terms: [جراحی دندان عقل, جراحی دندان عقل نهفته, کشیدن دندان عقل]
     summary: TODO
     price_from: null
   - key: gum-surgery
-    category: replacement
-    title: جراحی لثه
+    category: surgery-replacement
+    nav_label: جراحی لثه
+    h1: جراحی لثه
+    seo_title: جراحی لثه و درمان تحلیل لثه
     slug: جراحی-لثه
+    booking_group: other
     priority: 3
-    search_terms: [جراحی لثه, درمان بیماری لثه, فلپ لثه]
+    search_terms: [جراحی لثه, درمان بیماری لثه, تحلیل لثه, جراحی فلپ لثه]
+    summary: TODO
+    price_from: null
+  - key: extraction
+    category: surgery-replacement
+    nav_label: کشیدن دندان
+    h1: کشیدن دندان
+    seo_title: کشیدن دندان؛ مراحل و هزینه
+    slug: کشیدن-دندان
+    booking_group: other
+    priority: 3
+    emergency_link: true   # quiet «درد شدید دارید؟» link under the hero
+    search_terms: [کشیدن دندان, هزینه کشیدن دندان, کشیدن دندان شیری]
     summary: TODO
     price_from: null
 
   # ---- restorative ----
   - key: restoration
     category: restorative
-    title: ترمیم دندان
+    nav_label: ترمیم دندان
+    h1: "ترمیم دندان در سه سطح: معمولی، VIP و CIP"
+    seo_title: ترمیم دندان؛ معمولی، VIP و CIP
     slug: ترمیم-دندان
     alias: /vip
+    booking_group: restore
     priority: 1
-    search_terms: [ترمیم دندان, پر کردن دندان, کامپوزیت ترمیمی, ترمیم همرنگ دندان]
+    search_terms: [ترمیم دندان, پر کردن دندان, ترمیم همرنگ دندان, کامپوزیت ترمیمی, ترمیم VIP, قیمت پر کردن دندان]
     summary: TODO
     price_from: null
     tiers:
       - key: standard
         name: معمولی
-        description: ترمیم استاندارد با مواد با کیفیت متوسط؛ همان روشی که در بیشتر مطب‌ها انجام می‌شود.
+        description: ترمیم استاندارد با مواد متداول؛ گزینهٔ مناسب برای بیشتر نیازهای روزمره.
         price_from: null
       - key: vip
         name: VIP
-        description: مواد درجه‌یک و مهارت دندانپزشک کلینیک؛ فرم و سطح ترمیم شبیه دندان طبیعی. فقط توسط دندانپزشک کلینیک انجام می‌شود.
+        description: مواد درجه‌یک و دقت بیشتر در فرم و سطح ترمیم، تا شکل آن به دندان طبیعی نزدیک باشد. فقط دندانپزشک کلینیک آن را انجام می‌دهد.
         price_from: null
       - key: cip
         name: CIP
-        description: همهٔ ویژگی‌های VIP به‌علاوهٔ رنگ‌آمیزی و کاراکتردهی (characterization)؛ رنگ ترمیم نیز کاملاً طبیعی می‌شود.
+        description: همهٔ ویژگی‌های VIP، به‌علاوهٔ رنگ‌آمیزی و کاراکتردهی (characterization) تا رنگ ترمیم به دندان‌های کناری نزدیک‌تر شود.
         price_from: null
   - key: scaling
     category: restorative
-    title: جرم‌گیری دندان
+    nav_label: جرم‌گیری
+    h1: جرم‌گیری و بروساژ دندان
+    seo_title: جرم‌گیری دندان
     slug: جرم-گیری
+    booking_group: other
     priority: 2
-    search_terms: [جرم گیری دندان, قیمت جرم گیری, بروساژ]
+    search_terms: [جرم گیری دندان, قیمت جرم گیری, بروساژ دندان, هر چند وقت جرم گیری]
     summary: TODO
     price_from: null
   - key: root-canal
     category: restorative
-    title: درمان ریشه (عصب‌کشی)
+    nav_label: درمان ریشه
+    h1: درمان ریشه (عصب‌کشی)
+    seo_title: عصب‌کشی دندان (درمان ریشه)
     slug: درمان-ریشه
+    booking_group: root_canal
     priority: 2
-    search_terms: [عصب کشی, درمان ریشه, درد بعد از عصب کشی, قیمت عصب کشی]
+    emergency_link: true
+    search_terms: [عصب کشی دندان, درمان ریشه, قیمت عصب کشی, عصب کشی چند جلسه است]
     summary: TODO
     price_from: null
   - key: crown
     category: restorative
-    title: روکش دندان
+    nav_label: روکش دندان
+    h1: روکش دندان
+    seo_title: روکش دندان؛ انواع و هزینه
     slug: روکش-دندان
+    booking_group: restore
     priority: 1
-    search_terms: [روکش دندان, روکش زیرکونیا, قیمت روکش دندان, روکش سرامیکی]
+    search_terms: [روکش دندان, روکش زیرکونیا, قیمت روکش دندان, روکش سرامیکی, روکش دندان جنوب تهران]
     summary: TODO
     price_from: null
   - key: inlay-onlay
     category: restorative
-    title: اینله و آنله
+    nav_label: اینله و آنله
+    h1: اینله و آنله
+    seo_title: اینله و آنله دندان
     slug: اینله-و-آنله
+    booking_group: restore
     priority: 3
-    search_terms: [اینله آنله, اینله دندان, آنله دندان]
-    summary: TODO
-    price_from: null
-  - key: extraction
-    category: restorative
-    title: کشیدن دندان
-    slug: کشیدن-دندان
-    priority: 3
-    search_terms: [کشیدن دندان, کشیدن دندان بدون درد, مراقبت بعد از کشیدن دندان]
+    search_terms: [اینله و آنله, اینله دندان, آنله دندان]
     summary: TODO
     price_from: null
 
   # ---- standalone ----
   - key: orthodontics
     category: orthodontics
-    title: ارتودنسی
+    nav_label: ارتودنسی
+    h1: ارتودنسی
+    seo_title: ارتودنسی کودکان و بزرگسالان
     slug: ارتودنسی
+    booking_group: ortho
     priority: 2
-    search_terms: [ارتودنسی, ارتودنسی نامرئی, قیمت ارتودنسی, ارتودنسی بزرگسالان]
+    search_terms: [ارتودنسی, ارتودنسی بزرگسالان, قیمت ارتودنسی, ارتودنسی جنوب تهران, ارتودنسی ثابت]
     summary: TODO
     price_from: null
   - key: pediatric
     category: pediatric
-    title: دندانپزشکی کودکان
+    nav_label: دندانپزشکی کودکان
+    h1: دندانپزشکی کودکان
+    seo_title: دندانپزشکی کودکان در جنوب تهران
     slug: دندانپزشکی-کودکان
+    booking_group: kids
     priority: 2
-    search_terms: [دندانپزشکی کودکان, دندانپزشکی اطفال, فیشور سیلانت, فلوراید تراپی]
+    search_terms: [دندانپزشکی کودکان, دندانپزشکی اطفال جنوب تهران, فیشور سیلانت, فلوراید تراپی]
     summary: TODO
     price_from: null

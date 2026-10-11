@@ -7,6 +7,11 @@ sentences. Address the reader as «شما». Explain before you sell. Every page
 answers: what is it, is it for me, does it hurt, how long, how much, what
 happens next, how do I book.
 
+Restricted words: «متخصص» only for a dentist with a confirmed board
+specialty. «بدون درد» only inside a question heading («آیا کشیدن دندان درد
+دارد؟»), never as a claim. «اولین» only in the client's slogan, at the
+client's decision (gap 28).
+
 Banned words and claims: «بهترین», «بی‌نظیر», «تضمینی», «۱۰۰٪ بدون درد»,
 «ارزان‌ترین», «معجزه», any comparison that belittles other dentists, any
 promise of a result. Replace with specific, checkable facts: materials,
@@ -20,7 +25,10 @@ article lists its sources and a reviewer. Treatment choice is always «با
 ## Microcopy
 
 - One label per intent across the whole site: «رزرو نوبت», «تماس با کلینیک»,
-  «پیام در واتساپ», «مسیریابی». Never two labels for the same action.
+  «پیام در واتساپ», «مسیریابی», «آدرس و ساعات», «درد شدید دارید؟». Never two
+  labels for the same action. The full table is `docs/conversion.md`
+  section 2. Short forms «تماس» and «واتساپ» are allowed only in the phone
+  sticky bar.
 - Buttons start with a verb. Max three words.
 - Forms: label above the field, example in help text, never a placeholder as
   the label. Errors say what happened and what to do: «شمارهٔ موبایل باید با
