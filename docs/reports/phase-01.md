@@ -1,5 +1,10 @@
 # Phase 01 - Discovery and Strategy
 
+Note (added after the phase): the client revised the brief toward a Next.js
+and WebGL experience. The documents of this phase remain valid; where they
+mention the former Laravel plan, `docs/architecture.md` v2 and
+`docs/experience-direction.md` win.
+
 Date: 2026-10-11. No application code in this phase.
 
 ## Plan (written before building)

@@ -1,9 +1,9 @@
 # Phase 06 - Content and SEO Engine
 
-Build the blog and editorial system, finish structured data, and write the
-real content for services and the first articles. Think like the SEO
-strategist, Persian medical copywriter, dental content reviewer and Filament
-engineer.
+Build the articles engine and editorial system in Payload, polish the admin
+for the receptionist, finish structured data, and write the real content for
+services and the first articles. Think like the SEO strategist, Persian
+medical copywriter, dental content reviewer, Payload engineer and UX writer.
 
 ## Inputs
 
@@ -13,18 +13,25 @@ site backup if the client provided it.
 
 ## Deliverables
 
-1. Blog: categories, tags, posts with rich text (headings, images with
-   required alt, callouts, tables, embedded video posters), cover image,
-   author (dentist or staff), reviewer (dentist), sources list, reading time,
-   table of contents generated from headings, related posts and services,
-   share links, RSS, pagination, category and tag pages, Jalali dates,
-   `Article` and `FAQPage` schema.
-2. Editorial system in admin: SEO fields with live validators (title and
-   description length, Persian slug, cover alt, reviewer required for medical
-   content, sources required when the post makes medical claims, at least
-   two internal links), SERP preview, scheduling, draft and review states,
-   the Persian text normalizer on save, an editorial calendar view, and a
-   Persian "how to write a post" checklist page inside admin.
+1. Articles (`/مقالات`): categories, tags, rich text (headings, images with
+   required alt, callouts, tables, video posters), cover, author (dentist or
+   staff), reviewer (dentist), sources, reading time, table of contents,
+   related articles and services, share links, RSS, pagination with
+   self-canonical pages, category pages (noindex until 5 articles) and tag
+   pages, Jalali dates, `Article` and `FAQPage` schema.
+2. Editorial system in Payload: SEO fields with live validators (title and
+   description length, Persian slug, cover alt, reviewer required for
+   medical content, sources required for medical claims, at least two
+   internal links), SERP preview, live preview, scheduling, draft and review
+   states, the Persian text normalizer on save, an editorial calendar view,
+   and a Persian "how to write an article" checklist inside admin.
+2b. Admin polish for the receptionist: every label, help text, empty state
+   and validation message in Persian; navigation grouped by daily tasks
+   (نوبت‌ها، محتوا، بیماران و نظرات، تنظیمات، سیستم); dashboard with today's
+   bookings, callbacks due, emergency flags, content calendar, SEO health,
+   open content gaps; media library with required alt and focal point;
+   globals UI (hours with holiday overrides, legal, features, notifier with
+   a "send test" action); `docs/admin-guide.fa.md` with screenshots.
 3. Patient guide hub (`/راهنمای-بیمار`) and three guides written with
    sources: اولین مراجعه چگونه است، ترس از دندانپزشکی و راه‌های کنترل آن،
    مراقبت‌های بعد از درمان (per treatment group).
@@ -39,7 +46,8 @@ site backup if the client provided it.
 7. Redirects: import tool for the old URL map (CSV), the `/vip` alias, and
    the automatic 301 on slug change, all tested.
 8. Internal linking: related services, related articles, breadcrumbs,
-   "dentists who perform this" on services, "articles reviewed" on dentists.
+   "dentists who perform this" on services, "articles authored or reviewed"
+   on dentists.
 9. Playwright screenshots of blog index, a post, a guide, a category page at
    the three widths in both themes under `docs/qa/phase-06/`; Lighthouse
    within budgets on a post.
@@ -64,6 +72,9 @@ site backup if the client provided it.
 
 - Publishing is blocked until the editorial checklist passes; the block
   message says exactly what to fix.
+- A receptionist can handle a booking, an emergency, publish an article and
+  add a case by following `docs/admin-guide.fa.md`; no English string is
+  visible to the editor role.
 - Every service page has final copy, FAQs, sources and a reviewer field.
 - Every article has author, reviewer, sources, updated date, TOC, one CTA,
   and valid `Article` schema.

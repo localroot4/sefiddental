@@ -12,16 +12,18 @@ from the client (never stored in the repository).
 
 ## Deliverables
 
-1. Pre-launch checklist executed and recorded: production `.env` prepared by
-   the client from `.env.example`, database created, document root set to
-   `public/`, PHP version and extensions confirmed with `ops:probe`, cron
-   lines installed, HTTPS certificate active, HSTS enabled after a successful
-   HTTPS check, backups scheduled, admin MFA enrolled, analytics id set,
-   Search Console verification file or DNS record ready.
-2. Deployment: run the pipeline to production; verify home, a service page,
-   booking (test submission then mark as spam), admin login, sitemap, robots,
-   `/up`, redirects from the old URL map, OG preview, both themes, Lighthouse
-   on the live site.
+1. Pre-launch checklist executed and recorded: production environment
+   variables set on the platform from `.env.example`, PostgreSQL and object
+   storage provisioned, domain attached, HTTPS certificate active, HSTS
+   enabled after a successful HTTPS check, the platform scheduler or
+   external ping configured for cron routes, backups scheduled, admin MFA
+   enrolled, analytics id set, Search Console verification ready, and the
+   R1 check passed: the live site fetched successfully from outside Iran
+   and by the Search Console live test.
+2. Deployment: run the pipeline to production; verify home at two tiers, a
+   service page, booking (test submission then mark as spam), admin login,
+   sitemap, robots, `/api/health`, redirects from the old URL map, OG
+   preview, both themes, Lighthouse on the live site.
 3. Search and maps: submit the sitemap in Search Console; request indexing
    for the top pages; verify the Google Business Profile links to the site
    and booking page; confirm NAP consistency on Neshan and Balad.
@@ -43,8 +45,7 @@ from the client (never stored in the repository).
 
 ## Steps
 
-1. Dry run the whole launch against a staging copy if the host allows a
-   subdomain; otherwise rehearse locally with production settings.
+1. Dry run the whole launch against the staging target from phase 3.
 2. Ask the client for the go in Persian with the exact list of irreversible
    actions. Proceed only after a clear yes.
 3. Deploy, verify, and watch logs for thirty minutes.
@@ -57,8 +58,8 @@ from the client (never stored in the repository).
 - Live site passes the same Lighthouse budgets as staging on home, a service
   page and booking, in both themes.
 - Old URLs redirect with 301 to the mapped pages; no 404 in the imported map.
-- Sitemap submitted and accepted; robots correct; `/up` green; cron heartbeat
-  green; backups ran once successfully in production.
+- Sitemap submitted and accepted; robots correct; `/api/health` green; cron
+  heartbeat green; backups ran once successfully in production.
 - A real booking test reached the admin and the notifier.
 - Rollback procedure documented and the previous deploy commit identified.
 

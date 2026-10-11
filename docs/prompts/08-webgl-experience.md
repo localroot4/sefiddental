@@ -1,68 +1,82 @@
-# Phase 08 - Admin Experience and Operations
+# Phase 08 - WebGL World and Adaptive Quality
 
-Make the admin a pleasure for a receptionist and make the system observable
-and recoverable. Think like the Filament engineer, UX writer, DevOps engineer
-and the receptionist who will use it every day.
+Add the 3D world behind the home journey: the mark, the diamonds, the bar,
+the molar, the workflow path, the lights and the materials, with four
+quality tiers that keep 60 fps on strong devices and a complete site on weak
+ones. Think like the WebGL and shader engineer, 3D artist, technical artist,
+performance engineer and the independent critic with a weak laptop.
 
 ## Inputs
 
-`docs/architecture.md` sections 4, 5 and 9, phases 3, 5 and 6 reports,
-`docs/content/editorial-guide.fa.md`.
+`docs/experience-direction.md`, `docs/experience/storyboard.md`,
+`design/brand/` glTF assets and the molar, `design/prototypes/` (d) and
+(f), the phase 7 timeline and tier provider, performance baselines.
 
 ## Deliverables
 
-1. Admin polish in Persian: every label, help text, empty state, validation
-   message and notification written per the copy guidelines; navigation
-   grouped by daily tasks (نوبت‌ها، محتوا، بیماران و نظرات، تنظیمات، سیستم);
-   dashboard with today's bookings, callbacks due, emergency flags, content
-   calendar, SEO health (pages missing descriptions, images missing alt,
-   broken internal links), and open content gaps.
-2. Roles verified: admin everything; editor posts, cases, testimonials,
-   bookings only. Activity log readable, filterable, with before and after
-   values.
-3. Media manager: upload with drag and drop, alt text required, focal point,
-   usage list, regenerate conversions action.
-4. Settings UI: contact and hours (with holiday overrides), socials, legal
-   (license, supervisor), SEO defaults, feature flags (financing options,
-   emergency, intro animation, analytics id), notifier configuration with a
-   "send test" action per driver.
-5. Operations: nightly database backup command with retention and a restore
-   runbook, log viewer in admin (last errors, request id search),
-   `System status` page completed (PHP, extensions, queue, cron heartbeat,
-   last deploy SHA, disk, failed jobs, cache), error notifications
-   deduplicated per signature per hour, maintenance mode toggle with the
-   branded page.
-6. Data hygiene: bookings older than a configurable number of months are
-   anonymized by a scheduled command; export respects roles.
-7. `docs/admin-guide.fa.md` - Persian guide with screenshots for the
-   receptionist: handle a booking, handle an emergency, publish a post, add a
-   case with consent, update hours for a holiday, what the status page means,
-   who to call when something is red.
-8. Tests: authorization matrix, backup command, anonymization command, settings
-   validation, notifier test action; Playwright screenshots of the key admin
-   screens at 1440 and 820 under `docs/qa/phase-08/`.
-9. `docs/reports/phase-08.md`.
+1. One fixed `<Canvas>` host on home (React Three Fiber), mounted after
+   `load` and after the intro minimum, with `AdaptiveDpr`, the frame
+   monitor, context-loss recovery, visibility pause (tab hidden, canvas
+   off-screen), and disposal of scene resources when far out of view.
+2. Scene graph bound to the phase 7 master timeline: the camera path and
+   light drift across the eleven scenes; the mark with a glass-like teal
+   material and the diamonds as gems (scene 1 and transitions); the services
+   backdrop (scene 3); the molar turntable with the enamel material and the
+   CIP characterization shader layer (scene 4); the diagonal workflow with
+   point cloud, wireframe, solid and lit stages (scene 5); the displacement
+   before/after wipe at tiers 2 and 3 (scene 6); the warm light shift
+   (scenes 9 and 10); the playground parts as 3D at tier 3 only.
+3. Assets: Draco glTF, KTX2 textures with a build step, no texture above
+   2048 px, per-tier asset manifests, total download per tier within the
+   budgets, preloading in scroll order.
+4. Quality tiers end to end: `detect-gpu` plus device signals at first
+   visit; the live monitor steps down after 2 seconds under 55 fps and
+   never steps up during the visit except after idle; tier settings
+   (DPR cap, post-processing, particle counts, shadows, which scenes run)
+   exactly per `docs/experience-direction.md` section 3; the user override
+   persists; tier 0 renders no canvas at all.
+5. Theme correctness: both themes inside the world; the hero poster and the
+   canvas cross-fade without a flash.
+6. Accessibility: `aria-hidden` canvas; no information exists only in 3D;
+   reduced motion disables the world.
+7. Performance evidence per tier: frame-time distributions per scene with
+   Chromium at tiers 3 and 2, with 4x CPU throttle, and with SwiftShader
+   for tier 1; GPU memory per scene; download totals per tier; LCP and INP
+   on home unchanged within budget; recordings and screenshots under
+   `docs/qa/phase-08/`; a Persian checklist for the client's real-device
+   test (one mid Android, one iPhone, one old laptop).
+8. `docs/reports/phase-08.md` with a scene-by-scene table: cost, tier
+   behavior, fallback.
 
 ## Steps
 
-1. Walk every admin screen as the editor role, then as admin; write down
-   every friction point; fix them.
-2. Write the Persian guide while walking the flows; screenshot each step.
-3. Independent review focused on authorization and data exposure.
-4. Screenshot, inspect, fix in one batch, confirm, stop.
+1. Read the current React Three Fiber, drei and three.js docs for the
+   installed majors before writing scene code.
+2. Build the host and the tier system first with an empty scene; prove the
+   monitor steps down under load.
+3. Add scenes in scroll order, one at a time, measuring after each; a scene
+   that cannot meet its tier budget ships at a lower tier only.
+4. Run the full scroll under each tier profile; record; fix in one batch;
+   confirm once; stop.
+5. Independent review focused on memory leaks, context loss, mobile Safari
+   quirks (WebGL 2 availability, DPR, `100dvh`), and whether any scene hides
+   a CTA.
 
 ## Acceptance criteria
 
-- A receptionist can complete every task in the guide without touching code
-  or asking a developer.
-- No English string is visible to the editor role.
-- The authorization matrix test proves the editor cannot reach settings,
-  users, redirects or system pages.
-- Backup runs on schedule, restore runbook verified once on a fresh database.
-- Status page turns red on a stopped cron within 5 minutes and the admin
-  receives one notification, not many.
+- 60 fps at tiers 3 and 2 on every scene at 4x throttle; never under 50 fps
+  at tier 1 under SwiftShader; tier 0 has no canvas.
+- Home budgets hold per tier: initial JS, WebGL assets, LCP, INP, CLS,
+  Lighthouse >= 90 at tier 1 settings.
+- The monitor steps down under induced load and the page stays usable; the
+  override works and persists.
+- Memory returns to baseline after a full scroll; context loss recovers
+  without a reload.
+- Both themes render correctly in the world; reduced motion disables it.
+- Text, CTAs and navigation are unchanged and reachable in every tier.
 
 ## Hand-off
 
-Ask the client to let the receptionist try the guide and send back any step
-that was unclear.
+Ask the client to run the real-device checklist and report fps feel and any
+device that struggles, and to say whether any scene should be bolder or
+calmer.
