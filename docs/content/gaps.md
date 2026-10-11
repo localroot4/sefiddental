@@ -34,3 +34,5 @@ Phases append rows; the client closes them. Status: open, received, done.
 | 27 | Scope checks: wisdom-tooth surgery, gum grafts, clear aligners, digital smile design software | keyword map "(verify)" terms | client | open |
 | 28 | Evidence for the «اولین کلینیک دیجیتال جنوب تهران» claim, or approval to keep it as a slogan at the client's risk | home H1, risk R6 | client | open |
 | 29 | Profiles on nobat.ir, doctoreto.com, paziresh24.com: existing or to create | local SEO | client | open |
+| 30 | Are bridges and complete dentures offered? (no page until confirmed) | services, keyword map | client | open |
+| 31 | A nearby 24-hour dental center or hospital to name for closed-hours emergencies | emergency page | client | open |
