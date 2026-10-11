@@ -2,12 +2,13 @@
 
 Design read: Persuade-mode marketing site for a premium, calm dental clinic in
 south Tehran, with healthcare trust-first constraints. Language: calm, warm,
-modern. Motion: Apple-like restraint with one signature intro. Persian RTL
-first. Blog pages are Read mode. The admin panel is Operate mode and follows
-Filament conventions.
+modern. Motion: cinematic WebGL journey on the home page (see
+`docs/experience-direction.md`), calm elsewhere. Persian RTL first. Article
+pages are Read mode. The admin panel is Operate mode and follows Payload
+conventions.
 
-Dials (1-10): DESIGN_VARIANCE 7, MOTION_INTENSITY 6 (home 7), VISUAL_DENSITY 3
-(blog 4).
+Dials (1-10): DESIGN_VARIANCE 7, MOTION_INTENSITY 9 on home and 5 on content
+pages, VISUAL_DENSITY 3 (articles 4).
 
 Phase 2 turns this direction into `docs/design/DESIGN.md` with measured
 contrast tables, final token values and component specs. Until then this file
@@ -172,58 +173,48 @@ the emergency safety box uses the warning token and an icon, never red.
 
 ## 8. Motion system
 
+The home experience (scenes, quality tiers, loading, interaction rules,
+verification) is specified in `docs/experience-direction.md` and overrides
+this section where they differ. The rules below apply to content pages and
+to UI components everywhere.
+
 Tokens: `--dur-1: 120ms` (micro), `--dur-2: 200ms` (UI), `--dur-3: 320ms`
-(reveals), `--dur-4: 600ms` (hero choreography), `--dur-5: 900-1400ms`
-(intro). `--ease-out: cubic-bezier(0.16, 1, 0.3, 1)`, `--ease-in-out:
-cubic-bezier(0.65, 0, 0.35, 1)`. Settle motions use GSAP `expo.out`; a soft
-overshoot `back.out(1.2)` only on the intro dots.
+(reveals), `--dur-4: 600ms` (choreography), `--dur-5: 900-1400ms` (intro).
+`--ease-out: cubic-bezier(0.16, 1, 0.3, 1)`, `--ease-in-out:
+cubic-bezier(0.65, 0, 0.35, 1)`; GSAP `expo.out` for settles and
+`back.out(1.2)` only on the intro diamonds.
 
 Principles:
 
-- Motivated only: hierarchy, storytelling, feedback or state change. If the
-  reason does not fit one sentence, drop it.
-- Animate `transform` and `opacity` only. No scroll event listeners. Use GSAP
-  ScrollTrigger, IntersectionObserver or CSS scroll-driven animations.
-- `prefers-reduced-motion: reduce` collapses everything to instant states.
-- Phones: shorter distances (12 px), fewer staggers, no pinned sections under
-  1024 px wide, no parallax.
-- Nothing loops forever except the intro progress bar while loading.
-- GSAP and Three.js load after the LCP event, as modules, only on pages that
-  use them. The intro uses inline CSS keyframes plus about 1.5 KB of inline
-  JavaScript with a CSP nonce; it does not wait for GSAP.
+- Motivated only: hierarchy, storytelling, feedback or state change.
+- Animate `transform` and `opacity` only in the DOM. No scroll event
+  listeners; use GSAP ScrollTrigger, IntersectionObserver or CSS scroll-
+  driven animations. Lenis smooths scroll on desktop only.
+- `prefers-reduced-motion: reduce` collapses everything to instant states
+  and the tier 0 experience.
+- Phones: shorter distances (12 px), fewer staggers, no pinned sections
+  under 1024 px, no parallax, no pointer effects.
+- Nothing loops forever except loading indicators.
+- Content pages never load three.js; the restoration page may lazy-load the
+  molar scene behind an intersection trigger at tiers 2 and 3.
 
-Intro storyboard (first visit per session, total <= 1400 ms, tap or Esc
-skips, static under reduced motion, never shown on repeat views):
+Intro storyboard (first visit per session, total <= 1400 ms, tap, Esc or
+«رد کردن انیمیشن» skips, static under reduced motion):
 
 | Time | What happens |
 |---|---|
-| 0 ms | Overlay in the surface color covers the viewport. Hero markup and the preloaded hero image render beneath it, so LCP is not delayed. The teal mark outline sits at center. |
-| 0-500 ms | The four diamond dots fly in from the viewport edges and settle with a soft overshoot. The long bar draws from right to left as the real loading progress, minimum 400 ms. |
+| 0 ms | Overlay in the surface color covers the viewport. Hero markup and the preloaded hero poster render beneath it, so LCP is not delayed. The teal mark outline sits at center. |
+| 0-500 ms | The four diamond dots fly in from the viewport edges and settle with a soft overshoot. The long bar draws from right to left as the real loading progress (page, then experience assets), minimum 400 ms. |
 | 500-900 ms | The two strokes of the teal mark snap together. The letters of «سفید» fill through a mask. |
-| 900-1300 ms | The teal mark scales up as a clip-path mask and reveals the hero beneath. Hero text settles in from 16 px offsets with a 60 ms stagger. |
+| 900-1300 ms | The teal mark scales up as a clip-path mask and reveals the hero beneath. Hero text settles in from 16 px offsets with a 60 ms stagger. The WebGL world, if ready, fades in behind the hero; otherwise the poster stays until it is. |
 | 1400 ms | Overlay removed from the DOM, focus and scroll restored. |
 
-Signature scroll moments (desktop pinned, phones stepped or stacked):
-
-1. Hero to proof: as the hero leaves, the masked image eases into a framed
-   card and the trust band rises. Light parallax inside the mask only.
-2. Three restoration tiers: an SVG molar morphs معمولی to VIP to CIP with
-   MorphSVG; color characterization layers fade in for CIP. Pinned with scrub
-   on desktop, a three-step tap control on phones.
-3. Patient journey: مشاوره و اسکن, طرح درمان, درمان, لبخند و مراقبت. Horizontal
-   pan with real photos on desktop, vertical steps with diamond markers on
-   phones.
-
 Micro-interactions: button press `scale(.98)`, card hover 2 px lift, input
-focus ring grows, FAQ chevron rotates, nav active bar slides with Flip, theme
-toggle icon morphs, booking success check draws itself.
+focus ring grows, FAQ chevron rotates, nav active bar slides with Flip,
+theme toggle icon morphs, booking success check draws itself.
 
-Page transitions: cross-document View Transitions (200 ms cross-fade) where
-supported, none elsewhere.
-
-Optional stretch, only if budgets hold after phase 7: a scroll-rotating implant
-model on the implant page (glTF, lazy, desktop and capable phones, image
-sequence fallback).
+Page transitions: the mark morphs between routes with the View Transitions
+API where supported; otherwise a 200 ms cross-fade.
 
 ## 9. Accessibility and RTL rules
 

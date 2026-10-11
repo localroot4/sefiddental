@@ -199,15 +199,13 @@ in Asia/Tehran on every request. States:
 "Next working day" is computed from the schedule: «فردا» when it is
 tomorrow, otherwise the weekday and Jalali date («شنبه ۱۲ مهر»).
 
-Caching decision (made now because it shapes forms, security and copy): no
-full-page HTML cache, neither in the application nor at a CDN. Every HTML
-response is rendered per request with a fresh CSRF token, CSP nonce, signed
-form timestamp and hours state, and is sent with `Cache-Control: no-cache,
-private`. Speed comes from OPcache, Laravel's config, route, view and event
-caches, cached queries and cached fragments that contain no per-request
-values, and immutable hashed static assets. Revisit only if TTFB misses its
-budget; the fallback design is a no-cache endpoint that returns a token and a
-signed timestamp when a form is first focused.
+Caching decision (made now because it shapes forms, security and copy): any
+route that renders a form (booking, emergency, address, and the inline
+booking block on content pages) gets its CSRF token, signed time token and
+hours state from a small `no-store` endpoint when the form mounts, so the
+page itself can stay static or ISR. Booking and emergency pages are fully
+dynamic (`no-store`). No CDN or application cache ever serves a token.
+Inline scripts in static pages use CSP hashes; dynamic routes use nonces.
 
 ## 7. Emergency flow (`/اورژانس`)
 

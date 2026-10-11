@@ -1,6 +1,7 @@
 # Sefid Dental Clinic Website - Project Brief
 
-Status: v1, discovery complete (2026-10-11).
+Status: v2, discovery complete and the experience brief revised (2026-10-11):
+Next.js, WebGL 2, cinematic scroll experience with game-style quality tiers.
 This file is the source of truth for every build phase. If code, a prompt or a
 report contradicts it, this file wins. If this file is wrong, fix it in the same
 commit as the change that revealed the error.
@@ -18,8 +19,12 @@ The new site must:
    possible, and build toward competitive service queries.
 2. Convert visitors into appointments through the fastest possible booking
    form, phone calls and WhatsApp.
-3. Look and feel like a large, premium, calm clinic. Visitors should ask who
-   designed it.
+3. Look and feel like a large, premium, calm clinic, and deliver a cinematic
+   scroll experience in the spirit of Immersive Garden (immersive-g.com) and
+   hidokme.com: one continuous world built around the logo and the tooth,
+   direction changes (vertical, horizontal, diagonal), WebGL scenes, and a
+   playful footer. Visitors should keep scrolling for pleasure and ask who
+   designed it. Details: `docs/experience-direction.md`.
 4. Be flawless on mobile first, then tablet and desktop. Alignment, spacing and
    typography must be exact.
 5. Be maintainable by the receptionist and the client (one blog post every 2-3
@@ -122,8 +127,9 @@ Research to apply (cite in reports, apply in design):
   `#8A2A38`. Roles are defined in `docs/design-direction.md`.
 - Feel: calm and warm, modern and premium, trustworthy. Patients should relax.
   Not sterile, not loud, not "startup".
-- Motion: Apple-like restraint, one signature intro, a few scroll-driven
-  moments. Details in `docs/design-direction.md`.
+- Motion: cinematic on the home experience (quality-tiered WebGL, 60 fps
+  target), calm and light on content pages. Details in
+  `docs/experience-direction.md`.
 - Dark mode: automatic from the system, with a manual toggle. Both themes
   equally polished.
 
@@ -147,7 +153,8 @@ Pages (Persian slugs; the sitemap is `docs/ia.md`):
 
 Features:
 
-- Admin panel (Filament, Persian, RTL) with roles admin and editor
+- Admin panel (Payload, Persian, RTL) with roles admin and editor
+- Home experience: 11 scroll scenes with WebGL, quality tiers, footer playground
 - Booking workflow with statuses, notes and click-to-call
 - Notification abstraction: log and email now; Telegram and Farapayamak SMS
   adapters later
@@ -159,17 +166,23 @@ Features:
 Out of scope for v1: online payment or deposit, real-time calendar booking,
 multilingual content (routing stays i18n-ready), patient portal, Instagram API
 feed (a curated manual grid is fine), clinic-software integration (keep the
-booking model mappable and exportable).
+booking model mappable and exportable), WebGL on content pages beyond the
+optional molar on the restoration page, sound.
 
 ## 6. Constraints
 
 - Language: Persian only for v1. Code and developer docs in English. Build
   i18n-ready routes and translation files from day one.
-- Hosting: shared cPanel with WHM access. Provider unknown. Probe PHP version,
-  extensions, SSH, cron and Node in phase 3. Deployment habit: GitHub repo,
-  auto deploy on push to `main`. No long-running Node process in production.
-  Server-rendered PHP is mandatory.
+- Hosting: the client owns a shared cPanel plan with WHM access. Next.js
+  with Payload needs Node.js and PostgreSQL, which shared cPanel does not
+  provide dependably. Decision pending (gap 32): a Node PaaS inside Iran
+  (Liara or ArvanCloud), or Node on the client's own server if WHM is a full
+  VPS. Deployment habit stays: push to `main`, auto deploy. Details in
+  `docs/architecture.md` section 2.
 - No WordPress. Custom build.
+- Heavy motion lives on the home experience only. Service, dentist, article,
+  pricing, address, booking and emergency pages stay light and server-
+  rendered; they carry the SEO and the conversions.
 - Iranian network realities: self-host fonts, scripts and styles. No Google
   Fonts link. No Google Maps JavaScript (billing is impossible from Iran).
   Use a static map image plus deep links. Expect slow mobile networks. The
@@ -184,22 +197,21 @@ booking model mappable and exportable).
 
 ## 7. Quality bar (non-negotiable)
 
-Performance on a simulated mid-range Android over 4G:
+Performance on a simulated mid-range Android over 4G, per page class
+(full table in `docs/experience-direction.md` section 4):
 
-| Metric | Budget |
-|---|---|
-| LCP | <= 2.5 s |
-| INP | <= 200 ms |
-| CLS | <= 0.05 |
-| TTFB | <= 0.8 s |
-| Initial JS on content pages | <= 60 KB gzipped |
-| Total JS including deferred motion libraries | <= 120 KB gzipped |
-| CSS | <= 40 KB gzipped |
-| Fonts (all subsets) | <= 120 KB |
-| Lighthouse mobile | Performance >= 95, Accessibility 100, Best Practices 100, SEO 100 |
+| Metric | Home experience | Content pages | Booking and emergency |
+|---|---|---|---|
+| LCP | <= 2.5 s (hero poster) | <= 2.5 s | <= 2.0 s |
+| INP | <= 200 ms | <= 200 ms | <= 200 ms |
+| CLS | <= 0.05 | <= 0.05 | <= 0.05 |
+| Initial JS (gzipped) | <= 180 KB | <= 90 KB | <= 70 KB |
+| WebGL assets | tiered: 2.5 MB / 1.2 MB / 0.5 MB / none | none | none |
+| Frame rate | 60 fps at tiers 3 and 2, >= 50 fps at tier 1, no WebGL at tier 0 | n/a | n/a |
+| Lighthouse mobile | Performance >= 90 (tier 1 settings), others 100 | Performance >= 95, others 100 | Performance >= 95, others 100 |
 
-Lighthouse targets apply to: home, one service page, one doctor page, one blog
-post, booking page, in both themes.
+CSS <= 50 KB gzipped. Fonts <= 120 KB. Lighthouse targets apply in both
+themes.
 
 Accessibility: WCAG 2.2 AA. Complete keyboard access, visible focus, 44x44 CSS
 px targets, labels above fields, errors below fields, reduced motion respected,
@@ -229,19 +241,21 @@ Placeholders are explicit `[[NEEDS_CLIENT: ...]]` markers and are tracked in
 
 | # | Decision | Rationale |
 |---|---|---|
-| 1 | Stack: PHP 8.3, Laravel (current stable), Filament (current stable) admin, Blade, Tailwind CSS v4, Alpine.js, GSAP (ScrollTrigger, Flip, MorphSVG), optional Three.js for one lazy scene | First-class on shared cPanel, server-rendered for SEO, production-grade RTL admin. Node SSR on shared hosting is fragile. |
-| 2 | Deploy: GitHub Actions builds (Composer, Vite) and publishes a `deploy` branch, or rsyncs, that cPanel pulls. Document root is `public/` | Matches the client's push-to-deploy habit without Composer or Node on the host. Probe in phase 3. |
+| 1 | Stack: Next.js (current stable, App Router, TypeScript), Payload CMS 3 inside the app (admin `/admin`, Persian, RTL), PostgreSQL, Tailwind CSS v4, Motion for UI, GSAP plus Lenis for scroll, three.js with React Three Fiber for WebGL 2, `detect-gpu` plus a frame monitor for quality tiers | The client chose Next.js and a WebGL experience; Payload keeps the CMS in the same codebase and deploy; server components keep content pages light and SEO-first. Replaces the Laravel plan of v1. |
+| 2 | Deploy: GitHub Actions on push to `main` builds, tests and deploys to a Node host (Liara or ArvanCloud PaaS, or the client's VPS); managed PostgreSQL and object storage for media | Next.js with Payload needs Node and a database. Keeps the push-to-deploy habit. The host is confirmed in phase 3 (gap 32). |
 | 3 | Persian slugs, flat services (`/خدمات/لمینت-سرامیکی`), editable in admin; ASCII for system routes and query parameters. Full sitemap in `docs/ia.md` | Better relevance and CTR in Persian SERPs. Google handles UTF-8 slugs. |
 | 4 | Prices: optional «از … تومان» per service, hidden when empty. The tiers page shows relative positioning unless prices are provided | Transparency builds trust; inflation makes fixed prices stale; admin controls it. |
 | 5 | Financing options behind admin toggles with a transparent surcharge note | Terms are not final. Honesty is a trust signal and a legal safety. |
 | 6 | Emergency: a separate gated request with triage questions, "if possible, same day", call-first during hours, rate-limited, flagged in admin | Serves real pain without turning every booking into an emergency. |
-| 7 | Intro animation built from the logo's own elements, <= 1.4 s, once per session, skippable, never blocks LCP, static under reduced motion | Memorable and on-brand without the cost of a blocking preloader. |
-| 8 | Motion budget: one intro, three scroll-driven signature moments, subtle reveals elsewhere | "Everything moves" fatigues users and kills mobile performance. |
+| 7 | Intro built from the logo's own elements, <= 1.4 s, once per session, skippable, never blocks LCP; the WebGL world fades in beneath it when ready | Memorable and on-brand without a blocking preloader; the bar doubles as the real loading line for the experience. |
+| 8 | Motion: a cinematic, scroll-driven WebGL journey on the home page («سفر یک لبخند», 11 scenes with vertical, horizontal and diagonal movement and a physics footer), with four quality tiers and a 60 fps target; content pages keep subtle motion only | The client wants an Immersive Garden-class experience; tiers keep weak devices smooth and content pages keep SEO and conversion safe. Replaces the "Apple-like restraint" decision of v1. |
 | 9 | Photography: real clinic photos only. AI-generated or stock people are banned | The old site's AI-looking doctor photo is a trust leak. |
 | 10 | Notifications: pluggable notifier. Log and email now, Telegram and Farapayamak later | Client decision. Keeps phase 5 unblocked. |
 | 11 | Analytics: GA4 and Search Console (client creates). Custom events for call, WhatsApp, booking, emergency, directions | Client preference. Matomo optional later. |
 | 12 | Maps: static map image plus deep links to Google Maps, Neshan, Balad and Waze | No Google billing from Iran. Fast. Works everywhere. |
-| 13 | Fonts: Vazirmatn (body) and Estedad (display), self-hosted, Persian and Latin subsets | Free (OFL), excellent Persian shaping, variable, modern. |
+| 13 | Fonts: Vazirmatn (body) and Estedad (display), self-hosted through `next/font/local`, Persian and Latin subsets | Free (OFL), excellent Persian shaping, variable, modern. |
+| 15 | Scroll is never hijacked; pinned and horizontal scenes exist only at 1024 px and wider; phones get vertical, lighter versions of every scene | Mobile is the client's first priority; native scroll keeps accessibility and performance. |
+| 16 | Quality tiers 0-3 chosen by GPU benchmark, device signals and a live frame monitor, with a user override | Game-style settings keep 60 fps on strong devices and a complete, fast site on weak ones. |
 | 14 | Insurers: five featured by name, the rest under «سایر بیمه‌ها», all admin-managed | Client strategy: cash patients first. |
 
 ## 9. Pending inputs from the client
@@ -256,7 +270,7 @@ Tracked with status in `docs/content/gaps.md`.
 - Equipment list, only if "digital" claims should name devices
 - Financing partner names and exact terms; confirm the 200M and 100M figures
 - WhatsApp and Telegram numbers, Instagram handle
-- Hosting facts: provider, PHP version, SSH, cron, Node, document root control
+- Hosting decision and facts: Node PaaS account (Liara or ArvanCloud) or VPS access; PostgreSQL and object storage
 - Old site backup for the 301 map and content; Search Console and GA4 IDs
 - Google Business Profile creation (guide delivered in phase 1)
 - Parking and public transport notes; secondary neighborhoods

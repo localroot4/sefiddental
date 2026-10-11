@@ -51,8 +51,8 @@ section 6 (A-J) plus K and L defined below.
 | `/مقالات/دسته/{slug}` | article category | T-articles | noindex, follow until the category has 5 published articles |
 | `/مقالات/برچسب/{slug}` | article tag | T-articles | noindex, follow |
 | `/حریم-خصوصی` | حریم خصوصی | T-legal | yes |
-| `/panel` | admin | Filament | blocked in robots |
-| `/up` | health | system | no |
+| `/admin` | admin | Payload | blocked in robots |
+| `/api/health` | health | system | no |
 
 URL rules:
 

@@ -1,194 +1,198 @@
-# Architecture
+# Architecture (v2, Next.js)
 
-Binding for phases 3-10. Phase 3 refines it into concrete code and may update
+Binding for phases 3-10. Replaces the Laravel plan after the client chose a
+Next.js and WebGL experience. Phase 3 refines it into code and may update
 this file in the same commit.
 
 ## 1. Stack
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Runtime | PHP 8.3 (match the host; never below 8.2) | Shared cPanel with WHM |
-| Framework | Laravel, current stable at build time | Check the official docs for the installed major version before using an API |
-| Admin | Filament, current stable, locale `fa`, RTL | Panel at `/panel`, MFA enabled |
-| Views | Blade components, server-rendered | No client-side router |
-| CSS | Tailwind CSS v4 with `@theme` tokens from `docs/design-direction.md` | One token file, no ad-hoc colors |
-| JS | Alpine.js 3 for small interactivity; GSAP 3 (ScrollTrigger, Flip, MorphSVG) for signature motion; optional Three.js for one lazy scene | Motion libraries load after LCP as ES modules |
-| Build | Vite | Assets are built in CI, never on the host |
-| Database | MySQL 8 on the host; SQLite for local dev and tests | |
-| Cache, sessions, queue | file or database drivers; cron runs `schedule:run` every minute and `queue:work --stop-when-empty` | No Redis on shared hosting |
-| Media | spatie/laravel-medialibrary with AVIF and WebP conversions and LQIP | Requires GD or Imagick with AVIF support on the host; fall back to WebP only if AVIF is unavailable |
-| Sitemap | spatie/laravel-sitemap | Regenerated on publish and nightly |
-| Roles and logs | spatie/laravel-permission, spatie/laravel-activitylog | admin and editor |
-| Anti-spam | spatie/laravel-honeypot plus a time trap and rate limits | Cloudflare Turnstile optional, off by default |
-| Dates | morilog/jalali or hekmatinasser/verta for Jalali display | Store UTC, display Asia/Tehran |
-| Icons | blade-phosphor-icons | One family |
-| Tests | Pest (feature and unit), Playwright (e2e and screenshots), axe-core, Lighthouse CI | All run in GitHub Actions |
+| Framework | Next.js, current stable (16 or later), App Router, TypeScript strict | Server components by default; client islands for motion and WebGL |
+| CMS | Payload CMS 3.x inside the same Next.js app, admin at `/admin`, locale `fa`, RTL | Collections, drafts and versions, scheduled publish, access control, media with sharp, live preview |
+| Database | PostgreSQL (Payload Postgres adapter) | Managed by the host; SQLite only in local tests |
+| Styling | Tailwind CSS v4 with `@theme` tokens from `design/tokens.css`; CSS modules for complex scenes | one token file, no ad-hoc colors |
+| UI motion | Motion (`motion/react`) for component states and layout animation | client islands only |
+| Scroll engine | GSAP 3 (ScrollTrigger, Flip, MorphSVG, Draggable, InertiaPlugin) plus Lenis | one master timeline per page; see `docs/experience-direction.md` |
+| WebGL | three.js, `@react-three/fiber` 9, `@react-three/drei`, `@react-three/postprocessing`; WebGL 2 with WebGL 1 fallback for tier 1 | KTX2 textures, Draco glTF, one `<Canvas>` fixed behind the page |
+| Quality tiers | `detect-gpu` plus a frame-time monitor (`PerformanceMonitor` from drei) and `AdaptiveDpr` | tiers 0-3 per `docs/experience-direction.md` section 3 |
+| Fonts | Vazirmatn and Estedad via `next/font/local`, subsets, swap | preloaded |
+| Icons | Phosphor Icons React | one family |
+| Dates | `date-fns-jalali` for display; store UTC | Asia/Tehran |
+| Email | Nodemailer through the host's SMTP | admin notifications |
+| Tests | Vitest (unit), Playwright (e2e, screenshots, frame timing), axe-core, Lighthouse CI | all in GitHub Actions |
+| Lint | ESLint, Prettier, TypeScript `--noEmit`, `knip` for dead code | CI gate |
 
 ## 2. Hosting and deployment
 
-Facts to probe in phase 3 and record in `docs/reports/phase-03.md`: PHP version
-and CLI availability, extensions (gd or imagick with avif, intl, mbstring,
-bcmath, zip, exif), Composer, Node, SSH, cron, max execution time, memory
-limit, document root control, HTTP/2 and Brotli, free disk.
+A Next.js app with Payload needs a Node.js runtime, a PostgreSQL database
+and writable media storage. The client's shared cPanel plan has none of
+these in a dependable form.
 
-Deployment strategy A (default, needs no Composer or Node on the host):
+**Option A (recommended): Node PaaS inside Iran.** Liara (liara.ir) or
+ArvanCloud PaaS, both with Next.js app presets, managed PostgreSQL and
+object storage. Deploy from GitHub Actions on push to `main` (Liara CLI or a
+Docker image); environment variables in the platform; media in object
+storage (S3 compatible) with a CDN. Low latency for Iranian visitors;
+international inbound stays open for Googlebot (confirm with the provider).
+Cost: a small monthly fee the client approves.
 
-1. GitHub Actions on push to `main`: install PHP deps with
-   `composer install --no-dev --optimize-autoloader`, build assets with
-   `npm ci && npm run build`, run tests.
-2. Publish the built tree (including `vendor/` and `public/build/`) to an
-   orphan branch `deploy`.
-3. cPanel Git Version Control pulls `deploy`; `.cpanel.yml` copies files to
-   the app directory and runs `php artisan migrate --force` and
-   `php artisan optimize` when PHP CLI exists.
-4. Document root points to `public/` (set in WHM).
+**Option A2: the client's WHM server, if it is a full VPS.** Install Node LTS
+and PostgreSQL, run the app with PM2 behind Apache or Nginx as a reverse
+proxy, deploy with GitHub Actions over SSH. Works, but the client's team
+then owns the server.
 
-Strategy B (if SSH is available): rsync the built tree over SSH from CI and
-run the artisan commands remotely. Same artifacts, same tests.
+**Option B (fallback, not recommended for this ambition): cPanel static.**
+Next.js `output: 'export'` for the public site, deployed to cPanel as static
+files; a separate small PHP API on cPanel for bookings; content still needs
+a CMS somewhere, and every publish needs a rebuild that fetches content
+across the Iran border. Slow content updates and fragile builds.
 
-Both strategies keep `.env` on the server only. `.env.example` is committed.
-Rollback: redeploy the previous `deploy` commit.
+Phase 3 probes the actual host, records the facts, and asks the client to
+confirm option A or A2 before writing deploy code.
+
+Deployment pipeline (option A): CI runs lint, types, unit tests, build,
+Playwright smoke, Lighthouse budgets; on success deploys; Payload migrations
+run on release; the previous release is kept for one-command rollback.
 
 ## 3. Request handling and URLs
 
-- `dir="rtl" lang="fa"` on every page. Locale-prefixed routing is prepared
-  (`/` is Persian; `/en` reserved) without exposing a second language.
-- Persian slugs. Implement `PersianSlug` (Laravel's `Str::slug` strips
-  Persian): normalize Arabic ي and ك to Persian, remove diacritics, collapse
-  whitespace to hyphens, keep Persian letters and digits, trim hyphens.
-  Slugs are editable in admin and unique per type. Changing a slug writes a
-  301 into the redirects table automatically.
-- Canonical URLs without trailing slash. `www` redirects to apex. HTTP to
-  HTTPS. Query strings never create duplicate indexable pages.
-- Redirects table with hit counters and an import tool for the old site map.
+- `<html dir="rtl" lang="fa">`. Locale-prefixed routing is prepared
+  (`/` Persian, `/en` reserved) without exposing a second language.
+- Persian slugs in route segments; a `persianSlug()` utility (normalize
+  Arabic ي and ك, strip diacritics, hyphenate whitespace, keep Persian
+  letters and digits) used by Payload `beforeValidate` hooks; slugs editable
+  in admin and unique per collection; a slug change writes a 301 into the
+  `redirects` collection.
+- Canonical without trailing slash; `www` to apex; HTTP to HTTPS; query
+  strings canonicalize to the base URL (gallery filters, booking params).
+- Rendering: content pages are static or ISR (revalidate on publish through
+  Payload hooks); home is static with client islands; booking, emergency and
+  anything with a form is dynamic (`no-store`) so CSRF tokens, signed time
+  tokens and hours state are fresh on every request.
 
-## 4. Data model
+## 4. Data model (Payload collections and globals)
 
-| Table | Key fields |
+| Collection | Key fields |
 |---|---|
-| service_categories | title, nav_label, slug (null for standalone), accent, icon, order, seo fields |
-| services | category_id, nav_label, h1, seo_title, slug, booking_group, emergency_link, summary, body (blocks), price_from (nullable), duration, sessions, faq (relation), related, priority, published_at, seo fields, reviewed_by (doctor), reviewed_at |
-| service_tiers | service_id, name (معمولی/VIP/CIP), description, materials, highlights, price_from (nullable), order |
-| doctors | name, slug, specialty, council_number, degrees, bio, photo, order, services (pivot), published_at, seo fields |
-| posts | title, slug, excerpt, body (rich text with images), cover, category_id, tags (pivot), author_id (doctor or staff), reviewer_id (doctor), sources (json), reading_time, published_at, updated_at, seo fields |
-| post_categories, tags | title, slug, description, seo fields |
-| testimonials | patient_label, service_id, type (video/text), media, quote, consent_confirmed, order, published_at |
-| cases | title, service_id, before_media, after_media, notes, consent_confirmed, order, published_at |
-| bookings | phone (normalized E.164), name, service_id, tier, doctor_id (nullable), preferred_time, note, kind (regular/emergency), triage (json), emergency_outcome (urgent/not_urgent, nullable), status (new/contacted/scheduled/done/cancelled/spam/suspicious), flags (json: honeypot, too_fast, ip_limit), heard_from (admin-entered source), source_url, utm (json), device, ip_hash, notes (admin), handled_by, handled_at |
+| service-categories | title, navLabel, slug (nullable for standalone), accent, icon, order, seo |
+| services | category, navLabel, h1, seoTitle, slug, bookingGroup, emergencyLink, summary, body (blocks), priceFrom (nullable), duration, sessions, faqs (array), related, priority, reviewedBy (doctor), reviewedAt, status, seo |
+| service-tiers | service, name, description, materials, highlights, priceFrom, order |
+| doctors | name, slug, specialty, specialtyConfirmed (board), councilNumber, degrees, bio, photo, order, services, status, seo |
+| articles | title, slug, excerpt, body (rich text with media), cover, category, tags, author (doctor or staff), reviewer (doctor), sources (array), readingTime, publishedAt, updatedAt, status, seo |
+| article-categories, tags | title, slug, description, seo |
+| testimonials | patientLabel, service, type (video or text), media, poster, quote, consentConfirmed, order, status |
+| cases | title, service, before, after, notes, consentConfirmed, order, status |
+| bookings | phone (E.164), name, service, tier, doctor, preferredTime, note, kind (regular or emergency), triage, emergencyOutcome, status (new, contacted, scheduled, done, cancelled, spam, suspicious), flags, heardFrom, sourceUrl, utm, device, ipHash, adminNotes, handledBy, handledAt |
 | insurances | name, logo, featured, order |
-| financing_options | title, provider, max_amount, surcharge_note, terms, enabled |
-| faqs | faqable (morph), question, answer, order |
-| pages | key, title, slug, body blocks, seo fields |
-| settings | group, key, value (json) with typed accessors: contact, hours, social, legal (license, supervisor), seo defaults, feature flags |
-| redirects | from, to, status, hits, last_hit_at |
-| events_daily | date, event, location, page_type, service_key, count (first-party measurement, no personal data) |
+| financing-options | title, provider, maxAmount, surchargeNote, terms, enabled |
+| pages | key, title, slug, blocks, seo |
+| redirects | from, to, status, hits, lastHitAt |
+| events-daily | date, event, location, pageType, serviceKey, count |
+| media | upload with required alt, focal point, sharp conversions (AVIF, WebP, sizes), LQIP |
+| users | admin and editor roles |
 
-Every content record has `published_at`, soft deletes and activity log.
-Bookings export to CSV. Phone numbers are stored normalized and searchable in
-all digit forms.
+Globals: `clinic` (name, NAP, phones, socials, hours with holiday
+overrides, legal: license and supervisor), `seo-defaults`, `features`
+(financing toggles, emergency, intro, analytics id, quality tier override),
+`notifier` (drivers and test action).
+
+Every content record has drafts, versions and an audit trail. Bookings
+export to CSV. Phones are stored normalized and searchable in any digit form.
 
 ## 5. Booking pipeline
 
-1. Input normalization: Persian and Arabic digits to ASCII, whitespace and
-   separators removed, `+98`, `0098` and `0` prefixes normalized to E.164,
-   Iranian mobile pattern validated. Names trimmed and normalized (ی, ک, ZWNJ).
-2. Abuse controls per `docs/conversion.md` sections 5.3 and 7.5: honeypot and
-   a signed time token (under 2 s is suspicious); suspicious requests are
-   stored with status `suspicious`, never dropped; 3 per day per phone; 10 per
-   hour per IP before flagging; 1 emergency per day per phone; duplicates
-   within 10 minutes append a note and never overwrite; SMS capped at 1 per
-   destination number per day once enabled.
-3. Persist first, then notify through `Notifier` (interface) with drivers
-   `log`, `mail`, `telegram` (later), `farapayamak` (later). Failures are
-   logged and retried by the queue; the user never sees a failure caused by
-   a notifier.
-4. Response: success view with callback window, call and WhatsApp fallbacks,
-   analytics event. Errors are inline and specific.
-5. Admin: new bookings list ordered by urgency, click-to-call, status
-   workflow, notes, assignment, "callback due" view, suspicious list with
-   one-click restore, CSV export.
-6. Measurement: a POST endpoint receives `sendBeacon` events and increments
-   `events_daily`; no cookies, no IP stored; rate limited.
+Route handlers under `/api/booking` and `/api/emergency`, server-validated
+with zod; the forms also work as plain HTML posts.
+
+1. Normalize input (Persian and Arabic digits, separators, `+98`, `0098`,
+   `0`, 10-digit forms); validate `^09\d{9}$`; normalize names (ی, ک, ZWNJ).
+2. Abuse controls per `docs/conversion.md` sections 5.3 and 7.5: honeypot;
+   signed time token (under 2 s is suspicious); suspicious requests stored
+   with status `suspicious`, never dropped; 3 per day per phone; 10 per hour
+   per IP before flagging; 1 emergency per day per phone; duplicates within
+   10 minutes append a note; SMS capped at 1 per destination per day once
+   enabled.
+3. Persist, then notify through `Notifier` (interface) with drivers `log`,
+   `mail`, `telegram` (later), `farapayamak` (later); retries through a
+   lightweight queue (database-backed job table processed by a cron route).
+4. Respond with the success state and the computed callback line.
+5. Admin: bookings ordered by urgency, click-to-call, status workflow,
+   notes, "callback due" view, suspicious list with one-click restore,
+   CSV export.
+6. Measurement endpoint `/api/events` receives `sendBeacon` payloads and
+   increments `events-daily`; no cookies, no IP stored; rate limited.
 
 ## 6. SEO engine
 
-- `<x-seo>` component: title, description, canonical, robots, OG and Twitter,
-  alternate feeds; defaults from settings; per-record overrides.
-- JSON-LD builders: `Dentist` (with `MedicalBusiness` fields, NAP, hours,
-  geo, sameAs) on every page; `Physician` on dentist pages; `Service` or
-  `MedicalProcedure` on service pages; `FAQPage` where FAQs render;
-  `BreadcrumbList`; `Article` with `author`, `reviewedBy` and `dateModified`
-  on posts; `VideoObject` for testimonial videos; `ItemList` on hubs.
-- Sitemap index: pages, services, dentists, posts, cases. `robots.txt` with
-  sitemap reference. RSS for the blog.
-- OG images: a branded template per page type with the page title rendered
-  server-side; fall back to the cover image for posts.
-- Admin SEO fields with live validators: title length, description length,
-  slug, alt text present on every image, internal links count, reviewer set
-  for medical content, sources present when the post makes medical claims.
+- Next.js Metadata API fed by Payload `seo` fields with defaults from the
+  global; canonical, robots, OG and Twitter; `generateMetadata` per route.
+- JSON-LD builders: `Dentist` everywhere; `Physician` on dentist pages;
+  `Service` on service pages; `FAQPage` where FAQs render; `BreadcrumbList`;
+  `Article` with `author`, `reviewedBy`, `dateModified`; `VideoObject` for
+  testimonials; `ItemList` on hubs. Unit-tested shapes.
+- `sitemap.xml` index per collection, `robots.txt`, RSS route for articles.
+- OG images with `next/og` (ImageResponse) and the Persian font.
+- Editorial validators in Payload: title and description length, Persian
+  slug, cover alt, reviewer required for medical content, sources required
+  when medical claims exist, at least two internal links.
 
 ## 7. Performance
 
-- Server: OPcache on, `config:cache`, `route:cache`, `view:cache`,
-  `event:cache`. No full-page HTML cache in the application or at a CDN:
-  every HTML response carries a fresh CSRF token, CSP nonce, signed form
-  timestamp and hours state (`docs/conversion.md` section 6). Cache queries
-  and fragments that hold no per-request values; invalidate on publish.
-- HTML: critical content first, no render-blocking third parties, fonts
-  preloaded, LCP image preloaded with `fetchpriority="high"`, explicit width
-  and height on all media, `content-visibility: auto` on below-the-fold
-  sections.
-- JS: Alpine inline-initialized; GSAP and Three.js dynamically imported after
-  `load` or on first intersection; per-page bundles.
-- Images: AVIF and WebP, responsive `srcset`, lazy loading below the fold,
-  LQIP placeholders, max 200 KB per hero image at 1600 px wide.
-- Caching headers in `.htaccess`: hashed assets immutable for one year, HTML
-  no-cache with ETag, Brotli or gzip.
-- Budgets enforced in CI with Lighthouse CI assertions (see `docs/brief.md`).
+- Server HTML first; the experience canvas mounts after `load` and after
+  the intro's minimum duration; scenes load in scroll order with `Preload`
+  and are disposed when far out of view.
+- Per-page budgets in `docs/experience-direction.md` section 4, enforced by
+  Lighthouse CI assertions and a bundle-size check in CI.
+- Images: `next/image` with AVIF and WebP, responsive sizes, blur
+  placeholders from Payload, hero poster preloaded with
+  `fetchpriority="high"`.
+- Static assets immutable for one year; HTML `no-cache` on dynamic routes;
+  ISR for content routes.
 
 ## 8. Security
 
-- HTTPS and HSTS, CSP with per-request nonces (inline intro script and JSON-LD
-  use the nonce), `X-Content-Type-Options`, `Referrer-Policy`,
-  `Permissions-Policy`, `X-Frame-Options: DENY` (except admin previews).
-- CSRF on every form. Validation at the boundary with Form Requests. Eloquent
-  only, no raw SQL with interpolation.
-- Admin: MFA, login throttling, strong passwords, session timeout, roles
-  (admin: everything; editor: posts, cases, testimonials, bookings), activity
-  log on every write.
-- Uploads: type and size validation, image re-encoding, no SVG uploads from
-  editors, files stored outside the web root when not public.
-- Dependencies: `composer audit` and `npm audit` in CI. No secrets in the
-  repository or logs. Personal data (phones) never logged in plain text.
+- HTTPS and HSTS; CSP with per-request nonces on dynamic routes and hashes
+  for the static inline intro script; `X-Content-Type-Options`,
+  `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options: DENY` except
+  Payload live preview.
+- CSRF double-submit token on forms; zod validation; parameterized queries
+  through Payload; rate limits at the route handlers.
+- Admin: Payload auth with MFA (TOTP) through a maintained plugin or
+  built-in support, login throttling, strong passwords, roles admin and
+  editor (editor: articles, cases, testimonials, bookings), audit trail.
+- Uploads: type and size validation, re-encoding with sharp, no SVG from
+  editors.
+- `npm audit` in CI; no secrets in the repository or logs; phones never in
+  logs.
 
 ## 9. Observability and operations
 
-- Structured JSON logs with a request id. Daily rotation.
-- `/up` health endpoint. Admin "System status" page: PHP version, queue depth,
-  last cron run, last deploy SHA, disk usage, failed jobs, cache status,
-  pending content gaps.
-- Error notifications to the admin through the Notifier, deduplicated per
-  error signature per hour.
-- Backups: nightly database dump to storage with 14-day retention plus the
-  host's own backups. Restore procedure documented.
-- Maintenance mode page branded and cached.
+- Structured JSON logs with a request id. `/api/health` endpoint. Admin
+  "System status" view: Node version, database, queue depth, last cron run,
+  last deploy SHA, media storage usage, failed jobs, open content gaps.
+- Error notifications through the Notifier, deduplicated per signature per
+  hour.
+- Backups: nightly PostgreSQL dump to object storage with 14-day retention
+  plus the platform's own backups; restore runbook.
+- Maintenance mode: a branded static page served by the platform.
 
 ## 10. Testing
 
-- Pest: slug generation, digit and phone normalization, booking validation and
-  rate limits, duplicate handling, redirects, sitemap contents, JSON-LD shape,
-  settings accessors, authorization per role.
-- Playwright: home loads and intro skips, booking happy path and error path,
-  emergency gate, mobile drawer, theme toggle, before/after slider keyboard
-  use, blog post renders TOC and sources. Screenshots at 390x844, 820x1180
-  and 1440x900 in both themes saved to `docs/qa/`.
-- axe-core on every public template. Lighthouse CI with budget assertions.
+- Vitest: slug utility, digit and phone normalization, booking validation
+  and limits, duplicate handling, redirects, schema builders, hours state
+  and callback copy, quality tier selection logic.
+- Playwright: home loads and intro skips, booking happy and error paths,
+  emergency gate, drawer, theme toggle, compare slider keyboard use,
+  article page; screenshots at 390x844, 820x1180 and 1440x900 in both
+  themes under `docs/qa/`; frame-time sampling on home with CPU throttling.
+- axe-core on every public template. Lighthouse CI with budgets.
 - Every bug fix adds a test that fails before the fix.
 
 ## 11. Local development
 
-`php artisan serve` plus `npm run dev` (or `npm run build` for production
-assets). SQLite database. Seeders import `docs/content/*.yaml` and
-`content/data/*.yaml`. Playwright uses the preinstalled Chromium in cloud
-sessions (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`); Lighthouse CI uses the
-same binary through `CHROME_PATH`.
+`npm run dev` (Next.js with Payload), local PostgreSQL (Docker or the
+platform's dev database), `npm run build && npm start` for production
+checks, Playwright with the preinstalled Chromium in cloud sessions
+(`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`). Seeders import
+`docs/content/*.yaml` and `content/data/*.yaml`.
