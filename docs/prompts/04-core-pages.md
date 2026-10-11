@@ -19,7 +19,7 @@ direction the client picked, `design/styleguide.html`, all previous reports.
 2. Navigation: desktop bar (one line, max 72 px), services mega menu, phone
    drawer with grouped services and 48 px rows, theme toggle, phone link,
    «رزرو نوبت» CTA, sticky bottom bar on phones (تماس | واتساپ | رزرو نوبت)
-   that hides on scroll down and returns on scroll up, safe-area aware.
+   with the visibility rules in `docs/conversion.md` section 4, safe-area aware.
    Footer with NAP, hours, legal line placeholders, links, socials.
 3. Home page with the section order from `docs/design-direction.md`
    section 6, using the chosen hero direction. Sections that depend on

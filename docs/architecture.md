@@ -74,7 +74,7 @@ Rollback: redeploy the previous `deploy` commit.
 | post_categories, tags | title, slug, description, seo fields |
 | testimonials | patient_label, service_id, type (video/text), media, quote, consent_confirmed, order, published_at |
 | cases | title, service_id, before_media, after_media, notes, consent_confirmed, order, published_at |
-| bookings | phone (normalized E.164), name, service_id, preferred_time, note, kind (regular/emergency), triage (json), status (new/contacted/scheduled/done/cancelled/spam), source_url, utm (json), device, ip_hash, notes (admin), handled_by, handled_at |
+| bookings | phone (normalized E.164), name, service_id, tier, doctor_id (nullable), preferred_time, note, kind (regular/emergency), triage (json), emergency_outcome (urgent/not_urgent, nullable), status (new/contacted/scheduled/done/cancelled/spam), heard_from (admin-entered source), source_url, utm (json), device, ip_hash, notes (admin), handled_by, handled_at |
 | insurances | name, logo, featured, order |
 | financing_options | title, provider, max_amount, surcharge_note, terms, enabled |
 | faqs | faqable (morph), question, answer, order |

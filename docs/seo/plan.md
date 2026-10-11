@@ -37,25 +37,11 @@ Clusters to expand in phase 1 with volumes where tools are reachable:
 
 ## 3. URL structure
 
-```
-/                                   خانه
-/خدمات                              هاب خدمات
-/خدمات/زیبایی/{slug}                 لمینت-سرامیکی، کامپوزیت-دندان، بلیچینگ-دندان، بستن-دیاستم، لیفت-لثه، طراحی-لبخند
-/خدمات/جایگزینی-دندان/{slug}         ایمپلنت-دندان، اوردنچر، جراحی-دندان-و-فک، جراحی-لثه
-/خدمات/درمان-دندان/{slug}            ترمیم-دندان، جرم-گیری، درمان-ریشه، روکش-دندان، اینله-و-آنله، کشیدن-دندان
-/خدمات/ارتودنسی
-/خدمات/دندانپزشکی-کودکان
-/vip                                 301 alias to /خدمات/درمان-دندان/ترمیم-دندان
-/پزشکان, /پزشکان/{slug}
-/هزینه-و-پرداخت
-/قبل-و-بعد
-/راهنمای-بیمار
-/اورژانس
-/درباره-ما, /تماس
-/رزرو-نوبت, /رزرو-نوبت/ثبت-شد
-/بلاگ, /بلاگ/دسته/{slug}, /بلاگ/{slug}
-/حریم-خصوصی
-```
+The full sitemap with templates and index rules is `docs/ia.md` section 1.
+Summary: services are flat under `/خدمات/{slug}` (category in the
+breadcrumb, not the URL); category hubs are `/خدمات/زیبایی`,
+`/خدمات/جایگزینی-دندان`, `/خدمات/درمان-دندان`; articles live under
+`/مقالات`; `/vip` is a 301 alias to the restoration tiers.
 
 Rules: one H1 per page carrying the primary term naturally. Title tag 50-60
 characters, pattern `{موضوع} | کلینیک دندانپزشکی سفید`. Meta description
@@ -123,8 +109,6 @@ with a schema validator in CI.
 ## 8. Measurement
 
 - Search Console: queries, pages, coverage, Core Web Vitals, enhancements.
-- GA4 events: `call_click`, `whatsapp_click`, `booking_submit`,
-  `booking_success`, `emergency_submit`, `directions_click`, `theme_toggle`,
-  `tier_select`, `case_slider_use`. Conversions: `booking_success`,
-  `call_click`, `whatsapp_click`.
+- GA4 events and conversions: `docs/conversion.md` section 9.
+- KPI tree and review ritual: `docs/discovery/kpis.md`.
 - Monthly report template in `docs/seo/report-template.md` (phase 10).

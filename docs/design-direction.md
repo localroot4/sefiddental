@@ -123,7 +123,7 @@ than twice on one page. Max two consecutive image-plus-text splits.
 |---|---|---|
 | A | Asymmetric split hero, text start, masked image end; stacked on phones | home, service pages |
 | B | Trust band: 4 verified facts in one quiet row | under the hero |
-| C | Bento with exact cell count (6 cells: 4 categories plus 2 standalone services) | services hub, home |
+| C | Bento with exact cell count (5 cells: 3 categories plus orthodontics and pediatric dentistry) | services hub, home |
 | D | Pinned morph section (SVG tooth morphing through the 3 restoration tiers), stepper on phones | home, restoration page |
 | E | Compare slider for before/after | home, gallery, service pages |
 | F | Horizontal snap carousel on phones, 3-up grid on desktop | dentists |
@@ -132,14 +132,19 @@ than twice on one page. Max two consecutive image-plus-text splits.
 | I | FAQ accordion with a sticky aside (call, WhatsApp, book) | service pages, pricing |
 | J | Inline booking block with static map and hours | home bottom, contact |
 
-Home page order: A, B, C, D, E, F, G, H, I (first-visit FAQ), J, footer.
+Two more families are defined in `docs/ia.md` section 6: K (reading
+column) and L (focused task). Section order for every template lives in
+`docs/ia.md`; home is A, B, C, D, E, F, G (first-visit journey), H, I (FAQ),
+J, footer.
 Hero stack: at most four text elements: optional short label, headline,
 subtext, two CTAs («رزرو نوبت» primary, «تماس با کلینیک» secondary).
 Navigation: desktop one line, max 72 px high: خدمات (mega menu), پزشکان,
-هزینه‌ها, بلاگ, تماس, theme toggle, phone, «رزرو نوبت». Phones: logo,
-hamburger, full-screen drawer with grouped services and 48 px rows, and a
-bottom sticky bar: تماس | واتساپ | رزرو نوبت. The bar hides on scroll down,
-returns on scroll up, respects safe-area insets.
+قبل و بعد, هزینه و پرداخت, تماس, then theme toggle, phone and «رزرو نوبت».
+Phones: logo, call icon, menu button, full-screen drawer with grouped
+services and 48 px rows, and a bottom sticky bar: تماس | واتساپ | رزرو نوبت.
+The bar stays visible and hides only when the booking block or footer
+contact is in view, a field has focus, or a modal is open (rules in
+`docs/conversion.md` section 4). It respects safe-area insets.
 
 ## 7. Components and states
 

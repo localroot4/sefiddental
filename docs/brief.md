@@ -129,7 +129,7 @@ Research to apply (cite in reports, apply in design):
 
 ## 5. Scope v1
 
-Pages (Persian slugs; see `docs/content/services.yaml` and `docs/seo/plan.md`):
+Pages (Persian slugs; the sitemap is `docs/ia.md`):
 
 - خانه
 - خدمات hub, 4 categories plus 2 standalone services, one page per service,
@@ -142,7 +142,7 @@ Pages (Persian slugs; see `docs/content/services.yaml` and `docs/seo/plan.md`):
 - اورژانس: gated emergency request plus call
 - درباره ما, تماس با ما (static map, direction deep links, hours, access notes)
 - رزرو نوبت page, booking modal reachable from every CTA, thank-you page
-- بلاگ with categories, tags, dentist authors, reviewer, sources
+- مقالات (articles) with categories, tags, dentist authors, reviewer, sources
 - حریم خصوصی, 404, 500 and maintenance pages, all branded
 
 Features:
@@ -231,7 +231,7 @@ Placeholders are explicit `[[NEEDS_CLIENT: ...]]` markers and are tracked in
 |---|---|---|
 | 1 | Stack: PHP 8.3, Laravel (current stable), Filament (current stable) admin, Blade, Tailwind CSS v4, Alpine.js, GSAP (ScrollTrigger, Flip, MorphSVG), optional Three.js for one lazy scene | First-class on shared cPanel, server-rendered for SEO, production-grade RTL admin. Node SSR on shared hosting is fragile. |
 | 2 | Deploy: GitHub Actions builds (Composer, Vite) and publishes a `deploy` branch, or rsyncs, that cPanel pulls. Document root is `public/` | Matches the client's push-to-deploy habit without Composer or Node on the host. Probe in phase 3. |
-| 3 | Persian slugs (`/خدمات/زیبایی/لمینت-سرامیکی`), editable in admin; ASCII for system routes | Better relevance and CTR in Persian SERPs. Google handles UTF-8 slugs. |
+| 3 | Persian slugs, flat services (`/خدمات/لمینت-سرامیکی`), editable in admin; ASCII for system routes and query parameters. Full sitemap in `docs/ia.md` | Better relevance and CTR in Persian SERPs. Google handles UTF-8 slugs. |
 | 4 | Prices: optional «از … تومان» per service, hidden when empty. The tiers page shows relative positioning unless prices are provided | Transparency builds trust; inflation makes fixed prices stale; admin controls it. |
 | 5 | Financing options behind admin toggles with a transparent surcharge note | Terms are not final. Honesty is a trust signal and a legal safety. |
 | 6 | Emergency: a separate gated request with triage questions, "if possible, same day", call-first during hours, rate-limited, flagged in admin | Serves real pain without turning every booking into an emergency. |
