@@ -18,7 +18,8 @@
   .lane h2 small{font-weight:400;color:var(--muted)}
   .bad h2{color:var(--red)} .good h2{color:var(--teal)}
   .track{position:relative;height:56px;border-radius:12px;background:var(--navy);overflow:hidden}
-  .seg{position:absolute;inset-block:8px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#fff;white-space:nowrap;padding-inline:8px}
+  .seg{position:absolute;inset-block:8px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.8rem;color:#fff;white-space:nowrap;padding-inline:8px;overflow:hidden;text-overflow:ellipsis}
+  @media (max-width:600px){.seg{font-size:.68rem;padding-inline:4px}.seg span.long{display:none}}
   .s-html{background:#4A5C70}.s-lcp{background:var(--teal)}.s-wait{background:var(--red)}.s-reveal{background:var(--warm);color:var(--navy)}
   .cursor{position:absolute;inset-block:0;inline-size:2px;background:#fff;inset-inline-start:0;transition:inset-inline-start .25s linear}
   .axis{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:6px;direction:ltr}
@@ -48,8 +49,8 @@
       <h2>روش قدیمی: Blocking preloader <small>صفحه تا پایان انیمیشن خالی است</small></h2>
       <div class="track" id="t1">
         <div class="seg s-html" style="inset-inline-start:0;inline-size:10%">HTML</div>
-        <div class="seg s-wait" style="inset-inline-start:10%;inline-size:60%">انیمیشن؛ محتوا هنوز رندر نشده</div>
-        <div class="seg s-lcp" style="inset-inline-start:70%;inline-size:30%">تازه محتوا می‌آید (LCP دیر)</div>
+        <div class="seg s-wait" style="inset-inline-start:10%;inline-size:60%">انیمیشن<span class="long">؛ محتوا هنوز رندر نشده</span></div>
+        <div class="seg s-lcp" style="inset-inline-start:70%;inline-size:30%">LCP دیر<span class="long"> (تازه محتوا می‌آید)</span></div>
         <div class="cursor"></div>
       </div>
       <div class="axis"><span>0s</span><span>1s</span><span>2s</span><span>3s</span><span>4s</span></div>
@@ -60,8 +61,8 @@
       <h2>روش ما: Overlapping reveal <small>محتوا زیر پرده آماده است</small></h2>
       <div class="track" id="t2">
         <div class="seg s-html" style="inset-inline-start:0;inline-size:10%">HTML</div>
-        <div class="seg s-lcp" style="inset-inline-start:10%;inline-size:90%;opacity:.35">محتوا و تصویر هیرو رندر شده (LCP زود)</div>
-        <div class="seg s-reveal" style="inset-inline-start:10%;inline-size:25%">پردهٔ برند ≤ ۱٫۴ ثانیه</div>
+        <div class="seg s-lcp" style="inset-inline-start:10%;inline-size:90%;opacity:.35">LCP زود<span class="long"> (محتوا و تصویر هیرو رندر شده)</span></div>
+        <div class="seg s-reveal" style="inset-inline-start:10%;inline-size:25%">پرده<span class="long">ٔ برند ≤ ۱٫۴ ثانیه</span></div>
         <div class="cursor"></div>
       </div>
       <div class="axis"><span>0s</span><span>1s</span><span>2s</span><span>3s</span><span>4s</span></div>
