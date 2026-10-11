@@ -1,0 +1,9 @@
+# Only real patients with written consent. Label with first name or initials.
+testimonials:
+  - patient_label_fa: ""
+    service: ""                  # key from services.yaml
+    type: video                  # video | text
+    media: ""                    # file in content/photos/testimonials or a URL
+    poster: ""
+    quote_fa: ""                 # one to three lines, optional for video
+    consent_confirmed: false

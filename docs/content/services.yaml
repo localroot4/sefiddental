@@ -1,0 +1,209 @@
+# Service taxonomy. Source of truth for seeders, navigation and SEO.
+# Fields marked TODO are written in phase 6 and reviewed by the client.
+# Slugs are Persian and final unless the client objects. Keys are stable.
+
+categories:
+  - key: cosmetic
+    title: خدمات زیبایی دندان
+    short: زیبایی
+    slug: زیبایی
+    accent: warm          # category icon accent only, never UI chrome
+    order: 1
+    summary: TODO
+  - key: replacement
+    title: جایگزینی دندان
+    short: جایگزینی
+    slug: جایگزینی-دندان
+    accent: brand
+    order: 2
+    summary: TODO
+  - key: restorative
+    title: درمان و نگهداری دندان
+    short: درمان
+    slug: درمان-دندان
+    accent: green
+    order: 3
+    summary: TODO
+  - key: orthodontics
+    title: ارتودنسی
+    slug: ارتودنسی
+    accent: sky
+    order: 4
+    standalone: true      # category and service are the same page
+    summary: TODO
+  - key: pediatric
+    title: دندانپزشکی کودکان
+    slug: دندانپزشکی-کودکان
+    accent: yellow
+    order: 5
+    standalone: true
+    summary: TODO
+
+services:
+  # ---- cosmetic ----
+  - key: ceramic-laminate
+    category: cosmetic
+    title: لمینت سرامیکی
+    slug: لمینت-سرامیکی
+    priority: 1
+    search_terms: [لمینت دندان, لمینت سرامیکی, قیمت لمینت, لمینت جنوب تهران]
+    summary: TODO
+    sessions: TODO
+    duration: TODO
+    price_from: null
+  - key: composite-veneer
+    category: cosmetic
+    title: ونیر کامپوزیت (کامپوزیت دندان)
+    slug: کامپوزیت-دندان
+    priority: 1
+    search_terms: [کامپوزیت دندان, ونیر کامپوزیت, قیمت کامپوزیت دندان, کامپوزیت یا لمینت]
+    summary: TODO
+    price_from: null
+  - key: bleaching
+    category: cosmetic
+    title: بلیچینگ دندان
+    slug: بلیچینگ-دندان
+    priority: 2
+    search_terms: [بلیچینگ دندان, سفید کردن دندان, قیمت بلیچینگ]
+    summary: TODO
+    price_from: null
+  - key: diastema
+    category: cosmetic
+    title: بستن دیاستم (فاصلهٔ بین دندان‌ها)
+    slug: بستن-دیاستم
+    priority: 3
+    search_terms: [بستن دیاستم, فاصله بین دندان ها, بستن فاصله دندان]
+    summary: TODO
+    price_from: null
+  - key: gum-lift
+    category: cosmetic
+    title: لیفت لثه
+    slug: لیفت-لثه
+    priority: 3
+    search_terms: [لیفت لثه, اصلاح لبخند لثه ای, لبخند لثه ای]
+    summary: TODO
+    price_from: null
+  - key: smile-design
+    category: cosmetic
+    title: اصلاح طرح لبخند
+    slug: طراحی-لبخند
+    priority: 2
+    search_terms: [طراحی لبخند, اصلاح طرح لبخند, طراحی لبخند دیجیتال]
+    summary: TODO
+    price_from: null
+
+  # ---- replacement ----
+  - key: implant
+    category: replacement
+    title: ایمپلنت دندان
+    slug: ایمپلنت-دندان
+    priority: 1
+    search_terms: [ایمپلنت دندان, قیمت ایمپلنت, ایمپلنت جنوب تهران, ایمپلنت دیجیتال]
+    summary: TODO
+    price_from: null
+  - key: overdenture
+    category: replacement
+    title: اوردنچر
+    slug: اوردنچر
+    priority: 3
+    search_terms: [اوردنچر, دندان مصنوعی روی ایمپلنت]
+    summary: TODO
+    price_from: null
+  - key: oral-surgery
+    category: replacement
+    title: جراحی فک و دندان
+    slug: جراحی-دندان-و-فک
+    priority: 3
+    search_terms: [جراحی دندان عقل, جراحی فک, کشیدن دندان عقل نهفته]
+    summary: TODO
+    price_from: null
+  - key: gum-surgery
+    category: replacement
+    title: جراحی لثه
+    slug: جراحی-لثه
+    priority: 3
+    search_terms: [جراحی لثه, درمان بیماری لثه, فلپ لثه]
+    summary: TODO
+    price_from: null
+
+  # ---- restorative ----
+  - key: restoration
+    category: restorative
+    title: ترمیم دندان
+    slug: ترمیم-دندان
+    alias: /vip
+    priority: 1
+    search_terms: [ترمیم دندان, پر کردن دندان, کامپوزیت ترمیمی, ترمیم همرنگ دندان]
+    summary: TODO
+    price_from: null
+    tiers:
+      - key: standard
+        name: معمولی
+        description: ترمیم استاندارد با مواد با کیفیت متوسط؛ همان روشی که در بیشتر مطب‌ها انجام می‌شود.
+        price_from: null
+      - key: vip
+        name: VIP
+        description: مواد درجه‌یک و مهارت دندانپزشک کلینیک؛ فرم و سطح ترمیم شبیه دندان طبیعی. فقط توسط دندانپزشک کلینیک انجام می‌شود.
+        price_from: null
+      - key: cip
+        name: CIP
+        description: همهٔ ویژگی‌های VIP به‌علاوهٔ رنگ‌آمیزی و کاراکتردهی (characterization)؛ رنگ ترمیم نیز کاملاً طبیعی می‌شود.
+        price_from: null
+  - key: scaling
+    category: restorative
+    title: جرم‌گیری دندان
+    slug: جرم-گیری
+    priority: 2
+    search_terms: [جرم گیری دندان, قیمت جرم گیری, بروساژ]
+    summary: TODO
+    price_from: null
+  - key: root-canal
+    category: restorative
+    title: درمان ریشه (عصب‌کشی)
+    slug: درمان-ریشه
+    priority: 2
+    search_terms: [عصب کشی, درمان ریشه, درد بعد از عصب کشی, قیمت عصب کشی]
+    summary: TODO
+    price_from: null
+  - key: crown
+    category: restorative
+    title: روکش دندان
+    slug: روکش-دندان
+    priority: 1
+    search_terms: [روکش دندان, روکش زیرکونیا, قیمت روکش دندان, روکش سرامیکی]
+    summary: TODO
+    price_from: null
+  - key: inlay-onlay
+    category: restorative
+    title: اینله و آنله
+    slug: اینله-و-آنله
+    priority: 3
+    search_terms: [اینله آنله, اینله دندان, آنله دندان]
+    summary: TODO
+    price_from: null
+  - key: extraction
+    category: restorative
+    title: کشیدن دندان
+    slug: کشیدن-دندان
+    priority: 3
+    search_terms: [کشیدن دندان, کشیدن دندان بدون درد, مراقبت بعد از کشیدن دندان]
+    summary: TODO
+    price_from: null
+
+  # ---- standalone ----
+  - key: orthodontics
+    category: orthodontics
+    title: ارتودنسی
+    slug: ارتودنسی
+    priority: 2
+    search_terms: [ارتودنسی, ارتودنسی نامرئی, قیمت ارتودنسی, ارتودنسی بزرگسالان]
+    summary: TODO
+    price_from: null
+  - key: pediatric
+    category: pediatric
+    title: دندانپزشکی کودکان
+    slug: دندانپزشکی-کودکان
+    priority: 2
+    search_terms: [دندانپزشکی کودکان, دندانپزشکی اطفال, فیشور سیلانت, فلوراید تراپی]
+    summary: TODO
+    price_from: null

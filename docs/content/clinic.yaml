@@ -1,0 +1,83 @@
+# Clinic facts for settings seeders. Verify items marked verify before publishing.
+name_fa: کلینیک دندانپزشکی سفید
+name_short_fa: کلینیک سفید
+name_en: Sefid Dental Clinic
+tagline_fa: اولین کلینیک دندانپزشکی دیجیتال جنوب تهران
+contact_headline_fa: میزبان لبخند شما هستیم
+domain: sefiddental.ir
+
+address:
+  full_fa: تهران، خانی‌آباد نو، خیابان میعاد شمالی، ابتدای کوچه صابر (۲۸)، پلاک ۲
+  city: تهران
+  district: خانی‌آباد نو
+  postal_code: null            # NEEDS_CLIENT
+  lat: null                    # NEEDS_CLIENT (from Neshan/Balad listing)
+  lng: null                    # NEEDS_CLIENT
+  access_notes_fa: null        # NEEDS_CLIENT: parking, metro, bus
+
+phones:
+  landline: "+982155101054"    # display: ۰۲۱ ۵۵۱۰ ۱۰۵۴
+  mobile: "+989205451054"      # display: ۰۹۲۰ ۵۴۵ ۱۰۵۴
+  whatsapp: "+989205451054"    # verify
+  telegram: "+989205451054"    # verify
+
+social:
+  instagram: null              # NEEDS_CLIENT handle
+  telegram_channel: null
+  aparat: null
+
+hours:
+  note_fa: همه‌روزه به‌جز روزهای تعطیل رسمی
+  weekly:
+    - { days: [sat, sun, mon, tue, wed, thu, fri], open: "10:00", close: "20:00" }
+  timezone: Asia/Tehran
+
+stats:                         # verify every number before publishing
+  years_active: 13
+  specialist_dentists: 7
+  specialty_clinics: 4         # meaning unclear; confirm wording
+  insurances: 10
+
+insurances:
+  featured: [بیمه ایران, بیمه کارآفرین, بیمه پاسارگاد, بیمه البرز, بیمه ما]
+  others_label_fa: سایر بیمه‌ها
+  strategy_note: focus on cash patients and insurers that settle well
+
+financing:
+  - key: partner-loan
+    title_fa: وام درمان
+    provider: null             # NEEDS_CLIENT
+    max_amount_toman: 200000000
+    who_applies_fa: بیمار با فاکتور کلینیک اقدام می‌کند
+    surcharge_note_fa: حدود ۲۰ تا ۳۰ درصد بیشتر از پرداخت نقدی
+    status: approved_2026-10-10
+    enabled: false             # enable after client confirms provider and terms
+  - key: dental-credit
+    title_fa: اعتبار دندانپزشکی
+    provider: null             # NEEDS_CLIENT
+    max_amount_toman: 100000000
+    surcharge_note_fa: حدود ۲۰ تا ۳۰ درصد بیشتر از پرداخت نقدی
+    status: pending
+    enabled: false
+
+emergency:
+  offered: true
+  policy_fa: برای بیمارانی که درد شدید دارند، در صورت امکان همان روز نوبت می‌دهیم.
+  gating: triage questions, call-first during hours, one request per phone per day
+
+legal:
+  license_number: null         # NEEDS_CLIENT
+  technical_supervisor: null   # NEEDS_CLIENT
+  consent_for_cases: confirmed by client (written consent is collected)
+
+market:
+  target_areas_fa: [خانی‌آباد نو, مرکز تهران, جنوب تهران]
+  secondary_areas_fa: []       # NEEDS_CLIENT
+  patient_source_today: referrals
+  competitor_note: one local clinic offers 60-month installments
+
+integrations:
+  sms_provider: farapayamak    # credentials later, adapter disabled by default
+  clinic_software: unknown
+  analytics: ga4 + search console (client creates)
+  maps: static image + deep links (google maps, neshan, balad, waze)

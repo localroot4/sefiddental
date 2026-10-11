@@ -1,0 +1,7 @@
+featured:
+  - { name_fa: بیمه ایران, logo: "" }
+  - { name_fa: بیمه کارآفرین, logo: "" }
+  - { name_fa: بیمه پاسارگاد, logo: "" }
+  - { name_fa: بیمه البرز, logo: "" }
+  - { name_fa: بیمه ما, logo: "" }
+others: []                        # optional names; shown under «سایر بیمه‌ها»

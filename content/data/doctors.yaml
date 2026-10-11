@@ -1,0 +1,13 @@
+# One entry per dentist. The seeder imports this file. Photos go in content/photos/doctors/<slug>.jpg
+# Never publish a dentist without name, specialty and council number.
+doctors:
+  - slug: ""                     # Persian slug, e.g. دکتر-نام-خانوادگی
+    name_fa: ""
+    specialty_fa: ""             # e.g. متخصص پروتزهای دندانی و ایمپلنت
+    council_number: ""           # شماره نظام پزشکی
+    degrees_fa: []
+    years_experience: null
+    bio_fa: ""
+    services: []                 # keys from docs/content/services.yaml
+    photo: ""                    # file name inside content/photos/doctors
+    order: 1
