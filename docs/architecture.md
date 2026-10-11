@@ -66,21 +66,22 @@ Rollback: redeploy the previous `deploy` commit.
 
 | Table | Key fields |
 |---|---|
-| service_categories | title, slug, accent, icon, order, seo fields |
-| services | category_id, title, slug, summary, body (blocks), price_from (nullable), duration, sessions, faq (relation), related, priority, published_at, seo fields, reviewed_by (doctor), reviewed_at |
+| service_categories | title, nav_label, slug (null for standalone), accent, icon, order, seo fields |
+| services | category_id, nav_label, h1, seo_title, slug, booking_group, emergency_link, summary, body (blocks), price_from (nullable), duration, sessions, faq (relation), related, priority, published_at, seo fields, reviewed_by (doctor), reviewed_at |
 | service_tiers | service_id, name (معمولی/VIP/CIP), description, materials, highlights, price_from (nullable), order |
 | doctors | name, slug, specialty, council_number, degrees, bio, photo, order, services (pivot), published_at, seo fields |
 | posts | title, slug, excerpt, body (rich text with images), cover, category_id, tags (pivot), author_id (doctor or staff), reviewer_id (doctor), sources (json), reading_time, published_at, updated_at, seo fields |
 | post_categories, tags | title, slug, description, seo fields |
 | testimonials | patient_label, service_id, type (video/text), media, quote, consent_confirmed, order, published_at |
 | cases | title, service_id, before_media, after_media, notes, consent_confirmed, order, published_at |
-| bookings | phone (normalized E.164), name, service_id, tier, doctor_id (nullable), preferred_time, note, kind (regular/emergency), triage (json), emergency_outcome (urgent/not_urgent, nullable), status (new/contacted/scheduled/done/cancelled/spam), heard_from (admin-entered source), source_url, utm (json), device, ip_hash, notes (admin), handled_by, handled_at |
+| bookings | phone (normalized E.164), name, service_id, tier, doctor_id (nullable), preferred_time, note, kind (regular/emergency), triage (json), emergency_outcome (urgent/not_urgent, nullable), status (new/contacted/scheduled/done/cancelled/spam/suspicious), flags (json: honeypot, too_fast, ip_limit), heard_from (admin-entered source), source_url, utm (json), device, ip_hash, notes (admin), handled_by, handled_at |
 | insurances | name, logo, featured, order |
 | financing_options | title, provider, max_amount, surcharge_note, terms, enabled |
 | faqs | faqable (morph), question, answer, order |
 | pages | key, title, slug, body blocks, seo fields |
 | settings | group, key, value (json) with typed accessors: contact, hours, social, legal (license, supervisor), seo defaults, feature flags |
 | redirects | from, to, status, hits, last_hit_at |
+| events_daily | date, event, location, page_type, service_key, count (first-party measurement, no personal data) |
 
 Every content record has `published_at`, soft deletes and activity log.
 Bookings export to CSV. Phone numbers are stored normalized and searchable in
@@ -91,9 +92,12 @@ all digit forms.
 1. Input normalization: Persian and Arabic digits to ASCII, whitespace and
    separators removed, `+98`, `0098` and `0` prefixes normalized to E.164,
    Iranian mobile pattern validated. Names trimmed and normalized (ی, ک, ZWNJ).
-2. Spam gates: honeypot, minimum fill time, rate limits (5 per minute per IP,
-   3 per day per phone, 1 emergency per day per phone), duplicate detection
-   (same phone within 10 minutes updates the existing booking).
+2. Abuse controls per `docs/conversion.md` sections 5.3 and 7.5: honeypot and
+   a signed time token (under 2 s is suspicious); suspicious requests are
+   stored with status `suspicious`, never dropped; 3 per day per phone; 10 per
+   hour per IP before flagging; 1 emergency per day per phone; duplicates
+   within 10 minutes append a note and never overwrite; SMS capped at 1 per
+   destination number per day once enabled.
 3. Persist first, then notify through `Notifier` (interface) with drivers
    `log`, `mail`, `telegram` (later), `farapayamak` (later). Failures are
    logged and retried by the queue; the user never sees a failure caused by
@@ -101,7 +105,10 @@ all digit forms.
 4. Response: success view with callback window, call and WhatsApp fallbacks,
    analytics event. Errors are inline and specific.
 5. Admin: new bookings list ordered by urgency, click-to-call, status
-   workflow, notes, assignment, "callback due" view, CSV export.
+   workflow, notes, assignment, "callback due" view, suspicious list with
+   one-click restore, CSV export.
+6. Measurement: a POST endpoint receives `sendBeacon` events and increments
+   `events_daily`; no cookies, no IP stored; rate limited.
 
 ## 6. SEO engine
 
@@ -123,8 +130,10 @@ all digit forms.
 ## 7. Performance
 
 - Server: OPcache on, `config:cache`, `route:cache`, `view:cache`,
-  `event:cache`. Full-page cache for public pages (spatie/laravel-responsecache
-  or equivalent) invalidated on publish.
+  `event:cache`. No full-page HTML cache in the application or at a CDN:
+  every HTML response carries a fresh CSRF token, CSP nonce, signed form
+  timestamp and hours state (`docs/conversion.md` section 6). Cache queries
+  and fragments that hold no per-request values; invalidate on publish.
 - HTML: critical content first, no render-blocking third parties, fonts
   preloaded, LCP image preloaded with `fetchpriority="high"`, explicit width
   and height on all media, `content-visibility: auto` on below-the-fold
