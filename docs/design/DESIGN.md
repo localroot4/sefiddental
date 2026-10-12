@@ -109,6 +109,10 @@ Scale (fluid, `clamp()`), from `design/tokens.css`:
 | small | 0.875rem | 1.7 | Vazirmatn 400 or 500 |
 | caption | 0.8125rem | 1.6 | Vazirmatn 500 |
 
+Exception: the home hero H1 is six words; at display-1 it needs three lines
+in a 672 px column, so the hero uses `clamp(2.25rem, 1rem + 3vw, 3.75rem)`
+(60 px at 1440). Every other headline uses the scale above.
+
 Rules: Persian digits in Persian text (the fonts carry them; format with
 `fa-IR`); thousands separator «٬»; phone numbers and Latin in LTR islands
 (`dir="ltr"`, `unicode-bidi: isolate`); never letter-space Persian; never
@@ -161,6 +165,10 @@ the 180 px Apple icon, `og-template.svg` with `{{title}}` and
 Meaning (client): the teal mark is toothpaste on a toothbrush head; the
 long bar of the wordmark is the brush handle; four square diamonds.
 
+Implementation note: `mask-image: url()` is blocked over `file://`, so the
+static pages use the mark as an inline SVG `<clipPath>` with
+`objectBoundingBox` units; the app may use CSS masks over HTTP.
+
 Motifs: the mark as hero mask, loading indicator, favicon, bullet in
 brand-soft and faint relief ornament; the diamonds as intro particles, step
 markers and pagination dots; the bar as the intro progress line, the active
@@ -198,7 +206,7 @@ themes. Reference implementation: `design/styleguide.html`.
 |---|---|
 | Button | primary (brand fill, on-brand label), secondary (brand outline), ghost (text), danger (danger fill, white); heights 44 and 52; pill; label plus optional start or end icon mirrored in RTL; hover darkens to brand-strong; active `scale(.98)`; loading keeps width, spinner replaces the icon, label stays; disabled 50% with no hover |
 | Link | brand color, underline grows from the start side on hover, focus ring |
-| Navigation | desktop bar 72 px, logo at the end side, 5 items, services mega menu (click or keyboard; hover intent on fine pointers), theme toggle, phone LTR island (hidden under 1280, icon remains), «رزرو نوبت» pill; phone header with a call icon (closed-hours sheet) and a drawer button; drawer full screen, 48 px rows, two levels, focus trapped, Esc closes |
+| Navigation | desktop bar 72 px, logo at the start side (the right in RTL, as on phones), 5 items, services mega menu (click or keyboard; hover intent on fine pointers), theme toggle, phone LTR island (hidden under 1280, icon remains), «رزرو نوبت» pill; phone header with a call icon (closed-hours sheet) and a drawer button; drawer full screen, 48 px rows, two levels, focus trapped, Esc closes |
 | Sticky bar | under 1024 px: «تماس» \| «واتساپ» \| «رزرو نوبت» (primary cell), 64 px plus safe-area; visibility rules in `docs/conversion.md` section 4 |
 | Closed-hours sheet | 28 px radius sheet from the bottom with hours and two actions |
 | Input | label above, help text, 12 px radius, 44 px height, line-strong border, focus ring; error text below with `aria-invalid` and `aria-describedby`; phone input is an LTR island with `inputmode="numeric"` |

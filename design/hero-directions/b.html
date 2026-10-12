@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>جهت ب: عکس تمام‌عرض</title>
+<link rel="icon" href="../brand/favicon.svg">
+<link rel="stylesheet" href="../tokens.css">
+<script>(function(){try{var t=localStorage.getItem("sefid-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}})();</script>
+<style>
+@font-face{font-family:"Vazirmatn";src:url("../fonts/Vazirmatn%5Bwght%5D.woff2") format("woff2");font-weight:400 700;font-display:swap}
+@font-face{font-family:"Estedad";src:url("../fonts/Estedad-Bold.woff2") format("woff2");font-weight:700;font-display:swap}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:var(--font-body);font-size:var(--text-body);line-height:var(--leading-body);color:var(--color-ink);background:var(--color-surface);padding-block-end:calc(var(--sticky-bar-h) + env(safe-area-inset-bottom))}
+@media (min-width:1024px){body{padding-block-end:0}}
+h1,h2,h3,p,figure,ul,ol{margin:0}
+ul,ol{padding:0;list-style:none}
+img,svg{display:block;max-inline-size:100%}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+.sr{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.skip{position:absolute;inset-inline-start:var(--space-4);inset-block-start:-100px;z-index:60;padding:var(--space-2) var(--space-4);background:var(--color-brand);color:var(--color-on-brand);border-radius:var(--radius-pill)}
+.skip:focus-visible{inset-block-start:var(--space-2)}
+.container{max-inline-size:var(--container);margin-inline:auto;padding-inline:var(--gutter)}
+.ico{inline-size:1.5rem;block-size:1.5rem;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ico-sm{inline-size:1.25rem;block-size:1.25rem}
+.ph{display:grid;place-items:center;padding:var(--space-4);background:var(--color-surface-sunken);border:1px dashed var(--color-line-strong);color:var(--color-ink-muted);font-size:var(--text-caption);line-height:1.6;text-align:center}
+/* header */
+.site-header{position:sticky;inset-block-start:0;z-index:30;background:color-mix(in srgb,var(--color-surface-raised) 88%,transparent);backdrop-filter:blur(12px);border-block-end:1px solid var(--color-line)}
+.nav{display:flex;align-items:center;gap:var(--space-3);block-size:64px}
+.logo{display:inline-flex;align-items:center;gap:var(--space-2);text-decoration:none;flex:none}
+.logo-mark{inline-size:27px;block-size:34px;fill:var(--color-brand-logo);flex:none}
+.logo-word{inline-size:92px;block-size:31px;fill:var(--color-ink);flex:none}
+.nav-primary{display:none;flex:1}
+.nav-primary ul{display:flex;gap:var(--space-1)}
+.nav-item{position:relative;display:inline-flex;align-items:center;gap:var(--space-1);min-block-size:var(--target);padding-inline:var(--space-3);border:0;background:none;border-radius:var(--radius-pill);font-size:var(--text-small);font-weight:500;text-decoration:none;cursor:pointer;white-space:nowrap}
+.nav-item:hover{background:var(--color-brand-soft)}
+.nav-actions{display:flex;align-items:center;gap:var(--space-2);margin-inline-start:auto}
+.icon-btn{display:inline-grid;place-items:center;inline-size:var(--target);block-size:var(--target);border:0;background:none;border-radius:var(--radius-pill);cursor:pointer;color:inherit;text-decoration:none}
+.icon-btn:hover{background:var(--color-brand-soft)}
+.nav-phone{display:none;font-weight:600;font-size:var(--text-small);text-decoration:none;padding-inline:var(--space-2);min-block-size:var(--target);align-items:center}
+.nav .nav-book,.nav .theme-toggle{display:none}
+.theme-toggle{position:relative}
+.theme-toggle .ico{position:absolute;transition:opacity var(--dur-2) var(--ease-out),transform var(--dur-3) var(--ease-out)}
+.t-moon{opacity:0;transform:rotate(-60deg) scale(.6)}
+[data-theme="dark"] .t-sun{opacity:0;transform:rotate(60deg) scale(.6)}
+[data-theme="dark"] .t-moon{opacity:1;transform:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .t-sun{opacity:0;transform:rotate(60deg) scale(.6)}:root:not([data-theme="light"]) .t-moon{opacity:1;transform:none}}
+@media (min-width:1024px){
+  .nav{block-size:var(--nav-h)}
+  .logo{margin-inline-end:var(--space-2)}
+  .nav-primary{display:block}
+  .nav-menu,.nav-call{display:none}
+  .nav .nav-book{display:inline-flex}
+  .nav .theme-toggle{display:inline-grid}
+}
+@media (min-width:1280px){.nav-phone{display:inline-flex}.nav-call{display:none}}
+@media (max-width:1279.98px) and (min-width:1024px){.nav-call{display:inline-grid}}
+/* drawer */
+.drawer{inline-size:100%;max-inline-size:none;block-size:100dvh;max-block-size:none;margin:0;padding:0;border:0;background:var(--color-surface);color:inherit}
+.drawer::backdrop{background:rgb(10 36 63 / .45)}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;block-size:64px;padding-inline:var(--gutter);border-block-end:1px solid var(--color-line)}
+.drawer-body{max-block-size:calc(100dvh - 64px);overflow:auto;padding:var(--space-4) var(--gutter) var(--space-12)}
+.drawer-cta{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-block-end:var(--space-4)}
+.drawer-group{border-block-end:1px solid var(--color-line)}
+.drawer-group summary{list-style:none;display:flex;align-items:center;justify-content:space-between;min-block-size:48px;padding-inline:var(--space-2);font-weight:600;cursor:pointer}
+.drawer-group summary::-webkit-details-marker{display:none}
+.drawer-group summary .ico{transition:transform var(--dur-2) var(--ease-out)}
+.drawer-group[open] summary .ico{transform:rotate(180deg)}
+.drawer-row{display:flex;align-items:center;gap:var(--space-2);min-block-size:48px;padding-inline:var(--space-2);text-decoration:none;border-block-end:1px solid var(--color-line)}
+.drawer-sub .drawer-row{padding-inline-start:var(--space-6);font-size:var(--text-small);border:0}
+.drawer-row.is-warning{color:var(--color-warning);font-weight:600}
+.drawer-foot{display:flex;align-items:center;gap:var(--space-2);padding-block:var(--space-4)}
+/* buttons */
+.btn{--h:var(--target);position:relative;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);min-block-size:var(--h);padding-inline:calc(var(--h) * .5);border:1.5px solid transparent;border-radius:var(--radius-pill);background:none;font-size:var(--text-small);font-weight:600;line-height:1.2;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background-color var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out),transform var(--dur-1) var(--ease-out)}
+.btn-lg{--h:var(--target-lg);font-size:var(--text-body)}
+.btn-primary{background:var(--color-brand);color:var(--color-on-brand)}
+.btn-primary:hover{background:var(--color-brand-strong)}
+.btn-secondary{border-color:var(--color-brand);color:var(--color-brand-strong)}
+.btn-secondary:hover{background:var(--color-brand-soft)}
+.btn:active{transform:scale(.98)}
+.btn-spin{display:none;inline-size:1.125rem;block-size:1.125rem;border:2px solid currentColor;border-inline-end-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
+.btn[data-loading]{pointer-events:none}
+.btn[data-loading] .btn-spin{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* sticky bar */
+.sticky-bar{position:fixed;inset-inline:0;inset-block-end:0;z-index:40;display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2);block-size:calc(var(--sticky-bar-h) + env(safe-area-inset-bottom));padding:var(--space-2) var(--space-2) calc(var(--space-2) + env(safe-area-inset-bottom));background:var(--color-surface-raised);border-block-start:1px solid var(--color-line);box-shadow:var(--shadow-floating);transition:transform var(--dur-3) var(--ease-out)}
+.sticky-bar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:var(--radius-pill);font-size:var(--text-caption);font-weight:600;line-height:1.2;text-decoration:none}
+.sticky-bar a:hover{background:var(--color-brand-soft)}
+.sticky-bar .is-primary{background:var(--color-brand);color:var(--color-on-brand)}
+body.field-focus .sticky-bar,body.drawer-open .sticky-bar{transform:translateY(120%)}
+@media (min-width:1024px){.sticky-bar{display:none}}
+/* hero text */
+.hero-h1{font-family:var(--font-display);font-size:clamp(2.25rem,1rem + 3vw,3.75rem);line-height:var(--leading-display);font-weight:700;text-wrap:balance}
+.hero-sub{font-size:var(--text-body-lg);line-height:var(--leading-body-lg);color:var(--color-ink-muted);max-inline-size:36ch}
+.hero-cta{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);max-inline-size:26rem}
+.hero-cta .btn{padding-inline:var(--space-4)}
+@media (min-width:744px){.hero-cta{display:flex}.hero-cta .btn{padding-inline:var(--space-8)}}
+/* trust band */
+.facts-row{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4) var(--space-6)}
+.facts-row li{display:grid;gap:2px;padding-inline-start:var(--space-3);border-inline-start:2px solid var(--color-brand)}
+.facts-row b{font-weight:600;font-size:var(--text-body);line-height:1.5}
+.facts-row span{font-size:var(--text-caption);line-height:1.6;color:var(--color-ink-muted)}
+@media (min-width:1024px){.facts-row{grid-template-columns:repeat(4,1fr)}}
+/* hero B: full-bleed photo, headline on a scrim at the start, floating booking card at the end */
+.hero{position:relative;overflow:hidden;background:var(--color-surface-sunken)}
+.hero-photo{position:absolute;inset:0;border:0;align-content:end;justify-items:end;padding:var(--space-4) var(--space-4) calc(var(--space-4) + 9rem);color:var(--color-ink-faint)}
+.hero-relief{position:absolute;inset-inline-end:-10%;inset-block-start:-4%;inline-size:min(60vw,30rem);block-size:auto;aspect-ratio:168.1/207.5;fill:var(--color-surface-raised);opacity:.7;filter:drop-shadow(0 24px 48px rgb(10 36 63 / .18));pointer-events:none}
+.hero-grid{position:relative;display:grid;gap:var(--space-6);padding-block:var(--space-8) var(--space-8)}
+.scrim{display:grid;gap:var(--space-4);padding:var(--space-6);background:color-mix(in srgb,var(--color-surface) 88%,transparent);border-radius:var(--radius-sheet)}
+.hero-card{display:grid;gap:var(--space-3);inline-size:100%;max-inline-size:26rem;padding:var(--space-6);background:var(--color-surface-raised);border:1px solid var(--color-line);border-radius:var(--radius-card);box-shadow:var(--shadow-floating)}
+.hero-card h2{font-size:var(--text-heading);line-height:var(--leading-heading);font-weight:600}
+.hero-card .lead{font-size:var(--text-small);line-height:var(--leading-small);color:var(--color-ink-muted)}
+.field{display:grid;gap:var(--space-2)}
+.field label{font-size:var(--text-small);font-weight:600;line-height:var(--leading-small)}
+.input{inline-size:100%;min-block-size:var(--target-lg);padding:var(--space-2) var(--space-4);border:1.5px solid var(--color-line-strong);border-radius:var(--radius-input);background:var(--color-surface-raised);color:inherit;font:inherit;line-height:1.5;direction:ltr;text-align:start;unicode-bidi:isolate}
+.input:focus-visible{border-color:var(--color-brand);outline:2px solid var(--color-focus);outline-offset:2px}
+.input[aria-invalid="true"]{border-color:var(--color-danger-fill)}
+.help{font-size:var(--text-caption);line-height:1.6;color:var(--color-ink-muted)}
+.error{display:flex;gap:var(--space-1);font-size:var(--text-small);line-height:var(--leading-small);color:var(--color-danger);font-weight:500}
+.hero-card .btn{inline-size:100%}
+.privacy{font-size:var(--text-caption);line-height:1.6;color:var(--color-ink-muted)}
+.privacy a{color:var(--color-brand-strong);font-weight:500;text-underline-offset:.2em;white-space:nowrap}
+.card-success{display:none;gap:var(--space-2);justify-items:start}
+.hero-card.is-done form{display:none}.hero-card.is-done .card-success{display:grid}
+.check-draw{inline-size:3rem;block-size:3rem;fill:none;stroke:var(--color-success);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.check-draw circle,.check-draw path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw var(--dur-4) var(--ease-out) forwards}
+.check-draw path{animation-delay:calc(var(--dur-4) * .6)}
+@keyframes draw{to{stroke-dashoffset:0}}
+.trust{position:relative;background:color-mix(in srgb,var(--color-surface-raised) 90%,transparent);border-block-start:1px solid var(--color-line)}
+.trust .container{padding-block:var(--space-6)}
+@media (min-width:744px){
+  .hero-grid{grid-template-columns:minmax(0,1fr) minmax(0,21rem);gap:var(--space-8);align-items:center;padding-block:var(--space-12) var(--space-12)}
+  .hero-card{justify-self:end}
+}
+@media (min-width:1024px){
+  .hero-grid{grid-template-columns:minmax(0,1fr) minmax(0,22rem);gap:var(--space-12);min-block-size:min(calc(100svh - var(--nav-h)),52rem);align-items:center;padding-block:var(--space-12) calc(var(--space-12) + 7rem)}
+  .trust{position:absolute;inset-inline:0;inset-block-end:0}
+  .hero-relief{inline-size:min(38vw,36rem);inset-inline-end:-5%;inset-block-start:-10%}
+  .hero-photo{padding-block-end:calc(var(--space-4) + 8rem)}
+}
+@media (min-width:1280px){.hero-grid{grid-template-columns:minmax(0,1fr) minmax(0,26rem)}.scrim{padding:var(--space-8)}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="m-mark" viewBox="990.2 126.5 168.1 207.5"><path fill-rule="evenodd" d="M990.5 333.7C990.4 333.5 990.4 333.4 990.6 333.4C990.7 333.5 990.8 333.3 990.8 333.2C990.8 333.0 990.7 332.9 990.6 332.9C990.4 333.0 990.3 332.7 990.3 332.2C990.2 318.1 990.4 164.2 990.5 163.1C991.1 157.8 993.6 150.9 996.4 146.7C996.9 145.9 997.3 145.2 997.3 145.1C997.3 145.0 998.0 144.0 998.9 142.9C1000.9 140.3 1004.6 136.6 1007.0 135.1C1010.4 132.7 1011.0 132.3 1013.1 131.3C1014.2 130.7 1015.4 130.1 1015.7 130.0C1018.0 128.8 1023.4 127.5 1027.7 127.0C1032.4 126.5 1083.2 126.5 1083.5 127.1C1083.7 127.3 1083.6 127.3 1083.4 127.2C1082.9 126.9 1081.8 127.9 1082.1 128.3C1082.3 128.4 1082.5 128.3 1082.7 128.0C1082.9 127.7 1083.0 127.6 1083.0 127.8C1083.0 128.0 1078.6 135.6 1077.7 137.0C1077.5 137.3 1077.1 137.9 1076.9 138.3C1076.5 139.1 1074.3 142.9 1073.7 144.0C1073.5 144.3 1072.9 145.2 1072.5 146.2C1072.0 147.1 1071.3 148.2 1071.0 148.7C1070.7 149.1 1069.9 150.3 1069.4 151.3C1068.0 153.6 1065.7 157.7 1065.3 158.3C1062.4 163.3 1059.5 168.3 1058.7 169.8C1058.1 170.9 1057.2 172.5 1056.6 173.3C1056.1 174.1 1055.7 174.9 1055.7 175.2C1055.7 175.4 1055.5 175.7 1055.4 175.7C1055.2 175.7 1054.9 176.1 1054.7 176.6C1054.5 177.1 1053.4 179.0 1052.3 180.8C1049.6 185.4 1049.6 185.3 1048.4 187.2C1046.6 190.0 1045.9 192.2 1047.0 191.5C1047.3 191.3 1057.9 177.3 1060.2 174.0C1060.9 173.0 1062.0 171.4 1062.7 170.5C1064.5 168.3 1070.2 160.7 1071.7 158.5C1073.2 156.4 1078.3 149.6 1082.2 144.5C1085.5 140.1 1089.6 136.0 1092.9 133.9C1095.6 132.1 1101.1 129.4 1102.6 129.1C1103.2 129.0 1103.8 128.8 1103.9 128.6C1104.0 128.5 1104.4 128.3 1104.8 128.3C1105.2 128.3 1106.2 128.1 1107.0 127.8C1110.4 126.6 1121.5 126.6 1125.8 127.8C1130.6 129.1 1131.8 129.6 1134.7 131.0C1136.4 131.9 1138.8 133.2 1140.0 134.0C1141.1 134.8 1142.4 135.7 1142.8 135.9C1143.2 136.1 1144.8 137.7 1146.4 139.4C1150.8 144.0 1153.8 148.8 1155.8 154.5C1156.5 156.3 1157.0 158.2 1157.0 158.7C1157.0 159.2 1157.1 159.7 1157.3 159.8C1158.2 160.9 1158.3 169.9 1158.3 250.8C1158.3 332.5 1158.3 333.3 1157.7 333.7C1157.2 333.9 1152.7 334.0 1143.8 333.9C1131.6 333.8 1130.3 333.7 1128.3 333.1C1123.3 331.5 1118.4 328.0 1115.4 323.8C1114.9 323.0 1113.5 321.2 1112.3 319.6C1111.2 318.1 1107.1 312.7 1103.3 307.7C1099.6 302.6 1096.2 298.1 1095.8 297.6C1095.5 297.1 1094.1 295.3 1092.8 293.6C1091.5 291.9 1090.3 290.2 1090.0 289.8C1089.7 289.4 1087.8 286.9 1085.7 284.2C1081.0 277.9 1080.0 276.5 1080.0 275.8C1080.0 275.4 1080.5 274.4 1081.2 273.4C1081.8 272.4 1082.3 271.6 1082.3 271.5C1082.3 271.4 1083.2 270.0 1084.2 268.3C1085.2 266.6 1086.2 264.9 1086.3 264.7C1086.5 264.1 1089.0 259.9 1090.7 257.2C1091.2 256.5 1092.0 255.1 1092.5 254.1C1092.9 253.2 1093.9 251.5 1094.6 250.4C1095.3 249.4 1096.8 247.0 1097.9 245.1C1098.9 243.2 1100.1 241.2 1100.4 240.7C1100.7 240.2 1101.2 239.5 1101.4 239.0C1103.4 235.6 1108.2 227.3 1108.7 226.6C1109.1 226.1 1109.3 225.6 1109.3 225.5C1109.3 225.4 1109.7 224.7 1110.2 223.9C1111.7 221.6 1111.8 221.5 1112.8 219.6C1114.3 217.0 1114.4 216.7 1113.8 216.7C1113.4 216.7 1111.3 219.2 1107.8 224.0C1107.4 224.6 1106.2 226.1 1105.3 227.3C1104.4 228.5 1103.4 229.8 1103.1 230.2C1102.2 231.5 1098.5 236.4 1097.3 238.0C1096.7 238.9 1095.2 240.8 1094.1 242.4C1092.9 243.9 1091.6 245.6 1091.2 246.1C1090.8 246.7 1090.2 247.5 1089.8 248.0C1089.4 248.4 1088.7 249.5 1088.1 250.2C1087.6 251.0 1086.3 252.8 1085.2 254.2C1082.6 257.6 1081.9 258.6 1080.8 260.1C1080.4 260.8 1079.7 261.6 1079.4 261.9C1079.1 262.3 1078.4 263.1 1077.9 263.8C1077.5 264.6 1076.8 265.5 1076.5 265.8C1075.7 266.9 1074.2 268.8 1073.5 269.8C1071.9 272.1 1067.6 277.8 1067.1 278.3C1066.6 278.9 1062.3 284.7 1060.0 287.8C1059.2 289.0 1057.6 291.1 1056.5 292.5C1055.4 293.8 1053.9 295.8 1053.2 296.9C1052.4 297.9 1051.1 299.6 1050.3 300.6C1049.5 301.6 1048.4 303.1 1047.9 303.8C1047.3 304.9 1044.9 308.1 1043.4 309.8C1043.2 310.0 1042.5 311.0 1041.8 312.0C1041.1 313.0 1039.9 314.6 1039.2 315.6C1037.0 318.4 1036.2 319.3 1035.2 320.8C1031.9 325.4 1030.1 327.4 1027.6 329.3C1025.4 330.9 1024.3 331.5 1020.8 332.8L1018.2 333.8L1004.4 333.9C995.2 334.0 990.6 333.9 990.5 333.7Z"/></symbol>
+<symbol id="m-word" viewBox="113.7 82.7 828.6 280.0"><path fill-rule="evenodd" d="M412.0 315.8C409.7 315.6 406.6 315.2 405.2 314.9C403.7 314.6 402.1 314.2 401.5 314.1C399.5 313.7 393.3 311.9 391.8 311.3C391.5 311.1 390.3 310.7 389.3 310.3C383.1 308.0 375.5 303.8 370.0 299.7C367.9 298.1 365.8 296.5 365.4 296.2C364.9 295.8 362.8 293.9 360.7 291.9C352.8 284.2 347.9 277.3 343.0 267.3C341.9 265.0 341.0 262.8 341.0 262.6C341.0 262.3 340.9 262.0 340.7 261.8C340.5 261.6 340.1 260.4 339.7 259.2C339.3 257.9 338.8 256.5 338.7 256.2C338.5 255.8 338.2 254.8 338.0 254.0C337.0 250.0 336.8 249.5 336.3 249.4C335.8 249.3 335.7 250.5 335.6 264.4C335.5 277.6 335.4 279.8 334.9 281.5C332.3 290.1 327.0 296.1 318.8 299.4L315.2 300.8L295.5 301.0C284.1 301.1 275.7 301.0 275.4 300.9C275.1 300.6 275.0 295.4 275.0 275.1C275.1 258.2 275.0 249.5 274.7 249.3C274.2 248.7 273.8 249.2 273.2 251.4C271.8 256.5 268.1 264.6 265.3 268.7C264.5 269.9 263.7 271.1 263.5 271.4C260.9 275.7 253.8 282.8 247.5 287.6C245.3 289.2 237.4 294.0 236.9 294.0C236.8 294.0 235.7 294.5 234.4 295.0C231.0 296.6 231.0 296.6 228.2 297.5C224.5 298.6 221.8 299.3 219.8 299.7C218.9 299.9 217.5 300.2 216.7 300.4C215.0 300.8 123.3 301.4 122.3 300.9C121.8 300.7 121.7 298.2 121.8 269.1L121.8 237.5L164.8 237.3C213.1 237.1 208.8 237.4 211.0 234.7C214.0 230.8 212.9 226.2 208.3 223.6C207.6 223.2 200.6 223.1 164.7 223.0L121.8 222.8L121.7 204.5C121.6 185.4 121.8 181.7 123.0 177.8C124.8 171.9 127.4 168.3 133.2 163.7C133.4 163.5 135.0 162.7 136.7 161.9C142.4 159.2 140.9 159.3 179.3 159.4C214.2 159.6 216.4 159.6 221.3 161.0C222.2 161.2 223.4 161.5 224.2 161.7C237.2 165.0 250.7 173.6 259.7 184.2C261.7 186.6 266.0 192.5 266.0 192.8C266.0 192.9 266.6 193.9 267.3 195.1C269.6 199.0 271.9 204.4 273.6 210.3C274.0 211.4 275.0 211.7 275.0 210.6C275.0 210.2 275.1 198.5 275.1 184.6L275.2 159.3L305.3 159.3L335.5 159.3L335.6 185.2C335.6 199.4 335.7 211.2 335.8 211.3C336.3 211.7 337.1 210.2 337.8 207.3C339.6 200.5 344.0 190.2 346.7 186.3C347.1 185.8 347.3 185.3 347.3 185.2C347.3 184.8 350.5 180.3 353.0 177.1C357.2 171.7 363.6 165.3 367.8 162.3C368.7 161.7 369.7 160.9 370.0 160.6C371.5 159.2 378.0 155.3 382.3 153.2C393.4 147.7 404.8 144.8 417.5 144.1C424.1 143.8 436.2 145.0 441.8 146.7C442.4 146.8 444.0 147.3 445.3 147.7C448.1 148.5 451.7 149.7 453.9 150.7C454.7 151.1 455.4 151.3 455.5 151.3C455.7 151.3 460.2 153.5 462.3 154.7C474.4 161.3 485.4 171.5 493.1 183.2C494.9 186.0 498.7 192.9 498.7 193.5C498.7 193.7 498.8 194.0 499.0 194.2C499.8 195.0 503.0 203.7 503.7 207.0C504.1 209.1 505.0 211.3 505.3 211.3C505.5 211.3 505.7 211.2 505.8 211.0C505.9 210.8 506.0 199.1 506.0 185.0C506.0 170.9 506.1 159.3 506.2 159.3C566.1 159.3 934.1 159.4 934.2 159.4C934.3 159.5 934.3 186.3 934.3 219.0C934.3 281.3 934.4 280.2 933.0 284.0C932.3 285.8 930.7 288.7 929.2 290.7C925.9 295.2 922.3 297.7 915.5 300.2C913.9 300.8 907.5 300.8 723.3 301.0C618.6 301.1 531.4 301.1 529.7 300.9C526.1 300.6 524.3 300.1 520.5 298.3C514.0 295.2 509.2 289.4 506.9 282.0C506.3 280.0 506.2 278.8 506.0 264.5C505.9 253.8 505.7 249.2 505.5 249.1C505.1 249.0 504.3 250.9 503.8 252.8C503.5 254.3 501.6 260.5 501.3 260.8C501.2 261.0 500.8 261.9 500.5 262.8C499.8 264.8 496.5 271.6 495.3 273.5C490.8 281.0 486.5 286.5 480.8 292.1C462.8 309.6 437.3 318.4 412.0 315.8ZM282.5 347.3L275.2 340.0L282.5 332.7C286.5 328.6 289.9 325.3 290.0 325.3C290.3 325.3 304.5 339.7 304.5 340.0C304.5 340.3 290.4 354.7 290.0 354.7C289.9 354.7 286.5 351.4 282.5 347.3ZM313.2 347.3L305.8 340.0L313.2 332.7C317.2 328.6 320.6 325.3 320.7 325.3C320.9 325.3 333.5 337.9 335.3 339.9C335.5 340.0 321.0 354.7 320.7 354.7C320.6 354.7 317.2 351.4 313.2 347.3ZM428.7 238.1C432.9 233.9 436.3 230.4 436.3 230.2C436.3 229.7 421.0 214.6 420.7 214.7C419.9 215.0 405.3 229.9 405.4 230.3C405.5 230.8 420.4 245.7 420.8 245.7C421.0 245.7 424.6 242.3 428.7 238.1ZM413.4 112.9C409.5 109.0 406.3 105.6 406.3 105.3C406.3 104.8 420.3 90.7 420.8 90.7C421.3 90.7 435.4 105.0 435.3 105.3C435.1 105.7 421.0 120.0 420.7 120.0C420.6 120.0 417.3 116.8 413.4 112.9Z"/></symbol>
+<clipPath id="mark-clip" clipPathUnits="objectBoundingBox"><path transform="scale(0.0059488 0.0048193) translate(-990.2 -126.5)" fill-rule="evenodd" d="M990.5 333.7C990.4 333.5 990.4 333.4 990.6 333.4C990.7 333.5 990.8 333.3 990.8 333.2C990.8 333.0 990.7 332.9 990.6 332.9C990.4 333.0 990.3 332.7 990.3 332.2C990.2 318.1 990.4 164.2 990.5 163.1C991.1 157.8 993.6 150.9 996.4 146.7C996.9 145.9 997.3 145.2 997.3 145.1C997.3 145.0 998.0 144.0 998.9 142.9C1000.9 140.3 1004.6 136.6 1007.0 135.1C1010.4 132.7 1011.0 132.3 1013.1 131.3C1014.2 130.7 1015.4 130.1 1015.7 130.0C1018.0 128.8 1023.4 127.5 1027.7 127.0C1032.4 126.5 1083.2 126.5 1083.5 127.1C1083.7 127.3 1083.6 127.3 1083.4 127.2C1082.9 126.9 1081.8 127.9 1082.1 128.3C1082.3 128.4 1082.5 128.3 1082.7 128.0C1082.9 127.7 1083.0 127.6 1083.0 127.8C1083.0 128.0 1078.6 135.6 1077.7 137.0C1077.5 137.3 1077.1 137.9 1076.9 138.3C1076.5 139.1 1074.3 142.9 1073.7 144.0C1073.5 144.3 1072.9 145.2 1072.5 146.2C1072.0 147.1 1071.3 148.2 1071.0 148.7C1070.7 149.1 1069.9 150.3 1069.4 151.3C1068.0 153.6 1065.7 157.7 1065.3 158.3C1062.4 163.3 1059.5 168.3 1058.7 169.8C1058.1 170.9 1057.2 172.5 1056.6 173.3C1056.1 174.1 1055.7 174.9 1055.7 175.2C1055.7 175.4 1055.5 175.7 1055.4 175.7C1055.2 175.7 1054.9 176.1 1054.7 176.6C1054.5 177.1 1053.4 179.0 1052.3 180.8C1049.6 185.4 1049.6 185.3 1048.4 187.2C1046.6 190.0 1045.9 192.2 1047.0 191.5C1047.3 191.3 1057.9 177.3 1060.2 174.0C1060.9 173.0 1062.0 171.4 1062.7 170.5C1064.5 168.3 1070.2 160.7 1071.7 158.5C1073.2 156.4 1078.3 149.6 1082.2 144.5C1085.5 140.1 1089.6 136.0 1092.9 133.9C1095.6 132.1 1101.1 129.4 1102.6 129.1C1103.2 129.0 1103.8 128.8 1103.9 128.6C1104.0 128.5 1104.4 128.3 1104.8 128.3C1105.2 128.3 1106.2 128.1 1107.0 127.8C1110.4 126.6 1121.5 126.6 1125.8 127.8C1130.6 129.1 1131.8 129.6 1134.7 131.0C1136.4 131.9 1138.8 133.2 1140.0 134.0C1141.1 134.8 1142.4 135.7 1142.8 135.9C1143.2 136.1 1144.8 137.7 1146.4 139.4C1150.8 144.0 1153.8 148.8 1155.8 154.5C1156.5 156.3 1157.0 158.2 1157.0 158.7C1157.0 159.2 1157.1 159.7 1157.3 159.8C1158.2 160.9 1158.3 169.9 1158.3 250.8C1158.3 332.5 1158.3 333.3 1157.7 333.7C1157.2 333.9 1152.7 334.0 1143.8 333.9C1131.6 333.8 1130.3 333.7 1128.3 333.1C1123.3 331.5 1118.4 328.0 1115.4 323.8C1114.9 323.0 1113.5 321.2 1112.3 319.6C1111.2 318.1 1107.1 312.7 1103.3 307.7C1099.6 302.6 1096.2 298.1 1095.8 297.6C1095.5 297.1 1094.1 295.3 1092.8 293.6C1091.5 291.9 1090.3 290.2 1090.0 289.8C1089.7 289.4 1087.8 286.9 1085.7 284.2C1081.0 277.9 1080.0 276.5 1080.0 275.8C1080.0 275.4 1080.5 274.4 1081.2 273.4C1081.8 272.4 1082.3 271.6 1082.3 271.5C1082.3 271.4 1083.2 270.0 1084.2 268.3C1085.2 266.6 1086.2 264.9 1086.3 264.7C1086.5 264.1 1089.0 259.9 1090.7 257.2C1091.2 256.5 1092.0 255.1 1092.5 254.1C1092.9 253.2 1093.9 251.5 1094.6 250.4C1095.3 249.4 1096.8 247.0 1097.9 245.1C1098.9 243.2 1100.1 241.2 1100.4 240.7C1100.7 240.2 1101.2 239.5 1101.4 239.0C1103.4 235.6 1108.2 227.3 1108.7 226.6C1109.1 226.1 1109.3 225.6 1109.3 225.5C1109.3 225.4 1109.7 224.7 1110.2 223.9C1111.7 221.6 1111.8 221.5 1112.8 219.6C1114.3 217.0 1114.4 216.7 1113.8 216.7C1113.4 216.7 1111.3 219.2 1107.8 224.0C1107.4 224.6 1106.2 226.1 1105.3 227.3C1104.4 228.5 1103.4 229.8 1103.1 230.2C1102.2 231.5 1098.5 236.4 1097.3 238.0C1096.7 238.9 1095.2 240.8 1094.1 242.4C1092.9 243.9 1091.6 245.6 1091.2 246.1C1090.8 246.7 1090.2 247.5 1089.8 248.0C1089.4 248.4 1088.7 249.5 1088.1 250.2C1087.6 251.0 1086.3 252.8 1085.2 254.2C1082.6 257.6 1081.9 258.6 1080.8 260.1C1080.4 260.8 1079.7 261.6 1079.4 261.9C1079.1 262.3 1078.4 263.1 1077.9 263.8C1077.5 264.6 1076.8 265.5 1076.5 265.8C1075.7 266.9 1074.2 268.8 1073.5 269.8C1071.9 272.1 1067.6 277.8 1067.1 278.3C1066.6 278.9 1062.3 284.7 1060.0 287.8C1059.2 289.0 1057.6 291.1 1056.5 292.5C1055.4 293.8 1053.9 295.8 1053.2 296.9C1052.4 297.9 1051.1 299.6 1050.3 300.6C1049.5 301.6 1048.4 303.1 1047.9 303.8C1047.3 304.9 1044.9 308.1 1043.4 309.8C1043.2 310.0 1042.5 311.0 1041.8 312.0C1041.1 313.0 1039.9 314.6 1039.2 315.6C1037.0 318.4 1036.2 319.3 1035.2 320.8C1031.9 325.4 1030.1 327.4 1027.6 329.3C1025.4 330.9 1024.3 331.5 1020.8 332.8L1018.2 333.8L1004.4 333.9C995.2 334.0 990.6 333.9 990.5 333.7Z"/></clipPath>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M5.5 4h3.2l1.6 4.3-2.1 1.4a11.6 11.6 0 0 0 6.1 6.1l1.4-2.1L20 15.3v3.2a1.5 1.5 0 0 1-1.6 1.5A15.5 15.5 0 0 1 4 5.6 1.5 1.5 0 0 1 5.5 4z"/></symbol>
+<symbol id="i-whatsapp" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 0 0-7.3 12.8L3.5 20.5l4.3-1.1A8.5 8.5 0 1 0 12 3.5z"/><path d="M9 8.5c.2 3.2 2.5 5.7 6.3 6.3l1-1.6-2-1-1 1a4.6 4.6 0 0 1-2.4-2.4l1-1-1-2z"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l8.5 15h-17z"/><path d="M12 10v4M12 16.5v.5"/></symbol>
+<symbol id="i-danger" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
+<symbol id="i-instagram" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4.5"/><circle cx="12" cy="12" r="3.5"/><path d="M16.8 7.2v.1"/></symbol>
+<symbol id="i-telegram" viewBox="0 0 24 24"><path d="M20 5L3.8 11.5l5.4 1.8L11 19l3-3.3 4.2 2.8z"/><path d="M9.2 13.3L17 8"/></symbol>
+</svg>
+<a class="skip" href="#main">پرش به محتوای اصلی</a>
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="#" aria-label="کلینیک دندانپزشکی سفید، صفحهٔ اصلی"><svg class="logo-mark" aria-hidden="true"><use href="#m-mark"/></svg><svg class="logo-word" aria-hidden="true"><use href="#m-word"/></svg></a>
+    <nav class="nav-primary" aria-label="ناوبری اصلی">
+      <ul>
+        <li><button class="nav-item" type="button" aria-expanded="false" aria-haspopup="true">خدمات <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></button></li>
+        <li><a class="nav-item" href="#">پزشکان</a></li>
+        <li><a class="nav-item" href="#">قبل و بعد</a></li>
+        <li><a class="nav-item" href="#">هزینه و پرداخت</a></li>
+        <li><a class="nav-item" href="#">آدرس و ساعات</a></li>
+      </ul>
+    </nav>
+    <div class="nav-actions">
+      <button class="icon-btn theme-toggle" type="button" aria-label="تغییر پوسته" aria-pressed="false"><svg class="ico t-sun" aria-hidden="true"><use href="#i-sun"/></svg><svg class="ico t-moon" aria-hidden="true"><use href="#i-moon"/></svg></button>
+      <a class="nav-phone" href="tel:+982155101054" dir="ltr">۰۲۱ ۵۵۱۰ ۱۰۵۴</a>
+      <a class="icon-btn nav-call" href="tel:+982155101054" aria-label="تماس با کلینیک"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg></a>
+      <a class="btn btn-primary nav-book" href="#book">رزرو نوبت</a>
+      <button class="icon-btn nav-menu" type="button" aria-label="باز کردن منو" aria-controls="drawer" aria-expanded="false" data-open-drawer><svg class="ico" aria-hidden="true"><use href="#i-menu"/></svg></button>
+    </div>
+  </div>
+</header>
+<dialog class="drawer" id="drawer" aria-label="منوی سایت">
+  <div class="drawer-head"><a class="logo" href="#" aria-label="کلینیک دندانپزشکی سفید، صفحهٔ اصلی"><svg class="logo-mark" aria-hidden="true"><use href="#m-mark"/></svg><svg class="logo-word" aria-hidden="true"><use href="#m-word"/></svg></a><button class="icon-btn drawer-close" type="button" aria-label="بستن منو" data-close-drawer><svg class="ico" aria-hidden="true"><use href="#i-close"/></svg></button></div>
+  <div class="drawer-body">
+    <div class="drawer-cta"><a class="btn btn-primary btn-lg" href="#book" data-close-drawer>رزرو نوبت</a><a class="btn btn-secondary btn-lg" href="tel:+982155101054">تماس با کلینیک</a></div>
+    <details class="drawer-group"><summary>زیبایی <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></summary><div class="drawer-sub"><a class="drawer-row" href="#">لمینت سرامیکی</a><a class="drawer-row" href="#">کامپوزیت دندان</a><a class="drawer-row" href="#">بلیچینگ دندان</a><a class="drawer-row" href="#">طراحی لبخند</a></div></details>
+    <details class="drawer-group"><summary>جراحی و جایگزینی دندان <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></summary><div class="drawer-sub"><a class="drawer-row" href="#">ایمپلنت دندان</a><a class="drawer-row" href="#">جراحی دندان عقل و فک</a><a class="drawer-row" href="#">کشیدن دندان</a></div></details>
+    <details class="drawer-group"><summary>درمان و نگهداری دندان <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></summary><div class="drawer-sub"><a class="drawer-row" href="#">ترمیم دندان (VIP و CIP)</a><a class="drawer-row" href="#">روکش دندان</a><a class="drawer-row" href="#">درمان ریشه</a><a class="drawer-row" href="#">جرم‌گیری</a></div></details>
+    <a class="drawer-row" href="#">ارتودنسی</a><a class="drawer-row" href="#">دندانپزشکی کودکان</a><a class="drawer-row" href="#">همهٔ خدمات</a>
+    <a class="drawer-row" href="#">پزشکان</a><a class="drawer-row" href="#">قبل و بعد</a><a class="drawer-row" href="#">هزینه و پرداخت</a>
+    <a class="drawer-row" href="#">راهنمای بیمار</a><a class="drawer-row" href="#">مقالات</a><a class="drawer-row" href="#">درباره ما</a><a class="drawer-row" href="#">آدرس و ساعات</a>
+    <a class="drawer-row is-warning" href="#"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg> درد شدید دارید؟</a>
+    <div class="drawer-foot"><button class="icon-btn theme-toggle" type="button" aria-label="تغییر پوسته" aria-pressed="false"><svg class="ico t-sun" aria-hidden="true"><use href="#i-sun"/></svg><svg class="ico t-moon" aria-hidden="true"><use href="#i-moon"/></svg></button><a class="icon-btn" href="#" aria-label="اینستاگرام"><svg class="ico" aria-hidden="true"><use href="#i-instagram"/></svg></a><a class="icon-btn" href="#" aria-label="تلگرام"><svg class="ico" aria-hidden="true"><use href="#i-telegram"/></svg></a><a class="icon-btn" href="#" aria-label="پیام در واتساپ"><svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg></a></div>
+  </div>
+</dialog>
+<main id="main">
+<section class="hero" aria-labelledby="hero-h1">
+  <div class="hero-photo ph" aria-hidden="true">عکس تمام‌عرض ۳:۲ (۴:۵ در موبایل): فضای کلینیک با نور طبیعی، سوژه در سمت چپ کادر رو به تیتر</div>
+  <svg class="hero-relief" aria-hidden="true"><use href="#m-mark"/></svg>
+  <div class="container hero-grid">
+    <div class="hero-copy scrim">
+      <h1 class="hero-h1" id="hero-h1">اولین کلینیک دندانپزشکی دیجیتال جنوب تهران</h1>
+      <p class="hero-sub">مشاورهٔ اول رایگان است. در همان جلسه معاینه می‌شوید و برنامهٔ درمان و هزینه را شفاف می‌شنوید.</p>
+      <div class="hero-cta"><a class="btn btn-primary btn-lg" href="#book">رزرو نوبت</a><a class="btn btn-secondary btn-lg" href="tel:+982155101054">تماس با کلینیک</a></div>
+    </div>
+    <div class="hero-card" id="book">
+      <form id="bk" novalidate>
+        <div style="display:grid;gap:var(--space-3)">
+        <h2>درخواست نوبت</h2>
+        <p class="lead">شماره‌تان را بگذارید. پذیرش زمان دقیق نوبت را با شما هماهنگ می‌کند. مشاورهٔ اول رایگان است.</p>
+        <div class="field"><label for="bk-phone">شمارهٔ موبایل</label><input class="input" id="bk-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" dir="ltr" required aria-describedby="bk-phone-help"><p class="help" id="bk-phone-help">مثلاً ۰۹۱۲ ۳۴۵ ۶۷۸۹</p><p class="error" id="bk-phone-err" hidden></p></div>
+        <input class="sr" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true">
+        <button class="btn btn-primary btn-lg" type="submit" id="bk-submit"><span class="btn-spin" aria-hidden="true"></span><span class="btn-label">ثبت درخواست</span></button>
+        <p class="privacy">شمارهٔ شما فقط برای هماهنگی نوبت استفاده می‌شود. <a href="#">حریم خصوصی</a></p>
+        <p class="sr" aria-live="polite" id="bk-status"></p>
+        </div>
+      </form>
+      <div class="card-success">
+        <svg class="check-draw" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" pathLength="1"/><path d="M20 33l8 8 16-17" pathLength="1"/></svg>
+        <h2 tabindex="-1" id="bk-done">درخواست شما ثبت شد</h2>
+        <p class="lead">پذیرش معمولاً تا ۱۰ دقیقهٔ دیگر با شما تماس می‌گیرد.<br>شمارهٔ ثبت‌شده: <bdi dir="ltr" id="bk-done-phone"></bdi></p>
+      </div>
+    </div>
+  </div>
+  <div class="trust" aria-label="حقایق کلینیک"><div class="container"><ul class="facts-row">
+  <li><b>مشاورهٔ اول رایگان</b><span>معاینه و برنامهٔ درمان در همان جلسه</span></li>
+  <li><b>هر روز ۱۰ تا ۲۰</b><span>به‌جز تعطیلات رسمی</span></li>
+  <li><b>تماس پذیرش تا ۱۰ دقیقه</b><span>معمولاً، در ساعات کاری</span></li>
+  <li><b>۵ بیمهٔ طرف قرارداد</b><span>ایران، کارآفرین، پاسارگاد، البرز، ما</span></li>
+</ul></div></div>
+</section>
+</main>
+<nav class="sticky-bar" aria-label="دسترسی سریع">
+  <a href="tel:+982155101054"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg>تماس</a>
+  <a href="#"><svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg>واتساپ</a>
+  <a class="is-primary" href="#book"><svg class="ico" aria-hidden="true"><use href="#i-calendar"/></svg>رزرو نوبت</a>
+</nav>
+<script>
+(function(){
+const $=(s,c)=>(c||document).querySelector(s), $$=(s,c)=>Array.from((c||document).querySelectorAll(s));
+const root=document.documentElement, mq=matchMedia("(prefers-color-scheme: dark)");
+const theme=()=>root.dataset.theme||(mq.matches?"dark":"light");
+const sync=()=>$$(".theme-toggle").forEach(b=>b.setAttribute("aria-pressed",String(theme()==="dark")));
+$$(".theme-toggle").forEach(b=>b.addEventListener("click",()=>{const n=theme()==="dark"?"light":"dark";root.dataset.theme=n;try{localStorage.setItem("sefid-theme",n)}catch(e){}sync()}));
+mq.addEventListener("change",sync);sync();
+const drawer=$("#drawer");let opener=null;
+$$("[data-open-drawer]").forEach(b=>b.addEventListener("click",e=>{opener=e.currentTarget;drawer.showModal();document.body.classList.add("drawer-open");$$(".nav-menu").forEach(x=>x.setAttribute("aria-expanded","true"));$(".drawer-close",drawer).focus()}));
+$$("[data-close-drawer]").forEach(b=>b.addEventListener("click",()=>drawer.close()));
+drawer.addEventListener("close",()=>{document.body.classList.remove("drawer-open");$$(".nav-menu").forEach(x=>x.setAttribute("aria-expanded","false"));if(opener)opener.focus()});
+drawer.addEventListener("keydown",e=>{if(e.key!=="Tab")return;const f=$$("a[href],button:not([disabled]),summary,[tabindex]:not([tabindex='-1'])",drawer).filter(el=>el.offsetParent!==null);if(!f.length)return;const a=document.activeElement;if(e.shiftKey&&a===f[0]){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&a===f[f.length-1]){e.preventDefault();f[0].focus()}});
+document.addEventListener("focusin",e=>{if(e.target.matches("input,textarea,select"))document.body.classList.add("field-focus")});
+document.addEventListener("focusout",()=>document.body.classList.remove("field-focus"));
+const form=$("#bk"),phone=$("#bk-phone"),perr=$("#bk-phone-err"),submit=$("#bk-submit"),status=$("#bk-status"),card=$("#book");
+const fa="۰۱۲۳۴۵۶۷۸۹",toFa=s=>String(s).replace(/\d/g,d=>fa[d]);
+const toEn=s=>s.replace(/[۰-۹]/g,d=>fa.indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
+const norm=v=>{let d=toEn(v).replace(/[^\d+]/g,"");if(d.startsWith("+98"))d="0"+d.slice(3);else if(d.startsWith("0098"))d="0"+d.slice(4);else if(/^9\d{9}$/.test(d))d="0"+d;return d};
+const check=v=>{const d=norm(v);if(!d)return "شمارهٔ موبایل را وارد کنید.";if(/^0[1-8]\d{9}$/.test(d))return "این شمارهٔ تلفن ثابت است. شمارهٔ موبایل را وارد کنید.";if(!/^09\d{9}$/.test(d))return "شمارهٔ موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.";return ""};
+const setErr=msg=>{if(msg){perr.innerHTML='<svg class="ico ico-sm" aria-hidden="true"><use href="#i-danger"/></svg>'+msg;perr.hidden=false;phone.setAttribute("aria-invalid","true");phone.setAttribute("aria-describedby","bk-phone-help bk-phone-err")}else{perr.hidden=true;phone.removeAttribute("aria-invalid");phone.setAttribute("aria-describedby","bk-phone-help")}};
+phone.addEventListener("blur",()=>{if(phone.value.trim())setErr(check(phone.value))});
+form.addEventListener("submit",e=>{e.preventDefault();if(submit.hasAttribute("data-loading"))return;const msg=check(phone.value);setErr(msg);if(msg){phone.focus();status.textContent=msg;return}
+  const d=norm(phone.value);submit.setAttribute("data-loading","");submit.setAttribute("aria-busy","true");$(".btn-label",submit).textContent="در حال ثبت";status.textContent="در حال ثبت درخواست";
+  setTimeout(()=>{$("#bk-done-phone").textContent=toFa(d.slice(0,4))+" ••• "+toFa(d.slice(-4));card.classList.add("is-done");$("#bk-done").focus();status.textContent="درخواست شما ثبت شد"},900)});
+})();
+</script>
+</body>
+</html>

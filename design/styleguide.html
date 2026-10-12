@@ -1,0 +1,695 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>راهنمای طراحی کلینیک سفید</title>
+<link rel="icon" href="brand/favicon.svg">
+<link rel="stylesheet" href="tokens.css">
+<script>(function(){try{var t=localStorage.getItem("sefid-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}})();</script>
+<style>
+@font-face{font-family:"Vazirmatn";src:url("fonts/Vazirmatn%5Bwght%5D.woff2") format("woff2");font-weight:400 700;font-display:swap}
+@font-face{font-family:"Estedad";src:url("fonts/Estedad-Bold.woff2") format("woff2");font-weight:700;font-display:swap}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-block-start:calc(var(--nav-h) + 1rem)}
+body{margin:0;font-family:var(--font-body);font-size:var(--text-body);line-height:var(--leading-body);color:var(--color-ink);background:var(--color-surface);padding-block-end:calc(var(--sticky-bar-h) + env(safe-area-inset-bottom))}
+@media (min-width:1024px){body{padding-block-end:0}}
+h1,h2,h3,h4,p,figure,ul,ol,dl,dd,fieldset{margin:0}
+ul,ol{padding:0;list-style:none}
+fieldset{padding:0;border:0;min-inline-size:0}
+legend{padding:0}
+img,svg{display:block;max-inline-size:100%}
+[hidden]{display:none!important}
+button{font:inherit;color:inherit}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--color-focus);outline-offset:2px}
+.sr{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}
+.skip{position:absolute;inset-inline-start:var(--space-4);inset-block-start:-100px;z-index:60;padding:var(--space-2) var(--space-4);background:var(--color-brand);color:var(--color-on-brand);border-radius:var(--radius-pill)}
+.skip:focus-visible{inset-block-start:var(--space-2)}
+.container{max-inline-size:var(--container);margin-inline:auto;padding-inline:var(--gutter)}
+.d1{font-family:var(--font-display);font-size:var(--text-display-1);line-height:var(--leading-display);font-weight:700}
+.d2{font-family:var(--font-display);font-size:var(--text-display-2);line-height:var(--leading-display-2);font-weight:700}
+.h{font-size:var(--text-heading);line-height:var(--leading-heading);font-weight:600}
+.lg{font-size:var(--text-body-lg);line-height:var(--leading-body-lg)}
+.sm{font-size:var(--text-small);line-height:var(--leading-small)}
+.cap{font-size:var(--text-caption);line-height:1.6;font-weight:500}
+.muted{color:var(--color-ink-muted)}
+.measure{max-inline-size:var(--measure)}
+.ico{inline-size:1.5rem;block-size:1.5rem;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ico-sm{inline-size:1.25rem;block-size:1.25rem}
+[dir="rtl"] .mirror{transform:scaleX(-1)}
+.gem{display:inline-block;inline-size:.5rem;block-size:.5rem;background:currentColor;transform:rotate(45deg);flex:none}
+/* ---------- header ---------- */
+.site-header{position:sticky;inset-block-start:0;z-index:30;background:color-mix(in srgb,var(--color-surface-raised) 88%,transparent);backdrop-filter:blur(12px);border-block-end:1px solid var(--color-line)}
+.nav{display:flex;align-items:center;gap:var(--space-3);block-size:64px}
+.logo{display:inline-flex;align-items:center;gap:var(--space-2);text-decoration:none;flex:none}
+.logo-mark{inline-size:27px;block-size:34px;fill:var(--color-brand-logo);flex:none}
+.logo-word{inline-size:92px;block-size:31px;fill:var(--color-ink);flex:none}
+.nav-primary{display:none;flex:1}
+.nav-primary ul{display:flex;gap:var(--space-1)}
+.nav-item{position:relative;display:inline-flex;align-items:center;gap:var(--space-1);min-block-size:var(--target);padding-inline:var(--space-3);border:0;background:none;border-radius:var(--radius-pill);font-size:var(--text-small);font-weight:500;text-decoration:none;cursor:pointer;white-space:nowrap}
+.nav-item:hover{background:var(--color-brand-soft)}
+.nav-item.is-active::after{content:"";position:absolute;inset-inline:var(--space-3);inset-block-end:2px;block-size:2px;background:var(--color-brand)}
+.nav-actions{display:flex;align-items:center;gap:var(--space-2);margin-inline-start:auto}
+.icon-btn{display:inline-grid;place-items:center;inline-size:var(--target);block-size:var(--target);border:0;background:none;border-radius:var(--radius-pill);cursor:pointer;color:inherit;text-decoration:none}
+.icon-btn:hover{background:var(--color-brand-soft)}
+.nav-phone{display:none;font-weight:600;font-size:var(--text-small);text-decoration:none;padding-inline:var(--space-2);min-block-size:var(--target);align-items:center}
+.nav .nav-book,.nav .theme-toggle{display:none}
+.theme-toggle{position:relative}
+.theme-toggle .ico{position:absolute;transition:opacity var(--dur-2) var(--ease-out),transform var(--dur-3) var(--ease-out)}
+.t-moon{opacity:0;transform:rotate(-60deg) scale(.6)}
+[data-theme="dark"] .t-sun{opacity:0;transform:rotate(60deg) scale(.6)}
+[data-theme="dark"] .t-moon{opacity:1;transform:none}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .t-sun{opacity:0;transform:rotate(60deg) scale(.6)}:root:not([data-theme="light"]) .t-moon{opacity:1;transform:none}}
+@media (min-width:1024px){
+  .nav{block-size:var(--nav-h)}
+  .logo{margin-inline-end:var(--space-2)}
+  .nav-primary{display:block}
+  .nav-actions{margin-inline-start:auto}
+  .nav-menu,.nav-call{display:none}
+  .nav .nav-book{display:inline-flex}
+  .nav .theme-toggle{display:inline-grid}
+}
+@media (min-width:1280px){.nav-phone{display:inline-flex}.nav-call{display:none}}
+@media (max-width:1279.98px) and (min-width:1024px){.nav-call{display:inline-grid}}
+/* ---------- drawer ---------- */
+.drawer{inline-size:100%;max-inline-size:none;block-size:100dvh;max-block-size:none;margin:0;padding:0;border:0;background:var(--color-surface);color:inherit}
+.drawer::backdrop{background:rgb(10 36 63 / .45)}
+.drawer-head{display:flex;align-items:center;justify-content:space-between;block-size:64px;padding-inline:var(--gutter);border-block-end:1px solid var(--color-line)}
+.drawer-body{max-block-size:calc(100dvh - 64px);overflow:auto;padding:var(--space-4) var(--gutter) var(--space-12)}
+.drawer-cta{display:grid;grid-template-columns:1fr 1fr;gap:var(--space-3);margin-block-end:var(--space-4)}
+.drawer-group{border-block-end:1px solid var(--color-line)}
+.drawer-group summary{list-style:none;display:flex;align-items:center;justify-content:space-between;min-block-size:48px;padding-inline:var(--space-2);font-weight:600;cursor:pointer}
+.drawer-group summary::-webkit-details-marker{display:none}
+.drawer-group[open] summary .ico{transform:rotate(180deg)}
+.drawer-group summary .ico{transition:transform var(--dur-2) var(--ease-out)}
+.drawer-row{display:flex;align-items:center;gap:var(--space-2);min-block-size:48px;padding-inline:var(--space-2);text-decoration:none;border-block-end:1px solid var(--color-line)}
+.drawer-sub .drawer-row{padding-inline-start:var(--space-6);font-size:var(--text-small);border:0}
+.drawer-row.is-warning{color:var(--color-warning);font-weight:600}
+.drawer-foot{display:flex;align-items:center;gap:var(--space-2);padding-block:var(--space-4)}
+/* ---------- buttons ---------- */
+.btn{--h:var(--target);position:relative;display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);min-block-size:var(--h);padding-inline:calc(var(--h) * .5);border:1.5px solid transparent;border-radius:var(--radius-pill);background:none;font-size:var(--text-small);font-weight:600;line-height:1.2;text-decoration:none;cursor:pointer;white-space:nowrap;transition:background-color var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out),color var(--dur-2) var(--ease-out),transform var(--dur-1) var(--ease-out)}
+.btn-lg{--h:var(--target-lg);font-size:var(--text-body)}
+.btn-primary{background:var(--color-brand);color:var(--color-on-brand)}
+.btn-primary:hover,.btn-primary.is-hover{background:var(--color-brand-strong)}
+.btn-secondary{border-color:var(--color-brand);color:var(--color-brand-strong)}
+.btn-secondary:hover,.btn-secondary.is-hover{background:var(--color-brand-soft)}
+.btn-ghost{color:var(--color-brand-strong)}
+.btn-ghost:hover,.btn-ghost.is-hover{background:var(--color-brand-soft)}
+.btn-danger{background:var(--color-danger-fill);color:#fff}
+.btn-danger:hover,.btn-danger.is-hover{background:var(--color-danger)}
+.btn:active,.btn.is-active{transform:scale(.98)}
+.btn.is-focus{outline:2px solid var(--color-focus);outline-offset:2px}
+.btn:disabled,.btn[aria-disabled="true"]{opacity:.5;cursor:not-allowed;transform:none}
+.btn-spin{display:none;inline-size:1.125rem;block-size:1.125rem;border:2px solid currentColor;border-inline-end-color:transparent;border-radius:50%;animation:spin .8s linear infinite}
+.btn[data-loading]{pointer-events:none}
+.btn[data-loading] .btn-spin{display:block}
+.btn[data-loading] .ico{display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.btn-spin{animation-duration:1.6s}}
+/* ---------- links ---------- */
+.link{position:relative;color:var(--color-brand-strong);font-weight:500;text-decoration:underline;text-decoration-color:var(--color-line-strong);text-underline-offset:.22em;text-decoration-thickness:1px}
+.link::after{content:"";position:absolute;inset-inline:0;inset-block-end:-.08em;block-size:2px;background:currentColor;transform:scaleX(0);transform-origin:100% 50%;transition:transform var(--dur-2) var(--ease-out)}
+[dir="ltr"] .link::after{transform-origin:0 50%}
+.link:hover::after,.link:focus-visible::after,.link.is-hover::after{transform:scaleX(1)}
+/* ---------- inputs ---------- */
+.field{display:grid;gap:var(--space-2)}
+.field > label,.field > legend{font-size:var(--text-small);font-weight:600;line-height:var(--leading-small)}
+.input{inline-size:100%;min-block-size:var(--target);padding:var(--space-2) var(--space-4);border:1.5px solid var(--color-line-strong);border-radius:var(--radius-input);background:var(--color-surface-raised);color:inherit;font:inherit;line-height:1.5;transition:border-color var(--dur-2) var(--ease-out)}
+.input:hover{border-color:var(--color-ink-muted)}
+.input:focus-visible{border-color:var(--color-brand);outline:2px solid var(--color-focus);outline-offset:2px}
+.input[aria-invalid="true"]{border-color:var(--color-danger-fill)}
+.input:disabled{opacity:.5;background:var(--color-surface-sunken)}
+.input.ltr{display:block;text-align:start}
+textarea.input{resize:vertical;min-block-size:6rem}
+.help{font-size:var(--text-caption);line-height:1.6;color:var(--color-ink-muted)}
+.error{display:flex;gap:var(--space-1);font-size:var(--text-small);line-height:var(--leading-small);color:var(--color-danger);font-weight:500}
+.error[hidden]{display:none}
+.chips{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.chip{position:relative;display:inline-flex;align-items:center;gap:var(--space-1);min-block-size:var(--target);padding-inline:var(--space-4);border:1.5px solid var(--color-line-strong);border-radius:var(--radius-pill);background:var(--color-surface-raised);font-size:var(--text-small);font-weight:500;cursor:pointer;transition:background-color var(--dur-2) var(--ease-out),border-color var(--dur-2) var(--ease-out)}
+.chip input{position:absolute;inset:0;inline-size:100%;block-size:100%;margin:0;opacity:0;cursor:pointer;border-radius:inherit}
+.chip:hover{border-color:var(--color-brand)}
+.chip:has(input:checked){background:var(--color-brand-soft);border-color:var(--color-brand);color:var(--color-brand-strong)}
+.chip:has(input:focus-visible){outline:2px solid var(--color-focus);outline-offset:2px}
+.chip:has(input:disabled){opacity:.5;cursor:not-allowed}
+/* ---------- booking ---------- */
+.sheet{background:var(--color-surface-raised);border:1px solid var(--color-line);border-radius:var(--radius-sheet);padding:var(--space-6);box-shadow:var(--shadow-raised)}
+.booking{display:grid;gap:var(--space-4)}
+.booking .more summary{display:inline-flex;align-items:center;gap:var(--space-1);min-block-size:var(--target);list-style:none;cursor:pointer;color:var(--color-brand-strong);font-weight:500}
+.booking .more summary::-webkit-details-marker{display:none}
+.booking .more[open] summary .ico{transform:rotate(180deg)}
+.hp{position:absolute;inset-inline-start:-9999px;opacity:0;block-size:0;inline-size:0}
+.counter{color:var(--color-ink-faint)}
+.success{display:grid;gap:var(--space-3);justify-items:start}
+.check-draw{inline-size:4rem;block-size:4rem;fill:none;stroke:var(--color-success);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.check-draw circle,.check-draw path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw var(--dur-4) var(--ease-out) forwards}
+.check-draw path{animation-delay:calc(var(--dur-4) * .6)}
+@keyframes draw{to{stroke-dashoffset:0}}
+.success ul{display:grid;gap:var(--space-1);padding-inline-start:var(--space-4);list-style:disc}
+/* ---------- cards, tiles, tiers ---------- */
+.card{display:block;background:var(--color-surface-raised);border:1px solid var(--color-line);border-radius:var(--radius-card);overflow:hidden;text-decoration:none;transition:transform var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out)}
+a.card:hover{transform:translateY(-2px);box-shadow:var(--shadow-raised)}
+.card-body{display:grid;gap:var(--space-2);padding:var(--space-4) var(--space-6) var(--space-6)}
+.ph{display:grid;place-items:center;padding:var(--space-4);background:var(--color-surface-sunken);border:1px dashed var(--color-line-strong);color:var(--color-ink-muted);font-size:var(--text-caption);line-height:1.6;text-align:center}
+.ph-media{border-radius:var(--radius-media)}
+.card .ph{border-width:0 0 1px}
+.facts{display:flex;flex-wrap:wrap;gap:var(--space-3);font-size:var(--text-caption);color:var(--color-ink-muted)}
+.facts span{display:inline-flex;align-items:center;gap:var(--space-1)}
+.tiles{display:grid;gap:var(--space-3)}
+.tile{display:grid;gap:var(--space-3);align-content:start;padding:var(--space-6);background:var(--color-surface-raised);border:1px solid var(--color-line);border-radius:var(--radius-card);text-decoration:none;transition:transform var(--dur-2) var(--ease-out),box-shadow var(--dur-2) var(--ease-out)}
+.tile:hover{transform:translateY(-2px);box-shadow:var(--shadow-raised)}
+.tile .ico{inline-size:2rem;block-size:2rem;color:var(--cat)}
+.tile-title{font-weight:600;font-size:var(--text-body-lg);line-height:1.4}
+@media (min-width:744px){.tiles{grid-template-columns:1fr 1fr}.tile-cosmetic{grid-row:span 2}}
+@media (min-width:1024px){.tiles{grid-template-columns:repeat(3,1fr)}.tile-cosmetic{grid-row:span 2}}
+.tiers{display:grid;grid-auto-flow:column;grid-auto-columns:min(84%,20rem);gap:var(--space-3);overflow-x:auto;scroll-snap-type:x mandatory;padding-block:var(--space-1) var(--space-3);scrollbar-width:thin}
+.tier{scroll-snap-align:start;display:grid;gap:var(--space-4);align-content:start;padding:var(--space-6);background:var(--color-surface-raised);border:1.5px solid var(--color-line);border-radius:var(--radius-card)}
+.tier dl{display:grid;gap:var(--space-3)}
+.tier dt{font-size:var(--text-caption);color:var(--color-ink-muted);font-weight:500}
+.tier dd{font-size:var(--text-small);line-height:var(--leading-small)}
+.tier-selected{border-color:var(--color-warm);background:var(--color-warm-soft)}
+.badge{display:inline-flex;align-items:center;min-block-size:1.5rem;padding-inline:var(--space-2);border-radius:var(--radius-badge);font-size:var(--text-caption);font-weight:600;line-height:1}
+.badge-warm{background:var(--color-warm);color:var(--color-on-warm)}
+.tier-head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2)}
+@media (max-width:1023.98px){.tiers{margin-inline:calc(var(--gutter) * -1);padding-inline:var(--gutter);scroll-padding-inline:var(--gutter)}}
+@media (min-width:1024px){.tiers{grid-auto-flow:row;grid-template-columns:repeat(3,1fr);grid-auto-columns:auto;overflow:visible}}
+.dentist{max-inline-size:18rem}
+.dentist .ph{aspect-ratio:4/5}
+/* ---------- compare ---------- */
+.compare{position:relative;aspect-ratio:1;max-inline-size:28rem;border-radius:var(--radius-media);overflow:hidden;touch-action:pan-y;--pos:50}
+.compare .ph{position:absolute;inset:0;border:0}
+.compare-after{clip-path:inset(0 calc(var(--pos) * 1%) 0 0);background:color-mix(in srgb,var(--color-brand-soft) 70%,var(--color-surface-sunken))}
+.compare-label{position:absolute;inset-block-start:var(--space-3);padding:var(--space-1) var(--space-2);border-radius:var(--radius-badge);background:var(--color-surface-raised);font-size:var(--text-caption);font-weight:600;line-height:1.4}
+.compare-label.start{inset-inline-start:var(--space-3)}
+.compare-label.end{inset-inline-end:var(--space-3)}
+.compare-handle{position:absolute;inset-block:0;inset-inline-start:calc(var(--pos) * 1%);inline-size:2px;background:var(--color-surface-raised);transform:translateX(50%);pointer-events:none}
+.compare-handle::after{content:"";position:absolute;inset-block-start:50%;inset-inline-start:50%;inline-size:var(--target);block-size:var(--target);border-radius:50%;background:var(--color-surface-raised);border:1.5px solid var(--color-brand);transform:translate(50%,-50%);box-shadow:var(--shadow-raised)}
+.compare-range{position:absolute;inset:0;inline-size:100%;block-size:100%;margin:0;opacity:0;cursor:ew-resize}
+.compare:has(.compare-range:focus-visible) .compare-handle::after{outline:2px solid var(--color-focus);outline-offset:2px}
+/* ---------- faq, alerts, toast ---------- */
+.faq{border-block-start:1px solid var(--color-line)}
+.faq summary{display:flex;align-items:center;justify-content:space-between;gap:var(--space-4);min-block-size:var(--target);padding-block:var(--space-3);list-style:none;font-weight:600;cursor:pointer}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary .ico{color:var(--color-brand);transition:transform var(--dur-2) var(--ease-out)}
+.faq[open] summary .ico{transform:rotate(180deg)}
+.faq p{padding-block-end:var(--space-4);color:var(--color-ink-muted)}
+.alert{display:grid;grid-template-columns:auto 1fr;gap:var(--space-3);padding:var(--space-4);border:1px solid;border-radius:var(--radius-card);color:var(--color-on-fill)}
+.alert strong{display:block;margin-block-end:var(--space-1)}
+.alert .ico{margin-block-start:.15em}
+.alert-info{background:color-mix(in srgb,var(--color-info-fill) 22%,var(--color-surface-raised));border-color:var(--color-info-fill);color:var(--color-ink)}
+.alert-success{background:color-mix(in srgb,var(--color-success-fill) 22%,var(--color-surface-raised));border-color:var(--color-success-fill);color:var(--color-ink)}
+.alert-warning{background:color-mix(in srgb,var(--color-warning-fill) 22%,var(--color-surface-raised));border-color:var(--color-warning-fill);color:var(--color-ink)}
+.alert-danger{background:color-mix(in srgb,var(--color-danger-fill) 14%,var(--color-surface-raised));border-color:var(--color-danger-fill);color:var(--color-ink)}
+.alert-info .ico{color:var(--color-info)}.alert-success .ico{color:var(--color-success)}.alert-warning .ico{color:var(--color-warning)}.alert-danger .ico{color:var(--color-danger)}
+.toast{position:fixed;inset-inline:var(--gutter);inset-block-end:calc(var(--sticky-bar-h) + env(safe-area-inset-bottom) + var(--space-4));z-index:50;display:flex;align-items:center;gap:var(--space-3);max-inline-size:26rem;margin-inline:auto;padding:var(--space-3) var(--space-4);background:var(--color-surface-raised);border:1px solid var(--color-line);border-radius:var(--radius-card);box-shadow:var(--shadow-floating);font-size:var(--text-small);transform:translateY(16px);opacity:0;visibility:hidden;transition:transform var(--dur-3) var(--ease-out),opacity var(--dur-3) var(--ease-out),visibility 0s var(--dur-3)}
+.toast.is-on{transform:none;opacity:1;visibility:visible;transition-delay:0s}
+.toast .ico{color:var(--color-success)}
+@media (min-width:1024px){.toast{inset-block-end:var(--space-6)}}
+/* ---------- breadcrumb, pagination, skeleton, empty ---------- */
+.crumb ol{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-1);font-size:var(--text-small)}
+.crumb li{display:inline-flex;align-items:center;gap:var(--space-1)}
+.crumb a{display:inline-flex;align-items:center;min-block-size:var(--target);text-decoration:none;color:var(--color-ink-muted)}
+.crumb a:hover{color:var(--color-brand-strong)}
+.crumb .ico{color:var(--color-ink-faint)}
+.crumb [aria-current]{font-weight:600}
+@media (max-width:743.98px){.crumb li{display:none}.crumb li.parent{display:inline-flex}.crumb li.parent .ico{order:-1;transform:scaleX(1)}}
+.pager{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:var(--space-1)}
+.pager a,.pager span{position:relative;display:inline-grid;place-items:center;min-inline-size:var(--target);block-size:var(--target);padding-inline:var(--space-2);border-radius:var(--radius-pill);text-decoration:none;font-weight:500;font-size:var(--text-small)}
+.pager a:hover{background:var(--color-brand-soft)}
+.pager [aria-current]{color:var(--color-brand-strong);font-weight:700}
+.pager [aria-current]::after{content:"";position:absolute;inset-block-end:2px;inline-size:6px;block-size:6px;background:var(--color-brand);transform:rotate(45deg)}
+.pager .is-disabled{opacity:.4;pointer-events:none}
+.skel{background:var(--color-surface-sunken);border-radius:var(--radius-badge);animation:pulse 1.4s var(--ease-in-out) infinite}
+@keyframes pulse{50%{opacity:.55}}
+@media (prefers-reduced-motion:reduce){.skel{animation:none}}
+.skel-card{display:grid;gap:var(--space-3);padding:0 0 var(--space-6);border:1px solid var(--color-line);border-radius:var(--radius-card);overflow:hidden;max-inline-size:20rem}
+.skel-card .skel:first-child{aspect-ratio:4/3;border-radius:0}
+.skel-card .skel:not(:first-child){margin-inline:var(--space-6);block-size:.9rem}
+.empty{display:grid;justify-items:center;gap:var(--space-3);padding:var(--space-12) var(--space-6);text-align:center;border:1px dashed var(--color-line-strong);border-radius:var(--radius-card)}
+.empty .logo-mark{inline-size:36px;block-size:44px;fill:var(--color-brand-soft)}
+/* ---------- sticky bar ---------- */
+.sticky-bar{position:fixed;inset-inline:0;inset-block-end:0;z-index:40;display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2);block-size:calc(var(--sticky-bar-h) + env(safe-area-inset-bottom));padding:var(--space-2) var(--space-2) calc(var(--space-2) + env(safe-area-inset-bottom));background:var(--color-surface-raised);border-block-start:1px solid var(--color-line);box-shadow:var(--shadow-floating);transition:transform var(--dur-3) var(--ease-out)}
+.sticky-bar a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border-radius:var(--radius-pill);font-size:var(--text-caption);font-weight:600;line-height:1.2;text-decoration:none}
+.sticky-bar a:hover{background:var(--color-brand-soft)}
+.sticky-bar .is-primary{background:var(--color-brand);color:var(--color-on-brand)}
+.sticky-bar .is-primary:hover{background:var(--color-brand-strong)}
+body.field-focus .sticky-bar,body.drawer-open .sticky-bar{transform:translateY(120%)}
+@media (min-width:1024px){.sticky-bar{display:none}}
+/* ---------- footer ---------- */
+.footer{margin-block-start:var(--section-y);background:var(--color-surface-sunken);border-block-start:1px solid var(--color-line)}
+.footer-grid{display:grid;gap:var(--space-6);padding-block:var(--space-12)}
+.foot-group summary{list-style:none;display:flex;align-items:center;justify-content:space-between;min-block-size:var(--target);font-weight:600;cursor:pointer}
+.foot-group summary::-webkit-details-marker{display:none}
+.foot-group[open] summary .ico{transform:rotate(180deg)}
+.foot-group ul{display:grid;gap:var(--space-1);padding-block:var(--space-2)}
+.foot-group a,.foot-brand a{display:inline-flex;align-items:center;min-block-size:var(--target);text-decoration:none;font-size:var(--text-small)}
+.foot-group a:hover,.foot-brand a:hover{color:var(--color-brand-strong)}
+.foot-brand{display:grid;gap:var(--space-2);align-content:start;font-size:var(--text-small);color:var(--color-ink-muted)}
+.foot-brand .logo{margin-block-end:var(--space-2)}
+.foot-brand .row{display:flex;flex-wrap:wrap;gap:var(--space-1) var(--space-3);align-items:center}
+.foot-bottom{display:grid;gap:var(--space-3);padding-block:var(--space-6);border-block-start:1px solid var(--color-line);font-size:var(--text-caption);color:var(--color-ink-muted)}
+.foot-bottom .socials{display:flex;gap:var(--space-1)}
+@media (min-width:744px){
+  .footer-grid{grid-template-columns:1.6fr 1fr 1fr 1fr;gap:var(--space-8)}
+  .foot-group summary{pointer-events:none}
+  .foot-group summary .ico{display:none}
+  .foot-bottom{grid-template-columns:auto 1fr auto;align-items:center}
+}
+/* ---------- styleguide chrome ---------- */
+.sg-intro{padding-block:var(--space-12) var(--space-8)}
+.sg{padding-block:var(--space-12);border-block-start:1px solid var(--color-line);display:grid;gap:var(--space-6)}
+.sg > h2{font-family:var(--font-display);font-size:var(--text-display-2);line-height:var(--leading-display-2)}
+.sg-note{color:var(--color-ink-muted);max-inline-size:var(--measure)}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-3)}
+.stack{display:grid;gap:var(--space-4);align-content:start}
+.cols{display:grid;gap:var(--space-6);align-items:start}
+.cols > *,.stack > *{min-inline-size:0}
+@media (min-width:1024px){.cols{grid-template-columns:1fr 1fr}}
+.lbl{font-size:var(--text-caption);color:var(--color-ink-faint);font-weight:500}
+.swatches{display:grid;gap:var(--space-3);grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))}
+.sw{display:grid;grid-template-columns:5.5rem 1fr;gap:var(--space-3);align-items:center}
+.sw-pair{display:grid;grid-template-columns:1fr 1fr;block-size:3.5rem;border-radius:var(--radius-input);overflow:hidden;border:1px solid var(--color-line)}
+.sw-pair span{display:grid;place-items:center;padding:.5rem}
+.sw-pair i{display:block;inline-size:2rem;block-size:2rem;border-radius:var(--radius-badge);border:1px solid rgb(127 144 158 / .35)}
+.sw-meta{display:grid;gap:2px;font-size:var(--text-caption);line-height:1.5}
+.sw-meta b{font-weight:600;font-size:var(--text-small)}
+.sw-meta .ltr{color:var(--color-ink-muted)}
+.type-row{display:grid;gap:var(--space-1);padding-block:var(--space-3);border-block-end:1px solid var(--color-line)}
+.space-row{display:grid;grid-template-columns:5rem 1fr;align-items:center;gap:var(--space-3)}
+.space-row i{display:block;block-size:1rem;background:var(--color-brand);border-radius:2px}
+.radii{display:flex;flex-wrap:wrap;gap:var(--space-4)}
+.radii div{display:grid;place-items:center;inline-size:5.5rem;block-size:4rem;background:var(--color-brand-soft);border:1.5px solid var(--color-brand);font-size:var(--text-caption);text-align:center;line-height:1.3}
+.states{display:grid;gap:var(--space-3);grid-template-columns:repeat(auto-fill,minmax(11rem,1fr));align-items:start}
+.states > div{display:grid;gap:var(--space-2);justify-items:start}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<symbol id="m-mark" viewBox="990.2 126.5 168.1 207.5"><path fill-rule="evenodd" d="M990.5 333.7C990.4 333.5 990.4 333.4 990.6 333.4C990.7 333.5 990.8 333.3 990.8 333.2C990.8 333.0 990.7 332.9 990.6 332.9C990.4 333.0 990.3 332.7 990.3 332.2C990.2 318.1 990.4 164.2 990.5 163.1C991.1 157.8 993.6 150.9 996.4 146.7C996.9 145.9 997.3 145.2 997.3 145.1C997.3 145.0 998.0 144.0 998.9 142.9C1000.9 140.3 1004.6 136.6 1007.0 135.1C1010.4 132.7 1011.0 132.3 1013.1 131.3C1014.2 130.7 1015.4 130.1 1015.7 130.0C1018.0 128.8 1023.4 127.5 1027.7 127.0C1032.4 126.5 1083.2 126.5 1083.5 127.1C1083.7 127.3 1083.6 127.3 1083.4 127.2C1082.9 126.9 1081.8 127.9 1082.1 128.3C1082.3 128.4 1082.5 128.3 1082.7 128.0C1082.9 127.7 1083.0 127.6 1083.0 127.8C1083.0 128.0 1078.6 135.6 1077.7 137.0C1077.5 137.3 1077.1 137.9 1076.9 138.3C1076.5 139.1 1074.3 142.9 1073.7 144.0C1073.5 144.3 1072.9 145.2 1072.5 146.2C1072.0 147.1 1071.3 148.2 1071.0 148.7C1070.7 149.1 1069.9 150.3 1069.4 151.3C1068.0 153.6 1065.7 157.7 1065.3 158.3C1062.4 163.3 1059.5 168.3 1058.7 169.8C1058.1 170.9 1057.2 172.5 1056.6 173.3C1056.1 174.1 1055.7 174.9 1055.7 175.2C1055.7 175.4 1055.5 175.7 1055.4 175.7C1055.2 175.7 1054.9 176.1 1054.7 176.6C1054.5 177.1 1053.4 179.0 1052.3 180.8C1049.6 185.4 1049.6 185.3 1048.4 187.2C1046.6 190.0 1045.9 192.2 1047.0 191.5C1047.3 191.3 1057.9 177.3 1060.2 174.0C1060.9 173.0 1062.0 171.4 1062.7 170.5C1064.5 168.3 1070.2 160.7 1071.7 158.5C1073.2 156.4 1078.3 149.6 1082.2 144.5C1085.5 140.1 1089.6 136.0 1092.9 133.9C1095.6 132.1 1101.1 129.4 1102.6 129.1C1103.2 129.0 1103.8 128.8 1103.9 128.6C1104.0 128.5 1104.4 128.3 1104.8 128.3C1105.2 128.3 1106.2 128.1 1107.0 127.8C1110.4 126.6 1121.5 126.6 1125.8 127.8C1130.6 129.1 1131.8 129.6 1134.7 131.0C1136.4 131.9 1138.8 133.2 1140.0 134.0C1141.1 134.8 1142.4 135.7 1142.8 135.9C1143.2 136.1 1144.8 137.7 1146.4 139.4C1150.8 144.0 1153.8 148.8 1155.8 154.5C1156.5 156.3 1157.0 158.2 1157.0 158.7C1157.0 159.2 1157.1 159.7 1157.3 159.8C1158.2 160.9 1158.3 169.9 1158.3 250.8C1158.3 332.5 1158.3 333.3 1157.7 333.7C1157.2 333.9 1152.7 334.0 1143.8 333.9C1131.6 333.8 1130.3 333.7 1128.3 333.1C1123.3 331.5 1118.4 328.0 1115.4 323.8C1114.9 323.0 1113.5 321.2 1112.3 319.6C1111.2 318.1 1107.1 312.7 1103.3 307.7C1099.6 302.6 1096.2 298.1 1095.8 297.6C1095.5 297.1 1094.1 295.3 1092.8 293.6C1091.5 291.9 1090.3 290.2 1090.0 289.8C1089.7 289.4 1087.8 286.9 1085.7 284.2C1081.0 277.9 1080.0 276.5 1080.0 275.8C1080.0 275.4 1080.5 274.4 1081.2 273.4C1081.8 272.4 1082.3 271.6 1082.3 271.5C1082.3 271.4 1083.2 270.0 1084.2 268.3C1085.2 266.6 1086.2 264.9 1086.3 264.7C1086.5 264.1 1089.0 259.9 1090.7 257.2C1091.2 256.5 1092.0 255.1 1092.5 254.1C1092.9 253.2 1093.9 251.5 1094.6 250.4C1095.3 249.4 1096.8 247.0 1097.9 245.1C1098.9 243.2 1100.1 241.2 1100.4 240.7C1100.7 240.2 1101.2 239.5 1101.4 239.0C1103.4 235.6 1108.2 227.3 1108.7 226.6C1109.1 226.1 1109.3 225.6 1109.3 225.5C1109.3 225.4 1109.7 224.7 1110.2 223.9C1111.7 221.6 1111.8 221.5 1112.8 219.6C1114.3 217.0 1114.4 216.7 1113.8 216.7C1113.4 216.7 1111.3 219.2 1107.8 224.0C1107.4 224.6 1106.2 226.1 1105.3 227.3C1104.4 228.5 1103.4 229.8 1103.1 230.2C1102.2 231.5 1098.5 236.4 1097.3 238.0C1096.7 238.9 1095.2 240.8 1094.1 242.4C1092.9 243.9 1091.6 245.6 1091.2 246.1C1090.8 246.7 1090.2 247.5 1089.8 248.0C1089.4 248.4 1088.7 249.5 1088.1 250.2C1087.6 251.0 1086.3 252.8 1085.2 254.2C1082.6 257.6 1081.9 258.6 1080.8 260.1C1080.4 260.8 1079.7 261.6 1079.4 261.9C1079.1 262.3 1078.4 263.1 1077.9 263.8C1077.5 264.6 1076.8 265.5 1076.5 265.8C1075.7 266.9 1074.2 268.8 1073.5 269.8C1071.9 272.1 1067.6 277.8 1067.1 278.3C1066.6 278.9 1062.3 284.7 1060.0 287.8C1059.2 289.0 1057.6 291.1 1056.5 292.5C1055.4 293.8 1053.9 295.8 1053.2 296.9C1052.4 297.9 1051.1 299.6 1050.3 300.6C1049.5 301.6 1048.4 303.1 1047.9 303.8C1047.3 304.9 1044.9 308.1 1043.4 309.8C1043.2 310.0 1042.5 311.0 1041.8 312.0C1041.1 313.0 1039.9 314.6 1039.2 315.6C1037.0 318.4 1036.2 319.3 1035.2 320.8C1031.9 325.4 1030.1 327.4 1027.6 329.3C1025.4 330.9 1024.3 331.5 1020.8 332.8L1018.2 333.8L1004.4 333.9C995.2 334.0 990.6 333.9 990.5 333.7Z"/></symbol>
+<symbol id="m-word" viewBox="113.7 82.7 828.6 280.0"><path fill-rule="evenodd" d="M412.0 315.8C409.7 315.6 406.6 315.2 405.2 314.9C403.7 314.6 402.1 314.2 401.5 314.1C399.5 313.7 393.3 311.9 391.8 311.3C391.5 311.1 390.3 310.7 389.3 310.3C383.1 308.0 375.5 303.8 370.0 299.7C367.9 298.1 365.8 296.5 365.4 296.2C364.9 295.8 362.8 293.9 360.7 291.9C352.8 284.2 347.9 277.3 343.0 267.3C341.9 265.0 341.0 262.8 341.0 262.6C341.0 262.3 340.9 262.0 340.7 261.8C340.5 261.6 340.1 260.4 339.7 259.2C339.3 257.9 338.8 256.5 338.7 256.2C338.5 255.8 338.2 254.8 338.0 254.0C337.0 250.0 336.8 249.5 336.3 249.4C335.8 249.3 335.7 250.5 335.6 264.4C335.5 277.6 335.4 279.8 334.9 281.5C332.3 290.1 327.0 296.1 318.8 299.4L315.2 300.8L295.5 301.0C284.1 301.1 275.7 301.0 275.4 300.9C275.1 300.6 275.0 295.4 275.0 275.1C275.1 258.2 275.0 249.5 274.7 249.3C274.2 248.7 273.8 249.2 273.2 251.4C271.8 256.5 268.1 264.6 265.3 268.7C264.5 269.9 263.7 271.1 263.5 271.4C260.9 275.7 253.8 282.8 247.5 287.6C245.3 289.2 237.4 294.0 236.9 294.0C236.8 294.0 235.7 294.5 234.4 295.0C231.0 296.6 231.0 296.6 228.2 297.5C224.5 298.6 221.8 299.3 219.8 299.7C218.9 299.9 217.5 300.2 216.7 300.4C215.0 300.8 123.3 301.4 122.3 300.9C121.8 300.7 121.7 298.2 121.8 269.1L121.8 237.5L164.8 237.3C213.1 237.1 208.8 237.4 211.0 234.7C214.0 230.8 212.9 226.2 208.3 223.6C207.6 223.2 200.6 223.1 164.7 223.0L121.8 222.8L121.7 204.5C121.6 185.4 121.8 181.7 123.0 177.8C124.8 171.9 127.4 168.3 133.2 163.7C133.4 163.5 135.0 162.7 136.7 161.9C142.4 159.2 140.9 159.3 179.3 159.4C214.2 159.6 216.4 159.6 221.3 161.0C222.2 161.2 223.4 161.5 224.2 161.7C237.2 165.0 250.7 173.6 259.7 184.2C261.7 186.6 266.0 192.5 266.0 192.8C266.0 192.9 266.6 193.9 267.3 195.1C269.6 199.0 271.9 204.4 273.6 210.3C274.0 211.4 275.0 211.7 275.0 210.6C275.0 210.2 275.1 198.5 275.1 184.6L275.2 159.3L305.3 159.3L335.5 159.3L335.6 185.2C335.6 199.4 335.7 211.2 335.8 211.3C336.3 211.7 337.1 210.2 337.8 207.3C339.6 200.5 344.0 190.2 346.7 186.3C347.1 185.8 347.3 185.3 347.3 185.2C347.3 184.8 350.5 180.3 353.0 177.1C357.2 171.7 363.6 165.3 367.8 162.3C368.7 161.7 369.7 160.9 370.0 160.6C371.5 159.2 378.0 155.3 382.3 153.2C393.4 147.7 404.8 144.8 417.5 144.1C424.1 143.8 436.2 145.0 441.8 146.7C442.4 146.8 444.0 147.3 445.3 147.7C448.1 148.5 451.7 149.7 453.9 150.7C454.7 151.1 455.4 151.3 455.5 151.3C455.7 151.3 460.2 153.5 462.3 154.7C474.4 161.3 485.4 171.5 493.1 183.2C494.9 186.0 498.7 192.9 498.7 193.5C498.7 193.7 498.8 194.0 499.0 194.2C499.8 195.0 503.0 203.7 503.7 207.0C504.1 209.1 505.0 211.3 505.3 211.3C505.5 211.3 505.7 211.2 505.8 211.0C505.9 210.8 506.0 199.1 506.0 185.0C506.0 170.9 506.1 159.3 506.2 159.3C566.1 159.3 934.1 159.4 934.2 159.4C934.3 159.5 934.3 186.3 934.3 219.0C934.3 281.3 934.4 280.2 933.0 284.0C932.3 285.8 930.7 288.7 929.2 290.7C925.9 295.2 922.3 297.7 915.5 300.2C913.9 300.8 907.5 300.8 723.3 301.0C618.6 301.1 531.4 301.1 529.7 300.9C526.1 300.6 524.3 300.1 520.5 298.3C514.0 295.2 509.2 289.4 506.9 282.0C506.3 280.0 506.2 278.8 506.0 264.5C505.9 253.8 505.7 249.2 505.5 249.1C505.1 249.0 504.3 250.9 503.8 252.8C503.5 254.3 501.6 260.5 501.3 260.8C501.2 261.0 500.8 261.9 500.5 262.8C499.8 264.8 496.5 271.6 495.3 273.5C490.8 281.0 486.5 286.5 480.8 292.1C462.8 309.6 437.3 318.4 412.0 315.8ZM282.5 347.3L275.2 340.0L282.5 332.7C286.5 328.6 289.9 325.3 290.0 325.3C290.3 325.3 304.5 339.7 304.5 340.0C304.5 340.3 290.4 354.7 290.0 354.7C289.9 354.7 286.5 351.4 282.5 347.3ZM313.2 347.3L305.8 340.0L313.2 332.7C317.2 328.6 320.6 325.3 320.7 325.3C320.9 325.3 333.5 337.9 335.3 339.9C335.5 340.0 321.0 354.7 320.7 354.7C320.6 354.7 317.2 351.4 313.2 347.3ZM428.7 238.1C432.9 233.9 436.3 230.4 436.3 230.2C436.3 229.7 421.0 214.6 420.7 214.7C419.9 215.0 405.3 229.9 405.4 230.3C405.5 230.8 420.4 245.7 420.8 245.7C421.0 245.7 424.6 242.3 428.7 238.1ZM413.4 112.9C409.5 109.0 406.3 105.6 406.3 105.3C406.3 104.8 420.3 90.7 420.8 90.7C421.3 90.7 435.4 105.0 435.3 105.3C435.1 105.7 421.0 120.0 420.7 120.0C420.6 120.0 417.3 116.8 413.4 112.9Z"/></symbol>
+<symbol id="i-phone" viewBox="0 0 24 24"><path d="M5.5 4h3.2l1.6 4.3-2.1 1.4a11.6 11.6 0 0 0 6.1 6.1l1.4-2.1L20 15.3v3.2a1.5 1.5 0 0 1-1.6 1.5A15.5 15.5 0 0 1 4 5.6 1.5 1.5 0 0 1 5.5 4z"/></symbol>
+<symbol id="i-whatsapp" viewBox="0 0 24 24"><path d="M12 3.5a8.5 8.5 0 0 0-7.3 12.8L3.5 20.5l4.3-1.1A8.5 8.5 0 1 0 12 3.5z"/><path d="M9 8.5c.2 3.2 2.5 5.7 6.3 6.3l1-1.6-2-1-1 1a4.6 4.6 0 0 1-2.4-2.4l1-1-1-2z"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3v4M16 3v4"/></symbol>
+<symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+<symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+<symbol id="i-chev-fwd" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+<symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+<symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8v.5"/></symbol>
+<symbol id="i-warn" viewBox="0 0 24 24"><path d="M12 4l8.5 15h-17z"/><path d="M12 10v4M12 16.5v.5"/></symbol>
+<symbol id="i-danger" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 9l6 6M15 9l-6 6"/></symbol>
+<symbol id="i-ok" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+<symbol id="i-instagram" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4.5"/><circle cx="12" cy="12" r="3.5"/><path d="M16.8 7.2v.1"/></symbol>
+<symbol id="i-telegram" viewBox="0 0 24 24"><path d="M20 5L3.8 11.5l5.4 1.8L11 19l3-3.3 4.2 2.8z"/><path d="M9.2 13.3L17 8"/></symbol>
+<symbol id="i-sparkle" viewBox="0 0 24 24"><path d="M12 4c.6 4.4 3.6 7.4 8 8-4.4.6-7.4 3.6-8 8-.6-4.4-3.6-7.4-8-8 4.4-.6 7.4-3.6 8-8z"/><path d="M19 3v2M18 4h2"/></symbol>
+<symbol id="i-implant" viewBox="0 0 24 24"><path d="M8.5 3.5h7L14.3 8H9.7z"/><path d="M10 8h4v1.6l-.4 2.6-.4 3-.5 2.6c-.2.8-1.2.8-1.4 0l-.5-2.6-.4-3L10 9.6z"/><path d="M10.4 11.6h3.2M10.8 14.4h2.4"/></symbol>
+<symbol id="i-tooth" viewBox="0 0 24 24"><path d="M8 3.5C5.5 3.5 4 5.5 4 8c0 3 1.5 4.2 2 7.2l.8 4.3c.2 1.2 1.9 1.3 2.3.1L10 15.2c.4-1.3 3.6-1.3 4 0l.9 4.4c.3 1.2 2 1.1 2.3-.1l.8-4.3c.5-3 2-4.2 2-7.2 0-2.5-1.5-4.5-4-4.5-1.5 0-2.5 1-4 1s-2.5-1-4-1z"/></symbol>
+<symbol id="i-braces" viewBox="0 0 24 24"><path d="M4 7.5c0 7 3.6 10.5 8 10.5s8-3.5 8-10.5"/><path d="M4.8 12.5h14.4"/><path d="M7.5 11.2h2v2.6h-2zM11 11.2h2v2.6h-2zM14.5 11.2h2v2.6h-2z"/></symbol>
+<symbol id="i-kid" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M9 10v.5M15 10v.5M8.5 14c1 1.6 6 1.6 7 0"/></symbol>
+</svg>
+<a class="skip" href="#main">پرش به محتوای اصلی</a>
+
+<header class="site-header">
+  <div class="container nav">
+    <a class="logo" href="#" aria-label="کلینیک دندانپزشکی سفید، صفحهٔ اصلی"><svg class="logo-mark" aria-hidden="true"><use href="#m-mark"/></svg><svg class="logo-word" aria-hidden="true"><use href="#m-word"/></svg></a>
+    <nav class="nav-primary" aria-label="ناوبری اصلی">
+      <ul>
+        <li><button class="nav-item" type="button" aria-expanded="false" aria-haspopup="true">خدمات <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></button></li>
+        <li><a class="nav-item is-active" href="#" aria-current="page">پزشکان</a></li>
+        <li><a class="nav-item" href="#">قبل و بعد</a></li>
+        <li><a class="nav-item" href="#">هزینه و پرداخت</a></li>
+        <li><a class="nav-item" href="#">آدرس و ساعات</a></li>
+      </ul>
+    </nav>
+    <div class="nav-actions">
+      <button class="icon-btn theme-toggle" type="button" aria-label="تغییر پوسته" aria-pressed="false"><svg class="ico t-sun" aria-hidden="true"><use href="#i-sun"/></svg><svg class="ico t-moon" aria-hidden="true"><use href="#i-moon"/></svg></button>
+      <a class="nav-phone" href="tel:+982155101054" dir="ltr">۰۲۱ ۵۵۱۰ ۱۰۵۴</a>
+      <a class="icon-btn nav-call" href="tel:+982155101054" aria-label="تماس با کلینیک"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg></a>
+      <a class="btn btn-primary nav-book" href="#booking">رزرو نوبت</a>
+      <button class="icon-btn nav-menu" type="button" aria-label="باز کردن منو" aria-controls="drawer" aria-expanded="false" data-open-drawer><svg class="ico" aria-hidden="true"><use href="#i-menu"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<dialog class="drawer" id="drawer" aria-label="منوی سایت">
+  <div class="drawer-head">
+    <a class="logo" href="#" aria-label="کلینیک دندانپزشکی سفید"><svg class="logo-mark" aria-hidden="true"><use href="#m-mark"/></svg><svg class="logo-word" aria-hidden="true"><use href="#m-word"/></svg></a>
+    <button class="icon-btn drawer-close" type="button" aria-label="بستن منو" data-close-drawer><svg class="ico" aria-hidden="true"><use href="#i-close"/></svg></button>
+  </div>
+  <div class="drawer-body">
+    <div class="drawer-cta"><a class="btn btn-primary btn-lg" href="#booking" data-close-drawer>رزرو نوبت</a><a class="btn btn-secondary btn-lg" href="tel:+982155101054">تماس با کلینیک</a></div>
+    <details class="drawer-group"><summary>زیبایی <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></summary><div class="drawer-sub"><a class="drawer-row" href="#">لمینت سرامیکی</a><a class="drawer-row" href="#">کامپوزیت دندان</a><a class="drawer-row" href="#">بلیچینگ دندان</a><a class="drawer-row" href="#">طراحی لبخند</a></div></details>
+    <details class="drawer-group"><summary>جراحی و جایگزینی دندان <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></summary><div class="drawer-sub"><a class="drawer-row" href="#">ایمپلنت دندان</a><a class="drawer-row" href="#">جراحی دندان عقل و فک</a><a class="drawer-row" href="#">کشیدن دندان</a></div></details>
+    <details class="drawer-group"><summary>درمان و نگهداری دندان <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></summary><div class="drawer-sub"><a class="drawer-row" href="#">ترمیم دندان (VIP و CIP)</a><a class="drawer-row" href="#">روکش دندان</a><a class="drawer-row" href="#">درمان ریشه</a><a class="drawer-row" href="#">جرم‌گیری</a></div></details>
+    <a class="drawer-row" href="#">ارتودنسی</a><a class="drawer-row" href="#">دندانپزشکی کودکان</a><a class="drawer-row" href="#">همهٔ خدمات</a>
+    <a class="drawer-row" href="#">پزشکان</a><a class="drawer-row" href="#">قبل و بعد</a><a class="drawer-row" href="#">هزینه و پرداخت</a>
+    <a class="drawer-row" href="#">راهنمای بیمار</a><a class="drawer-row" href="#">مقالات</a><a class="drawer-row" href="#">درباره ما</a><a class="drawer-row" href="#">آدرس و ساعات</a>
+    <a class="drawer-row is-warning" href="#"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg> درد شدید دارید؟</a>
+    <div class="drawer-foot">
+      <button class="icon-btn theme-toggle" type="button" aria-label="تغییر پوسته" aria-pressed="false"><svg class="ico t-sun" aria-hidden="true"><use href="#i-sun"/></svg><svg class="ico t-moon" aria-hidden="true"><use href="#i-moon"/></svg></button>
+      <a class="icon-btn" href="#" aria-label="اینستاگرام"><svg class="ico" aria-hidden="true"><use href="#i-instagram"/></svg></a>
+      <a class="icon-btn" href="#" aria-label="تلگرام"><svg class="ico" aria-hidden="true"><use href="#i-telegram"/></svg></a>
+      <a class="icon-btn" href="#" aria-label="پیام در واتساپ"><svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg></a>
+    </div>
+  </div>
+</dialog>
+
+<main id="main" class="container">
+<div class="sg-intro stack">
+  <h1 class="d1">راهنمای طراحی کلینیک سفید</h1>
+  <p class="lg muted measure">اجزای رابط، در هر دو پوسته، با فونت‌ها و توکن‌های نهایی. پوسته از تنظیم دستگاه پیروی می‌کند و با دکمهٔ بالای صفحه عوض می‌شود. مقدار انتخاب‌شده در همین مرورگر ذخیره می‌شود.</p>
+  <nav class="row sm" aria-label="فهرست بخش‌ها"><a class="link" href="#colors">رنگ</a><a class="link" href="#type">تایپوگرافی</a><a class="link" href="#space">فاصله و گردی</a><a class="link" href="#buttons">دکمه</a><a class="link" href="#inputs">فرم</a><a class="link" href="#booking">درخواست نوبت</a><a class="link" href="#cards">کارت‌ها</a><a class="link" href="#tiers">سطوح ترمیم</a><a class="link" href="#compare">قبل و بعد</a><a class="link" href="#feedback">بازخورد</a><a class="link" href="#nav">ناوبری</a><a class="link" href="#footer">پابرگ</a></nav>
+</div>
+
+<section class="sg" id="colors">
+  <h2>رنگ‌ها</h2>
+  <p class="sg-note">هر توکن با مقدار روشن (چپ) و تیره (راست) نشان داده شده است. تنها رنگ تأکیدی رابط، سبزآبی برند است. هلویی فقط برای سطح انتخاب‌شده به کار می‌رود.</p>
+  <div class="swatches" id="swatches"></div>
+</section>
+
+<section class="sg" id="type">
+  <h2>تایپوگرافی</h2>
+  <p class="sg-note">تیترهای نمایشی با استداد، بقیه با وزیرمتن. ارتفاع خط متن ۱٫۸۵. بدون فاصلهٔ حروف، بدون کج‌نویسی، بدون تراز دوطرفه. اعداد فارسی در متن فارسی.</p>
+  <div class="stack">
+    <div class="type-row"><span class="lbl">display-1 · استداد ۷۰۰ · ۱٫۱۵</span><p class="d1">لبخندی که با آرامش ساخته می‌شود</p></div>
+    <div class="type-row"><span class="lbl">display-2 · استداد ۷۰۰ · ۱٫۲</span><p class="d2">سه سطح ترمیم، یک انتخاب روشن</p></div>
+    <div class="type-row"><span class="lbl">heading · وزیرمتن ۶۰۰ · ۱٫۳</span><p class="h">اولین مراجعه چگونه است؟</p></div>
+    <div class="type-row"><span class="lbl">body-lg · ۱۸ · ۱٫۹</span><p class="lg measure">در جلسهٔ اول، دندانپزشک معاینه می‌کند و برنامهٔ درمان و هزینه را شفاف توضیح می‌دهد. مشاورهٔ اول رایگان است.</p></div>
+    <div class="type-row"><span class="lbl">body · ۱۶ · ۱٫۸۵</span><p class="measure">کلینیک هر روز از ساعت ۱۰ تا ۲۰ باز است، به‌جز تعطیلات رسمی. برای درد شدید، در صورت امکان همان روز نوبت می‌دهیم. برای هماهنگی با <a class="link ltr" href="tel:+982155101054">۰۲۱ ۵۵۱۰ ۱۰۵۴</a> تماس بگیرید یا در سایت <span class="ltr">sefiddental.ir</span> درخواست نوبت ثبت کنید.</p></div>
+    <div class="type-row"><span class="lbl">small · ۱۴ · ۱٫۷</span><p class="sm measure">تصاویر با رضایت کتبی بیماران منتشر شده‌اند. نتیجهٔ درمان در هر فرد متفاوت است.</p></div>
+    <div class="type-row"><span class="lbl">caption · ۱۳ · ۱٫۶ · ۵۰۰</span><p class="cap muted">به‌روزرسانی: دوشنبه ۲۰ مهر ۱۴۰۵ · زمان مطالعه: ۴ دقیقه</p></div>
+  </div>
+</section>
+
+<section class="sg" id="space">
+  <h2>فاصله و گردی گوشه</h2>
+  <p class="sg-note">پایهٔ ۴ پیکسل. گردی گوشه‌ها ثابت است: دکمه و چیپ کپسولی، فیلد ۱۲، کارت ۲۰، رسانه ۲۴، برگه ۲۸، نشان ۸.</p>
+  <div class="cols">
+    <div class="stack" id="spaces"></div>
+    <div class="radii">
+      <div style="border-radius:var(--radius-pill)">کپسولی<br>دکمه و چیپ</div>
+      <div style="border-radius:var(--radius-input)">۱۲<br>فیلد</div>
+      <div style="border-radius:var(--radius-card)">۲۰<br>کارت</div>
+      <div style="border-radius:var(--radius-media)">۲۴<br>رسانه</div>
+      <div style="border-radius:var(--radius-sheet)">۲۸<br>برگه و دیالوگ</div>
+      <div style="border-radius:var(--radius-badge)">۸<br>نشان</div>
+    </div>
+  </div>
+</section>
+
+<section class="sg" id="buttons">
+  <h2>دکمه‌ها</h2>
+  <p class="sg-note">چهار گونه، دو اندازه (۴۴ و ۵۲). آیکن ابتدا یا انتها در راست‌به‌چپ آینه می‌شود. در حالت بارگذاری، چرخنده جای آیکن را می‌گیرد و برچسب می‌ماند.</p>
+  <div class="row">
+    <a class="btn btn-primary btn-lg" href="#booking">رزرو نوبت</a>
+    <a class="btn btn-secondary btn-lg" href="tel:+982155101054"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-phone"/></svg>تماس با کلینیک</a>
+    <button class="btn btn-ghost btn-lg" type="button">پیام در واتساپ<svg class="ico ico-sm mirror" aria-hidden="true"><use href="#i-arrow"/></svg></button>
+    <button class="btn btn-danger btn-lg" type="button">حذف درخواست</button>
+  </div>
+  <div class="row">
+    <button class="btn btn-primary" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-calendar"/></svg>رزرو نوبت</button>
+    <button class="btn btn-secondary" type="button">تماس با کلینیک</button>
+    <button class="btn btn-ghost" type="button">مسیریابی<svg class="ico ico-sm mirror" aria-hidden="true"><use href="#i-chev-fwd"/></svg></button>
+    <button class="btn btn-danger" type="button">حذف</button>
+  </div>
+  <div class="states">
+    <div><span class="lbl">پیش‌فرض</span><button class="btn btn-primary" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-calendar"/></svg>رزرو نوبت</button></div>
+    <div><span class="lbl">hover</span><button class="btn btn-primary is-hover" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-calendar"/></svg>رزرو نوبت</button></div>
+    <div><span class="lbl">focus-visible</span><button class="btn btn-primary is-focus" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-calendar"/></svg>رزرو نوبت</button></div>
+    <div><span class="lbl">active</span><button class="btn btn-primary is-active is-hover" type="button"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-calendar"/></svg>رزرو نوبت</button></div>
+    <div><span class="lbl">disabled</span><button class="btn btn-primary" type="button" disabled><svg class="ico ico-sm" aria-hidden="true"><use href="#i-calendar"/></svg>رزرو نوبت</button></div>
+    <div><span class="lbl">loading</span><button class="btn btn-primary" type="button" data-loading aria-busy="true"><span class="btn-spin" aria-hidden="true"></span><svg class="ico ico-sm" aria-hidden="true"><use href="#i-calendar"/></svg>رزرو نوبت</button></div>
+    <div><span class="lbl">secondary · hover</span><button class="btn btn-secondary is-hover" type="button">تماس با کلینیک</button></div>
+    <div><span class="lbl">secondary · disabled</span><button class="btn btn-secondary" type="button" disabled>تماس با کلینیک</button></div>
+    <div><span class="lbl">ghost · focus</span><button class="btn btn-ghost is-focus" type="button">پیام در واتساپ</button></div>
+    <div><span class="lbl">danger · loading</span><button class="btn btn-danger" type="button" data-loading aria-busy="true"><span class="btn-spin" aria-hidden="true"></span>حذف درخواست</button></div>
+  </div>
+  <div class="stack">
+    <span class="lbl">پیوندها: خط زیر از سمت شروع رشد می‌کند</span>
+    <p class="measure">هزینهٔ درمان پس از معاینه مشخص می‌شود. جزئیات را در <a class="link" href="#">هزینه و شرایط لمینت سرامیکی</a> بخوانید، یا <a class="link is-hover" href="#">راهنمای اولین مراجعه</a> (حالت hover) را ببینید.</p>
+  </div>
+</section>
+
+<section class="sg" id="inputs">
+  <h2>فیلدها و چیپ‌ها</h2>
+  <p class="sg-note">برچسب بالای فیلد، راهنما زیر آن، خطا زیر راهنما با <span class="ltr">aria-invalid</span> و <span class="ltr">aria-describedby</span>. فیلد شمارهٔ موبایل جزیرهٔ چپ‌به‌راست است.</p>
+  <div class="cols">
+    <div class="stack">
+      <div class="field"><label for="in-phone">شمارهٔ موبایل</label><input class="input ltr" id="in-phone" type="tel" inputmode="numeric" autocomplete="tel" dir="ltr" value="۰۹۱۲ ۳۴۵ ۶۷۸۹" aria-describedby="in-phone-help"><p class="help" id="in-phone-help">مثلاً ۰۹۱۲ ۳۴۵ ۶۷۸۹</p></div>
+      <div class="field"><label for="in-phone-err">شمارهٔ موبایل</label><input class="input ltr" id="in-phone-err" type="tel" inputmode="numeric" dir="ltr" value="۰۲۱ ۵۵۱۰ ۱۰۵۴" aria-invalid="true" aria-describedby="in-phone-err-help in-phone-err-msg"><p class="help" id="in-phone-err-help">مثلاً ۰۹۱۲ ۳۴۵ ۶۷۸۹</p><p class="error" id="in-phone-err-msg"><svg class="ico ico-sm" aria-hidden="true"><use href="#i-danger"/></svg>این شمارهٔ تلفن ثابت است. شمارهٔ موبایل را وارد کنید.</p></div>
+      <div class="field"><label for="in-name">نام (اختیاری)</label><input class="input" id="in-name" autocomplete="name" placeholder=""></div>
+      <div class="field"><label for="in-dis">نام (غیرفعال)</label><input class="input" id="in-dis" value="بدون دسترسی" disabled></div>
+    </div>
+    <div class="stack">
+      <fieldset class="field"><legend>برای چه خدمتی؟ (اختیاری)</legend>
+        <div class="chips">
+          <label class="chip"><input type="radio" name="svc-demo" value="exam" checked>معاینه و مشاورهٔ رایگان</label>
+          <label class="chip"><input type="radio" name="svc-demo" value="cosmetic">زیبایی</label>
+          <label class="chip"><input type="radio" name="svc-demo" value="implant">ایمپلنت</label>
+          <label class="chip"><input type="radio" name="svc-demo" value="restore">ترمیم و روکش</label>
+          <label class="chip"><input type="radio" name="svc-demo" value="root">عصب‌کشی</label>
+          <label class="chip"><input type="radio" name="svc-demo" value="ortho" disabled>ارتودنسی (غیرفعال)</label>
+        </div>
+      </fieldset>
+      <div class="field"><label for="in-note">توضیح (اختیاری)</label><textarea class="input" id="in-note" rows="3" aria-describedby="in-note-help">درد دارم و برای دو نفر نوبت می‌خواهم.</textarea><p class="help" id="in-note-help">مثلاً: درد دارم، یا برای دو نفر نوبت می‌خواهم. <span class="counter ltr">۳۸/۵۰۰</span></p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sg" id="booking">
+  <h2>فرم درخواست نوبت</h2>
+  <p class="sg-note">یک مرحله، یک فیلد اجباری. اعتبارسنجی هنگام ترک فیلد و هنگام ارسال. شماره را با ارقام فارسی، عربی یا لاتین وارد کنید. نمونه کار می‌کند و ثبت واقعی ندارد.</p>
+  <div class="cols">
+    <form class="sheet booking" id="bk" novalidate>
+      <h3 class="h">درخواست نوبت</h3>
+      <p class="muted">شماره‌تان را بگذارید. پذیرش زمان دقیق نوبت را با شما هماهنگ می‌کند.<br>مشاورهٔ اول رایگان است.</p>
+      <div class="field"><label for="bk-phone">شمارهٔ موبایل</label><input class="input ltr" id="bk-phone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" dir="ltr" required aria-describedby="bk-phone-help"><p class="help" id="bk-phone-help">مثلاً ۰۹۱۲ ۳۴۵ ۶۷۸۹</p><p class="error" id="bk-phone-err" hidden></p></div>
+      <div class="field"><label for="bk-name">نام (اختیاری)</label><input class="input" id="bk-name" name="name" autocomplete="name"></div>
+      <fieldset class="field"><legend>برای چه خدمتی؟ (اختیاری)</legend>
+        <div class="chips">
+          <label class="chip"><input type="radio" name="service" value="exam">معاینه و مشاورهٔ رایگان</label>
+          <label class="chip"><input type="radio" name="service" value="cosmetic">زیبایی</label>
+          <label class="chip"><input type="radio" name="service" value="implant">ایمپلنت</label>
+          <label class="chip"><input type="radio" name="service" value="restore">ترمیم و روکش</label>
+          <label class="chip"><input type="radio" name="service" value="root_canal">عصب‌کشی</label>
+          <label class="chip"><input type="radio" name="service" value="ortho">ارتودنسی</label>
+          <label class="chip"><input type="radio" name="service" value="kids">کودکان</label>
+          <label class="chip"><input type="radio" name="service" value="other">سایر</label>
+        </div>
+      </fieldset>
+      <fieldset class="field"><legend>چه زمانی برای نوبت راحت‌ترید؟ (اختیاری)</legend>
+        <div class="chips">
+          <label class="chip"><input type="radio" name="time" value="morning">صبح</label>
+          <label class="chip"><input type="radio" name="time" value="evening">عصر</label>
+          <label class="chip"><input type="radio" name="time" value="any">فرقی ندارد</label>
+        </div>
+      </fieldset>
+      <details class="more"><summary>توضیح بیشتر <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></summary>
+        <div class="field"><label for="bk-note">توضیح (اختیاری)</label><textarea class="input" id="bk-note" name="note" rows="3" maxlength="500" aria-describedby="bk-note-help"></textarea><p class="help" id="bk-note-help">مثلاً: درد دارم، یا برای دو نفر نوبت می‌خواهم. <span class="counter ltr" id="bk-count">۰/۵۰۰</span></p><p class="error" id="bk-note-err" hidden></p></div>
+      </details>
+      <input class="hp" type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true">
+      <p class="sm muted">شمارهٔ شما فقط برای هماهنگی نوبت استفاده می‌شود. <a class="link" href="#">حریم خصوصی</a></p>
+      <div><button class="btn btn-primary btn-lg" type="submit" id="bk-submit"><span class="btn-spin" aria-hidden="true"></span><span class="btn-label">ثبت درخواست</span></button></div>
+      <p class="sm">یا با <a class="link ltr" href="tel:+982155101054">۰۲۱ ۵۵۱۰ ۱۰۵۴</a> تماس بگیرید.</p>
+      <p class="sr" aria-live="polite" id="bk-status"></p>
+    </form>
+    <div class="sheet success" id="bk-success">
+      <svg class="check-draw" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="29" pathLength="1"/><path d="M20 33l8 8 16-17" pathLength="1"/></svg>
+      <h3 class="h" tabindex="-1" id="bk-success-h">درخواست شما ثبت شد</h3>
+      <p>پذیرش معمولاً تا ۱۰ دقیقهٔ دیگر با شما تماس می‌گیرد.<br>شمارهٔ ثبت‌شده: <bdi dir="ltr" id="bk-success-phone">۰۹۱۲ ••• ۶۷۸۹</bdi></p>
+      <p class="sm muted">تماس از شمارهٔ <bdi dir="ltr">۰۲۱ ۵۵۱۰ ۱۰۵۴</bdi> خواهد بود. شماره را ذخیره کنید تا تماس را بشناسید.</p>
+      <button class="btn btn-secondary" type="button" id="toast-demo">ذخیرهٔ شمارهٔ کلینیک</button>
+      <p class="sm"><strong>برای مراجعه همراه داشته باشید:</strong></p>
+      <ul class="sm muted"><li>کارت ملی</li><li>کارت بیمه در صورت استفاده</li><li>عکس‌های رادیوگرافی قبلی اگر دارید</li><li>فهرست داروهایی که مصرف می‌کنید</li></ul>
+      <p class="sm">تهران، خانی‌آباد نو، خیابان میعاد شمالی، ابتدای کوچه صابر (۲۸)، پلاک ۲ · <a class="link" href="#">مسیریابی</a> · <a class="link" href="#">پیام در واتساپ</a></p>
+      <button class="btn btn-ghost" type="button" id="bk-reset" hidden>نمایش دوبارهٔ فرم</button>
+    </div>
+  </div>
+</section>
+
+<section class="sg" id="cards">
+  <h2>کارت خدمت، کاشی‌های دسته‌بندی، کارت پزشک</h2>
+  <p class="sg-note">کارت فقط وقتی که ارتفاع، سلسله‌مراتب را بیان کند. هرگز کارت داخل کارت. جای عکس‌ها بلوک خنثی با نسبت دقیق و توضیح عکس لازم است.</p>
+  <div class="cols">
+    <a class="card" href="#" style="max-inline-size:22rem">
+      <div class="ph" style="aspect-ratio:4/3">عکس ۴:۳<br>نمونهٔ کار لمینت سرامیکی، با رضایت کتبی بیمار</div>
+      <div class="card-body">
+        <h3 class="h" style="display:flex;align-items:center;gap:var(--space-2)"><svg class="ico" style="color:var(--color-cat-cosmetic)" aria-hidden="true"><use href="#i-sparkle"/></svg>لمینت سرامیکی</h3>
+        <p class="sm muted">روکش نازک سرامیکی روی سطح جلوی دندان، برای رنگ و فرم یکدست.</p>
+        <div class="facts"><span><svg class="ico ico-sm" aria-hidden="true"><use href="#i-calendar"/></svg>۲ تا ۳ جلسه</span><span><svg class="ico ico-sm" aria-hidden="true"><use href="#i-clock"/></svg>هر جلسه حدود ۹۰ دقیقه</span></div>
+        <span class="link" style="justify-self:start">هزینه و شرایط لمینت سرامیکی</span>
+      </div>
+    </a>
+    <div class="dentist card">
+      <div class="ph">پرتره ۴:۵<br>عکس واقعی پزشک در محیط کلینیک، نگاه به سمت متن</div>
+      <div class="card-body">
+        <h3 class="h">دکتر [نام پزشک]</h3>
+        <p class="sm muted">دندانپزشک · [تخصص پس از تأیید]</p>
+        <p class="cap muted">شمارهٔ نظام پزشکی: <bdi dir="ltr">۱۲۳۴۵۶</bdi></p>
+      </div>
+    </div>
+  </div>
+  <div class="tiles">
+    <a class="tile tile-cosmetic" href="#" style="--cat:var(--color-cat-cosmetic)"><svg class="ico" aria-hidden="true"><use href="#i-sparkle"/></svg><span class="tile-title">زیبایی دندان</span><span class="sm muted">لمینت سرامیکی، کامپوزیت، بلیچینگ، بستن دیاستم، لیفت لثه، طراحی لبخند</span><span class="cap muted">۶ خدمت</span><span class="ph ph-media" style="aspect-ratio:4/3;margin-block-start:auto">عکس ۴:۳<br>نمای نزدیک لبخند پس از لمینت، با رضایت بیمار</span></a>
+    <a class="tile" href="#" style="--cat:var(--color-cat-surgery)"><svg class="ico" aria-hidden="true"><use href="#i-implant"/></svg><span class="tile-title">جراحی و جایگزینی دندان</span><span class="sm muted">ایمپلنت، اوردنچر، دندان عقل، جراحی لثه، کشیدن دندان</span><span class="cap muted">۵ خدمت</span></a>
+    <a class="tile" href="#" style="--cat:var(--color-cat-restorative)"><svg class="ico" aria-hidden="true"><use href="#i-tooth"/></svg><span class="tile-title">درمان و نگهداری دندان</span><span class="sm muted">ترمیم (معمولی، VIP، CIP)، روکش، درمان ریشه، جرم‌گیری، اینله و آنله</span><span class="cap muted">۵ خدمت</span></a>
+    <a class="tile" href="#" style="--cat:var(--color-cat-ortho)"><svg class="ico" aria-hidden="true"><use href="#i-braces"/></svg><span class="tile-title">ارتودنسی</span><span class="sm muted">ردیف کردن دندان‌ها با معاینه و برنامهٔ درمان</span></a>
+    <a class="tile" href="#" style="--cat:var(--color-cat-kids)"><svg class="ico" aria-hidden="true"><use href="#i-kid"/></svg><span class="tile-title">دندانپزشکی کودکان</span><span class="sm muted">معاینه و درمان بدون عجله، همراه با والدین</span></a>
+  </div>
+</section>
+
+<section class="sg" id="tiers">
+  <h2>مقایسهٔ سطوح ترمیم</h2>
+  <p class="sg-note">سه ستون در دسکتاپ، کارت‌های قابل کشیدن در موبایل. سطح انتخاب‌شده با رنگ گرم مشخص می‌شود. قیمت‌ها پس از معاینه اعلام می‌شوند.</p>
+  <div class="tiers">
+    <article class="tier"><div class="tier-head"><h3 class="h">معمولی</h3></div><p class="sm muted">ترمیم استاندارد با مواد متوسط؛ انتخاب رایج.</p>
+      <dl><div><dt>مواد</dt><dd>متوسط و استاندارد</dd></div><div><dt>فرم و سطح</dt><dd>استاندارد</dd></div><div><dt>رنگ</dt><dd>رنگ پایه</dd></div><div><dt>انجام‌دهنده</dt><dd>دندانپزشکان کلینیک</dd></div><div><dt>مناسب برای</dt><dd>ترمیم‌های معمول دندان‌های عقب</dd></div></dl>
+      <a class="btn btn-secondary" href="#booking">رزرو نوبت</a></article>
+    <article class="tier tier-selected"><div class="tier-head"><h3 class="h">VIP</h3><span class="badge badge-warm">انتخاب‌شده</span></div><p class="sm muted">مواد ممتاز و مهارت دندانپزشک کلینیک؛ فرم و سطح مطابق دندان طبیعی.</p>
+      <dl><div><dt>مواد</dt><dd>ممتاز</dd></div><div><dt>فرم و سطح</dt><dd>مطابق دندان طبیعی</dd></div><div><dt>رنگ</dt><dd>رنگ پایه</dd></div><div><dt>انجام‌دهنده</dt><dd>فقط دندانپزشک کلینیک</dd></div><div><dt>مناسب برای</dt><dd>دندان‌های جلو و نمای طبیعی</dd></div></dl>
+      <a class="btn btn-primary" href="#booking">رزرو نوبت</a></article>
+    <article class="tier"><div class="tier-head"><h3 class="h">CIP</h3></div><p class="sm muted">همهٔ ویژگی‌های VIP به‌علاوهٔ شخصی‌سازی رنگ؛ رنگ هم طبیعی می‌شود.</p>
+      <dl><div><dt>مواد</dt><dd>ممتاز</dd></div><div><dt>فرم و سطح</dt><dd>مطابق دندان طبیعی</dd></div><div><dt>رنگ</dt><dd>لایه‌گذاری و تینت رنگ</dd></div><div><dt>انجام‌دهنده</dt><dd>فقط دندانپزشک کلینیک</dd></div><div><dt>مناسب برای</dt><dd>وقتی تطابق رنگ هم مهم است</dd></div></dl>
+      <a class="btn btn-secondary" href="#booking">رزرو نوبت</a></article>
+  </div>
+</section>
+
+<section class="sg" id="compare">
+  <h2>اسلایدر قبل و بعد</h2>
+  <p class="sg-note">با اشاره‌گر، لمس یا کلیدهای جهت. دستگیره ۴۴ پیکسل. برچسب «قبل» در سمت شروع و «بعد» در سمت پایان.</p>
+  <div class="compare">
+    <div class="ph">عکس ۱:۱ قبل از درمان، با رضایت کتبی بیمار</div>
+    <div class="ph compare-after">عکس ۱:۱ بعد از درمان، همان زاویه و نور</div>
+    <span class="compare-label start">قبل</span><span class="compare-label end">بعد</span>
+    <div class="compare-handle" aria-hidden="true"></div>
+    <input class="compare-range" type="range" min="0" max="100" value="50" aria-label="مقایسهٔ قبل و بعد" aria-valuetext="۵۰ درصد">
+  </div>
+  <p class="sm muted">تصاویر با رضایت کتبی بیماران منتشر شده‌اند. نتیجهٔ درمان در هر فرد متفاوت است.</p>
+</section>
+
+<section class="sg" id="feedback">
+  <h2>پرسش‌های پرتکرار، هشدارها، پیام‌ها</h2>
+  <div class="cols">
+    <div class="stack">
+      <details class="faq" open><summary>آیا لمینت سرامیکی درد دارد؟ <svg class="ico" aria-hidden="true"><use href="#i-chev"/></svg></summary><p class="sm">معمولاً نه. کار با بی‌حسی موضعی انجام می‌شود و بعد از آن ممکن است چند روز حساسیت خفیف داشته باشید. انتخاب روش با معاینه و تشخیص دندانپزشک است.</p></details>
+      <details class="faq"><summary>هزینهٔ درمان چطور مشخص می‌شود؟ <svg class="ico" aria-hidden="true"><use href="#i-chev"/></svg></summary><p class="sm">پس از معاینه، برنامهٔ درمان و هزینهٔ هر مرحله را پیش از شروع به شما می‌گوییم.</p></details>
+      <details class="faq"><summary>کدام بیمه‌ها پذیرفته می‌شوند؟ <svg class="ico" aria-hidden="true"><use href="#i-chev"/></svg></summary><p class="sm">بیمه ایران، کارآفرین، پاسارگاد، البرز و بیمه ما، و سایر بیمه‌ها با هماهنگی پذیرش.</p></details>
+    </div>
+    <div class="stack">
+      <div class="alert alert-info" role="status"><svg class="ico" aria-hidden="true"><use href="#i-info"/></svg><div class="sm"><strong>درخواست شما قبلاً ثبت شده است.</strong>پذیرش در ساعات کاری با شما تماس می‌گیرد. برای کار فوری با <bdi dir="ltr">۰۲۱ ۵۵۱۰ ۱۰۵۴</bdi> تماس بگیرید.</div></div>
+      <div class="alert alert-success" role="status"><svg class="ico" aria-hidden="true"><use href="#i-ok"/></svg><div class="sm"><strong>درخواست شما ثبت شد.</strong>پذیرش معمولاً تا ۱۰ دقیقهٔ دیگر با شما تماس می‌گیرد.</div></div>
+      <div class="alert alert-warning" role="status"><svg class="ico" aria-hidden="true"><use href="#i-warn"/></svg><div class="sm"><strong>کلینیک الان بسته است.</strong>ساعات کاری: هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی.</div></div>
+      <div class="alert alert-danger" role="alert"><svg class="ico" aria-hidden="true"><use href="#i-danger"/></svg><div class="sm"><strong>ارسال انجام نشد.</strong>اتصال اینترنت را بررسی کنید و دوباره «ثبت درخواست» را بزنید. اگر باز هم نشد، با <bdi dir="ltr">۰۲۱ ۵۵۱۰ ۱۰۵۴</bdi> تماس بگیرید.</div></div>
+      <div class="row"><button class="btn btn-secondary" type="button" id="toast-demo-2">نمایش پیام گذرا</button><span class="cap muted">پیام گذرا ۴ ثانیه پایین صفحه می‌ماند.</span></div>
+    </div>
+  </div>
+  <div class="cols">
+    <div class="stack">
+      <span class="lbl">مسیر صفحه (در موبایل فقط والد با فلش برگشت)</span>
+      <nav class="crumb" aria-label="مسیر صفحه"><ol>
+        <li><a href="#">خانه</a><svg class="ico ico-sm mirror" aria-hidden="true"><use href="#i-chev-fwd"/></svg></li>
+        <li><a href="#">خدمات</a><svg class="ico ico-sm mirror" aria-hidden="true"><use href="#i-chev-fwd"/></svg></li>
+        <li class="parent"><a href="#">خدمات زیبایی</a><svg class="ico ico-sm mirror" aria-hidden="true"><use href="#i-chev-fwd"/></svg></li>
+        <li><span aria-current="page">لمینت سرامیکی</span></li>
+      </ol></nav>
+      <span class="lbl">صفحه‌بندی: لوزی به‌عنوان نشانگر صفحهٔ فعال</span>
+      <nav class="pager" aria-label="صفحه‌بندی"><a class="is-disabled" href="#" aria-label="صفحهٔ قبل"><svg class="ico ico-sm mirror" aria-hidden="true"><use href="#i-chev-fwd"/></svg></a><span aria-current="page">۱</span><a href="#">۲</a><a href="#">۳</a><span>…</span><a href="#">۱۲</a><a href="#" aria-label="صفحهٔ بعد"><svg class="ico ico-sm mirror" style="transform:scaleX(-1) rotate(180deg)" aria-hidden="true"><use href="#i-chev-fwd"/></svg></a></nav>
+    </div>
+    <div class="stack">
+      <span class="lbl">اسکلت بارگذاری: در حال بارگذاری نمونه‌ها</span>
+      <div class="skel-card" aria-busy="true" aria-label="در حال بارگذاری"><div class="skel"></div><div class="skel" style="inline-size:60%"></div><div class="skel" style="inline-size:85%"></div><div class="skel" style="inline-size:40%"></div></div>
+      <span class="lbl">حالت خالی</span>
+      <div class="empty"><svg class="logo-mark" aria-hidden="true"><use href="#m-mark"/></svg><p class="sm muted">هنوز نمونه‌ای برای این خدمت منتشر نشده است.</p><a class="btn btn-secondary" href="#">همهٔ نمونه‌ها</a></div>
+    </div>
+  </div>
+</section>
+
+<section class="sg" id="nav">
+  <h2>ناوبری</h2>
+  <p class="sg-note">نوار بالای همین صفحه نمونهٔ زنده است: در دسکتاپ یک خط با پنج گزینه، تغییر پوسته، شماره (زیر ۱۲۸۰ پیکسل فقط آیکن تماس) و کپسول «رزرو نوبت». در موبایل لوگو، آیکن تماس و دکمهٔ منو؛ کشو تمام‌صفحه با فوکوس محصور و بستن با Esc. نوار چسبان پایین فقط زیر ۱۰۲۴ پیکسل دیده می‌شود و هنگام فوکوس فیلد یا باز بودن کشو پنهان می‌شود.</p>
+  <div class="row"><button class="btn btn-secondary" type="button" data-open-drawer>باز کردن کشوی منو (نمونه)</button><span class="cap muted">در عرض دسکتاپ هم برای بررسی باز می‌شود.</span></div>
+</section>
+</main>
+
+<footer class="footer" id="footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div class="foot-brand">
+        <a class="logo" href="#" aria-label="کلینیک دندانپزشکی سفید"><svg class="logo-mark" aria-hidden="true"><use href="#m-mark"/></svg><svg class="logo-word" aria-hidden="true"><use href="#m-word"/></svg></a>
+        <p>دندانپزشکی دیجیتال در جنوب تهران، با مشاورهٔ اول رایگان.</p>
+        <p><svg class="ico ico-sm" style="display:inline;vertical-align:-.3em" aria-hidden="true"><use href="#i-pin"/></svg> تهران، خانی‌آباد نو، خیابان میعاد شمالی، ابتدای کوچه صابر (۲۸)، پلاک ۲</p>
+        <p class="row"><a href="tel:+982155101054" dir="ltr">۰۲۱ ۵۵۱۰ ۱۰۵۴</a><a href="tel:+989205451054" dir="ltr">۰۹۲۰ ۵۴۵ ۱۰۵۴</a></p>
+        <p><svg class="ico ico-sm" style="display:inline;vertical-align:-.3em" aria-hidden="true"><use href="#i-clock"/></svg> هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی</p>
+        <p class="row">مسیریابی: <a href="#">گوگل‌مپ</a><a href="#">نشان</a><a href="#">بلد</a><a href="#">ویز</a></p>
+      </div>
+      <details class="foot-group" open><summary>خدمات پرطرفدار <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></summary><ul><li><a href="#">لمینت سرامیکی</a></li><li><a href="#">کامپوزیت دندان</a></li><li><a href="#">ایمپلنت دندان</a></li><li><a href="#">روکش دندان</a></li><li><a href="#">ترمیم دندان</a></li><li><a href="#">همهٔ خدمات</a></li></ul></details>
+      <details class="foot-group" open><summary>کلینیک <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></summary><ul><li><a href="#">پزشکان</a></li><li><a href="#">قبل و بعد</a></li><li><a href="#">هزینه و پرداخت</a></li><li><a href="#">درباره ما</a></li><li><a href="#">آدرس و ساعات</a></li></ul></details>
+      <details class="foot-group" open><summary>راهنما <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></summary><ul><li><a href="#">راهنمای بیمار</a></li><li><a href="#">اولین مراجعه</a></li><li><a href="#">مقالات</a></li><li><a href="#" style="color:var(--color-warning);font-weight:600">درد شدید دارید؟</a></li><li><a href="#">حریم خصوصی</a></li></ul></details>
+    </div>
+    <div class="foot-bottom">
+      <div class="socials"><a class="icon-btn" href="#" aria-label="اینستاگرام"><svg class="ico" aria-hidden="true"><use href="#i-instagram"/></svg></a><a class="icon-btn" href="#" aria-label="تلگرام"><svg class="ico" aria-hidden="true"><use href="#i-telegram"/></svg></a><a class="icon-btn" href="#" aria-label="پیام در واتساپ"><svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg></a></div>
+      <p>شمارهٔ پروانه: <bdi dir="ltr">[[NEEDS_CLIENT: شماره]]</bdi> · مسئول فنی: <bdi dir="ltr">[[NEEDS_CLIENT: نام]]</bdi></p>
+      <p>© ۱۴۰۵ کلینیک دندانپزشکی سفید</p>
+    </div>
+  </div>
+</footer>
+
+<nav class="sticky-bar" aria-label="دسترسی سریع">
+  <a href="tel:+982155101054"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg>تماس</a>
+  <a href="#"><svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg>واتساپ</a>
+  <a class="is-primary" href="#booking"><svg class="ico" aria-hidden="true"><use href="#i-calendar"/></svg>رزرو نوبت</a>
+</nav>
+<div class="toast" role="status" id="toast"><svg class="ico" aria-hidden="true"><use href="#i-ok"/></svg><span>شمارهٔ کلینیک ذخیره شد.</span></div>
+
+<script>
+(function(){
+const $=(s,c)=>(c||document).querySelector(s), $$=(s,c)=>Array.from((c||document).querySelectorAll(s));
+const root=document.documentElement, mq=matchMedia("(prefers-color-scheme: dark)");
+const theme=()=>root.dataset.theme||(mq.matches?"dark":"light");
+const sync=()=>$$(".theme-toggle").forEach(b=>b.setAttribute("aria-pressed",String(theme()==="dark")));
+$$(".theme-toggle").forEach(b=>b.addEventListener("click",()=>{const n=theme()==="dark"?"light":"dark";root.dataset.theme=n;try{localStorage.setItem("sefid-theme",n)}catch(e){}sync()}));
+mq.addEventListener("change",sync);sync();
+/* color swatches */
+const colors=[["brand","رنگ اصلی: دکمه‌ها، پیوندها، حالت فعال","#007A72","#2BB5AA"],["brand-logo","سبزآبی لوگو، فقط لوگو و مواد سه‌بعدی","#00827A","#00827A"],["brand-strong","hover و فشرده، متن ریز برند","#00655F","#5FD0C6"],["brand-soft","سطح رنگی پشت عناصر برند، چیپ‌ها","#ECF6F4","#0F3B3A"],["on-brand","برچسب روی دکمهٔ اصلی","#FFFFFF","#071A2B"],["ink","تیتر و متن","#0A243F","#EAF1F4"],["ink-muted","متن فرعی","#4A5C70","#A9B8C6"],["ink-faint","زیرنویس و جای‌نما (۳:۱)","#7B8A9A","#7C8FA1"],["surface","پس‌زمینهٔ صفحه","#F7F8F7","#071A2B"],["surface-raised","کارت، برگه، ناوبری","#FFFFFF","#0D2A45"],["surface-sunken","نوارهای بخش","#EEF2F1","#051522"],["line","خطوط تزئینی","#D9E0E0","#1E3A52"],["line-strong","کادر فیلدها و آیکن‌ها (۳:۱)","#7F909E","#5A7995"],["warm","هایلایت گرم: فقط سطح انتخاب‌شده","#E8AF76","#E8AF76"],["warm-soft","صحنهٔ گرم پشت رزرو","#FBF1E6","#2A2419"],["success","متن موفقیت","#2F7A3C","#9BD28F"],["success-fill","پرکنندهٔ موفقیت","#77BA6B","#77BA6B"],["danger","متن خطا","#C81E2E","#FF8A8A"],["danger-fill","پرکنندهٔ خطر (برچسب سفید)","#DA2031","#DA2031"],["warning","متن هشدار","#A85012","#F0A05A"],["warning-fill","پرکنندهٔ هشدار، نشان اورژانس","#E07F38","#E07F38"],["info","متن اطلاع","#1A6F94","#8FD6F7"],["info-fill","پرکنندهٔ اطلاع","#59C1EF","#59C1EF"],["focus","حلقهٔ فوکوس","#007A72","#5FD0C6"]];
+$("#swatches").innerHTML=colors.map(c=>`<div class="sw"><div class="sw-pair"><span style="background:#F7F8F7"><i style="background:${c[2]}"></i></span><span style="background:#071A2B"><i style="background:${c[3]}"></i></span></div><div class="sw-meta"><b class="ltr">--color-${c[0]}</b><span>${c[1]}</span><span class="ltr">${c[2]} / ${c[3]}</span></div></div>`).join("");
+const fa="۰۱۲۳۴۵۶۷۸۹", toFa=s=>String(s).replace(/\d/g,d=>fa[d]);
+$("#spaces").innerHTML=[[1,4],[2,8],[3,12],[4,16],[6,24],[8,32],[12,48],[16,64],[24,96],[32,128]].map(s=>`<div class="space-row"><span class="cap muted">space-${toFa(s[0])} · ${toFa(s[1])}</span><i style="inline-size:${s[1]}px"></i></div>`).join("");
+/* drawer */
+const drawer=$("#drawer");let opener=null;
+const openDrawer=e=>{opener=e.currentTarget;drawer.showModal();document.body.classList.add("drawer-open");$$(".nav-menu").forEach(b=>b.setAttribute("aria-expanded","true"));$(".drawer-close",drawer).focus()};
+$$("[data-open-drawer]").forEach(b=>b.addEventListener("click",openDrawer));
+$$("[data-close-drawer]").forEach(b=>b.addEventListener("click",()=>drawer.close()));
+drawer.addEventListener("close",()=>{document.body.classList.remove("drawer-open");$$(".nav-menu").forEach(b=>b.setAttribute("aria-expanded","false"));if(opener)opener.focus()});
+drawer.addEventListener("keydown",e=>{if(e.key!=="Tab")return;const f=$$("a[href],button:not([disabled]),summary,[tabindex]:not([tabindex='-1'])",drawer).filter(el=>el.offsetParent!==null);if(!f.length)return;const a=document.activeElement;if(e.shiftKey&&a===f[0]){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&a===f[f.length-1]){e.preventDefault();f[0].focus()}});
+/* compare slider */
+$$(".compare").forEach(c=>{const r=$(".compare-range",c);const set=()=>{c.style.setProperty("--pos",r.value);r.setAttribute("aria-valuetext",toFa(r.value)+" درصد")};r.addEventListener("input",set);set()});
+/* sticky bar hides while a field has focus */
+document.addEventListener("focusin",e=>{if(e.target.matches("input,textarea,select"))document.body.classList.add("field-focus")});
+document.addEventListener("focusout",()=>document.body.classList.remove("field-focus"));
+/* toast */
+const toast=$("#toast");let tt;const showToast=()=>{toast.classList.add("is-on");clearTimeout(tt);tt=setTimeout(()=>toast.classList.remove("is-on"),4000)};
+["#toast-demo","#toast-demo-2"].forEach(s=>$(s).addEventListener("click",showToast));
+/* footer groups: open on tablet and desktop, disclosures on phones */
+const fm=matchMedia("(min-width: 744px)"),groups=$$(".foot-group");const syncFoot=()=>groups.forEach(d=>{d.open=fm.matches;$("summary",d).tabIndex=fm.matches?-1:0});fm.addEventListener("change",syncFoot);syncFoot();
+/* booking form */
+const form=$("#bk"),phone=$("#bk-phone"),perr=$("#bk-phone-err"),note=$("#bk-note"),count=$("#bk-count"),submit=$("#bk-submit"),status=$("#bk-status"),success=$("#bk-success");
+const toEn=s=>s.replace(/[۰-۹]/g,d=>"۰۱۲۳۴۵۶۷۸۹".indexOf(d)).replace(/[٠-٩]/g,d=>"٠١٢٣٤٥٦٧٨٩".indexOf(d));
+const norm=v=>{let d=toEn(v).replace(/[^\d+]/g,"");if(d.startsWith("+98"))d="0"+d.slice(3);else if(d.startsWith("0098"))d="0"+d.slice(4);else if(/^9\d{9}$/.test(d))d="0"+d;return d};
+const check=v=>{const d=norm(v);if(!d)return "شمارهٔ موبایل را وارد کنید.";if(/^0[1-8]\d{9}$/.test(d))return "این شمارهٔ تلفن ثابت است. شمارهٔ موبایل را وارد کنید.";if(!/^09\d{9}$/.test(d))return "شمارهٔ موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.";return ""};
+const setErr=(input,el,msg)=>{if(msg){el.innerHTML='<svg class="ico ico-sm" aria-hidden="true"><use href="#i-danger"/></svg>'+msg;el.hidden=false;input.setAttribute("aria-invalid","true");input.setAttribute("aria-describedby",el.previousElementSibling.id+" "+el.id)}else{el.hidden=true;input.removeAttribute("aria-invalid");input.setAttribute("aria-describedby",el.previousElementSibling.id)}};
+phone.addEventListener("blur",()=>{if(phone.value.trim())setErr(phone,perr,check(phone.value))});
+note.addEventListener("input",()=>{count.textContent=toFa(note.value.length)+"/۵۰۰"});
+form.addEventListener("submit",e=>{e.preventDefault();if(submit.hasAttribute("data-loading"))return;const msg=check(phone.value);setErr(phone,perr,msg);if(msg){phone.focus();status.textContent=msg;return}
+  const d=norm(phone.value);submit.style.minInlineSize=submit.offsetWidth+"px";submit.setAttribute("data-loading","");submit.setAttribute("aria-busy","true");$(".btn-label",submit).textContent="در حال ثبت";status.textContent="در حال ثبت درخواست";
+  setTimeout(()=>{form.hidden=true;$("#bk-success-phone").textContent=toFa(d.slice(0,4))+" ••• "+toFa(d.slice(-4));const svg=$(".check-draw",success);svg.replaceWith(svg.cloneNode(true));$("#bk-reset").hidden=false;$("#bk-success-h").focus();status.textContent="درخواست شما ثبت شد"},900)});
+$("#bk-reset").addEventListener("click",()=>{form.hidden=false;form.reset();submit.removeAttribute("data-loading");submit.removeAttribute("aria-busy");submit.style.minInlineSize="";$(".btn-label",submit).textContent="ثبت درخواست";setErr(phone,perr,"");count.textContent="۰/۵۰۰";$("#bk-reset").hidden=true;phone.focus()});
+})();
+</script>
+</body>
+</html>
