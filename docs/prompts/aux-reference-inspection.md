@@ -8,17 +8,16 @@ to this repository, and push. Follow the repository rules in
 <atilnic@gmail.com>`, no tool or model names anywhere, branch `main`).
 
 Already done from the cloud session (see
-`docs/discovery/reference-inspection.md`): section 2 for immersive-g.com,
-except real-device frame rates and the mobile scroll beyond the hero. Run
-the rest: sections 2.5 and 2.6 for immersive-g.com on a real phone if
-possible, and sections 3 and 4 in full. Append to the existing report file
-instead of replacing it.
+`docs/discovery/reference-inspection.md`): sections 2 and 3 for both
+reference sites, except real-device frame rates and the Immersive Garden
+mobile scroll beyond the hero. Run the rest: sections 2.5, 2.6 and 3.6 on a
+real phone if possible, and section 4 in full. Append to the existing report
+file instead of replacing it.
 
 Sites:
 
 1. `https://immersive-g.com` (Immersive Garden): only the parts listed above
-2. `https://hidokme.com`: creative and technical reference (confirm the exact
-   address with the client first; it did not resolve from the cloud)
+2. `https://hidokmeh.com` (Dokmeh Agency): only the parts listed above
 3. `https://sefiddental.ir`: the client's current site; content inventory,
    SEO baseline and the 301 map depend on it
 
@@ -140,7 +139,7 @@ Two short lists: "take this" (patterns that would serve a worried patient
 on a phone) and "avoid this" (patterns that would hurt conversion, speed or
 accessibility for this client).
 
-### 3. hidokme.com
+### 3. hidokmeh.com
 
 Same subsections 3.1 to 3.9 as section 2.
 

@@ -21,7 +21,7 @@ The new site must:
    form, phone calls and WhatsApp.
 3. Look and feel like a large, premium, calm clinic, and deliver a cinematic
    scroll experience in the spirit of Immersive Garden (immersive-g.com) and
-   hidokme.com: one continuous world built around the logo and the tooth,
+   hidokmeh.com: one continuous world built around the logo and the tooth,
    direction changes (vertical, horizontal, diagonal), WebGL scenes, and a
    playful footer. Visitors should keep scrolling for pleasure and ask who
    designed it. Details: `docs/experience-direction.md`.

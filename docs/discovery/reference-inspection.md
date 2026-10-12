@@ -5,12 +5,14 @@ Measured on 2026-10-12 from the cloud build environment with Playwright
 measured here are not representative of real hardware and are omitted.
 Screenshots: `content/reference/inspection/immersive-garden/`.
 
+Screenshots for the second site: `content/reference/inspection/dokmeh/`.
+
 Status per site:
 
 | Site | Status | What remains |
 |---|---|---|
 | immersive-g.com | inspected (sections 2) | real-device frame rates, mobile scroll beyond the hero (synthesized touch gestures did not move the virtual scroll) |
-| hidokme.com | unreachable: the gateway answered 502 (upstream not responding) and the domain did not resolve through DNS-over-HTTPS | the client confirms the exact address; the browser session (`docs/prompts/aux-reference-inspection.md`) inspects it |
+| hidokmeh.com (Dokmeh Agency, Tehran) | inspected (section 3); the first address the client sent was misspelled | real-device frame rates |
 | sefiddental.ir | unreachable from abroad (TLS reset by the origin) | the browser session runs section 4 of the aux prompt |
 | github.com/MengTo/threeui | reviewed from source | see `docs/discovery/threeui-review.md` |
 
@@ -154,11 +156,103 @@ Avoid this:
 - Sound: none for a clinic; a worried patient does not want surprise audio.
 - No mobile-specific asset reduction.
 
-## 3. hidokme.com
+## 3. Dokmeh Agency (hidokmeh.com)
 
-Not reachable from this environment: the gateway returned 502 (the upstream
-did not answer) and public DNS-over-HTTPS did not resolve the name. The
-client confirms the exact address; the browser session inspects it.
+An award-winning web design agency in Tehran. This matters twice: it shows
+what an Iranian studio ships for Iranian networks, and it has a Persian
+version of the same experience.
+
+### 3.1 Technical stack
+
+| Item | Measured |
+|---|---|
+| Framework | Next.js (App Router, Turbopack chunks), prerendered HTML (`x-nextjs-prerender: 1`), ISR with a 300 s stale time |
+| Scroll | native document scroll (page height about 21 viewports on desktop, 17 on phones) smoothed by Lenis (`html.lenis`); keyboard and scrollbar work |
+| WebGL | two `webgl2` canvases on desktop, one on phones: a pinned scene of a wooden and brass column standing in a foggy sea, lit by an HDR environment (`warm_reception_dinner_1k.hdr`, 1.4 MB on desktop, a 128 KB `_256` version on phones), one GLB model, PBR metal textures (color, normal, roughness webp) |
+| Video | hero and intro videos: a 64 MB intro MP4, a 9 MB loop and a 4.6 MB background on desktop; a single 1.7 MB background on phones |
+| Fonts | Satoshi variable and Fragment Mono (57 KB); the Persian version adds «Abar» for headings |
+| JavaScript | 38 chunks on desktop, 21 on phones, all small (Turbopack splitting) |
+| Total transfer, home, desktop | 80.6 MB in 136 requests (77.8 MB of it video) |
+| Total transfer, home, mobile | 2.9 MB in 52 requests |
+| Security | `X-Frame-Options: DENY`, HSTS, a report-only CSP that allows only self, its CMS subdomain and Google Analytics |
+| CMS | `cms.hidokmeh.com` (headless CMS behind the same CSP) |
+| Third parties | Google Tag Manager and Analytics only |
+| Extras | an «Ask AI» entry with icons for several assistants; an English and a Persian version |
+
+### 3.2 Loading and first paint
+
+The hero shows a full-bleed video of golden grass in the wind behind a
+white headline and award laurels; `load` fires in 4.2 s on desktop and
+2.3 s on phones, the page is usable at once, and the big videos stream in
+the background. No preloader. Software-GPU frame rate stayed near 60 fps on
+both viewports, which means the WebGL work is light.
+
+### 3.3 Scroll choreography (desktop)
+
+| Scene | What happens |
+|---|---|
+| 1 Hero | full-bleed video, centered white headline («We design change-making website experiences...»), laurels, «Scroll to explore ↓»; a persistent yellow pill at the top holds the logo and «Menu» |
+| 2 Founder | white section: portrait, name, title, and a bold manifesto paragraph |
+| 3 Monument (pinned) | the 3D column in the foggy sea stays pinned while three counters (45+ awards, 350+ projects, 15+ years) and then «WHY US?» with a paragraph slide in one after another over the scene |
+| 4 Trusted by | a clean 4x2 logo grid with a headline |
+| 5 Selected works | «More Than +350 Projects in 15 years», then a masonry of device mockup cards with captions |
+| 6 Awards | cards fanned out in 3D depth, a paginated list (01/10) with award names and dates |
+| 7 What we do | giant ghosted outline words (Websites, E-commerce, Brand Identity, Interior Design) sliding past |
+| 8 Footer | huge navigation words, contact details, social icons |
+
+Direction changes: none; vertical with one pinned scene and depth effects.
+
+### 3.4 Mobile (390x844)
+
+Native scroll works. The same order as desktop; the monument scene is
+pinned on phones too with the counters over it; the masonry becomes one
+column; the awards fan becomes one card at a time with arrows; the videos
+are replaced by a single light background video. Total 2.9 MB.
+
+### 3.5 Persian version (`/fa/`)
+
+`dir="rtl"` and `lang="fa"` are set after hydration (the server HTML still
+says `lang="en"`), the H1 becomes «تجربه‌های دیجیتال ماندگار» in the Abar
+font, Latin body text keeps Satoshi, the menu is translated, and the layout
+mirrors. Numbers stay Latin. It is a competent Persian port, with the
+server-side `lang` bug as the one thing not to copy.
+
+### 3.6 Design system observations
+
+| Item | Observed |
+|---|---|
+| Palette | white sections with near-black text, one bold accent (yellow pill and buttons), photographic and foggy-gray scene backgrounds |
+| Type | Satoshi (geometric sans) at large sizes, Fragment Mono for labels, Abar for Persian display |
+| Layout | centered hero, pinned scene with left-aligned overlays, grids and masonry, ghosted giant words |
+| Motion | Lenis smoothing, counters that slide in while the scene stays, cards with 3D depth, text that reveals on scroll |
+| UI chrome | one persistent pill (logo plus Menu) in the accent color |
+
+### 3.7 Accessibility and SEO
+
+One real H1, H2 and H3 structure, 2.5k characters of real text, Persian
+version with proper `dir`, zoom allowed, `viewport-fit=cover`; CSP in
+report-only mode; the 64 MB desktop video is the single performance flaw.
+
+### 3.8 Verdict for Sefid Dental
+
+Take this:
+
+- The loading model: usable at once, media streams later, phones get a
+  tenth of the bytes. This is our tiered loading in practice.
+- Native scroll smoothed by Lenis with keyboard and scrollbar intact.
+- The pinned monument with counters sliding over it: our trust band over
+  the molar scene (scene 2 to 4 of the journey).
+- The persistent accent pill with one action: our sticky «رزرو نوبت».
+- Fanned cards with depth for the awards: our before/after and dentist
+  cards at tiers 2 and 3.
+- A real Persian version with a Persian display font and mirrored layout.
+
+Avoid this:
+
+- A 64 MB intro video on desktop.
+- Ghosted giant outline words as a section: a known agency cliché and
+  poor contrast.
+- `lang="en"` in the server HTML of the Persian page.
 
 ## 4. sefiddental.ir
 
@@ -172,9 +266,12 @@ runs section 4 of `docs/prompts/aux-reference-inspection.md`.
 - `content/reference/inspection/immersive-garden/mobile-hero-sheet.jpg`: 31 frames of the mobile hero over time
 - `content/reference/inspection/immersive-garden/mobile-preloader.jpg`
 - `content/reference/inspection/immersive-garden/fallbacks-no-webgl-and-reduced-motion.jpg`
+- `content/reference/inspection/dokmeh/desktop-scroll-sheet.jpg`: 31 frames of a full desktop scroll
+- `content/reference/inspection/dokmeh/mobile-scroll-sheet.jpg`: 16 frames of a full mobile scroll
+- `content/reference/inspection/dokmeh/persian-version-mobile.jpg`: the Persian version, hero and monument scene
 
 ## 6. Open questions
 
-- The exact address of the second reference site (gap 33).
-- Phone recordings of both reference sites from the client, which also
-  show the mobile scroll beyond the hero.
+- Phone recordings of both reference sites from the client (real frame
+  rates, the Immersive Garden mobile scroll beyond the hero, what the client
+  likes most).

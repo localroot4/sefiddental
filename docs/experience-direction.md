@@ -3,7 +3,7 @@
 Binding for phases 2, 7 and 8. Supersedes the motion section of
 `docs/design-direction.md`. The client's new brief (2026-10-11): a cinematic,
 scroll-driven experience in the spirit of Immersive Garden
-(immersive-g.com) and hidokme.com, built on Next.js and WebGL 2, with
+(immersive-g.com) and hidokmeh.com, built on Next.js and WebGL 2, with
 game-style quality tiers so weak devices drop effects but keep 60 fps, and
 a site people keep scrolling for the pleasure of it. Built from the clinic's
 own logo and the tooth, never copied from the references.
@@ -35,9 +35,16 @@ Two findings change the plan:
   scroll with hidden body overflow, disabled zoom, sound) is exactly what
   this brief forbids. The budgets and tiers below stand.
 
+- Dokmeh Agency (hidokmeh.com), an award-winning Tehran studio, proves the
+  opposite loading model works: usable at once, native scroll smoothed by
+  Lenis, light WebGL, phones at a tenth of the desktop bytes, and a real
+  Persian version with a Persian display font. Its pinned "monument" scene
+  with counters sliding over it, its persistent accent pill, and its fanned
+  depth cards are patterns we adopt; its 64 MB desktop intro video and
+  ghosted outline words are not.
+
 Phase 2 still asks the client for phone recordings of both reference sites
-(gap 33) to see their mobile scroll and the second site, which was
-unreachable.
+(gap 33) for real frame rates and taste calibration.
 
 ## 2. The concept: «سفر یک لبخند»
 
