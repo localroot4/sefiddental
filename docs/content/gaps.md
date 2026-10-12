@@ -36,5 +36,5 @@ Phases append rows; the client closes them. Status: open, received, done.
 | 29 | Profiles on nobat.ir, doctoreto.com, paziresh24.com: existing or to create | local SEO | client | open |
 | 30 | Are bridges and complete dentures offered? (no page until confirmed) | services, keyword map | client | open |
 | 31 | A nearby 24-hour dental center or hospital to name for closed-hours emergencies | emergency page | client | open |
-| 32 | Hosting: probe the existing cPanel server first (host name, WHM root access, cPanel Node.js app, memory); Node PaaS only if the probe fails | phase 3 | client | open: host name and WHM facts needed |
+| 32 | Hosting: the client's cPanel has "Setup Node.js App" (CloudLinux Node.js Selector) and Git Version Control (confirmed 2026-10-12, screenshot). Still needed: Node versions offered, account memory limit, SSH or Terminal access, host name | phase 3 (path C2 likely) | client | partly received |
 | 33 | Screen recordings (30-60 s each) of immersive-g.com and hidokmeh.com from the client's phone and desktop, plus the exact address of the second site (address confirmed) | phase 2 taste calibration | client | open |
