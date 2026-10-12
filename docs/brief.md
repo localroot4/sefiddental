@@ -79,6 +79,12 @@ Positioning and offer:
   gated against abuse (see Decisions).
 - First consultation is free (client, 2026-10-12). Say it plainly; the
   client may withdraw it later, so it is a setting, not hard-coded copy.
+- Callback: during opening hours reception usually calls within 5 to 10
+  minutes, depending on traffic. Copy says «معمولاً تا ۱۰ دقیقهٔ دیگر»; the
+  minutes and the caller number are settings in admin.
+- Dentists and specialists: unknown for now; the client adds and edits them
+  in admin. Nothing is invented; sections that need dentists stay hidden
+  until at least one is published.
 - Pediatric dentistry and orthodontics are offered.
 
 ## 3. Audience and psychology
@@ -180,11 +186,11 @@ optional molar on the restoration page, sound.
 
 - Language: Persian only for v1. Code and developer docs in English. Build
   i18n-ready routes and translation files from day one.
-- Hosting: decided 2026-10-12. The client's shared Linux cPanel cannot run
-  Next.js with Payload dependably, so the client buys a Node host inside
-  Iran: a PaaS (Liara first choice, ArvanCloud second) with managed
-  PostgreSQL and object storage. cPanel stays only for email or the old site
-  until launch. Deployment habit stays: push to `main`, auto deploy. Details
+- Hosting: the client wants no new cost if possible. Phase 3 probes the
+  existing cPanel server first (root access through WHM, or the cPanel
+  Node.js app feature) and uses it when it can run Node dependably; a Node
+  PaaS inside Iran (Liara, else ArvanCloud) is the fallback. Deployment
+  habit stays: push to `main`, auto deploy. Details and the probe checklist
   in `docs/architecture.md` section 2.
 - No WordPress. Custom build.
 - Heavy motion lives on the home experience only. Service, dentist, article,
@@ -264,7 +270,7 @@ Placeholders are explicit `[[NEEDS_CLIENT: ...]]` markers and are tracked in
 | 15 | Scroll is never hijacked; pinned and horizontal scenes exist only at 1024 px and wider; phones get vertical, lighter versions of every scene | Mobile is the client's first priority; native scroll keeps accessibility and performance. |
 | 16 | Quality tiers 0-3 chosen by GPU benchmark, device signals and a live frame monitor, with a user override | Game-style settings keep 60 fps on strong devices and a complete, fast site on weak ones. |
 | 14 | Insurers: five featured by name, the rest under «سایر بیمه‌ها», all admin-managed | Client strategy: cash patients first. |
-| 17 | Hosting: Node PaaS in Iran (Liara, else ArvanCloud), not shared cPanel | Next.js with Payload needs Node, PostgreSQL and object storage; the client approved buying it. |
+| 17 | Hosting: the existing cPanel server if the phase 3 probe passes (root through WHM, or the cPanel Node.js app with Node 20+ and 1 GB), else a Node PaaS in Iran (Liara, else ArvanCloud) | Next.js with Payload needs a running Node process and a database; the client prefers no new cost; a probe decides on facts, not guesses. |
 | 18 | «مشاورهٔ رایگان» is used as a fact, controlled by a feature flag | Client confirmed the offer and may withdraw it. |
 
 ## 9. Pending inputs from the client

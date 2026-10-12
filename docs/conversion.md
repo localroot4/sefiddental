@@ -179,13 +179,14 @@ heading.
 2. «درخواست شما ثبت شد»
 3. Callback line, computed from the schedule (section 6), one voice
    («پذیرش ... تماس می‌گیرد»):
-   - Open: «پذیرش [[NEEDS_CLIENT: بازهٔ تماس، مثلاً «تا یک ساعت دیگر»]] با شما تماس می‌گیرد.»
+   - Open: «پذیرش معمولاً تا {callbackMinutes} دقیقهٔ دیگر با شما تماس می‌گیرد.» (setting `callbackMinutes`, default 10, Persian digits)
    - Before opening today: «پذیرش امروز از ساعت ۱۰ با شما تماس می‌گیرد.»
    - Closing soon, closed or holiday: «پذیرش {فردا | شنبه ۱۲ مهر} از ساعت ۱۰ با شما تماس می‌گیرد.» On a holiday the line starts with «امروز تعطیل رسمی است.»
    - Then: «شمارهٔ ثبت‌شده: ۰۹۱۲ ••• ۶۷۸۹» (LTR island).
-4. «تماس از شمارهٔ ۰۲۱ ۵۵۱۰ ۱۰۵۴ خواهد بود. شماره را ذخیره کنید تا تماس را
+4. «تماس از شمارهٔ {callerNumber} خواهد بود. شماره را ذخیره کنید تا تماس را
    بشناسید.» with «ذخیرهٔ شمارهٔ کلینیک» (vCard: name, phones, address, site).
-   [[NEEDS_CLIENT: confirm the caller number]]
+   `callerNumber` is a setting in admin; while empty, this line is hidden
+   and the vCard still offers the clinic numbers.
 5. «برای مراجعه همراه داشته باشید»: کارت ملی، کارت بیمه در صورت استفاده،
    عکس‌های رادیوگرافی قبلی اگر دارید، فهرست داروهایی که مصرف می‌کنید.
 6. Address with «مسیریابی», and «پیام در واتساپ» as the fallback.

@@ -10,7 +10,7 @@ this file in the same commit.
 |---|---|---|
 | Framework | Next.js, current stable (16 or later), App Router, TypeScript strict | Server components by default; client islands for motion and WebGL |
 | CMS | Payload CMS 3.x inside the same Next.js app, admin at `/admin`, locale `fa`, RTL | Collections, drafts and versions, scheduled publish, access control, media with sharp, live preview |
-| Database | PostgreSQL (Payload Postgres adapter) | Managed by the host; SQLite only in local tests |
+| Database | PostgreSQL (Payload Postgres adapter) on a PaaS or a VPS; Payload's SQLite adapter on cPanel paths (C2) | The data model is identical; the adapter is a configuration choice made in phase 3 |
 | Styling | Tailwind CSS v4 with `@theme` tokens from `design/tokens.css`; CSS modules for complex scenes | one token file, no ad-hoc colors |
 | UI motion | Motion (`motion/react`) for component states and layout animation | client islands only |
 | Scroll engine | GSAP 3 (ScrollTrigger, Flip, MorphSVG, Draggable, InertiaPlugin) plus Lenis | one master timeline per page; see `docs/experience-direction.md` |
@@ -25,15 +25,35 @@ this file in the same commit.
 
 ## 2. Hosting and deployment
 
-A Next.js app with Payload needs a Node.js runtime, a PostgreSQL database
-and writable media storage. The client's shared cPanel plan has none of
-these in a dependable form.
+A Next.js app with Payload needs a Node.js runtime that stays running, a
+database and writable media storage. The client wants to avoid new hosting
+cost, so the order of preference is: the client's existing cPanel server if
+it can run Node dependably, otherwise a Node PaaS. Phase 3 decides with a
+15-minute probe, in this order:
 
-Decision (2026-10-12): option A. The client buys a Node PaaS plan; Liara is
-the first choice, ArvanCloud the fallback. Phase 3 verifies that the chosen
-platform accepts traffic from outside Iran (risk R1) before any deploy.
+| Path | When it applies | Cost | How it runs |
+|---|---|---|---|
+| **C1: the client's own server through WHM** | WHM gives root SSH (a VPS or dedicated server with a cPanel license) | none | Install Node 22 LTS and PM2, run the built Next.js app as a service behind Apache or Nginx (cPanel's proxy or an Apache `ProxyPass` include), PostgreSQL from the system packages or Payload's SQLite adapter, media on local disk, cron from the system |
+| **C2: cPanel "Setup Node.js App"** | shared or reseller cPanel on CloudLinux with the Node.js Selector (Passenger) and Node 20 or newer, at least 1 GB of memory for the account | none | Build in GitHub Actions (the server never runs `next build`), deploy the standalone output over SSH or cPanel Git, Passenger runs `server.js`; Payload with the SQLite adapter (one file, backed up nightly; a clinic site writes a few rows a day) or MySQL if Payload's adapter is stable at build time; media on disk under the account; cron through cPanel hitting a route |
+| **A: Node PaaS inside Iran** | neither C1 nor C2 passes the probe | a small monthly fee | Liara first, ArvanCloud second: Next.js preset, managed PostgreSQL, object storage, deploy from GitHub Actions |
 
-**Option A (chosen): Node PaaS inside Iran.** Liara (liara.ir) or
+Probe checklist for phase 3 (the client runs it with the agent, or shares
+the host name so the agent reads the provider's documentation):
+
+1. WHM: is there root terminal or SSH access? (C1)
+2. cPanel, Software section: is "Setup Node.js App" present, and which
+   Node versions does it list? (C2)
+3. Account limits (cPanel left column or WHM package): memory, processes,
+   disk.
+4. From outside Iran: does a test page on the server load? (risk R1)
+5. Can GitHub Actions reach the server over SSH, or can cPanel Git pull from
+   GitHub? (deploy path)
+
+Whatever passes first wins. Static export (B, below) is the last resort and
+needs a separate PHP service for bookings and content, so it is not
+recommended.
+
+**Option A: Node PaaS inside Iran.** Liara (liara.ir) or
 ArvanCloud PaaS, both with Next.js app presets, managed PostgreSQL and
 object storage. Deploy from GitHub Actions on push to `main` (Liara CLI or a
 Docker image); environment variables in the platform; media in object
@@ -52,8 +72,8 @@ files; a separate small PHP API on cPanel for bookings; content still needs
 a CMS somewhere, and every publish needs a rebuild that fetches content
 across the Iran border. Slow content updates and fragile builds.
 
-Phase 3 probes the actual host, records the facts, and asks the client to
-confirm option A or A2 before writing deploy code.
+Phase 3 runs the probe above, records the facts in `docs/deploy.md`, and
+asks the client to confirm the path before writing deploy code.
 
 Deployment pipeline (option A): CI runs lint, types, unit tests, build,
 Playwright smoke, Lighthouse budgets; on success deploys; Payload migrations

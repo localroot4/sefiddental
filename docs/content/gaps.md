@@ -22,7 +22,7 @@ Phases append rows; the client closes them. Status: open, received, done.
 | 15 | Confirm the four stats from the old site (13 years, 7 dentists, 4 clinics, 10 insurers) | trust band | client | open |
 | 16 | Confirm the mobile number is the WhatsApp and Telegram number | sticky bar | client | open |
 | 17 | Is the first consultation free? | booking chips, hero copy | client | done: yes, behind a feature flag |
-| 18 | Callback promise: how fast does reception call back during hours, and from which number? | booking success copy | client | open |
+| 18 | Callback promise and caller number | booking success copy | client | done: usually 5-10 minutes; both are admin settings |
 | 19 | Emergency: can staff call urgent requests first at opening time («در اولین ساعت کاری»)? | emergency copy | client | open |
 | 20 | Name on the clinic signage | NAP consistency | client | done: «کلینیک دندانپزشکی سفید» plus the logo |
 | 21 | Is the new host in Iran or abroad? Is inbound traffic from outside Iran open (Googlebot)? | risk R1, phase 3 | client | open |
@@ -30,11 +30,11 @@ Phases append rows; the client closes them. Status: open, received, done.
 | 23 | Logo variants: vertical lockup, horizontal lockup with «کلینیک دندانپزشکی دیجیتال», white version (all SVG) | header, footer, OG | client | open |
 | 24 | Unidentified round social icon with a check mark in the old footer | footer socials | client | open |
 | 25 | First-visit promise on the old site («پاکسازی ملایم» if needed): still true? | first-visit guide | client | open |
-| 26 | Specialists on the team: orthodontist? pediatric dentist? oral surgeon? (GBP categories and service claims) | GBP, service pages | client | open |
+| 26 | Specialists on the team | GBP, service pages | client | deferred: the client adds dentists in admin; no specialist claims until then |
 | 27 | Scope checks: wisdom-tooth surgery, gum grafts, clear aligners, digital smile design software | keyword map "(verify)" terms | client | open |
 | 28 | Evidence for the «اولین کلینیک دیجیتال جنوب تهران» claim, or approval to keep it as a slogan at the client's risk | home H1, risk R6 | client | open |
 | 29 | Profiles on nobat.ir, doctoreto.com, paziresh24.com: existing or to create | local SEO | client | open |
 | 30 | Are bridges and complete dentures offered? (no page until confirmed) | services, keyword map | client | open |
 | 31 | A nearby 24-hour dental center or hospital to name for closed-hours emergencies | emergency page | client | open |
-| 32 | Hosting: client buys a Node PaaS in Iran (Liara first, ArvanCloud fallback); create the account and share access before phase 3 | phase 3 | client | decided, account pending |
+| 32 | Hosting: probe the existing cPanel server first (host name, WHM root access, cPanel Node.js app, memory); Node PaaS only if the probe fails | phase 3 | client | open: host name and WHM facts needed |
 | 33 | Screen recordings (30-60 s each) of immersive-g.com and hidokmeh.com from the client's phone and desktop, plus the exact address of the second site (address confirmed) | phase 2 taste calibration | client | open |

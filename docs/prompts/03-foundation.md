@@ -13,12 +13,14 @@ performance engineer. No public page design beyond the base layout.
 
 ## Deliverables
 
-1. Hosting decision recorded in `docs/deploy.md`: option A (Liara or
-   ArvanCloud PaaS), A2 (client VPS) or, only if the client insists, B
-   (static export). If the client has not answered, build for option A with
-   environment-driven configuration and list the question. Document the
-   exact platform steps (app, PostgreSQL, object storage, environment
-   variables, domains, cron).
+1. Hosting decision recorded in `docs/deploy.md` after the probe in
+   `docs/architecture.md` section 2, in order: C1 (the client's own server
+   through WHM root), C2 (cPanel Node.js app with Node 20+ and 1 GB), A
+   (Liara or ArvanCloud PaaS). Walk the client through the probe in Persian
+   if they cannot run it alone. Build with environment-driven configuration
+   so the same code runs on any path (database adapter, media storage,
+   base URL). Document the exact steps for the chosen path (runtime,
+   database, media, environment variables, domains, cron, deploy).
 2. Next.js app (current stable, App Router, TypeScript strict) at the
    repository root with Payload 3 mounted at `/admin`, locale `fa`, RTL,
    PostgreSQL adapter (SQLite adapter for tests), media collection with
