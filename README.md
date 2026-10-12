@@ -16,7 +16,10 @@ has a prompt in `docs/prompts/` and ends with a report in `docs/reports/`.
 |---|---|
 | `docs/brief.md` | Source of truth: facts, scope, constraints, quality bar, decisions |
 | `docs/experience-direction.md` | The home scroll experience: scenes, quality tiers, budgets |
-| `docs/design-direction.md` | Visual rules and content-page motion until `docs/design/DESIGN.md` exists |
+| `docs/design/DESIGN.md` | The design system: tokens, type, components, RTL, motion, 3D look |
+| `docs/design-direction.md` | The reasoning behind the design system |
+| `docs/experience/storyboard.md` | Scene-by-scene board of the home journey with frames |
+| `design/` | Tokens, fonts, brand SVGs and 3D assets, styleguide, prototypes, hero directions, vendored libraries |
 | `docs/architecture.md` | Next.js, Payload, WebGL stack; hosting; data model; pipelines |
 | `docs/ia.md`, `docs/conversion.md` | Sitemap and navigation; booking and emergency flows |
 | `docs/discovery/` | Old-site audit, personas, KPIs, risks |

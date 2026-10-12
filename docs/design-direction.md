@@ -10,9 +10,9 @@ conventions.
 Dials (1-10): DESIGN_VARIANCE 7, MOTION_INTENSITY 9 on home and 5 on content
 pages, VISUAL_DENSITY 3 (articles 4).
 
-Phase 2 turns this direction into `docs/design/DESIGN.md` with measured
-contrast tables, final token values and component specs. Until then this file
-is binding.
+Phase 2 turned this direction into `docs/design/DESIGN.md` (measured
+contrast, final tokens in `design/tokens.css`, component specs). Where the
+two differ, `DESIGN.md` wins; this file keeps the reasoning.
 
 ## 1. Color
 
