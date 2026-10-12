@@ -39,7 +39,13 @@ for «تماس با کلینیک», «واتساپ» for «پیام در وات�
 
 Banned as labels: «تماس با ما» (ambiguous between calling and the address
 page), «بیشتر بدانید», «کلیک کنید», «همین حالا تماس بگیرید», «انتخاب این
-سطح», «مشاورهٔ رایگان» until the client confirms the offer.
+سطح».
+
+Free consultation (confirmed): the fact «مشاورهٔ اول رایگان است» appears in
+the hero subtext, the booking lead and the pricing page, behind the feature
+flag `freeConsultation`. It is a fact line, never a button label; the
+button stays «رزرو نوبت». The booking chip «معاینه» becomes «معاینه و
+مشاورهٔ رایگان» while the flag is on.
 
 WhatsApp is the primary messenger: it has been reachable in Iran without a
 VPN since the restrictions were lifted in December 2024 (re-check before
@@ -120,7 +126,8 @@ Mechanics:
 | hidden | `service_key`, `tier`, `dentist`, source URL, UTM, honeypot, signed form timestamp | | never shown |
 
 Heading: «درخواست نوبت». Lead: «شماره‌تان را بگذارید. پذیرش زمان دقیق نوبت
-را با شما هماهنگ می‌کند.»
+را با شما هماهنگ می‌کند.» With the free-consultation flag on, a second line:
+«مشاورهٔ اول رایگان است.»
 
 Privacy line above the button: «شمارهٔ شما فقط برای هماهنگی نوبت استفاده
 می‌شود.» with a link «حریم خصوصی». No consent checkbox; the line informs.

@@ -108,12 +108,14 @@ desktop, 3 on phones. Hero subtext max 20 words.
 
 Reuse the logo's own geometry so the site feels designed by the same hand:
 
-- The teal tooth mark: hero image mask, loading indicator, favicon, bullet in
-  brand-soft, section ornament at low opacity.
+- The teal mark (toothpaste on a toothbrush head, per the client): hero
+  image mask, loading indicator, favicon, bullet in brand-soft, section
+  ornament at low opacity. In copy and code call it "the mark"; never draw a
+  literal brush or paste next to it.
 - The square diamond dots: particles in the intro, markers for steps, active
   state in pagination.
-- The long horizontal bar of the wordmark: progress line in the intro, active
-  nav underline, section divider.
+- The long horizontal bar of the wordmark (the brush handle): progress line
+  in the intro, active nav underline, section divider.
 
 ## 6. Layout families
 

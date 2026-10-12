@@ -29,7 +29,11 @@ A Next.js app with Payload needs a Node.js runtime, a PostgreSQL database
 and writable media storage. The client's shared cPanel plan has none of
 these in a dependable form.
 
-**Option A (recommended): Node PaaS inside Iran.** Liara (liara.ir) or
+Decision (2026-10-12): option A. The client buys a Node PaaS plan; Liara is
+the first choice, ArvanCloud the fallback. Phase 3 verifies that the chosen
+platform accepts traffic from outside Iran (risk R1) before any deploy.
+
+**Option A (chosen): Node PaaS inside Iran.** Liara (liara.ir) or
 ArvanCloud PaaS, both with Next.js app presets, managed PostgreSQL and
 object storage. Deploy from GitHub Actions on push to `main` (Liara CLI or a
 Docker image); environment variables in the platform; media in object

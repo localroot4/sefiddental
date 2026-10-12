@@ -77,6 +77,8 @@ Positioning and offer:
     names and terms.
 - Emergency: same-day slots for patients in real pain, "if possible". Must be
   gated against abuse (see Decisions).
+- First consultation is free (client, 2026-10-12). Say it plainly; the
+  client may withdraw it later, so it is a setting, not hard-coded copy.
 - Pediatric dentistry and orthodontics are offered.
 
 ## 3. Audience and psychology
@@ -119,8 +121,13 @@ Research to apply (cite in reports, apply in design):
 ## 4. Brand
 
 - Logo: Persian wordmark «سفید» in navy with a long horizontal bar and square
-  diamond dots, a teal tooth-shaped mark, and "DENTAL . CLINIC" in teal.
-  Source: `content/brand/logo-horizontal.png` (PNG only; SVG requested).
+  diamond dots, a teal mark, and "DENTAL . CLINIC" in teal. The client reads
+  the mark as toothpaste squeezed onto a toothbrush head, and the long bar
+  of the wordmark as the brush handle. Source: `content/brand/logo-horizontal.png`
+  and the traced `content/brand/logo-horizontal.svg` (client approves the
+  trace in phase 2).
+- Signage: the sign reads «کلینیک دندانپزشکی سفید» with the logo; this is
+  the canonical name everywhere.
 - Palette (`content/brand/palette.pdf`): teal `#00827A` (primary), deep teal
   `#00655F`, navy `#0A243F`, orange `#E07F38`, peach `#E8AF76`, green
   `#77BA6B`, red `#DA2031`, yellow `#FFE95A`, sky `#59C1EF`, burgundy
@@ -173,12 +180,12 @@ optional molar on the restoration page, sound.
 
 - Language: Persian only for v1. Code and developer docs in English. Build
   i18n-ready routes and translation files from day one.
-- Hosting: the client owns a shared cPanel plan with WHM access. Next.js
-  with Payload needs Node.js and PostgreSQL, which shared cPanel does not
-  provide dependably. Decision pending (gap 32): a Node PaaS inside Iran
-  (Liara or ArvanCloud), or Node on the client's own server if WHM is a full
-  VPS. Deployment habit stays: push to `main`, auto deploy. Details in
-  `docs/architecture.md` section 2.
+- Hosting: decided 2026-10-12. The client's shared Linux cPanel cannot run
+  Next.js with Payload dependably, so the client buys a Node host inside
+  Iran: a PaaS (Liara first choice, ArvanCloud second) with managed
+  PostgreSQL and object storage. cPanel stays only for email or the old site
+  until launch. Deployment habit stays: push to `main`, auto deploy. Details
+  in `docs/architecture.md` section 2.
 - No WordPress. Custom build.
 - Heavy motion lives on the home experience only. Service, dentist, article,
   pricing, address, booking and emergency pages stay light and server-
@@ -257,6 +264,8 @@ Placeholders are explicit `[[NEEDS_CLIENT: ...]]` markers and are tracked in
 | 15 | Scroll is never hijacked; pinned and horizontal scenes exist only at 1024 px and wider; phones get vertical, lighter versions of every scene | Mobile is the client's first priority; native scroll keeps accessibility and performance. |
 | 16 | Quality tiers 0-3 chosen by GPU benchmark, device signals and a live frame monitor, with a user override | Game-style settings keep 60 fps on strong devices and a complete, fast site on weak ones. |
 | 14 | Insurers: five featured by name, the rest under «سایر بیمه‌ها», all admin-managed | Client strategy: cash patients first. |
+| 17 | Hosting: Node PaaS in Iran (Liara, else ArvanCloud), not shared cPanel | Next.js with Payload needs Node, PostgreSQL and object storage; the client approved buying it. |
+| 18 | «مشاورهٔ رایگان» is used as a fact, controlled by a feature flag | Client confirmed the offer and may withdraw it. |
 
 ## 9. Pending inputs from the client
 

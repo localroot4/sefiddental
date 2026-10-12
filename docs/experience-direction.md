@@ -135,9 +135,12 @@ layout. Lighthouse mobile: Performance >= 90 on home at tier 1 settings,
 
 ## 6. Brand assets in 3D
 
-- The teal tooth mark as a smooth 3D solid with a glass-like material in
-  brand teal; the diamonds as small navy gems that catch light; the bar as
-  a glowing teal line used for loading and scene transitions.
+- The teal mark (toothpaste on a brush head) as a smooth 3D solid with a
+  glass-like teal material; the diamonds as small navy gems that catch
+  light; the bar (the brush handle) as a porcelain rod and, in 2D, a glowing
+  teal line used for loading and scene transitions. Scene 5 may show the
+  paste squeezing onto the brush as the "care" beat; keep it abstract, never
+  cartoon.
 - One anatomical molar model (phase 2 sources or models it): enamel material
   with subsurface-like translucency, used in scenes 4 and 5.
 - Porcelain relief material for the world: matte white with soft shadows
