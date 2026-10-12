@@ -1,0 +1,258 @@
+<!doctype html>
+<!--
+  Prototype 0c: the diagonal workflow scene, DOM path only.
+  Question: can four workflow beats (اسکن، طراحی، ساخت، لبخند) travel along a diagonal
+  as the user scrolls, with transform and opacity only and the light shifting from cool
+  to warm through CSS variables, and stay above 50 fps at a 4x CPU throttle; and does
+  the same content read as a plain vertical sequence with diamond markers on phones?
+-->
+<html lang="fa" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>نمونهٔ ۰c: مسیر مورب</title>
+<link rel="preload" href="../fonts/Vazirmatn%5Bwght%5D.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="../fonts/Estedad-Bold.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+@font-face{font-family:"Vazirmatn";src:url("../fonts/Vazirmatn%5Bwght%5D.woff2") format("woff2");font-weight:400 700;font-display:swap}
+@font-face{font-family:"Estedad";src:url("../fonts/Estedad-Bold.woff2") format("woff2");font-weight:700;font-display:swap}
+:root{--on-brand:#fff}
+[data-theme="dark"]{--on-brand:#071A2B}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--on-brand:#071A2B}}
+
+*,*::before,*::after{box-sizing:border-box}
+html{background:var(--color-surface);color:var(--color-ink);font-family:var(--font-body);line-height:var(--leading-body);-webkit-text-size-adjust:100%}
+body{margin:0;font-size:var(--text-body)}
+h1,h2,h3{font-family:var(--font-display);font-weight:700;margin:0}
+p{margin:0}
+a{color:var(--color-brand)}
+:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+button{font:inherit;color:inherit}
+.wrap{max-inline-size:var(--container);margin-inline:auto;padding-inline:var(--gutter)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);min-height:var(--target-lg);padding-inline:var(--space-6);border-radius:var(--radius-pill);font-weight:600;text-decoration:none;border:1.5px solid transparent;cursor:pointer;transition:transform var(--dur-1) var(--ease-out),background-color var(--dur-2),border-color var(--dur-2)}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--color-brand);color:var(--on-brand)}
+.btn-primary:hover{background:var(--color-brand-strong)}
+.btn-secondary{border-color:var(--color-line-strong);color:var(--color-ink);background:transparent}
+.btn-secondary:hover{border-color:var(--color-brand)}
+.btn-sm{min-height:var(--target);padding-inline:var(--space-4);font-size:var(--text-small)}
+
+.proto{border-block-end:1px solid var(--color-line);background:var(--color-surface-sunken);font-size:var(--text-small);line-height:var(--leading-small);position:relative;z-index:5}
+.proto .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);min-block-size:56px;padding-block:var(--space-2)}
+.proto .q{color:var(--color-ink-muted);flex:1 1 260px}
+.proto .q b{color:var(--color-ink);font-weight:600}
+.proto .tools{display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap}
+.meter{display:inline-flex;align-items:center;gap:var(--space-2);min-block-size:var(--target);min-inline-size:13rem;padding-inline:var(--space-4);border:1px solid var(--color-line);border-radius:var(--radius-pill);background:var(--color-surface-raised);white-space:nowrap}
+.meter bdi{font-weight:600;color:var(--color-brand-strong)}
+/* corner meter: visible while the scene is on screen */
+.corner{position:fixed;inset-inline-end:var(--gutter);inset-block-end:calc(var(--gutter) + env(safe-area-inset-bottom));z-index:6;font-size:var(--text-caption);line-height:1.4;padding:var(--space-2) var(--space-4);border-radius:var(--radius-input);background:var(--color-surface-raised);border:1px solid var(--color-line);box-shadow:var(--shadow-raised);min-inline-size:12rem;pointer-events:none}
+.corner b{display:block;font-weight:600;color:var(--color-ink-muted)}
+.corner bdi{font-weight:600;color:var(--color-brand-strong)}
+
+.site-head{block-size:var(--nav-h);display:flex;align-items:center;border-block-end:1px solid var(--color-line)}
+.site-head .wrap{display:flex;align-items:center;justify-content:space-between;inline-size:100%}
+.logo{display:block;block-size:34px;inline-size:auto}
+.logo .ink{fill:var(--color-ink)}.logo .teal{fill:var(--color-brand)}
+
+.lead{padding-block:var(--section-y);min-block-size:60svh;display:grid;align-content:center}
+.lead h1{font-size:var(--text-display-2);line-height:var(--leading-display-2);max-inline-size:24ch;text-wrap:balance}
+.lead p{color:var(--color-ink-muted);max-inline-size:var(--measure);margin-block-start:var(--space-4);font-size:var(--text-body-lg)}
+
+/* ---------- the scene ---------- */
+.scene{position:relative;--light:0}
+.warm{position:absolute;inset:0;background:var(--color-warm-soft);opacity:var(--light);pointer-events:none}
+.stage{position:relative}
+.scene-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap}
+.scene-head h2{font-size:var(--text-heading);line-height:var(--leading-heading)}
+.scene-head p{color:var(--color-ink-muted);font-size:var(--text-small)}
+.steps{list-style:none;margin:0;padding:0}
+.step{display:grid;gap:var(--space-3)}
+.board{position:relative;aspect-ratio:4/3;border-radius:var(--radius-media);background:var(--color-brand-soft);overflow:hidden;display:grid;place-items:center;color:var(--color-ink-muted);font-size:var(--text-caption)}
+.board::before{content:"";position:absolute;inset:0;background:var(--color-surface-sunken);opacity:calc(1 - var(--light))}
+.board::after{content:"";position:absolute;inset:0;background:var(--color-warm-soft);opacity:var(--light);mix-blend-mode:multiply}
+.board span{position:relative}
+.cap{display:grid;gap:2px}
+.cap .n{font-size:var(--text-caption);font-weight:500;color:var(--color-brand-strong)}
+.cap h3{font-size:var(--text-heading);line-height:var(--leading-heading)}
+.cap p{color:var(--color-ink-muted);font-size:var(--text-small)}
+.dia{inline-size:14px;block-size:14px;background:var(--color-ink);transform:rotate(45deg);border-radius:2px;flex:none}
+
+/* phones and tablets: vertical sequence with diamond markers, no pin */
+@media (max-width:1023px){
+  .scene{padding-block:var(--space-12) var(--space-16)}
+  .steps{margin-block-start:var(--space-8);position:relative;padding-inline-start:28px}
+  .steps::before{content:"";position:absolute;inset-block:8px 0;inset-inline-start:6px;inline-size:2px;background:var(--color-line)}
+  .step{position:relative;padding-block-end:var(--space-8)}
+  .step .dia{position:absolute;inset-inline-start:-28px;inset-block-start:4px}
+  .step{opacity:0;transform:translateY(12px);transition:opacity var(--dur-3) var(--ease-out),transform var(--dur-3) var(--ease-out)}
+  .step.in{opacity:1;transform:none}
+}
+/* desktop: pinned stage, steps along the diagonal, moved by GSAP only */
+@media (min-width:1024px){
+  .stage{block-size:100svh;overflow:clip}
+  .scene-head{position:absolute;inset-inline-start:0;inset-block-end:var(--space-8);padding-inline:var(--gutter);z-index:2;max-inline-size:28rem;flex-direction:column;align-items:flex-start;gap:var(--space-1)}
+  .path{position:absolute;inset:0;will-change:transform}
+  .step{position:absolute;inline-size:clamp(320px,26vw,400px);inset-inline-start:calc(50% + var(--i) * 30%);inset-block-start:calc(50% + var(--i) * 40%);translate:50% -50%;transform-origin:center}
+  .step .dia{position:absolute;inset-inline-end:-7px;inset-block-end:calc(100% - 12px);display:none}
+  .step:not(:last-child) .dia{display:block;inset-block-end:auto;inset-block-start:calc(100% - 7px)}
+  .cap{padding-inline:var(--space-2)}
+}
+@media (prefers-reduced-motion:reduce) and (min-width:1024px){
+  .stage{block-size:auto;padding-block:var(--space-16)}
+  .scene-head{position:static;padding-inline:0;margin-block-end:var(--space-8)}
+  .path{position:static;display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-8)}
+  .step{position:static;inline-size:auto;translate:none}
+  .step .dia{display:none}
+}
+.after{padding-block:var(--section-y);border-block-start:1px solid var(--color-line)}
+.after p{color:var(--color-ink-muted);max-inline-size:var(--measure)}
+.tail{block-size:50svh}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <path id="mark-raw" d="M990.5 333.7C990.4 333.5 990.4 333.4 990.6 333.4C990.7 333.5 990.8 333.3 990.8 333.2C990.8 333.0 990.7 332.9 990.6 332.9C990.4 333.0 990.3 332.7 990.3 332.2C990.2 318.1 990.4 164.2 990.5 163.1C991.1 157.8 993.6 150.9 996.4 146.7C996.9 145.9 997.3 145.2 997.3 145.1C997.3 145.0 998.0 144.0 998.9 142.9C1000.9 140.3 1004.6 136.6 1007.0 135.1C1010.4 132.7 1011.0 132.3 1013.1 131.3C1014.2 130.7 1015.4 130.1 1015.7 130.0C1018.0 128.8 1023.4 127.5 1027.7 127.0C1032.4 126.5 1083.2 126.5 1083.5 127.1C1083.7 127.3 1083.6 127.3 1083.4 127.2C1082.9 126.9 1081.8 127.9 1082.1 128.3C1082.3 128.4 1082.5 128.3 1082.7 128.0C1082.9 127.7 1083.0 127.6 1083.0 127.8C1083.0 128.0 1078.6 135.6 1077.7 137.0C1077.5 137.3 1077.1 137.9 1076.9 138.3C1076.5 139.1 1074.3 142.9 1073.7 144.0C1073.5 144.3 1072.9 145.2 1072.5 146.2C1072.0 147.1 1071.3 148.2 1071.0 148.7C1070.7 149.1 1069.9 150.3 1069.4 151.3C1068.0 153.6 1065.7 157.7 1065.3 158.3C1062.4 163.3 1059.5 168.3 1058.7 169.8C1058.1 170.9 1057.2 172.5 1056.6 173.3C1056.1 174.1 1055.7 174.9 1055.7 175.2C1055.7 175.4 1055.5 175.7 1055.4 175.7C1055.2 175.7 1054.9 176.1 1054.7 176.6C1054.5 177.1 1053.4 179.0 1052.3 180.8C1049.6 185.4 1049.6 185.3 1048.4 187.2C1046.6 190.0 1045.9 192.2 1047.0 191.5C1047.3 191.3 1057.9 177.3 1060.2 174.0C1060.9 173.0 1062.0 171.4 1062.7 170.5C1064.5 168.3 1070.2 160.7 1071.7 158.5C1073.2 156.4 1078.3 149.6 1082.2 144.5C1085.5 140.1 1089.6 136.0 1092.9 133.9C1095.6 132.1 1101.1 129.4 1102.6 129.1C1103.2 129.0 1103.8 128.8 1103.9 128.6C1104.0 128.5 1104.4 128.3 1104.8 128.3C1105.2 128.3 1106.2 128.1 1107.0 127.8C1110.4 126.6 1121.5 126.6 1125.8 127.8C1130.6 129.1 1131.8 129.6 1134.7 131.0C1136.4 131.9 1138.8 133.2 1140.0 134.0C1141.1 134.8 1142.4 135.7 1142.8 135.9C1143.2 136.1 1144.8 137.7 1146.4 139.4C1150.8 144.0 1153.8 148.8 1155.8 154.5C1156.5 156.3 1157.0 158.2 1157.0 158.7C1157.0 159.2 1157.1 159.7 1157.3 159.8C1158.2 160.9 1158.3 169.9 1158.3 250.8C1158.3 332.5 1158.3 333.3 1157.7 333.7C1157.2 333.9 1152.7 334.0 1143.8 333.9C1131.6 333.8 1130.3 333.7 1128.3 333.1C1123.3 331.5 1118.4 328.0 1115.4 323.8C1114.9 323.0 1113.5 321.2 1112.3 319.6C1111.2 318.1 1107.1 312.7 1103.3 307.7C1099.6 302.6 1096.2 298.1 1095.8 297.6C1095.5 297.1 1094.1 295.3 1092.8 293.6C1091.5 291.9 1090.3 290.2 1090.0 289.8C1089.7 289.4 1087.8 286.9 1085.7 284.2C1081.0 277.9 1080.0 276.5 1080.0 275.8C1080.0 275.4 1080.5 274.4 1081.2 273.4C1081.8 272.4 1082.3 271.6 1082.3 271.5C1082.3 271.4 1083.2 270.0 1084.2 268.3C1085.2 266.6 1086.2 264.9 1086.3 264.7C1086.5 264.1 1089.0 259.9 1090.7 257.2C1091.2 256.5 1092.0 255.1 1092.5 254.1C1092.9 253.2 1093.9 251.5 1094.6 250.4C1095.3 249.4 1096.8 247.0 1097.9 245.1C1098.9 243.2 1100.1 241.2 1100.4 240.7C1100.7 240.2 1101.2 239.5 1101.4 239.0C1103.4 235.6 1108.2 227.3 1108.7 226.6C1109.1 226.1 1109.3 225.6 1109.3 225.5C1109.3 225.4 1109.7 224.7 1110.2 223.9C1111.7 221.6 1111.8 221.5 1112.8 219.6C1114.3 217.0 1114.4 216.7 1113.8 216.7C1113.4 216.7 1111.3 219.2 1107.8 224.0C1107.4 224.6 1106.2 226.1 1105.3 227.3C1104.4 228.5 1103.4 229.8 1103.1 230.2C1102.2 231.5 1098.5 236.4 1097.3 238.0C1096.7 238.9 1095.2 240.8 1094.1 242.4C1092.9 243.9 1091.6 245.6 1091.2 246.1C1090.8 246.7 1090.2 247.5 1089.8 248.0C1089.4 248.4 1088.7 249.5 1088.1 250.2C1087.6 251.0 1086.3 252.8 1085.2 254.2C1082.6 257.6 1081.9 258.6 1080.8 260.1C1080.4 260.8 1079.7 261.6 1079.4 261.9C1079.1 262.3 1078.4 263.1 1077.9 263.8C1077.5 264.6 1076.8 265.5 1076.5 265.8C1075.7 266.9 1074.2 268.8 1073.5 269.8C1071.9 272.1 1067.6 277.8 1067.1 278.3C1066.6 278.9 1062.3 284.7 1060.0 287.8C1059.2 289.0 1057.6 291.1 1056.5 292.5C1055.4 293.8 1053.9 295.8 1053.2 296.9C1052.4 297.9 1051.1 299.6 1050.3 300.6C1049.5 301.6 1048.4 303.1 1047.9 303.8C1047.3 304.9 1044.9 308.1 1043.4 309.8C1043.2 310.0 1042.5 311.0 1041.8 312.0C1041.1 313.0 1039.9 314.6 1039.2 315.6C1037.0 318.4 1036.2 319.3 1035.2 320.8C1031.9 325.4 1030.1 327.4 1027.6 329.3C1025.4 330.9 1024.3 331.5 1020.8 332.8L1018.2 333.8L1004.4 333.9C995.2 334.0 990.6 333.9 990.5 333.7Z"/>
+    <path id="wm-letters" d="M412.0 315.8C409.7 315.6 406.6 315.2 405.2 314.9C403.7 314.6 402.1 314.2 401.5 314.1C399.5 313.7 393.3 311.9 391.8 311.3C391.5 311.1 390.3 310.7 389.3 310.3C383.1 308.0 375.5 303.8 370.0 299.7C367.9 298.1 365.8 296.5 365.4 296.2C364.9 295.8 362.8 293.9 360.7 291.9C352.8 284.2 347.9 277.3 343.0 267.3C341.9 265.0 341.0 262.8 341.0 262.6C341.0 262.3 340.9 262.0 340.7 261.8C340.5 261.6 340.1 260.4 339.7 259.2C339.3 257.9 338.8 256.5 338.7 256.2C338.5 255.8 338.2 254.8 338.0 254.0C337.0 250.0 336.8 249.5 336.3 249.4C335.8 249.3 335.7 250.5 335.6 264.4C335.5 277.6 335.4 279.8 334.9 281.5C332.3 290.1 327.0 296.1 318.8 299.4L315.2 300.8L295.5 301.0C284.1 301.1 275.7 301.0 275.4 300.9C275.1 300.6 275.0 295.4 275.0 275.1C275.1 258.2 275.0 249.5 274.7 249.3C274.2 248.7 273.8 249.2 273.2 251.4C271.8 256.5 268.1 264.6 265.3 268.7C264.5 269.9 263.7 271.1 263.5 271.4C260.9 275.7 253.8 282.8 247.5 287.6C245.3 289.2 237.4 294.0 236.9 294.0C236.8 294.0 235.7 294.5 234.4 295.0C231.0 296.6 231.0 296.6 228.2 297.5C224.5 298.6 221.8 299.3 219.8 299.7C218.9 299.9 217.5 300.2 216.7 300.4C215.0 300.8 123.3 301.4 122.3 300.9C121.8 300.7 121.7 298.2 121.8 269.1L121.8 237.5L164.8 237.3C213.1 237.1 208.8 237.4 211.0 234.7C214.0 230.8 212.9 226.2 208.3 223.6C207.6 223.2 200.6 223.1 164.7 223.0L121.8 222.8L121.7 204.5C121.6 185.4 121.8 181.7 123.0 177.8C124.8 171.9 127.4 168.3 133.2 163.7C133.4 163.5 135.0 162.7 136.7 161.9C142.4 159.2 140.9 159.3 179.3 159.4C214.2 159.6 216.4 159.6 221.3 161.0C222.2 161.2 223.4 161.5 224.2 161.7C237.2 165.0 250.7 173.6 259.7 184.2C261.7 186.6 266.0 192.5 266.0 192.8C266.0 192.9 266.6 193.9 267.3 195.1C269.6 199.0 271.9 204.4 273.6 210.3C274.0 211.4 275.0 211.7 275.0 210.6C275.0 210.2 275.1 198.5 275.1 184.6L275.2 159.3L305.3 159.3L335.5 159.3L335.6 185.2C335.6 199.4 335.7 211.2 335.8 211.3C336.3 211.7 337.1 210.2 337.8 207.3C339.6 200.5 344.0 190.2 346.7 186.3C347.1 185.8 347.3 185.3 347.3 185.2C347.3 184.8 350.5 180.3 353.0 177.1C357.2 171.7 363.6 165.3 367.8 162.3C368.7 161.7 369.7 160.9 370.0 160.6C371.5 159.2 378.0 155.3 382.3 153.2C393.4 147.7 404.8 144.8 417.5 144.1C424.1 143.8 436.2 145.0 441.8 146.7C442.4 146.8 444.0 147.3 445.3 147.7C448.1 148.5 451.7 149.7 453.9 150.7C454.7 151.1 455.4 151.3 455.5 151.3C455.7 151.3 460.2 153.5 462.3 154.7C474.4 161.3 485.4 171.5 493.1 183.2C494.9 186.0 498.7 192.9 498.7 193.5C498.7 193.7 498.8 194.0 499.0 194.2C499.8 195.0 503.0 203.7 503.7 207.0C504.1 209.1 505.0 211.3 505.3 211.3C505.5 211.3 505.7 211.2 505.8 211.0C505.9 210.8 506.0 199.1 506.0 185.0C506.0 170.9 506.1 159.3 506.2 159.3C566.1 159.3 934.1 159.4 934.2 159.4C934.3 159.5 934.3 186.3 934.3 219.0C934.3 281.3 934.4 280.2 933.0 284.0C932.3 285.8 930.7 288.7 929.2 290.7C925.9 295.2 922.3 297.7 915.5 300.2C913.9 300.8 907.5 300.8 723.3 301.0C618.6 301.1 531.4 301.1 529.7 300.9C526.1 300.6 524.3 300.1 520.5 298.3C514.0 295.2 509.2 289.4 506.9 282.0C506.3 280.0 506.2 278.8 506.0 264.5C505.9 253.8 505.7 249.2 505.5 249.1C505.1 249.0 504.3 250.9 503.8 252.8C503.5 254.3 501.6 260.5 501.3 260.8C501.2 261.0 500.8 261.9 500.5 262.8C499.8 264.8 496.5 271.6 495.3 273.5C490.8 281.0 486.5 286.5 480.8 292.1C462.8 309.6 437.3 318.4 412.0 315.8Z"/>
+    <path id="dia1" d="M282.5 347.3L275.2 340.0L282.5 332.7C286.5 328.6 289.9 325.3 290.0 325.3C290.3 325.3 304.5 339.7 304.5 340.0C304.5 340.3 290.4 354.7 290.0 354.7C289.9 354.7 286.5 351.4 282.5 347.3Z"/><path id="dia2" d="M313.2 347.3L305.8 340.0L313.2 332.7C317.2 328.6 320.6 325.3 320.7 325.3C320.9 325.3 333.5 337.9 335.3 339.9C335.5 340.0 321.0 354.7 320.7 354.7C320.6 354.7 317.2 351.4 313.2 347.3Z"/><path id="dia3" d="M428.7 238.1C432.9 233.9 436.3 230.4 436.3 230.2C436.3 229.7 421.0 214.6 420.7 214.7C419.9 215.0 405.3 229.9 405.4 230.3C405.5 230.8 420.4 245.7 420.8 245.7C421.0 245.7 424.6 242.3 428.7 238.1Z"/><path id="dia4" d="M413.4 112.9C409.5 109.0 406.3 105.6 406.3 105.3C406.3 104.8 420.3 90.7 420.8 90.7C421.3 90.7 435.4 105.0 435.3 105.3C435.1 105.7 421.0 120.0 420.7 120.0C420.6 120.0 417.3 116.8 413.4 112.9Z"/>
+  </defs>
+</svg>
+
+<div class="proto">
+  <div class="wrap">
+    <p class="q"><b>سؤال:</b> آیا چهار گام فرایند دیجیتال می‌توانند فقط با transform و opacity روی یک مسیر مورب حرکت کنند و با نور سرد به گرم، بالای ۵۰ فریم بمانند؟</p>
+    <div class="tools">
+      <span class="meter" id="fps" aria-live="off">سنجهٔ فریم: آماده</span>
+      <button class="btn btn-secondary btn-sm" id="theme" type="button" aria-pressed="false">حالت تیره</button>
+    </div>
+  </div>
+</div>
+<div class="corner" id="corner" aria-hidden="true"><b>فریم در ثانیه (در تست: CPU چهار برابر کندتر)</b><span id="corner-v">آماده</span></div>
+
+<header class="site-head">
+  <div class="wrap">
+    <a href="#" aria-label="کلینیک دندانپزشکی سفید، صفحهٔ اصلی">
+      <svg class="logo" viewBox="113.7 82.7 1052.6 280" aria-hidden="true" focusable="false">
+        <use class="ink" href="#wm-letters"/><use class="ink" href="#dia1"/><use class="ink" href="#dia2"/><use class="ink" href="#dia3"/><use class="ink" href="#dia4"/><use class="teal" href="#mark-raw"/>
+      </svg>
+    </a>
+    <a class="btn btn-primary btn-sm" href="#">رزرو نوبت</a>
+  </div>
+</header>
+
+<main>
+  <section class="lead">
+    <div class="wrap">
+      <h1>صحنهٔ پنجم: از اسکن تا لبخند</h1>
+      <p>اسکرول کنید. روی دسکتاپ، چهار گام روی یک مسیر مورب از بالا و سمت راست به پایین و سمت چپ می‌روند و نور از سرد به گرم می‌چرخد. روی موبایل همان چهار گام به‌صورت عمودی با نشانگر لوزی دیده می‌شوند.</p>
+    </div>
+  </section>
+
+  <section class="scene" id="workflow" aria-labelledby="wf-h">
+    <div class="warm" aria-hidden="true"></div>
+    <div class="stage wrap">
+      <div class="scene-head">
+        <h2 id="wf-h">فرایند دیجیتال، از اسکن تا لبخند</h2>
+        <p>چهار گام، بدون قالب‌گیری سنتی</p>
+      </div>
+      <ol class="steps path" id="path">
+        <li class="step" style="--i:0">
+          <div class="board" role="img" aria-label="جای عکس اسکن دیجیتال، نسبت ۴ به ۳"><span>جای عکس ۴:۳ · اسکن</span></div>
+          <div class="cap"><span class="n">گام ۱</span><h3>اسکن</h3><p>اسکن دیجیتال دهان، بدون قالب‌گیری.</p></div>
+          <i class="dia" aria-hidden="true"></i>
+        </li>
+        <li class="step" style="--i:1">
+          <div class="board" role="img" aria-label="جای عکس طراحی روی مدل سه‌بعدی، نسبت ۴ به ۳"><span>جای عکس ۴:۳ · طراحی</span></div>
+          <div class="cap"><span class="n">گام ۲</span><h3>طراحی</h3><p>طراحی روی مدل سه‌بعدی، قبل از شروع درمان.</p></div>
+          <i class="dia" aria-hidden="true"></i>
+        </li>
+        <li class="step" style="--i:2">
+          <div class="board" role="img" aria-label="جای عکس ساخت در آزمایشگاه دیجیتال، نسبت ۴ به ۳"><span>جای عکس ۴:۳ · ساخت</span></div>
+          <div class="cap"><span class="n">گام ۳</span><h3>ساخت</h3><p>ساخت دقیق در آزمایشگاه دیجیتال.</p></div>
+          <i class="dia" aria-hidden="true"></i>
+        </li>
+        <li class="step" style="--i:3">
+          <div class="board" role="img" aria-label="جای عکس لبخند نهایی، نسبت ۴ به ۳"><span>جای عکس ۴:۳ · لبخند</span></div>
+          <div class="cap"><span class="n">گام ۴</span><h3>لبخند</h3><p>عکس واقعی، با رضایت کتبی بیمار.</p></div>
+          <i class="dia" aria-hidden="true"></i>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="after">
+    <div class="wrap">
+      <p>بعد از گام چهارم، صحنه از پین خارج می‌شود و نور گرم می‌ماند تا بخش «قبل و بعد».</p>
+    </div>
+  </section>
+  <div class="tail" aria-hidden="true"></div>
+</main>
+
+<script src="../vendor/gsap.min.js"></script>
+<script src="../vendor/ScrollTrigger.min.js"></script>
+<script>
+gsap.registerPlugin(ScrollTrigger);
+(function () {
+  var scene = document.getElementById('workflow');
+  var stage = scene.querySelector('.stage');
+  var path = document.getElementById('path');
+  var steps = gsap.utils.toArray('.step');
+  var mm = gsap.matchMedia();
+  mm.add({ desktop: '(min-width: 1024px)', phone: '(max-width: 1023px)', reduce: '(prefers-reduced-motion: reduce)' }, function (ctx) {
+    var c = ctx.conditions;
+    if (c.reduce) return;
+    if (!c.desktop) {
+      /* phones: vertical sequence; each step fades in once, 12 px travel, no pin */
+      steps.forEach(function (s) {
+        ScrollTrigger.create({ trigger: s, start: 'top 88%', once: true, onEnter: function () { s.classList.add('in'); } });
+      });
+      gsap.to(scene, { '--light': 1, ease: 'none', scrollTrigger: { trigger: scene, start: 'top 60%', end: 'bottom 60%', scrub: 0.6 } });
+      return function () { steps.forEach(function (s) { s.classList.remove('in'); }); };
+    }
+    /* desktop: pinned stage, the whole path translates along the diagonal; steps reveal with opacity and a 6% scale */
+    var tl = gsap.timeline({
+      defaults: { ease: 'none' },
+      scrollTrigger: {
+        trigger: scene,
+        pin: true,
+        scrub: 0.8,
+        start: 'top top',
+        end: function () { return '+=' + Math.round(window.innerHeight * 3); },
+        invalidateOnRefresh: true,
+        anticipatePin: 1
+      }
+    });
+    tl.to(path, { x: function () { return 3 * 0.30 * stage.clientWidth; }, y: function () { return -3 * 0.40 * stage.clientHeight; }, duration: 1 }, 0);
+    tl.to(scene, { '--light': 1, duration: 1 }, 0);
+    steps.forEach(function (s, i) {
+      var focus = i / 3;
+      if (i > 0) tl.fromTo(s, { autoAlpha: 0.15, scale: 0.94 }, { autoAlpha: 1, scale: 1, duration: 0.2 }, focus - 0.2);
+      if (i < 3) tl.to(s, { autoAlpha: 0.3, scale: 0.96, duration: 0.18 }, focus + 0.08);
+    });
+  });
+  window.__st = { ScrollTrigger: ScrollTrigger };
+})();
+</script>
+<script>
+/* prototype instrumentation: frame meter (top bar and corner) and theme toggle */
+(function () {
+  var el = document.getElementById('fps'), cv = document.getElementById('corner-v'), fa = function (n) { return Number(n).toLocaleString('fa-IR'); };
+  var last = performance.now(), t = last, frames = 0, worst = 0;
+  function loop(now) {
+    var d = now - last; last = now; frames++; if (d > worst) worst = d;
+    if (now - t >= 500) {
+      var fps = Math.round(frames * 1000 / (now - t));
+      el.innerHTML = 'fps <bdi>' + fa(fps) + '</bdi> · بدترین فریم <bdi>' + fa(Math.round(worst)) + '</bdi> ms';
+      cv.innerHTML = '<bdi>' + fa(fps) + '</bdi> fps · بدترین فریم <bdi>' + fa(Math.round(worst)) + '</bdi> ms';
+      t = now; frames = 0; worst = 0;
+    }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+  var tb = document.getElementById('theme'), root = document.documentElement;
+  tb.addEventListener('click', function () { var d = root.dataset.theme !== 'dark'; root.dataset.theme = d ? 'dark' : 'light'; tb.textContent = d ? 'حالت روشن' : 'حالت تیره'; tb.setAttribute('aria-pressed', d); });
+})();
+</script>
+</body>
+</html>

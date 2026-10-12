@@ -1,0 +1,485 @@
+<!doctype html>
+<!--
+  Prototype 00: the porcelain relief world.
+  Question: does the mark and three diamonds as white porcelain reliefs over the
+  warm off-white surface (navy with a teal glass mark in the dark theme) read as
+  calm and premium in both themes, and what does each quality tier cost?
+  Tiers follow docs/experience-direction.md section 3: DPR cap 2.0 / 1.5 / 1.0,
+  post-processing bloom+grain / grain / none, shadows soft / hard / none,
+  particles 100% / 50% / 20%; tier 0 is a static DOM fallback without WebGL.
+  Self-contained: imports only ../vendor/three.js (plus ../brand/3d/* assets and
+  the in-page geometry builder as a fallback). No external requests.
+-->
+<html lang="fa" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>نمونه ۰۰: دنیای رلیف چینی</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+  @font-face {
+    font-family: "Vazirmatn";
+    src: url("../fonts/Vazirmatn%5Bwght%5D.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    font-family: var(--font-body);
+    color: var(--color-ink);
+    background: var(--color-surface);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  canvas.world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .static-world {
+    position: fixed; inset: 0; display: none; place-items: center;
+    background: var(--color-surface);
+  }
+  .static-world.is-on { display: grid; }
+  .static-mark {
+    width: min(42vw, 360px); aspect-ratio: 184 / 223;
+    background: #F4F3EF;
+    -webkit-mask: url("../brand/logo-mark.svg") center / contain no-repeat;
+    mask: url("../brand/logo-mark.svg") center / contain no-repeat;
+    filter: drop-shadow(0 18px 28px rgb(10 36 63 / 0.14));
+  }
+  [data-theme="dark"] .static-mark { background: var(--color-brand); filter: drop-shadow(0 18px 40px rgb(43 181 170 / 0.25)); }
+  .static-diamond {
+    position: absolute; width: 28px; height: 28px; border-radius: 4px;
+    background: #F4F3EF; transform: rotate(45deg);
+    box-shadow: 0 10px 20px rgb(10 36 63 / 0.12);
+  }
+  [data-theme="dark"] .static-diamond { background: #E6E9E8; }
+  .static-diamond.warm { background: var(--color-warm); }
+  .caption {
+    position: fixed; inset-block-start: var(--space-4); inset-inline: var(--space-4);
+    margin: 0; font-size: var(--text-caption); line-height: var(--leading-small);
+    color: var(--color-ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding-inline-end: var(--space-4);
+  }
+  .panel {
+    position: fixed; inset-block-end: var(--space-4); inset-inline-start: var(--space-4);
+    display: grid; gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--color-line); border-radius: var(--radius-card);
+    box-shadow: var(--shadow-raised); font-size: var(--text-small); line-height: var(--leading-small);
+    max-width: calc(100vw - 2 * var(--space-4));
+  }
+  .panel .row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .panel .label { color: var(--color-ink-muted); min-width: 3.5rem; }
+  .ltr { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+  .fps { font-weight: 600; min-width: 9.5rem; display: inline-block; }
+  .seg { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--color-line); border-radius: var(--radius-input); background: var(--color-surface-sunken); }
+  .seg button, .btn {
+    min-width: var(--target); min-height: var(--target); padding: 0 var(--space-3);
+    border: 0; border-radius: 10px; background: transparent; color: var(--color-ink);
+    font: inherit; cursor: pointer; transition: background var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
+  }
+  .seg button[aria-pressed="true"] { background: var(--color-brand); color: #F7F8F7; }
+  .seg button:hover:not([aria-pressed="true"]) { background: var(--color-brand-soft); }
+  .btn { border: 1px solid var(--color-line); background: var(--color-surface-raised); }
+  .btn:hover { background: var(--color-brand-soft); }
+  .seg button:focus-visible, .btn:focus-visible, input:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .note { color: var(--color-ink-muted); font-size: var(--text-caption); }
+  .notice {
+    position: fixed; inset-inline: 0; inset-block-start: 50%; transform: translateY(-50%);
+    text-align: center; padding: var(--space-4); color: var(--color-ink-muted); display: none;
+  }
+  .notice.is-on { display: block; }
+  label.check { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--target); cursor: pointer; }
+  @media (max-width: 743px) {
+    .panel { inset-inline: var(--space-4); inset-block-end: var(--space-4); padding: var(--space-3); }
+    .panel .label { min-width: 2.75rem; }
+    .caption { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .seg button, .btn { transition: none; }
+  }
+</style>
+</head>
+<body>
+<canvas class="world" aria-hidden="true"></canvas>
+<div class="static-world" aria-hidden="true">
+  <div class="static-mark"></div>
+  <span class="static-diamond" style="inset-inline-start: 22%; inset-block-start: 28%"></span>
+  <span class="static-diamond warm" style="inset-inline-start: 28%; inset-block-start: 62%; width: 22px; height: 22px"></span>
+  <span class="static-diamond" style="inset-inline-end: 20%; inset-block-start: 24%; width: 18px; height: 18px"></span>
+</div>
+<p class="caption">پرسش: آیا رلیف چینیِ نشان و الماس‌ها روی سطح گرم، در هر دو تم و در تیرهای ۱ تا ۳، آرام و لوکس دیده می‌شود؟</p>
+<p class="notice" id="notice"></p>
+
+<div class="panel" role="group" aria-label="تنظیمات نمونه">
+  <div class="row">
+    <span class="label">فریم</span>
+    <span class="fps ltr" id="fps">…</span>
+  </div>
+  <div class="row">
+    <span class="label">کیفیت</span>
+    <div class="seg" role="group" aria-label="تیر کیفیت" id="tiers">
+      <button type="button" data-tier="0" aria-pressed="false">۰</button>
+      <button type="button" data-tier="1" aria-pressed="false">۱</button>
+      <button type="button" data-tier="2" aria-pressed="false">۲</button>
+      <button type="button" data-tier="3" aria-pressed="true">۳</button>
+    </div>
+    <button type="button" class="btn" id="theme">تم تاریک</button>
+  </div>
+  <div class="row">
+    <label class="check"><input type="checkbox" id="auto"> کاهش خودکار کیفیت زیر ۵۵ فریم</label>
+  </div>
+  <div class="row note" id="status">در حال بارگذاری…</div>
+</div>
+
+<script type="module">
+import * as THREE from '../vendor/three.js';
+
+const TIERS = {
+  0: { webgl: false },
+  1: { dpr: 1.0, post: 'none', shadows: 'none', particles: 0.2, envIntensity: 0.9 },
+  2: { dpr: 1.5, post: 'grain', shadows: 'hard', particles: 0.5, envIntensity: 1.0 },
+  3: { dpr: 2.0, post: 'bloom+grain', shadows: 'soft', particles: 1.0, envIntensity: 1.0 },
+};
+const PARTICLES_MAX = 240;
+const params = new URLSearchParams(location.search);
+const root = document.documentElement;
+const canvas = document.querySelector('canvas.world');
+const staticWorld = document.querySelector('.static-world');
+const fpsEl = document.getElementById('fps');
+const statusEl = document.getElementById('status');
+const noticeEl = document.getElementById('notice');
+const autoEl = document.getElementById('auto');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+const finePointer = matchMedia('(pointer: fine)');
+const css = (name) => getComputedStyle(root).getPropertyValue(name).trim();
+const fa = (n) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+const state = {
+  tier: 3, theme: 'light', source: '—', webgl: true,
+  stats: { fps: 0, ms: 0 }, world: null, running: false, raf: 0,
+  auto: params.get('auto') === '1',
+};
+autoEl.checked = state.auto;
+
+// ---------- assets (loaded once, kept on the CPU side; GPU buffers are disposed per tier)
+const assets = { mark: null, diamond: null };
+async function loadAssets() {
+  try {
+    const draco = new THREE.DRACOLoader().setDecoderPath('../vendor/draco/');
+    const loader = new THREE.GLTFLoader().setDRACOLoader(draco);
+    const [m, d] = await Promise.all([loader.loadAsync('../brand/3d/mark.glb'), loader.loadAsync('../brand/3d/diamond.glb')]);
+    const pick = (g) => { let geo; g.scene.traverse((o) => { if (o.isMesh && !geo) geo = o.geometry; }); return geo; };
+    assets.mark = pick(m); assets.diamond = pick(d);
+    draco.dispose();
+    state.source = 'GLB (Draco)';
+  } catch (err) {
+    console.warn('GLB load failed, building geometry in page:', err);
+    const mod = await import('../brand/3d/build-brand-geometry.js');
+    assets.mark = mod.buildMarkGeometry();
+    assets.diamond = mod.buildDiamondGeometry();
+    state.source = 'ساخت درون‌صفحه';
+  }
+}
+
+// ---------- film grain pass
+const GrainShader = {
+  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uAmount: { value: 0.035 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float uTime; uniform float uAmount; varying vec2 vUv;
+    float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      float n = hash(gl_FragCoord.xy + vec2(fract(uTime * 0.37) * 731.0, fract(uTime * 0.19) * 419.0)) - 0.5;
+      c.rgb += n * uAmount * (0.6 + 0.4 * (1.0 - dot(c.rgb, vec3(0.33))));
+      gl_FragColor = c;
+    }`,
+};
+
+function diamondSprite() {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const g = c.getContext('2d');
+  g.translate(32, 32); g.rotate(Math.PI / 4);
+  const grad = g.createRadialGradient(0, 0, 2, 0, 0, 20);
+  grad.addColorStop(0, 'rgba(255,255,255,1)'); grad.addColorStop(0.7, 'rgba(255,255,255,0.7)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad; g.fillRect(-16, -16, 32, 32);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+
+// ---------- world
+function createWorld(tier) {
+  const T = TIERS[tier];
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: T.post === 'none', powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, T.dpr));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.0;
+  renderer.shadowMap.enabled = T.shadows !== 'none';
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.transmissionResolutionScale = tier === 3 ? 1 : 0.5;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 40);
+  camera.position.set(0, 1.6, 6.2);
+  camera.lookAt(0.1, 0.1, 0);
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envRT = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04);
+  scene.environment = envRT.texture;
+  pmrem.dispose();
+
+  const key = new THREE.DirectionalLight('#FFFFFF', 1.1);
+  key.position.set(3, 4.2, 4);
+  key.castShadow = T.shadows !== 'none';
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.left = -4.5; key.shadow.camera.right = 4.5;
+  key.shadow.camera.top = 4; key.shadow.camera.bottom = -3;
+  key.shadow.camera.near = 1; key.shadow.camera.far = 14;
+  key.shadow.bias = -0.0004; key.shadow.normalBias = 0.03;
+  key.shadow.radius = T.shadows === 'soft' ? 6 : 1;
+  const fill = new THREE.HemisphereLight('#DCE8F0', '#E8D8C8', 0.35);
+  scene.add(key, fill);
+
+  // The plane keeps the exact surface token color: it only receives shadows.
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.ShadowMaterial({ color: '#0A243F', opacity: 0.16, transparent: true }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.95; ground.receiveShadow = true;
+  scene.add(ground);
+
+  const porcelain = new THREE.MeshPhysicalMaterial({
+    color: '#F4F3EF', roughness: 0.55, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.5,
+    sheen: 0.35, sheenRoughness: 0.8, sheenColor: '#FFFFFF', envMapIntensity: 0.3 * T.envIntensity,
+  });
+  const glass = new THREE.MeshPhysicalMaterial({
+    color: '#2BB5AA', roughness: 0.18, metalness: 0, transmission: 0.6, thickness: 0.3, ior: 1.45,
+    attenuationColor: '#1A7F77', attenuationDistance: 0.6, clearcoat: 0.8, clearcoatRoughness: 0.15,
+    emissive: '#00827A', emissiveIntensity: 0.03, envMapIntensity: 0.5 * T.envIntensity,
+  });
+  const warmPorcelain = porcelain.clone(); warmPorcelain.color.set('#E8AF76');
+  const dimPorcelain = porcelain.clone(); dimPorcelain.color.set('#C9D3D4'); dimPorcelain.envMapIntensity = 0.15 * T.envIntensity;
+
+  const group = new THREE.Group();
+  scene.add(group);
+  const mark = new THREE.Mesh(assets.mark, porcelain);
+  mark.scale.setScalar(1.55);
+  mark.position.set(0.45, 0.05, 0);
+  mark.rotation.set(-0.1, 0.2, 0);
+  mark.castShadow = mark.receiveShadow = true;
+  group.add(mark);
+
+  const diamondSpecs = [
+    { s: 0.3, p: [-1.55, 0.85, -0.4], r: [0.2, 0.4, 0.1], mat: porcelain },
+    { s: 0.24, p: [-1.1, -0.35, 0.7], r: [-0.1, -0.3, 0.15], mat: warmPorcelain },
+    { s: 0.2, p: [1.6, 1.0, -0.9], r: [0.3, 0.5, -0.1], mat: porcelain },
+  ];
+  const diamonds = diamondSpecs.map((d) => {
+    const m = new THREE.Mesh(assets.diamond, d.mat);
+    m.scale.setScalar(d.s); m.position.fromArray(d.p); m.rotation.fromArray(d.r);
+    m.castShadow = m.receiveShadow = true; group.add(m); return m;
+  });
+  const floaters = [mark, ...diamonds].map((m, i) => ({ m, y: m.position.y, rz: m.rotation.z, phase: i * 1.7, speed: 0.35 + i * 0.07 }));
+
+  // particles: diamond dust
+  const count = Math.round(PARTICLES_MAX * T.particles);
+  let points = null, pData = null, sprite = null;
+  if (count > 0) {
+    const pos = new Float32Array(count * 3);
+    pData = new Float32Array(count * 2);
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 9; pos[i * 3 + 1] = Math.random() * 4 - 0.9; pos[i * 3 + 2] = (Math.random() - 0.5) * 6 - 1;
+      pData[i * 2] = 0.08 + Math.random() * 0.12; pData[i * 2 + 1] = Math.random() * Math.PI * 2;
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    sprite = diamondSprite();
+    const pm = new THREE.PointsMaterial({ size: 0.055, map: sprite, transparent: true, opacity: 0.35, depthWrite: false, sizeAttenuation: true, color: '#0A243F' });
+    points = new THREE.Points(g, pm); scene.add(points);
+  }
+
+  // post-processing
+  let composer = null, grain = null;
+  if (T.post !== 'none') {
+    composer = new THREE.EffectComposer(renderer);
+    composer.addPass(new THREE.RenderPass(scene, camera));
+    if (T.post.includes('bloom')) {
+      const bloom = new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), 0.08, 0.35, 1.3); // only HDR highlights bloom
+      composer.addPass(bloom);
+    }
+    grain = new THREE.ShaderPass(GrainShader);
+    composer.addPass(grain);
+    composer.addPass(new THREE.OutputPass());
+  }
+
+  const cool = new THREE.Color('#D7E4F0'), warm = new THREE.Color('#F7DCC0');
+  const skyL = new THREE.Color('#DCE8F0'), gndL = new THREE.Color('#E8D8C8');
+  const skyD = new THREE.Color('#1E3A52'), gndD = new THREE.Color('#0F3B3A');
+  const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
+
+  function applyTheme(theme) {
+    const surface = new THREE.Color(css('--color-surface'));
+    scene.background = surface;
+    const dark = theme === 'dark';
+    ground.material.color.set(dark ? '#000000' : '#0A243F'); ground.material.opacity = dark ? 0.4 : 0.16;
+    mark.material = dark ? glass : porcelain;
+    diamonds[0].material = dark ? dimPorcelain : porcelain;
+    diamonds[2].material = dark ? dimPorcelain : porcelain;
+    key.intensity = dark ? 0.8 : 1.1;
+    fill.color.copy(dark ? skyD : skyL); fill.groundColor.copy(dark ? gndD : gndL); fill.intensity = dark ? 0.6 : 0.35;
+    renderer.toneMappingExposure = dark ? 0.75 : 0.8;
+    if (points) { points.material.color.set(dark ? '#2BB5AA' : '#0A243F'); points.material.opacity = dark ? 0.5 : 0.3; }
+  }
+
+  function resize() {
+    const w = innerWidth, h = innerHeight;
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, T.dpr));
+    renderer.setSize(w, h, false);
+    if (composer) composer.setSize(w, h);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    const fit = Math.min(1, camera.aspect / 1.0);
+    group.scale.setScalar(fit);
+    group.position.y = 0.35 * (1 - fit);
+    camera.position.z = 6.2 + (1 - fit) * 1.2;
+  }
+
+  let t = 0;
+  function render(dt) {
+    t += dt;
+    const s = 0.5 - 0.5 * Math.cos((t * Math.PI) / 10); // cool to warm over 10 s, then back
+    key.color.copy(cool).lerp(warm, s);
+    key.position.x = 2.6 - s * 1.1;
+    for (const f of floaters) {
+      f.m.position.y = f.y + 0.06 * Math.sin(t * f.speed + f.phase);
+      f.m.rotation.z = f.rz + 0.025 * Math.sin(t * f.speed * 0.8 + f.phase);
+    }
+    if (points) {
+      const a = points.geometry.attributes.position;
+      for (let i = 0; i < count; i++) {
+        let y = a.getY(i) + pData[i * 2] * dt;
+        if (y > 3.2) y = -0.9;
+        a.setY(i, y);
+        a.setX(i, a.getX(i) + Math.sin(t * 0.4 + pData[i * 2 + 1]) * 0.08 * dt);
+      }
+      a.needsUpdate = true;
+    }
+    pointer.x += (pointer.tx - pointer.x) * 0.05; pointer.y += (pointer.ty - pointer.y) * 0.05;
+    group.rotation.y = pointer.x * 0.1; group.rotation.x = pointer.y * 0.06;
+    if (grain) grain.uniforms.uTime.value = t;
+    if (composer) composer.render(); else renderer.render(scene, camera);
+  }
+
+  function onPointer(e) {
+    pointer.tx = (e.clientX / innerWidth - 0.5) * 2;
+    pointer.ty = (e.clientY / innerHeight - 0.5) * 2;
+  }
+  if (finePointer.matches) window.addEventListener('pointermove', onPointer, { passive: true });
+
+  function dispose() {
+    window.removeEventListener('pointermove', onPointer);
+    scene.traverse((o) => { if (o.isMesh || o.isPoints) { o.geometry.dispose(); } });
+    for (const m of [porcelain, glass, warmPorcelain, dimPorcelain, ground.material]) m.dispose();
+    if (points) { points.material.dispose(); sprite.dispose(); }
+    envRT.dispose();
+    if (composer) { composer.passes.forEach((p) => p.dispose && p.dispose()); composer.dispose(); }
+    renderer.dispose();
+  }
+
+  return { renderer, applyTheme, resize, render, dispose };
+}
+
+// ---------- frame loop and fps meter
+let last = 0, acc = 0, frames = 0, lowSince = 0;
+function loop(now) {
+  if (!state.running) return;
+  state.raf = requestAnimationFrame(loop);
+  const raw = last ? (now - last) / 1000 : 0.016;
+  const dt = Math.min(0.1, raw); // motion never jumps after a stall
+  last = now;
+  state.world.render(dt);
+  frames++; acc += raw;
+  if (acc >= 0.5) {
+    state.stats.fps = Math.round(frames / acc); state.stats.ms = Math.round((acc / frames) * 1000 * 10) / 10;
+    fpsEl.textContent = `${state.stats.fps} fps · ${state.stats.ms} ms`;
+    if (state.auto && state.tier > 1) {
+      if (state.stats.fps < 55) { lowSince += acc; if (lowSince >= 2) { lowSince = 0; setTier(state.tier - 1); } } else lowSince = 0;
+    }
+    acc = 0; frames = 0;
+  }
+}
+function start() { if (state.running) return; state.running = true; last = 0; state.raf = requestAnimationFrame(loop); }
+function stop() { state.running = false; cancelAnimationFrame(state.raf); }
+
+// ---------- tier and theme control
+function effectiveTier(n) { return reduced.matches ? 0 : n; }
+function setTier(n) {
+  n = Math.max(0, Math.min(3, Number(n)));
+  state.tier = n;
+  document.querySelectorAll('#tiers button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.tier) === n)));
+  rebuild();
+}
+function rebuild() {
+  stop();
+  if (state.world) { state.world.dispose(); state.world = null; }
+  const tier = effectiveTier(state.tier);
+  const useWebgl = tier > 0 && state.webgl;
+  staticWorld.classList.toggle('is-on', !useWebgl);
+  canvas.style.display = useWebgl ? 'block' : 'none';
+  if (useWebgl) {
+    try {
+      state.world = createWorld(tier);
+      state.world.applyTheme(state.theme);
+      state.world.resize();
+      start();
+    } catch (err) {
+      console.error('WebGL world failed, showing the static fallback:', err);
+      state.webgl = false; staticWorld.classList.add('is-on'); canvas.style.display = 'none';
+    }
+  }
+  status();
+}
+function status() {
+  const tier = effectiveTier(state.tier);
+  const parts = [];
+  if (reduced.matches) parts.push('کاهش حرکت فعال است: تیر ۰');
+  if (!state.webgl) parts.push('WebGL در دسترس نیست: نمای ایستا');
+  if (tier > 0 && state.webgl) {
+    const T = TIERS[tier];
+    parts.push(`تیر ${fa(tier)}: DPR ${fa(Math.min(devicePixelRatio || 1, T.dpr).toFixed(1))} · پس‌پردازش ${T.post === 'none' ? 'خاموش' : T.post === 'grain' ? 'گرین' : 'بلوم و گرین'} · سایه ${T.shadows === 'soft' ? 'نرم' : T.shadows === 'hard' ? 'سخت' : 'خاموش'} · ذرات ${fa(Math.round(PARTICLES_MAX * T.particles))}`);
+    parts.push(`مدل: ${state.source}`);
+  } else { fpsEl.textContent = '—'; }
+  statusEl.textContent = parts.join(' | ');
+}
+function setTheme(theme) {
+  state.theme = theme === 'dark' ? 'dark' : 'light';
+  root.setAttribute('data-theme', state.theme);
+  document.getElementById('theme').textContent = state.theme === 'dark' ? 'تم روشن' : 'تم تاریک';
+  if (state.world) state.world.applyTheme(state.theme);
+}
+
+document.getElementById('tiers').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setTier(b.dataset.tier); });
+document.getElementById('theme').addEventListener('click', () => setTheme(state.theme === 'dark' ? 'light' : 'dark'));
+autoEl.addEventListener('change', () => { state.auto = autoEl.checked; });
+window.addEventListener('resize', () => state.world && state.world.resize());
+document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); else if (state.world) start(); });
+reduced.addEventListener('change', rebuild);
+canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); stop(); noticeEl.textContent = 'زمینه WebGL از دست رفت؛ منتظر بازیابی…'; noticeEl.classList.add('is-on'); });
+canvas.addEventListener('webglcontextrestored', () => { noticeEl.classList.remove('is-on'); rebuild(); });
+
+// ---------- boot
+const ready = (async () => {
+  const probe = document.createElement('canvas').getContext('webgl2');
+  state.webgl = !!probe;
+  if (probe) { const ext = probe.getExtension('WEBGL_lose_context'); if (ext) ext.loseContext(); }
+  setTheme(params.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  if (params.get('panel') === '0') document.querySelector('.panel').style.display = 'none';
+  if (state.webgl) await loadAssets();
+  setTier(params.get('tier') ?? 3);
+  if (state.world) { state.world.render(0.016); }
+})();
+
+window.__proto = {
+  ready,
+  setTier, setTheme,
+  getStats: () => ({ ...state.stats, tier: state.tier, effectiveTier: effectiveTier(state.tier), theme: state.theme, source: state.source, webgl: state.webgl, running: state.running }),
+};
+</script>
+</body>
+</html>

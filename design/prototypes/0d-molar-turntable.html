@@ -1,0 +1,511 @@
+<!doctype html>
+<!--
+  Prototype 0d: the molar turntable with three restoration levels.
+  Question: can the stylized molar with an enamel material look premium at
+  tier 1, and does scrubbing معمولی to VIP to CIP read as a real refinement of
+  the same tooth rather than three different objects?
+  Scrub control: a range input (0 to 200). 0 = معمولی (plain enamel), 100 = VIP
+  (the surface gets smoother and the cusps refine through a vertex shader
+  displacement), 200 = CIP (a procedural color characterization layer blends
+  in: warm cervical gradient, cool translucent cusp tips, fine stain lines in
+  the fissures). Tiers follow docs/experience-direction.md section 3: DPR cap
+  2.0 / 1.5 / 1.0, post bloom+grain / grain / none, contact shadow soft / hard
+  / none, transmission 0.15 at tier 3 only. Tier 0 is a static SVG stepper.
+  Self-contained: imports only ../vendor/three.js (plus ../brand/3d/molar.glb
+  and the in-page builder as a fallback). No external requests.
+-->
+<html lang="fa" dir="rtl" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>نمونه ۰d: گردونه مولر</title>
+<link rel="stylesheet" href="../tokens.css">
+<style>
+  @font-face {
+    font-family: "Vazirmatn";
+    src: url("../fonts/Vazirmatn%5Bwght%5D.woff2") format("woff2");
+    font-weight: 100 900;
+    font-display: swap;
+  }
+  @font-face {
+    font-family: "Estedad";
+    src: url("../fonts/Estedad-Bold.woff2") format("woff2");
+    font-weight: 700;
+    font-display: swap;
+  }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: var(--font-body); color: var(--color-ink); background: var(--color-surface);
+    overflow: hidden; -webkit-font-smoothing: antialiased;
+  }
+  canvas.world { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .static-world { position: fixed; inset: 0; display: none; place-items: center; background: var(--color-surface); }
+  .static-world.is-on { display: grid; }
+  .static-world svg { width: min(52vw, 320px); height: auto; filter: drop-shadow(0 18px 28px rgb(10 36 63 / 0.14)); }
+  .static-world .enamel { fill: #F6F1E7; transition: fill var(--dur-3) var(--ease-out); }
+  .static-world .cip { opacity: 0; transition: opacity var(--dur-3) var(--ease-out); }
+  .static-world[data-level="vip"] .enamel { fill: #FBF8F2; }
+  .static-world[data-level="cip"] .enamel { fill: #F6EEDF; }
+  .static-world[data-level="cip"] .cip { opacity: 1; }
+  .caption {
+    position: fixed; inset-block-start: var(--space-4); inset-inline: var(--space-4); margin: 0;
+    font-size: var(--text-caption); line-height: var(--leading-small); color: var(--color-ink-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .stage-ui {
+    position: fixed; inset-inline: 0; inset-block-end: calc(var(--space-4) + 9.5rem);
+    display: grid; justify-items: center; gap: var(--space-3); padding-inline: var(--space-4); pointer-events: none;
+  }
+  .level { font-family: var(--font-display); font-size: var(--text-display-2); line-height: var(--leading-display-2); margin: 0; }
+  .level-sub { margin: 0; color: var(--color-ink-muted); font-size: var(--text-small); min-height: 1.5em; text-align: center; }
+  .scrub { pointer-events: auto; width: min(420px, 100%); display: grid; gap: var(--space-2); }
+  .scrub .ticks { display: flex; justify-content: space-between; font-size: var(--text-caption); color: var(--color-ink-muted); padding-inline: 2px; }
+  .scrub .ticks span[aria-current="true"] { color: var(--color-brand); font-weight: 600; }
+  input[type="range"] { width: 100%; height: var(--target); margin: 0; accent-color: var(--color-brand); cursor: pointer; background: transparent; }
+  input[type="range"]:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: var(--radius-pill); }
+  .panel {
+    position: fixed; inset-block-end: var(--space-4); inset-inline-start: var(--space-4);
+    display: grid; gap: var(--space-2); padding: var(--space-3) var(--space-4);
+    background: color-mix(in srgb, var(--color-surface-raised) 88%, transparent);
+    backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--color-line); border-radius: var(--radius-card); box-shadow: var(--shadow-raised);
+    font-size: var(--text-small); line-height: var(--leading-small); max-width: calc(100vw - 2 * var(--space-4));
+  }
+  .panel .row { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .panel .label { color: var(--color-ink-muted); min-width: 3.5rem; }
+  .ltr { direction: ltr; unicode-bidi: isolate; font-variant-numeric: tabular-nums; }
+  .fps { font-weight: 600; min-width: 9.5rem; display: inline-block; }
+  .seg { display: inline-flex; gap: 2px; padding: 2px; border: 1px solid var(--color-line); border-radius: var(--radius-input); background: var(--color-surface-sunken); }
+  .seg button, .btn {
+    min-width: var(--target); min-height: var(--target); padding: 0 var(--space-3); border: 0; border-radius: 10px;
+    background: transparent; color: var(--color-ink); font: inherit; cursor: pointer;
+    transition: background var(--dur-2) var(--ease-out), color var(--dur-2) var(--ease-out);
+  }
+  .seg button[aria-pressed="true"] { background: var(--color-brand); color: #F7F8F7; }
+  .seg button:hover:not([aria-pressed="true"]) { background: var(--color-brand-soft); }
+  .btn { border: 1px solid var(--color-line); background: var(--color-surface-raised); }
+  .btn:hover { background: var(--color-brand-soft); }
+  .seg button:focus-visible, .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+  .note { color: var(--color-ink-muted); font-size: var(--text-caption); }
+  .notice { position: fixed; inset-inline: 0; inset-block-start: 50%; transform: translateY(-50%); text-align: center; padding: var(--space-4); color: var(--color-ink-muted); display: none; }
+  .notice.is-on { display: block; }
+  @media (max-width: 743px) {
+    .panel { inset-inline: var(--space-4); padding: var(--space-3); }
+    .panel .label { min-width: 2.75rem; }
+    .caption { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .stage-ui { inset-block-end: calc(var(--space-4) + 10.5rem); }
+  }
+  @media (prefers-reduced-motion: reduce) { .seg button, .btn, .static-world .enamel, .static-world .cip { transition: none; } }
+</style>
+</head>
+<body>
+<canvas class="world" aria-hidden="true"></canvas>
+<div class="static-world" id="static" data-level="plain" aria-hidden="true">
+  <svg viewBox="0 0 200 240" role="img" aria-label="دندان مولر">
+    <path class="enamel" d="M100 18c-30 0-52 10-66 30s-16 48-10 76c3 14 6 22 10 26 5 5 12 6 20 2 8-4 12-14 14-40 1-10 4-14 8-14s7 4 8 14c2 26 6 36 14 40 8 4 15 3 20-2 4-4 7-12 10-26 6-28 4-56-10-76s-36-30-66-30h8z"/>
+    <path class="enamel" d="M62 150c-4 30-6 50-4 62 2 10 8 14 14 10 7-5 10-22 12-54zM138 150c4 30 6 50 4 62-2 10-8 14-14 10-7-5-10-22-12-54z"/>
+    <g class="cip">
+      <path d="M58 70c10-14 22-20 42-20s32 6 42 20" fill="none" stroke="#C99A72" stroke-opacity="0.35" stroke-width="10" stroke-linecap="round"/>
+      <path d="M78 54c8 10 10 22 10 36M122 54c-8 10-10 22-10 36" fill="none" stroke="#8E6A45" stroke-opacity="0.45" stroke-width="1.6" stroke-linecap="round"/>
+    </g>
+  </svg>
+</div>
+<p class="caption">پرسش: آیا مولر استایلایز با متریال مینا در تیر ۱ هم لوکس دیده می‌شود و گذر از معمولی به VIP و CIP یک دندان را بهتر می‌کند؟</p>
+<p class="notice" id="notice"></p>
+
+<div class="stage-ui">
+  <h1 class="level" id="level">معمولی</h1>
+  <p class="level-sub" id="levelSub">مینای ساده با سطح طبیعی</p>
+  <div class="scrub">
+    <input type="range" id="scrub" min="0" max="200" value="0" step="1" aria-label="سطح ترمیم: معمولی تا CIP" aria-valuetext="معمولی">
+    <div class="ticks" aria-hidden="true"><span data-level="plain" aria-current="true">معمولی</span><span data-level="vip">VIP</span><span data-level="cip">CIP</span></div>
+  </div>
+</div>
+
+<div class="panel" role="group" aria-label="تنظیمات نمونه">
+  <div class="row"><span class="label">فریم</span><span class="fps ltr" id="fps">…</span></div>
+  <div class="row">
+    <span class="label">کیفیت</span>
+    <div class="seg" role="group" aria-label="تیر کیفیت" id="tiers">
+      <button type="button" data-tier="0" aria-pressed="false">۰</button>
+      <button type="button" data-tier="1" aria-pressed="false">۱</button>
+      <button type="button" data-tier="2" aria-pressed="false">۲</button>
+      <button type="button" data-tier="3" aria-pressed="true">۳</button>
+    </div>
+    <button type="button" class="btn" id="theme">تم تاریک</button>
+  </div>
+  <div class="row note" id="status">در حال بارگذاری…</div>
+</div>
+
+<script type="module">
+import * as THREE from '../vendor/three.js';
+
+const TIERS = {
+  0: { webgl: false },
+  1: { dpr: 1.0, post: 'none', shadows: 'none', transmission: 0 },
+  2: { dpr: 1.5, post: 'grain', shadows: 'hard', transmission: 0 },
+  3: { dpr: 2.0, post: 'bloom+grain', shadows: 'soft', transmission: 0.15 },
+};
+const CUSP_GLSL = `
+float sefidCuspHeight(float x, float z, float amp) {
+  const float s2 = 0.17 * 0.17;
+  float h = 0.0;
+  h += amp * exp(-((x + 0.25) * (x + 0.25) + (z + 0.21) * (z + 0.21)) / s2);
+  h += amp * exp(-((x - 0.25) * (x - 0.25) + (z + 0.21) * (z + 0.21)) / s2);
+  h += amp * exp(-((x + 0.25) * (x + 0.25) + (z - 0.23) * (z - 0.23)) / s2);
+  h += amp * exp(-((x - 0.25) * (x - 0.25) + (z - 0.23) * (z - 0.23)) / s2);
+  h -= 0.45 * amp * exp(-(x * x + z * z) / 0.028);
+  const float gw = 0.0022;
+  h -= 0.5 * amp * exp(-(x * x) / gw) * exp(-(z * z) / 0.3);
+  h -= 0.4 * amp * exp(-(z * z) / gw) * exp(-(x * x) / 0.3);
+  return h;
+}`;
+const CUSP_AMP = 0.075, CROWN_HALF = 0.36;
+
+const params = new URLSearchParams(location.search);
+const root = document.documentElement;
+const canvas = document.querySelector('canvas.world');
+const staticWorld = document.getElementById('static');
+const fpsEl = document.getElementById('fps');
+const statusEl = document.getElementById('status');
+const noticeEl = document.getElementById('notice');
+const scrub = document.getElementById('scrub');
+const levelEl = document.getElementById('level');
+const levelSub = document.getElementById('levelSub');
+const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+const css = (name) => getComputedStyle(root).getPropertyValue(name).trim();
+const fa = (n) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
+
+const state = { tier: 3, theme: 'light', source: '—', webgl: true, stats: { fps: 0, ms: 0 }, world: null, running: false, raf: 0, scrub: 0 };
+
+// ---------- asset
+let molarGeometry = null;
+async function loadAsset() {
+  try {
+    const draco = new THREE.DRACOLoader().setDecoderPath('../vendor/draco/');
+    const loader = new THREE.GLTFLoader().setDRACOLoader(draco);
+    const gltf = await loader.loadAsync('../brand/3d/molar.glb');
+    gltf.scene.traverse((o) => { if (o.isMesh && !molarGeometry) molarGeometry = o.geometry; });
+    draco.dispose();
+    state.source = 'GLB (Draco)';
+  } catch (err) {
+    console.warn('GLB load failed, building geometry in page:', err);
+    const mod = await import('../brand/3d/build-brand-geometry.js');
+    molarGeometry = mod.buildMolarGeometry();
+    state.source = 'ساخت درون‌صفحه';
+  }
+}
+
+const GrainShader = {
+  uniforms: { tDiffuse: { value: null }, uTime: { value: 0 }, uAmount: { value: 0.03 } },
+  vertexShader: `varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `
+    uniform sampler2D tDiffuse; uniform float uTime; uniform float uAmount; varying vec2 vUv;
+    float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+    void main(){
+      vec4 c = texture2D(tDiffuse, vUv);
+      float n = hash(gl_FragCoord.xy + vec2(fract(uTime * 0.37) * 731.0, fract(uTime * 0.19) * 419.0)) - 0.5;
+      c.rgb += n * uAmount;
+      gl_FragColor = c;
+    }`,
+};
+
+// ---------- enamel material with the refine displacement and the CIP overlay
+function makeEnamel(T) {
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: '#F6F1E7', roughness: 0.35, metalness: 0, clearcoat: 0.6, clearcoatRoughness: 0.3,
+    sheen: 0.4, sheenRoughness: 0.6, sheenColor: '#F3E3C8',
+    transmission: T.transmission, thickness: 0.6, ior: 1.5, attenuationColor: '#F2D9BD', attenuationDistance: 1.2,
+    envMapIntensity: 0.5,
+  });
+  const u = { uRefine: { value: 0 }, uCharacter: { value: 0 } };
+  mat.userData.u = u;
+  mat.onBeforeCompile = (shader) => {
+    Object.assign(shader.uniforms, u);
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `#include <common>\nuniform float uRefine; varying vec3 vObjPos; varying vec3 vObjNormal;\n${CUSP_GLSL}`)
+      .replace('#include <beginnormal_vertex>', `#include <beginnormal_vertex>
+        float topW = smoothstep(0.08, ${CROWN_HALF} * 0.92, position.y);
+        float refineAmp = uRefine * ${CUSP_AMP} * 0.35;
+        {
+          const float e = 0.01;
+          float hx = (sefidCuspHeight(position.x + e, position.z, refineAmp) - sefidCuspHeight(position.x - e, position.z, refineAmp)) / (2.0 * e);
+          float hz = (sefidCuspHeight(position.x, position.z + e, refineAmp) - sefidCuspHeight(position.x, position.z - e, refineAmp)) / (2.0 * e);
+          objectNormal = normalize(objectNormal - topW * vec3(hx, 0.0, hz));
+        }
+        vObjNormal = objectNormal;`)
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+        transformed.y += topW * sefidCuspHeight(position.x, position.z, refineAmp);
+        vObjPos = transformed;`);
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>\nuniform float uCharacter; varying vec3 vObjPos; varying vec3 vObjNormal;
+        float sefidHash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+        float sefidNoise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(sefidHash(i), sefidHash(i + vec2(1,0)), f.x), mix(sefidHash(i + vec2(0,1)), sefidHash(i + vec2(1,1)), f.x), f.y); }`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        if (uCharacter > 0.001) {
+          vec3 p = vObjPos;
+          float up = clamp(vObjNormal.y, 0.0, 1.0);
+          // warm cervical gradient toward the gum line, strongest low on the crown
+          float cervical = smoothstep(0.3, -0.36, p.y) * (1.0 - smoothstep(-0.36, -0.6, p.y));
+          cervical += 0.6 * smoothstep(-0.36, -1.1, p.y);
+          vec3 warm = vec3(0.93, 0.80, 0.63);
+          // cool translucent tips on the cusps
+          float tips = smoothstep(0.26, 0.42, p.y) * up;
+          vec3 cool = vec3(0.82, 0.86, 0.88);
+          // fine stain lines in the fissures (x = 0 and z = 0 on the crown top), with an organic wobble
+          float wob = (sefidNoise(p.xz * 18.0) - 0.5) * 0.05;
+          float fx = exp(-pow((p.x + wob) / 0.03, 2.0)) * exp(-(p.z * p.z) / 0.14);
+          float fz = exp(-pow((p.z - wob) / 0.03, 2.0)) * exp(-(p.x * p.x) / 0.14);
+          float fissure = clamp(fx + fz, 0.0, 1.0) * smoothstep(0.2, 0.34, p.y) * up;
+          float grainMask = 0.55 + 0.45 * sefidNoise(p.xz * 40.0 + p.y * 9.0);
+          fissure *= grainMask;
+          vec3 stain = vec3(0.48, 0.34, 0.2);
+          vec3 c = diffuseColor.rgb;
+          c = mix(c, c * warm, clamp(cervical, 0.0, 1.0) * 0.8 * uCharacter);
+          c = mix(c, cool, tips * 0.35 * uCharacter);
+          c = mix(c, stain, fissure * uCharacter);
+          // faint mamelon-like value variation so the enamel is not flat
+          c *= 1.0 - 0.05 * uCharacter * sefidNoise(p.xz * 6.0 + p.y * 3.0);
+          diffuseColor.rgb = c;
+        }`)
+      .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
+        {
+          float wobR = (sefidNoise(vObjPos.xz * 18.0) - 0.5) * 0.05;
+          float fr = exp(-pow((vObjPos.x + wobR) / 0.022, 2.0)) * exp(-(vObjPos.z * vObjPos.z) / 0.14) + exp(-pow((vObjPos.z - wobR) / 0.022, 2.0)) * exp(-(vObjPos.x * vObjPos.x) / 0.14);
+          roughnessFactor += uCharacter * 0.25 * clamp(fr, 0.0, 1.0) * smoothstep(0.2, 0.34, vObjPos.y);
+        }`);
+  };
+  mat.customProgramCacheKey = () => 'sefid-enamel';
+  return mat;
+}
+
+// ---------- world
+function createWorld(tier) {
+  const T = TIERS[tier];
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: T.post === 'none', powerPreference: 'high-performance' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio || 1, T.dpr));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.shadowMap.enabled = T.shadows !== 'none';
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.transmissionResolutionScale = 0.5;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 30);
+  camera.position.set(0, 3.1, 4.3); // about 35 degrees above the occlusal plane so the cusps read
+  camera.lookAt(0, 0.15, 0);
+
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const envRT = pmrem.fromScene(new THREE.RoomEnvironment(), 0.04);
+  scene.environment = envRT.texture;
+  pmrem.dispose();
+
+  const key = new THREE.DirectionalLight('#FFF6EC', 1.2);
+  key.position.set(2.2, 3.4, 3);
+  key.castShadow = T.shadows !== 'none';
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.left = -2; key.shadow.camera.right = 2; key.shadow.camera.top = 2; key.shadow.camera.bottom = -2;
+  key.shadow.camera.near = 1; key.shadow.camera.far = 10;
+  key.shadow.bias = -0.0004; key.shadow.normalBias = 0.03;
+  key.shadow.radius = T.shadows === 'soft' ? 7 : 1;
+  const rim = new THREE.DirectionalLight('#DCE8F0', 0.5);
+  rim.position.set(-2.5, 1.5, -2);
+  const fill = new THREE.HemisphereLight('#DCE8F0', '#E8D8C8', 0.4);
+  scene.add(key, rim, fill);
+
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ color: '#0A243F', opacity: 0.18, transparent: true }));
+  ground.rotation.x = -Math.PI / 2; ground.position.y = -0.55; ground.receiveShadow = true;
+  scene.add(ground);
+
+  const enamel = makeEnamel(T);
+  const molar = new THREE.Mesh(molarGeometry, enamel);
+  const BASE_SCALE = 0.95;
+  molar.scale.setScalar(BASE_SCALE);
+  molar.position.y = 0.55;
+  molar.castShadow = true;
+  const turntable = new THREE.Group();
+  turntable.add(molar);
+  scene.add(turntable);
+
+  const controls = new THREE.OrbitControls(camera, canvas);
+  controls.enableZoom = false; controls.enablePan = false;
+  controls.enableDamping = true; controls.dampingFactor = 0.06;
+  controls.minPolarAngle = Math.PI * 0.22; controls.maxPolarAngle = Math.PI * 0.55;
+  controls.target.set(0, 0.15, 0);
+  controls.autoRotate = true; controls.autoRotateSpeed = 0.7; // one turn in about 86 s
+
+  let composer = null, grain = null;
+  if (T.post !== 'none') {
+    composer = new THREE.EffectComposer(renderer);
+    composer.addPass(new THREE.RenderPass(scene, camera));
+    if (T.post.includes('bloom')) composer.addPass(new THREE.UnrealBloomPass(new THREE.Vector2(1, 1), 0.08, 0.3, 1.6)); // only HDR highlights bloom
+    grain = new THREE.ShaderPass(GrainShader);
+    composer.addPass(grain);
+    composer.addPass(new THREE.OutputPass());
+  }
+
+  function applyTheme(theme) {
+    const dark = theme === 'dark';
+    scene.background = new THREE.Color(css('--color-surface'));
+    ground.material.color.set(dark ? '#000000' : '#0A243F'); ground.material.opacity = dark ? 0.4 : 0.18;
+    key.intensity = dark ? 0.6 : 1.2; rim.intensity = dark ? 0.4 : 0.5;
+    fill.color.set(dark ? '#1E3A52' : '#DCE8F0'); fill.groundColor.set(dark ? '#0F3B3A' : '#E8D8C8'); fill.intensity = dark ? 0.4 : 0.4;
+    renderer.toneMappingExposure = dark ? 0.7 : 0.9;
+    enamel.envMapIntensity = dark ? 0.35 : 0.5;
+  }
+
+  function applyScrub(v) {
+    // v in [0, 2]: 0 plain, 1 VIP, 2 CIP
+    const refine = Math.min(1, v);
+    const character = Math.max(0, v - 1);
+    const u = enamel.userData.u;
+    u.uRefine.value = refine;
+    u.uCharacter.value = character;
+    enamel.roughness = 0.35 - 0.14 * refine;
+    enamel.clearcoat = 0.6 + 0.3 * refine;
+    enamel.clearcoatRoughness = 0.3 - 0.18 * refine;
+    enamel.sheen = 0.4 - 0.15 * refine;
+  }
+
+  function resize() {
+    const w = innerWidth, h = innerHeight;
+    renderer.setPixelRatio(Math.min(devicePixelRatio || 1, T.dpr));
+    renderer.setSize(w, h, false);
+    if (composer) composer.setSize(w, h);
+    camera.aspect = w / h; camera.updateProjectionMatrix();
+    const fit = Math.min(1, camera.aspect / 1.0);
+    molar.scale.setScalar(BASE_SCALE * (0.55 + 0.45 * fit));
+    molar.position.y = 0.55 + (1 - fit) * 0.5;
+  }
+
+  let t = 0;
+  function render(dt) {
+    t += dt;
+    controls.update(dt);
+    molar.rotation.x = 0.08 * Math.sin(t * 0.4);
+    if (grain) grain.uniforms.uTime.value = t;
+    if (composer) composer.render(); else renderer.render(scene, camera);
+  }
+
+  function dispose() {
+    controls.dispose();
+    ground.geometry.dispose(); ground.material.dispose();
+    molarGeometry.dispose(); enamel.dispose();
+    envRT.dispose();
+    if (composer) { composer.passes.forEach((p) => p.dispose && p.dispose()); composer.dispose(); }
+    renderer.dispose();
+  }
+
+  return { applyTheme, applyScrub, resize, render, dispose };
+}
+
+// ---------- loop
+let last = 0, acc = 0, frames = 0;
+function loop(now) {
+  if (!state.running) return;
+  state.raf = requestAnimationFrame(loop);
+  const raw = last ? (now - last) / 1000 : 0.016;
+  const dt = Math.min(0.1, raw);
+  last = now;
+  state.world.render(dt);
+  frames++; acc += raw;
+  if (acc >= 0.5) {
+    state.stats.fps = Math.round(frames / acc); state.stats.ms = Math.round((acc / frames) * 1000 * 10) / 10;
+    fpsEl.textContent = `${state.stats.fps} fps · ${state.stats.ms} ms`;
+    acc = 0; frames = 0;
+  }
+}
+function start() { if (state.running) return; state.running = true; last = 0; state.raf = requestAnimationFrame(loop); }
+function stop() { state.running = false; cancelAnimationFrame(state.raf); }
+
+// ---------- control
+const LEVELS = [
+  { key: 'plain', name: 'معمولی', sub: 'مینای ساده با سطح طبیعی' },
+  { key: 'vip', name: 'VIP', sub: 'سطح صاف‌تر، فرم دقیق‌تر، درخشش بیشتر' },
+  { key: 'cip', name: 'CIP', sub: 'لایه شخصی‌سازی رنگ: گرادیان گرم و خطوط ریز نزدیک کاسپ‌ها' },
+];
+function effectiveTier(n) { return reduced.matches ? 0 : n; }
+function setScrub(v) {
+  state.scrub = Math.max(0, Math.min(2, v));
+  const idx = Math.round(state.scrub);
+  levelEl.textContent = LEVELS[idx].name; levelSub.textContent = LEVELS[idx].sub;
+  scrub.setAttribute('aria-valuetext', LEVELS[idx].name);
+  staticWorld.dataset.level = LEVELS[idx].key;
+  document.querySelectorAll('.ticks span').forEach((s) => s.setAttribute('aria-current', String(s.dataset.level === LEVELS[idx].key)));
+  if (state.world) state.world.applyScrub(state.scrub);
+}
+function setTier(n) {
+  n = Math.max(0, Math.min(3, Number(n)));
+  state.tier = n;
+  document.querySelectorAll('#tiers button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.tier) === n)));
+  rebuild();
+}
+function rebuild() {
+  stop();
+  if (state.world) { state.world.dispose(); state.world = null; }
+  const tier = effectiveTier(state.tier);
+  const useWebgl = tier > 0 && state.webgl;
+  staticWorld.classList.toggle('is-on', !useWebgl);
+  canvas.style.display = useWebgl ? 'block' : 'none';
+  if (useWebgl) {
+    try {
+      state.world = createWorld(tier);
+      state.world.applyTheme(state.theme);
+      state.world.applyScrub(state.scrub);
+      state.world.resize();
+      start();
+    } catch (err) {
+      console.error('WebGL world failed, showing the static fallback:', err);
+      state.webgl = false; staticWorld.classList.add('is-on'); canvas.style.display = 'none';
+    }
+  }
+  status();
+}
+function status() {
+  const tier = effectiveTier(state.tier);
+  const parts = [];
+  if (reduced.matches) parts.push('کاهش حرکت فعال است: تیر ۰');
+  if (!state.webgl) parts.push('WebGL در دسترس نیست: نمای ایستا');
+  if (tier > 0 && state.webgl) {
+    const T = TIERS[tier];
+    parts.push(`تیر ${fa(tier)}: DPR ${fa(Math.min(devicePixelRatio || 1, T.dpr).toFixed(1))} · پس‌پردازش ${T.post === 'none' ? 'خاموش' : T.post === 'grain' ? 'گرین' : 'بلوم و گرین'} · سایه ${T.shadows === 'soft' ? 'نرم' : T.shadows === 'hard' ? 'سخت' : 'خاموش'} · انتقال نور ${T.transmission ? fa(T.transmission) : 'خاموش'}`);
+    parts.push(`مدل: ${state.source}`);
+  } else { fpsEl.textContent = '—'; }
+  statusEl.textContent = parts.join(' | ');
+}
+function setTheme(theme) {
+  state.theme = theme === 'dark' ? 'dark' : 'light';
+  root.setAttribute('data-theme', state.theme);
+  document.getElementById('theme').textContent = state.theme === 'dark' ? 'تم روشن' : 'تم تاریک';
+  if (state.world) state.world.applyTheme(state.theme);
+}
+
+scrub.addEventListener('input', () => setScrub(scrub.value / 100));
+document.getElementById('tiers').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) setTier(b.dataset.tier); });
+document.getElementById('theme').addEventListener('click', () => setTheme(state.theme === 'dark' ? 'light' : 'dark'));
+window.addEventListener('resize', () => state.world && state.world.resize());
+document.addEventListener('visibilitychange', () => { if (document.hidden) stop(); else if (state.world) start(); });
+reduced.addEventListener('change', rebuild);
+canvas.addEventListener('webglcontextlost', (e) => { e.preventDefault(); stop(); noticeEl.textContent = 'زمینه WebGL از دست رفت؛ منتظر بازیابی…'; noticeEl.classList.add('is-on'); });
+canvas.addEventListener('webglcontextrestored', () => { noticeEl.classList.remove('is-on'); rebuild(); });
+
+const ready = (async () => {
+  const probe = document.createElement('canvas').getContext('webgl2');
+  state.webgl = !!probe;
+  if (probe) { const ext = probe.getExtension('WEBGL_lose_context'); if (ext) ext.loseContext(); }
+  setTheme(params.get('theme') || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
+  if (params.get('panel') === '0') document.querySelector('.panel').style.display = 'none';
+  if (state.webgl) await loadAsset();
+  if (params.has('scrub')) { scrub.value = params.get('scrub'); }
+  setScrub(scrub.value / 100);
+  setTier(params.get('tier') ?? 3);
+  if (state.world) state.world.render(0.016);
+})();
+
+window.__proto = {
+  ready, setTier, setTheme, setScrub: (v) => { scrub.value = v * 100; setScrub(v); },
+  getStats: () => ({ ...state.stats, tier: state.tier, effectiveTier: effectiveTier(state.tier), theme: state.theme, source: state.source, webgl: state.webgl, running: state.running, scrub: state.scrub }),
+};
+</script>
+</body>
+</html>
