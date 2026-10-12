@@ -8,8 +8,12 @@ brand designer, motion director, 3D artist and accessibility specialist.
 ## Inputs
 
 `docs/design-direction.md`, `docs/experience-direction.md`, `docs/ia.md`,
-`docs/conversion.md`, `content/brand/`, the client's screen recordings of
-the reference sites if provided (gap 33), the phase 1 report.
+`docs/conversion.md`, `content/brand/`,
+`docs/discovery/reference-inspection.md` and its screenshots,
+`docs/discovery/threeui-review.md` (ThreeUI source is a shallow clone away:
+`git clone --depth 1 https://github.com/MengTo/threeui`), the client's
+screen recordings of the reference sites if provided (gap 33), the phase 1
+report.
 
 ## Deliverables
 
@@ -44,8 +48,10 @@ the reference sites if provided (gap 33), the phase 1 report.
    assets needed, and the estimated GPU and download cost. Mark the three
    direction changes and the footer playground.
 7. `design/prototypes/` - small HTML or Vite prototypes that prove the
-   riskiest ideas before the app exists: (a) the intro as specified, timed
-   with the Performance API; (b) the horizontal pinned services scene with
+   riskiest ideas before the app exists: (0) the porcelain relief world:
+   the tooth mark and a diamond as white reliefs over the warm surface with
+   soft shadows and grain, in both themes, at tiers 1 and 3; (a) the intro
+   as specified, timed with the Performance API; (b) the horizontal pinned services scene with
    the mark morphing into category icons, desktop and the phone swipe
    version; (c) the diagonal workflow scene (DOM only); (d) a three.js
    turntable of the molar with the enamel material, with tier switching

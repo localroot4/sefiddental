@@ -9,8 +9,10 @@ performance engineer and the independent critic with a weak laptop.
 ## Inputs
 
 `docs/experience-direction.md`, `docs/experience/storyboard.md`,
-`design/brand/` glTF assets and the molar, `design/prototypes/` (d) and
-(f), the phase 7 timeline and tier provider, performance baselines.
+`design/brand/` glTF assets and the molar, `design/prototypes/` (0), (d)
+and (f), `docs/discovery/threeui-review.md` section 3 (effects to port, never
+iframes or CDN loads), the phase 7 timeline and tier provider, performance
+baselines.
 
 ## Deliverables
 

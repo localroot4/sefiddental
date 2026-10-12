@@ -37,4 +37,4 @@ Phases append rows; the client closes them. Status: open, received, done.
 | 30 | Are bridges and complete dentures offered? (no page until confirmed) | services, keyword map | client | open |
 | 31 | A nearby 24-hour dental center or hospital to name for closed-hours emergencies | emergency page | client | open |
 | 32 | Hosting decision for Next.js: Node PaaS in Iran (Liara or ArvanCloud) or Node on the client's own VPS if WHM is a full server | phase 3 | client | open |
-| 33 | Screen recordings (30-60 s each) of immersive-g.com and hidokme.com showing what the client likes most | phase 2 taste calibration | client | open |
+| 33 | Screen recordings (30-60 s each) of immersive-g.com and hidokme.com from the client's phone and desktop, plus the exact address of the second site (hidokme.com did not resolve) | phase 2 taste calibration | client | open |

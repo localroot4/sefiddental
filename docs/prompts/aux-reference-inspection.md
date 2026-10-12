@@ -7,10 +7,18 @@ to this repository, and push. Follow the repository rules in
 `docs/prompts/00-master.md` section 3 (commit as `localroot4
 <atilnic@gmail.com>`, no tool or model names anywhere, branch `main`).
 
+Already done from the cloud session (see
+`docs/discovery/reference-inspection.md`): section 2 for immersive-g.com,
+except real-device frame rates and the mobile scroll beyond the hero. Run
+the rest: sections 2.5 and 2.6 for immersive-g.com on a real phone if
+possible, and sections 3 and 4 in full. Append to the existing report file
+instead of replacing it.
+
 Sites:
 
-1. `https://immersive-g.com` (Immersive Garden): creative and technical reference
-2. `https://hidokme.com`: creative and technical reference
+1. `https://immersive-g.com` (Immersive Garden): only the parts listed above
+2. `https://hidokme.com`: creative and technical reference (confirm the exact
+   address with the client first; it did not resolve from the cloud)
 3. `https://sefiddental.ir`: the client's current site; content inventory,
    SEO baseline and the 301 map depend on it
 

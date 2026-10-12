@@ -21,9 +21,23 @@ own logo and the tooth, never copied from the references.
 | Playful physics somewhere unexpected | The footer playground: logo parts drop in, can be dragged and thrown, and settle |
 | Everything is still tidy, fast and legible | Content pages stay light; the home experience has budgets and tiers |
 
-Reference sites were unreachable from the build environment (blocked
-network); the patterns above are the studio's well-known signatures. Phase 2
-asks the client for screen recordings of the two sites to calibrate taste.
+Measured facts about immersive-g.com and the review of ThreeUI are in
+`docs/discovery/reference-inspection.md` and `docs/discovery/threeui-review.md`.
+Two findings change the plan:
+
+- Immersive Garden's home is a single-material "plaster relief" world:
+  white bas-relief sculptures drifting over a light gray plane, one card and
+  one caption per viewport, tiny UI chrome. Our translation is a **porcelain
+  relief world**: the tooth mark, the diamonds and natural forms as white
+  porcelain reliefs in a warm off-white space (light theme) or navy with
+  teal glass (dark theme). Phase 2 prototypes this material first.
+- Their loading model (16.7 MB, a counter preloader, no fallback, virtual
+  scroll with hidden body overflow, disabled zoom, sound) is exactly what
+  this brief forbids. The budgets and tiers below stand.
+
+Phase 2 still asks the client for phone recordings of both reference sites
+(gap 33) to see their mobile scroll and the second site, which was
+unreachable.
 
 ## 2. The concept: «سفر یک لبخند»
 
@@ -119,6 +133,10 @@ layout. Lighthouse mobile: Performance >= 90 on home at tier 1 settings,
   a glowing teal line used for loading and scene transitions.
 - One anatomical molar model (phase 2 sources or models it): enamel material
   with subsurface-like translucency, used in scenes 4 and 5.
+- Porcelain relief material for the world: matte white with soft shadows
+  and a fine grain, derived from the Immersive Garden observation; the
+  materials and particle ideas listed in `docs/discovery/threeui-review.md`
+  section 3 are the first candidates to port.
 - Lighting: a warm key light that drifts from cool to warm across the
   journey; the navy world background in dark theme, the off-white surface
   in light theme; the scene reads correctly in both themes.
