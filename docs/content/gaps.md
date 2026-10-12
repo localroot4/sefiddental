@@ -36,5 +36,5 @@ Phases append rows; the client closes them. Status: open, received, done.
 | 29 | Profiles on nobat.ir, doctoreto.com, paziresh24.com: existing or to create | local SEO | client | open |
 | 30 | Are bridges and complete dentures offered? (no page until confirmed) | services, keyword map | client | open |
 | 31 | A nearby 24-hour dental center or hospital to name for closed-hours emergencies | emergency page | client | open |
-| 32 | Hosting: the client's cPanel has "Setup Node.js App" (CloudLinux Node.js Selector) and Git Version Control (confirmed 2026-10-12, screenshot). Still needed: Node versions offered, account memory limit, SSH or Terminal access, host name | phase 3 (path C2 likely) | client | partly received |
+| 32 | Hosting: cPanel has the Node.js Selector but no Node version is installed ("No Node.js version is available. Please contact your hoster", plus "No such user" error, 2026-10-12). The host must enable Node 20 or 22 in the selector (CloudLinux alt-nodejs packages), or the client installs it through WHM root (CloudLinux Manager), else path A (Liara) | phase 3 | client | ticket to host pending |
 | 33 | Screen recordings (30-60 s each) of immersive-g.com and hidokmeh.com from the client's phone and desktop, plus the exact address of the second site (address confirmed) | phase 2 taste calibration | client | open |
