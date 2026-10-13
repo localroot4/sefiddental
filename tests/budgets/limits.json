@@ -1,0 +1,29 @@
+{
+  "$comment": "Initial-JS budgets per page class (freeze decision 4, spec-experience-tooling 4.9). CI gates the interim limits in KiB; reports print the documented targets (docs/brief.md section 7, docs/experience-direction.md section 4) beside the measured values. Read by scripts/check-bundle.mjs and lighthouserc.cjs.",
+  "classes": {
+    "home": {
+      "label": "Home (experience)",
+      "pages": ["/"],
+      "targetKB": 180,
+      "interimKiB": 215,
+      "routeAllowanceKiB": 85
+    },
+    "content": {
+      "label": "Content",
+      "pages": ["/qa/not-found"],
+      "targetKB": 90,
+      "interimKiB": 150,
+      "routeAllowanceKiB": 15
+    },
+    "booking": {
+      "label": "Booking and emergency",
+      "pages": [],
+      "pendingNote": "no booking or emergency page before phase 5",
+      "targetKB": 70,
+      "interimKiB": 150,
+      "routeAllowanceKiB": 20
+    }
+  },
+  "cssKiB": 50,
+  "fontsKiB": 120
+}
