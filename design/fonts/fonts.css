@@ -1,0 +1,19 @@
+/* Brand fonts. Both files are Persian plus Latin subsets (OFL, see OFL-*.txt).
+   Preload both in <head>:
+   <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/Vazirmatn%5Bwght%5D.woff2">
+   <link rel="preload" as="font" type="font/woff2" crossorigin href="/fonts/Estedad-Bold.woff2">
+   In Next.js use next/font/local with the same two files instead of this sheet. */
+@font-face {
+  font-family: "Vazirmatn";
+  src: url("Vazirmatn%5Bwght%5D.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Estedad";
+  src: url("Estedad-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
