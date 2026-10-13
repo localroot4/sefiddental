@@ -47,8 +47,8 @@ button{font:inherit;color:inherit}
 .proto .wrap{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2) var(--space-4);min-block-size:56px;padding-block:var(--space-2)}
 .proto .q{color:var(--color-ink-muted);flex:1 1 260px}
 .proto .q b{color:var(--color-ink);font-weight:600}
-.proto .tools{display:flex;gap:var(--space-2);align-items:center}
-.readout{display:inline-flex;align-items:center;min-block-size:var(--target);min-inline-size:14rem;padding-inline:var(--space-4);border:1px solid var(--color-line);border-radius:var(--radius-pill);background:var(--color-surface-raised);white-space:nowrap}
+.proto .tools{display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap}
+.readout{display:inline-block;line-height:calc(var(--target) - 2px);min-block-size:var(--target);min-inline-size:14rem;padding-inline:var(--space-4);border:1px solid var(--color-line);border-radius:var(--radius-pill);background:var(--color-surface-raised);white-space:nowrap}
 .readout bdi{font-weight:600;color:var(--color-brand-strong)}
 
 /* header (static logo lives here at tier 0) */
@@ -63,7 +63,9 @@ button{font:inherit;color:inherit}
 .head-actions{display:flex;gap:var(--space-2);align-items:center}
 .icon-btn{inline-size:var(--target);block-size:var(--target);display:inline-grid;place-items:center;border:1px solid var(--color-line);border-radius:var(--radius-pill);background:transparent;cursor:pointer}
 .icon-btn svg{inline-size:20px;block-size:20px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
-@media (min-width:1024px){.nav{display:flex}.icon-btn.menu{display:none}}
+/* the call icon follows the styleguide: drawer only on phones, icon at 1024 and up */
+.icon-btn.call{display:none}
+@media (min-width:1024px){.nav{display:flex}.icon-btn.menu{display:none}.icon-btn.call{display:inline-grid}}
 
 /* hero, family A */
 .hero{padding-block:clamp(2.5rem,5vw,5rem)}
@@ -181,7 +183,7 @@ html.s3 .hero .t{animation:settle var(--dur-4) var(--ease-out) both;animation-de
       <a href="#">خدمات</a><a href="#">پزشکان</a><a href="#">قبل و بعد</a><a href="#">هزینه و پرداخت</a><a href="#">تماس</a>
     </nav>
     <div class="head-actions">
-      <a class="icon-btn" href="tel:+982155101054" aria-label="تماس با کلینیک"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></a>
+      <a class="icon-btn call" href="tel:+982155101054" aria-label="تماس با کلینیک"><svg viewBox="0 0 24 24"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z"/></svg></a>
       <a class="btn btn-primary btn-sm" href="#">رزرو نوبت</a>
       <button class="icon-btn menu" type="button" aria-label="منو"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     </div>

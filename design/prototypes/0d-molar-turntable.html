@@ -249,7 +249,7 @@ function makeEnamel(T) {
           // warm cervical gradient toward the gum line, strongest low on the crown
           float cervical = smoothstep(0.3, -0.36, p.y) * (1.0 - smoothstep(-0.36, -0.6, p.y));
           cervical += 0.6 * smoothstep(-0.36, -1.1, p.y);
-          vec3 warm = vec3(0.93, 0.80, 0.63);
+          vec3 warm = vec3(0.92, 0.78, 0.58);
           // cool translucent tips on the cusps
           float tips = smoothstep(0.26, 0.42, p.y) * up;
           vec3 cool = vec3(0.82, 0.86, 0.88);
@@ -262,7 +262,7 @@ function makeEnamel(T) {
           fissure *= grainMask;
           vec3 stain = vec3(0.48, 0.34, 0.2);
           vec3 c = diffuseColor.rgb;
-          c = mix(c, c * warm, clamp(cervical, 0.0, 1.0) * 0.8 * uCharacter);
+          c = mix(c, c * warm, clamp(cervical, 0.0, 1.0) * uCharacter);
           c = mix(c, cool, tips * 0.35 * uCharacter);
           c = mix(c, stain, fissure * uCharacter);
           // faint mamelon-like value variation so the enamel is not flat

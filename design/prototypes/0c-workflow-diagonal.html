@@ -43,7 +43,7 @@ button{font:inherit;color:inherit}
 .proto .q{color:var(--color-ink-muted);flex:1 1 260px}
 .proto .q b{color:var(--color-ink);font-weight:600}
 .proto .tools{display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap}
-.meter{display:inline-flex;align-items:center;gap:var(--space-2);min-block-size:var(--target);min-inline-size:13rem;padding-inline:var(--space-4);border:1px solid var(--color-line);border-radius:var(--radius-pill);background:var(--color-surface-raised);white-space:nowrap}
+.meter{display:inline-block;line-height:calc(var(--target) - 2px);min-block-size:var(--target);min-inline-size:13rem;padding-inline:var(--space-4);border:1px solid var(--color-line);border-radius:var(--radius-pill);background:var(--color-surface-raised);white-space:nowrap}
 .meter bdi{font-weight:600;color:var(--color-brand-strong)}
 /* corner meter: visible while the scene is on screen */
 .corner{position:fixed;inset-inline-end:var(--gutter);inset-block-end:calc(var(--gutter) + env(safe-area-inset-bottom));z-index:6;font-size:var(--text-caption);line-height:1.4;padding:var(--space-2) var(--space-4);border-radius:var(--radius-input);background:var(--color-surface-raised);border:1px solid var(--color-line);box-shadow:var(--shadow-raised);min-inline-size:12rem;pointer-events:none}
@@ -60,8 +60,10 @@ button{font:inherit;color:inherit}
 .lead p{color:var(--color-ink-muted);max-inline-size:var(--measure);margin-block-start:var(--space-4);font-size:var(--text-body-lg)}
 
 /* ---------- the scene ---------- */
-.scene{position:relative;--light:0}
-.warm{position:absolute;inset:0;background:var(--color-warm-soft);opacity:var(--light);pointer-events:none}
+.scene{position:relative}
+/* the light value lives on its consumers, not on the scene: a variable tweened on an ancestor recalculates the whole subtree each frame */
+.warm,.board{--light:0}
+.warm{position:absolute;inset:0;background:var(--color-warm-soft);opacity:var(--light);pointer-events:none;will-change:opacity}
 .stage{position:relative}
 .scene-head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap}
 .scene-head h2{font-size:var(--text-heading);line-height:var(--leading-heading)}
@@ -69,8 +71,8 @@ button{font:inherit;color:inherit}
 .steps{list-style:none;margin:0;padding:0}
 .step{display:grid;gap:var(--space-3)}
 .board{position:relative;aspect-ratio:4/3;border-radius:var(--radius-media);background:var(--color-brand-soft);overflow:hidden;display:grid;place-items:center;color:var(--color-ink-muted);font-size:var(--text-caption)}
-.board::before{content:"";position:absolute;inset:0;background:var(--color-surface-sunken);opacity:calc(1 - var(--light))}
-.board::after{content:"";position:absolute;inset:0;background:var(--color-warm-soft);opacity:var(--light);mix-blend-mode:multiply}
+.board::before{content:"";position:absolute;inset:0;background:var(--color-surface-sunken);opacity:calc(1 - var(--light));will-change:opacity}
+.board::after{content:"";position:absolute;inset:0;background:var(--color-warm);opacity:calc(var(--light) * .35);will-change:opacity}
 .board span{position:relative}
 .cap{display:grid;gap:2px}
 .cap .n{font-size:var(--text-caption);font-weight:500;color:var(--color-brand-strong)}
@@ -93,7 +95,7 @@ button{font:inherit;color:inherit}
   .stage{block-size:100svh;overflow:clip}
   .scene-head{position:absolute;inset-inline-start:0;inset-block-end:var(--space-8);padding-inline:var(--gutter);z-index:2;max-inline-size:28rem;flex-direction:column;align-items:flex-start;gap:var(--space-1)}
   .path{position:absolute;inset:0;will-change:transform}
-  .step{position:absolute;inline-size:clamp(320px,26vw,400px);inset-inline-start:calc(50% + var(--i) * 30%);inset-block-start:calc(50% + var(--i) * 40%);translate:50% -50%;transform-origin:center}
+  .step{position:absolute;inline-size:clamp(320px,26vw,400px);inset-inline-start:calc(50% + var(--i) * 30%);inset-block-start:calc(50% + var(--i) * 40%);translate:50% -50%;transform-origin:center;will-change:transform,opacity}
   .step .dia{position:absolute;inset-inline-end:-7px;inset-block-end:calc(100% - 12px);display:none}
   .step:not(:last-child) .dia{display:block;inset-block-end:auto;inset-block-start:calc(100% - 7px)}
   .cap{padding-inline:var(--space-2)}
@@ -198,6 +200,7 @@ gsap.registerPlugin(ScrollTrigger);
   var stage = scene.querySelector('.stage');
   var path = document.getElementById('path');
   var steps = gsap.utils.toArray('.step');
+  var lights = [scene.querySelector('.warm')].concat(gsap.utils.toArray('.board'));
   var mm = gsap.matchMedia();
   mm.add({ desktop: '(min-width: 1024px)', phone: '(max-width: 1023px)', reduce: '(prefers-reduced-motion: reduce)' }, function (ctx) {
     var c = ctx.conditions;
@@ -207,7 +210,7 @@ gsap.registerPlugin(ScrollTrigger);
       steps.forEach(function (s) {
         ScrollTrigger.create({ trigger: s, start: 'top 88%', once: true, onEnter: function () { s.classList.add('in'); } });
       });
-      gsap.to(scene, { '--light': 1, ease: 'none', scrollTrigger: { trigger: scene, start: 'top 60%', end: 'bottom 60%', scrub: 0.6 } });
+      gsap.to(lights, { '--light': 1, ease: 'none', scrollTrigger: { trigger: scene, start: 'top 60%', end: 'bottom 60%', scrub: 0.6 } });
       return function () { steps.forEach(function (s) { s.classList.remove('in'); }); };
     }
     /* desktop: pinned stage, the whole path translates along the diagonal; steps reveal with opacity and a 6% scale */
@@ -224,7 +227,7 @@ gsap.registerPlugin(ScrollTrigger);
       }
     });
     tl.to(path, { x: function () { return 3 * 0.30 * stage.clientWidth; }, y: function () { return -3 * 0.40 * stage.clientHeight; }, duration: 1 }, 0);
-    tl.to(scene, { '--light': 1, duration: 1 }, 0);
+    tl.to(lights, { '--light': 1, duration: 1 }, 0);
     steps.forEach(function (s, i) {
       var focus = i / 3;
       if (i > 0) tl.fromTo(s, { autoAlpha: 0.15, scale: 0.94 }, { autoAlpha: 1, scale: 1, duration: 0.2 }, focus - 0.2);
