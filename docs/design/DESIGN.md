@@ -49,7 +49,7 @@ accent; category colors never color text, links or buttons; red only for
 errors and danger; green only for success. Fills (success, info, warning)
 carry navy text in both themes; the danger fill carries white. No gradients
 in UI chrome; a two-stop teal gradient may appear inside the intro mark
-and the hero mask edge only.
+only.
 
 ### 1.1 Measured contrast (phase 2, `design/tools/contrast.py`)
 
@@ -80,8 +80,25 @@ and the hero mask edge only.
 | --color-on-fill on --color-warning-fill | label on warning fill | 5.43 OK | 5.43 OK | 4.5 |
 | --color-line-strong on --color-surface | borders and icons (non-text, 3:1) | 3.09 OK | 3.86 OK | 3.0 |
 | --color-focus on --color-surface | focus ring (non-text, 3:1) | 4.90 OK | 9.50 OK | 3.0 |
+| --color-ink on hero scrim (surface 88%) | hero headline | 11.20 OK | 11.00 OK | 4.5 |
+| --color-ink-muted on hero scrim (surface 88%) | hero subtext | 4.90 OK | 6.20 OK | 4.5 |
+| --color-brand-strong on hero scrim (surface 88%) | secondary button label | 4.95 OK | 6.78 OK | 4.5 |
+| --color-brand on hero scrim (surface 88%) | secondary button border (non-text, 3:1) | 3.72 OK | 4.96 OK | 3.0 |
+| --color-ink on trust band (surface-raised 90%) | fact text | 12.58 OK | 9.52 OK | 4.5 |
+| --color-ink-muted on trust band (surface-raised 90%) | fact captions | 5.51 OK | 5.37 OK | 4.5 |
+
+Scrim alpha needed for every scrim pair: 85% light, 80% dark (built: 88%).
 
 0 failing pairs
+
+Text over the home hero photo sits only on the scrim or on the trust band,
+never directly on the photo. The scrim is `--color-surface` at 88% with no
+blur; the trust band is `--color-surface-raised` at 90%. Each hero row
+composites the layer over a black and over a white photo pixel and shows
+the lower ratio, so it holds for any photo. Lowering the scrim below 85%
+fails AA in the light theme. The script holds the two alphas as `SCRIM_A`
+and `BAND_A`. A change to either alpha in the hero styles changes these
+two values and this table in the same commit.
 
 The script exits non-zero on any failure and runs in CI from phase 3.
 
@@ -110,9 +127,16 @@ Scale (fluid, `clamp()`), from `design/tokens.css`:
 | small | 0.875rem | 1.7 | Vazirmatn 400 or 500 |
 | caption | 0.8125rem | 1.6 | Vazirmatn 500 |
 
-Exception: the home hero H1 is six words; at display-1 it needs three lines
-in a 672 px column, so the hero uses `clamp(2.25rem, 1rem + 3vw, 3.75rem)`
-(60 px at 1440). Every other headline uses the scale above.
+Exception: the home hero H1 is six words inside the hero scrim. The text
+column is 688 px from 1280, 528 px at 1024, 356 px at 820, 280 px at 744
+and 240-350 px on phones (320-430). The hero uses
+`clamp(2rem, 1rem + 3vw, 3.75rem)`: 32 px floor, 60 px cap. Measured on
+`design/hero-directions/b.html` with this floor: 2 lines from 1024 to 1920
+and at 430, 3 lines at 820 and from 360 to 414, 4 lines at 320 and at 744.
+The former 2.25rem floor gave 4 lines at 360 and 375. The 4 lines at 744
+stay open for phase 4. 320 px is below the 360 px floor of the phase 4
+headline check, so the hero H1 may take 4 lines there. Every other
+headline uses the scale above.
 
 Rules: Persian digits in Persian text (the fonts carry them; format with
 `fa-IR`); thousands separator «٬»; phone numbers and Latin in LTR islands
@@ -124,16 +148,18 @@ justify; no italic for Persian; no fake bold; measure 62ch; headlines max
 
 - Base 4 px; scale 4, 8, 12, 16, 24, 32, 48, 64, 96, 128 (`--space-*`).
 - Section padding `clamp(4rem, 6vw + 1rem, 8rem)`; content container
-  80rem, full-bleed media 90rem; gutters (`--gutter`) 16 px under 744, 24 px
-  from 744 and 32 px from 1280.
-- Radius system, no exceptions: pill 999 px (buttons, chips, the sticky
+  80rem (`--container`); wide media 90rem (`--container-wide`); full-bleed
+  media (the home hero photo) spans the viewport width; gutters (`--gutter`)
+  16 px under 744, 24 px from 744 and 32 px from 1280.
+- Radius system, one exception (full-bleed media touches the viewport
+  sides and has square corners): pill 999 px (buttons, chips, the sticky
   pill), input 12 px, card 20 px, media 24 px, sheet and modal 28 px,
   badge 8 px.
 - Elevation: `--shadow-raised` for cards that float (tinted navy), and
-  `--shadow-floating` for the sticky bar, dialogs and the closed-hours
-  sheet. Dark theme uses lighter surfaces and borders, weaker shadows.
-  Cards only when elevation communicates hierarchy; never cards inside
-  cards.
+  `--shadow-floating` for the sticky bar, dialogs, the closed-hours
+  sheet and the home hero booking card. Dark theme uses lighter surfaces
+  and borders, weaker shadows. Cards only when elevation communicates
+  hierarchy; never cards inside cards.
 - Tailwind v4 mapping (phase 3): `--color-*`, `--radius-*` and `--shadow-*`
   keep their names inside `@theme`; `--space-N` becomes `--spacing-N`;
   `--text-role` keeps its name and gains `--text-role--line-height`;
@@ -151,8 +177,15 @@ justify; no italic for Persian; no fake bold; measure 62ch; headlines max
   (arrows, chevrons, back) mirror in RTL; phones, clocks, checks, play and
   logos never mirror. Stroke 1.5 px on a 24 px grid.
 - Photography: real clinic photos only; warm, soft grading; subjects look
-  toward the content or the CTA. Ratios: hero 4:5 on phones and 3:2 on
-  desktop, cards 4:3, dentist portraits 4:5, before/after 1:1 pairs.
+  toward the content or the CTA. Ratios: inner-page heroes 4:5 on phones
+  and 3:2 on desktop, cards 4:3, dentist portraits 4:5, before/after 1:1
+  pairs. The home hero photo is an empty clinic interior in natural light,
+  with no faces. From 744 px it is a landscape source (at least 4000 px on
+  the long side) cropped by its focal point to the hero box (measured on
+  b.html: 1.12:1 at 744x1133, 1.28:1 at 820x1180, about 3:2 at 1024x768,
+  16:9 at 1440x900 and 7:3 at 1920x1080); the key detail sits in the
+  central and upper band. Under 744 px it is a 4:5 band under the
+  booking card, cropped from the same shoot.
   AVIF with WebP fallback, responsive sizes, blur placeholders, Persian
   `alt` on every image. AI-generated people, stock smiles and clip-art
   teeth are banned. Missing photos are neutral labeled blocks of the exact
@@ -170,21 +203,30 @@ the 180 px Apple icon, `og-template.svg` with `{{title}}` and
 Meaning (client): the teal mark is toothpaste on a toothbrush head; the
 long bar of the wordmark is the brush handle; four square diamonds.
 
-Implementation note: `mask-image: url()` is blocked over `file://`, so the
-static pages use the mark as an inline SVG `<clipPath>` with
+Implementation note: page heroes carry no mark mask. A mark mask remains
+in the intro reveal and in the optional hero exit enhancement (the photo
+contracts into the mark at 1024 px and wider, tiers 2-3 only, kept only if
+it holds 60 fps at 4x CPU throttle). The intro uses an inline SVG `<mask>`
+whose mark is scaled by transform. `mask-image: url()` is blocked over
+`file://`, so the static pages use inline SVG masks or a `<clipPath>` with
 `objectBoundingBox` units; the app may use CSS masks over HTTP.
 
-Motifs: the mark as hero mask, loading indicator, favicon, bullet in
-brand-soft and faint relief ornament; the diamonds as intro particles, step
-markers and pagination dots; the bar as the intro progress line, the active
-nav underline and section dividers. Never draw a literal brush or paste
-next to the mark.
+Motifs: the mark as the intro reveal mask (the overlay opens through the
+growing mark onto the hero), loading indicator, favicon, bullet in
+brand-soft, faint relief ornament, the footer playground and the 3D world
+from the hero exit; never as a mask on page heroes. On home the static
+relief over the hero photo stays for phase 4 and is judged over the first
+real photo: it is removed if it covers the focal area or reads as a
+watermark, and by default if no real photo exists by phase 7. The
+diamonds as intro particles, step markers and pagination dots; the bar as
+the intro progress line, the active nav underline and section dividers.
+Never draw a literal brush or paste next to the mark.
 
 ## 6. Layout families
 
 | Code | Family | Breakpoint behavior |
 |---|---|---|
-| A | asymmetric split hero: text at the start side, masked media at the end side | stacked on phones: text, media, CTAs |
+| A | asymmetric split hero (inner pages): text at the start side, media in a plain 24 px radius frame at the end side, no mark mask | stacked on phones: text, media, CTAs |
 | B | fact row: 3-6 short verified facts | 2x2 on phones |
 | C | grid or bento with exactly as many cells as items | single column under 744, two columns on tablets |
 | D | pinned morph or turntable section | stepper with tap controls under 1024 |
@@ -196,10 +238,13 @@ next to the mark.
 | J | inline booking block with the static map; J-form without the map | map under the form |
 | K | reading column, 62ch, optional sticky table of contents | no TOC |
 | L | focused task with a trust aside | aside below |
+| M | full-bleed photo hero (home only): headline, subtext and one secondary CTA on a scrim at the start side; floating booking card (compact form) at the end side; trust band (B) on the hero's bottom edge | 744-1023: two columns, facts in a 2x2 grid; from 1024: facts in one row of four; phones: scrim, card, then a 4:5 photo band with the four facts on its bottom edge |
 
 Rules: at least five families on the home page; no family more than twice
 on a page; at most two consecutive image-and-text splits; one H1; one
 primary CTA per section. Section orders per template: `docs/ia.md`.
+Family M is used on home only. The phase 4 review confirms the plain
+family A media frame with one service-page screenshot.
 
 ## 7. Components and states
 
@@ -212,11 +257,12 @@ themes. Reference implementation: `design/styleguide.html`.
 | Button | primary (brand fill, on-brand label), secondary (brand outline), ghost (text), danger (danger fill, white); heights 44 and 52; pill; label plus optional start or end icon mirrored in RTL; hover darkens to brand-strong; active `scale(.98)`; loading keeps width, spinner replaces the icon, label stays; disabled 50% with no hover |
 | Link | brand color, underline grows from the start side on hover, focus ring |
 | Navigation | desktop bar 72 px, logo at the start side (the right in RTL, as on phones), 5 items, services mega menu (click or keyboard; hover intent on fine pointers), theme toggle, phone LTR island (hidden under 1280, icon remains), «رزرو نوبت» pill; phone header with a call icon (closed-hours sheet) and a drawer button; drawer full screen, 48 px rows, two levels, focus trapped, Esc closes |
+| Home hero | family M. One `<picture>` with art-directed sources (full-bleed landscape from 744 px, a 4:5 band under 744 px): never a CSS background, never `loading="lazy"`. From 744 px the landscape crop is the LCP: one preload with a media query and `fetchpriority="high"`. Under 744 px the H1 is the LCP and the 4:5 crop loads without priority. Scrim panel at the start side (surface 88%, no blur, sheet radius 28, padding 24, 32 from 1280) with the H1 (hero clamp, section 2), the subtext and «تماس با کلینیک» (secondary); no other button. Booking card at the end side (card radius 20, raised surface, hairline, `--shadow-floating`; 21rem at 744, 22rem at 1024, 26rem from 1280) with the compact booking form; its «ثبت درخواست» is the only primary CTA in the hero. Trust band (four facts on surface-raised 90%, hairline top) on the hero's bottom edge from 744 px and on the photo band's bottom edge on phones. From 1024 the hero has `min-block-size: min(100svh - var(--nav-h), 52rem)`. The static mark relief follows section 5 |
 | Sticky bar | under 1024 px: «تماس» \| «واتساپ» \| «رزرو نوبت» (primary cell), 64 px plus safe-area; visibility rules in `docs/conversion.md` section 4 |
 | Closed-hours sheet | 28 px radius sheet from the bottom with hours and two actions |
 | Input | label above, help text, 12 px radius, 44 px height, line-strong border, focus ring; error text below with `aria-invalid` and `aria-describedby`; phone input is an LTR island with `inputmode="numeric"` |
 | Chips | native radios styled as 44 px pills in a fieldset with a legend; selected = brand-soft fill and brand border |
-| Booking form | per `docs/conversion.md` section 5; success state with the drawn check |
+| Booking form | per `docs/conversion.md` section 5; one component in two variants: full (booking page, dialog, booking blocks) and compact (home hero card: phone field plus the hidden fields); home has one of each, every other page one instance; ids prefixed per instance; success state with the drawn check; the compact success shows items 1-4 of `docs/conversion.md` 5.4 in place and keeps the card height (reserved min block size) |
 | Emergency form | per `docs/conversion.md` section 7; warning token, `tel:115` link |
 | Service card | title, one line, category icon, 20 px radius, hover lift 2 px |
 | Category tile | bento cell with the duotone icon in the category color, title, count |
@@ -224,7 +270,7 @@ themes. Reference implementation: `design/styleguide.html`.
 | Dentist card | 4:5 portrait, name, specialty, council number as an LTR island |
 | Compare slider | pointer, touch and keyboard; labels «قبل» «بعد»; 44 px handle |
 | Testimonial card | poster, play button (not mirrored), name label, consent line |
-| Fact | number in Persian digits (display-2) and a one-line label |
+| Fact | short fact in body 600 (for example «هر روز ۱۰ تا ۲۰») with a caption line in ink-muted and a 2 px brand line at the start side, as built in `design/hero-directions/b.html`; the display-2 number variant only for verified statistics (gap 15) |
 | FAQ item | native `<details>`, chevron rotates, 44 px summary |
 | Alerts and toast | info, success, warning, danger with the fill and `--color-on-fill` or white; toast for transient messages only |
 | Breadcrumb | parent path, truncated on phones to the parent with a mirrored chevron |
@@ -269,13 +315,20 @@ budgets are specified in `docs/experience-direction.md` and
 - The molar: ivory enamel (`#F6F1E7`, roughness 0.35, clearcoat 0.6, a
   little transmission at tier 3 for a subsurface feel); the CIP state adds
   a procedural characterization layer (warm gradients, fine stain lines near
-  the cusps). It is stylized and modeled in-house; an anatomical licensed
-  model may replace it later without changing the scene contract.
-- Lighting: one key light drifting from cool (hero) to warm (first visit and
-  booking); fill from `RoomEnvironment`; no HDR files.
-- Camera: front and slightly low in the hero; a gentle tilt in the trust
-  band; lateral travel in the services scene; a diagonal path in the
-  workflow scene; still for the rest.
+  the cusps). It is stylized and modeled in-house, and it is the default
+  until the client decides (gap 34). A realistic model may replace it
+  without changing the scene contract only if the client picks it in
+  phase 8 from two side-by-side renders; the sourcing rule is in
+  `docs/brief.md` section 8.
+- No WebGL over the home hero photo: the fixed canvas mounts after load but
+  renders no frames while the photo covers the viewport. The world appears
+  as the hero scrolls away (the hero exit).
+- Lighting: one key light drifting from cool (hero exit) to warm (first
+  visit and booking); fill from `RoomEnvironment`; no HDR files.
+- Camera: front and slightly low where the world first appears (the hero
+  exit); a gentle tilt as the trust band leaves with the hero; lateral
+  travel in the services scene; a diagonal path in the workflow scene;
+  still for the rest.
 - Grain only in WebGL post-processing at tier 3, never as a DOM overlay.
 - Text never lives in 3D.
 
@@ -285,8 +338,9 @@ Purple or mesh gradients; three equal feature cards; cards inside cards;
 decorative status dots; small uppercase labels above headings (max one per
 three sections); centered-everything layouts; infinite marquees; scroll
 cues; custom cursors; emoji in the UI; em dashes in copy; glassmorphism
-except a light scrim behind the navigation; spinners where a skeleton
-fits; neon or liquid-metal buttons; sound; zoom lock; scroll hijacking;
-WebGL on content pages beyond the optional molar on the restoration page;
+except a light scrim behind the navigation (the home hero scrim is an 88%
+surface sheet with no blur, not glass); spinners where a skeleton fits;
+neon or liquid-metal buttons; sound; zoom lock; scroll hijacking; WebGL
+on content pages beyond the optional molar on the restoration page;
 Google Fonts links; Google Maps JavaScript; any third-party request on
 public pages except optional analytics.

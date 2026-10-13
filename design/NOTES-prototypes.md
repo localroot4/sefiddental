@@ -13,7 +13,7 @@ phases 7 and 8. Pages and controls: `prototypes/README.md`.
 | 0c workflow diagonal | Yes, DOM only: the pinned diagonal path with four steps held 60 fps at 1x, 54 at 4x and 50 at 6x; the warm light is a custom property tweened on its consumers, not on the scene root. Phones get a vertical list with reveal-on-enter. |
 | 0d molar turntable | Partly. The enamel material (cervical warmth, cool cusp tips, stained fissures, 0.15 transmission at tier 3 only) and the normal / VIP / CIP scrub read well in both themes. On the software GPU the page is fill-bound: 8 fps at 1440 x 900 and 21 fps at 480 x 300 at tier 1, far from the 50 fps target. Decision: a software renderer is tier 0, not tier 1 (see "Decisions"). Hardware numbers are still unmeasured. |
 | 0e footer playground | Yes: the six parts drop into the footer with a bounce, drag and throw with Draggable plus InertiaPlugin inside the footer box with a floor, return home after 6 s idle, work with touch, and a replay button serves keyboard users. Tier 0 and reduced motion show the static footer. 60 fps at 1x, 54 at 4x, 48 at 6x while scrolling the page. |
-| 0f compare wipe | Yes for the fallback, open for the effect: the DOM clip-path slider is a 48 px `role="slider"` handle driven by pointer and arrow keys with Home and End, and the WebGL path adds a velocity-driven displacement band. On the software GPU the WebGL path runs at 16 to 24 fps on a 960 x 600 canvas; whether the effect is worth its cost needs a real GPU and the client's eye. |
+| 0f compare wipe | Yes for the fallback, open for the effect: the DOM clip-path slider is a 48 px `role="slider"` handle driven by pointer and arrow keys with Home and End, and the WebGL path adds a velocity-driven displacement band. On the software GPU the WebGL path runs at 16 to 24 fps on a 960 x 600 canvas; whether the effect is worth its cost needs a real GPU and the client's reading of the real scene 6 in the phase 8 real-device checklist, never of this prototype (brief decision 20). |
 
 ## Measurements (software GPU, lower bounds)
 
@@ -71,7 +71,8 @@ render-scale knob (0.75 at tier 1) buys more than removing geometry.
 ## Known limits of these prototypes
 
 - WebGL numbers above come from a software GPU and are floors; the fps
-  meter on each page shows the real number on the client's machines.
+  meter on each page shows the real number on a real device. Real-device
+  numbers come from the phase 8 checklist.
 - The videos in `docs/qa/phase-02/rec-*.webm` were recorded on the same
   software GPU at 1024 x 640, so the three WebGL pages look choppy in
   them; they show the look, not the motion quality.
@@ -79,3 +80,9 @@ render-scale knob (0.75 at tier 1) buys more than removing geometry.
   images are procedural placeholders.
 - Chromium blocks the pages over `file://` (module scripts and fonts);
   serve the repository root as the README says.
+- 0a-intro.html reveals a direction A hero (text beside a poster box clipped
+  by the mark). The client chose B (brief decision 19), so phase 7 reveals
+  the full-bleed photo with the scrim and the booking card.
+- The client judged the recordings and screenshots as drafts (2026-10-13).
+  They prove the mechanics, not the final look; taste is judged on real
+  pages from phase 7 (brief decision 20).

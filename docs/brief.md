@@ -130,8 +130,10 @@ Research to apply (cite in reports, apply in design):
   diamond dots, a teal mark, and "DENTAL . CLINIC" in teal. The client reads
   the mark as toothpaste squeezed onto a toothbrush head, and the long bar
   of the wordmark as the brush handle. Source: `content/brand/logo-horizontal.png`
-  and the traced `content/brand/logo-horizontal.svg` (client approves the
-  trace in phase 2).
+  and the traced `content/brand/logo-horizontal.svg`, cleaned into
+  `design/brand/`. The client's approval of the trace was asked at the phase 2
+  gate and is still pending on 2026-10-13. Phase 3 uses the trace as is;
+  launch needs an explicit yes or the original vector (gap 1).
 - Signage: the sign reads «کلینیک دندانپزشکی سفید» with the logo; this is
   the canonical name everywhere.
 - Palette (`content/brand/palette.pdf`): teal `#00827A` (primary), deep teal
@@ -160,7 +162,7 @@ Pages (Persian slugs; the sitemap is `docs/ia.md`):
 - راهنمای بیمار hub: اولین مراجعه، ترس از دندانپزشکی، مراقبت‌های بعد از درمان
 - اورژانس: gated emergency request plus call
 - درباره ما, آدرس و ساعات (static map, direction deep links, hours, access notes)
-- رزرو نوبت page, booking modal reachable from every CTA, thank-you page
+- رزرو نوبت page; a booking modal for CTAs on pages without an inline booking form (home routes its CTAs to the hero card or the scene 10 block, decision 19); thank-you page
 - مقالات (articles) with categories, tags, dentist authors, reviewer, sources
 - حریم خصوصی, 404, 500 and maintenance pages, all branded
 
@@ -215,7 +217,7 @@ Performance on a simulated mid-range Android over 4G, per page class
 
 | Metric | Home experience | Content pages | Booking and emergency |
 |---|---|---|---|
-| LCP | <= 2.5 s (hero poster) | <= 2.5 s | <= 2.0 s |
+| LCP | <= 2.5 s (the H1 on phones, the hero photo from 744 px) | <= 2.5 s | <= 2.0 s |
 | INP | <= 200 ms | <= 200 ms | <= 200 ms |
 | CLS | <= 0.05 | <= 0.05 | <= 0.05 |
 | Initial JS (gzipped) | <= 180 KB | <= 90 KB | <= 70 KB |
@@ -255,12 +257,12 @@ Placeholders are explicit `[[NEEDS_CLIENT: ...]]` markers and are tracked in
 | # | Decision | Rationale |
 |---|---|---|
 | 1 | Stack: Next.js (current stable, App Router, TypeScript), Payload CMS 3 inside the app (admin `/admin`, Persian, RTL), PostgreSQL, Tailwind CSS v4, Motion for UI, GSAP plus Lenis for scroll, three.js with React Three Fiber for WebGL 2, `detect-gpu` plus a frame monitor for quality tiers | The client chose Next.js and a WebGL experience; Payload keeps the CMS in the same codebase and deploy; server components keep content pages light and SEO-first. Replaces the Laravel plan of v1. |
-| 2 | Deploy: GitHub Actions on push to `main` builds, tests and deploys to a Node host (Liara or ArvanCloud PaaS, or the client's VPS); managed PostgreSQL and object storage for media | Next.js with Payload needs Node and a database. Keeps the push-to-deploy habit. The host is confirmed in phase 3 (gap 32). |
+| 2 | Deploy: GitHub Actions on push to `main` builds, tests and deploys to a Node host (Liara or ArvanCloud PaaS, or the client's VPS); managed PostgreSQL and object storage for media | Next.js with Payload needs Node and a database. Keeps the push-to-deploy habit. The hosting path is confirmed once gap 32 closes, and settled before phase 7 (decision 21). |
 | 3 | Persian slugs, flat services (`/خدمات/لمینت-سرامیکی`), editable in admin; ASCII for system routes and query parameters. Full sitemap in `docs/ia.md` | Better relevance and CTR in Persian SERPs. Google handles UTF-8 slugs. |
 | 4 | Prices: optional «از … تومان» per service, hidden when empty. The tiers page shows relative positioning unless prices are provided | Transparency builds trust; inflation makes fixed prices stale; admin controls it. |
 | 5 | Financing options behind admin toggles with a transparent surcharge note | Terms are not final. Honesty is a trust signal and a legal safety. |
 | 6 | Emergency: a separate gated request with triage questions, "if possible, same day", call-first during hours, rate-limited, flagged in admin | Serves real pain without turning every booking into an emergency. |
-| 7 | Intro built from the logo's own elements, <= 1.4 s, once per session, skippable, never blocks LCP; the WebGL world fades in beneath it when ready | Memorable and on-brand without a blocking preloader; the bar doubles as the real loading line for the experience. |
+| 7 | Intro built from the logo's own elements, <= 1.4 s, once per session, skippable, never blocks LCP; its mark mask reveals the hero; the WebGL world mounts beneath after load, renders no frames while the hero photo covers the viewport and appears as the hero scrolls away (decision 19) | Memorable and on-brand without a blocking preloader; the bar doubles as the real loading line for the experience. |
 | 8 | Motion: a cinematic, scroll-driven WebGL journey on the home page («سفر یک لبخند», 11 scenes with vertical, horizontal and diagonal movement and a physics footer), with four quality tiers and a 60 fps target; content pages keep subtle motion only | The client wants an Immersive Garden-class experience; tiers keep weak devices smooth and content pages keep SEO and conversion safe. Replaces the "Apple-like restraint" decision of v1. |
 | 9 | Photography: real clinic photos only. AI-generated or stock people are banned | The old site's AI-looking doctor photo is a trust leak. |
 | 10 | Notifications: pluggable notifier. Log and email now, Telegram and Farapayamak later | Client decision. Keeps phase 5 unblocked. |
@@ -272,24 +274,31 @@ Placeholders are explicit `[[NEEDS_CLIENT: ...]]` markers and are tracked in
 | 14 | Insurers: five featured by name, the rest under «سایر بیمه‌ها», all admin-managed | Client strategy: cash patients first. |
 | 17 | Hosting: the existing cPanel server if the phase 3 probe passes (root through WHM, or the cPanel Node.js app with Node 20+ and 1 GB), else a Node PaaS in Iran (Liara, else ArvanCloud) | Next.js with Payload needs a running Node process and a database; the client prefers no new cost; a probe decides on facts, not guesses. |
 | 18 | «مشاورهٔ رایگان» is used as a fact, controlled by a feature flag | Client confirmed the offer and may withdraw it. |
+| 19 | Home hero: direction B (`design/hero-directions/b.html`); direction A (`a.html`) stays in the repo as an archived reference. From 744 px: a full-bleed landscape photo (the LCP element, one preload with a media query and `fetchpriority=high`), the scrim at the start side, the booking card at the end side, the trust band on the hero's bottom edge (2x2 from 744 px, one row of four from 1024 px). Phones (< 744 px): scrim, card, then a 4:5 photo band with the four facts on its bottom edge; the H1 is the LCP element and the photo loads without priority. The scrim keeps one secondary action, «تماس با کلینیک»; the card's «ثبت درخواست» is the only primary CTA in the hero. Home has two instances of the one booking form: the compact hero card (phone field plus hidden fields) and the full block in scene 10; `booking_submit` carries `location` = `hero` or `block`; header and sticky-bar «رزرو نوبت» focus the hero phone field while the card is in view, else scroll to the scene 10 block. Home stays static or ISR; both forms fetch their tokens and the hours state from the no-store endpoint. The phone sticky bar stays visible while the hero card is in view. The card shows a compact success in place at a reserved height. No WebGL over the hero photo; the phase 7 exit is native scroll with a light photo parallax. The static mark relief over the photo is judged over the first real photo. Inner pages keep family A with the media in a plain 24 px frame, without the mark mask; B is home only. Photo brief: gap 36 | Client choice at the phase 2 gate, 2026-10-13: the first viewport carries the promise, the form and the proof together. The studio made the knock-on calls the same day to keep LCP, INP and CLS in budget and one primary CTA per view. Details: `docs/conversion.md`, `docs/experience/storyboard.md`, `docs/design/DESIGN.md`. |
+| 20 | Taste feedback only on real pages and scenes. Prototype drafts (`design/prototypes/`, `docs/qa/phase-02/`) are technical proofs, not the final look, and the client does not judge them. Taste questions move to the phase 7 hand-off (the client scrolls the real home page on a phone and a desktop: keep, tone down or change, and which scene feels closest to immersive-g.com and hidokmeh.com and which does not) and to the same comparison in the phase 8 real-device checklist | On 2026-10-13 the client said they watched all recordings and screenshots, and that drafts that will not appear on the site as they are cannot be judged. Gap 33 (recordings of the reference sites) stays open but optional. |
+| 21 | Phase 3 starts host-agnostic while gap 32 is open: every deliverable runs on environment-driven configuration (database adapter, media storage, base URL). The deploy pipeline, the staging target and the chosen-path steps of `docs/deploy.md` wait until the client confirms the path. If the host has not answered by the end of the phase 3 build, the phase 3 hand-off asks the client to choose C1 or A. Hosting is settled before phase 7 | The host had not answered the Node.js ticket on 2026-10-13. The phase 7 hand-off needs a staging URL that the client opens on a phone. |
+| 22 | Molar (scene 4): the stylized in-house molar (`design/brand/3d/molar.glb`, free, built) is the default until the client decides. Phase 7 uses the SVG stepper, so the 3D molar is first needed in phase 8; there both molars are rendered side by side and the client picks from two pictures. Realistic candidate: University of Dundee School of Dentistry, "Maxillary First Molar (Left)" on Sketchfab, reported as CC BY 4.0 (CT-based ZBrush sculpt, about 28.5k triangles, three roots). Before use, a person confirms the license field on the model page and keeps the downloaded `license.txt`. Duties: a credit line with links to the model page and the license on a credits page linked from the footer, and a note that we modified the file. Paid marketplaces (CGTrader, TurboSquid, Fab) are ruled out. Paid fallback: a model commissioned from an Iranian 3D artist, paid in rial (for example through Ponisha), with a written transfer of rights that allows web distribution. No money is spent without the client's explicit approval of the price. A doc that calls the molar "anatomical" notes this choice | The client did not understand the molar question at the gate; it was explained in plain Persian on 2026-10-13, with no new question. The marketplaces' standard licenses forbid a GLB that visitors can extract from the browser, and paying from Iran needs an intermediary. Sketchfab was not reachable from the build environment, so the Dundee license is reported, not verified. |
 
 ## 9. Pending inputs from the client
 
 Tracked with status in `docs/content/gaps.md`.
 
-- Vector logo (SVG), or permission to trace the PNG
+- Logo: a yes on the in-house trace in `design/brand/` (screenshot, yes or no), or the original vector files (gap 1)
 - Dentists: name, specialty, medical council number, degree, photo, short bio, services
 - Clinic license number and technical supervisor name for the footer
 - Real photos and videos of the clinic, team and equipment
+- The home hero photo for direction B: an empty clinic interior, landscape plus a 4:5 crop (gap 36; shot list section ۰)
 - Before/after pairs with consent; the three testimonial videos from the old site
 - Equipment list, only if "digital" claims should name devices
 - Financing partner names and exact terms; confirm the 200M and 100M figures
 - WhatsApp and Telegram numbers, Instagram handle
-- Hosting decision and facts: Node PaaS account (Liara or ArvanCloud) or VPS access; PostgreSQL and object storage
+- Hosting: the host's answer to the cPanel Node.js ticket (gap 32, no answer on 2026-10-13); if the host cannot enable Node 20 or 22, or has not answered by the end of the phase 3 build, the client chooses C1 (WHM root access) or A (a Liara account, a small monthly fee the client approves)
 - Old site backup for the 301 map and content; Search Console and GA4 IDs
 - Google Business Profile creation (guide delivered in phase 1)
 - Parking and public transport notes; secondary neighborhoods
 - "From" prices, if they should be shown
+- 3D brand: a yes on the mark as a porcelain relief (screenshot, yes or no); the molar choice from two pictures in phase 8, with the in-house molar as the default (gap 34, decision 22)
+- Optional: phone and desktop recordings of the two reference sites (gap 33)
 
 ## 10. Process
 

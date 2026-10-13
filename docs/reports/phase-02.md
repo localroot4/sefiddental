@@ -29,8 +29,9 @@ Order:
 
 Risks: fonts or three.js downloads blocked by the network (fallback: ask
 the client for the files); software GPU in this environment makes fps
-numbers conservative (report them as lower bounds); the molar is stylized,
-not anatomical, until a licensed model is sourced.
+numbers conservative (report them as lower bounds); the molar is stylized;
+a licensed realistic model replaces it only if the client picks it in
+phase 8 (brief decision 22).
 
 ## Delivered
 
@@ -136,7 +137,9 @@ decoder from gltf-transform 4, Vazirmatn 33.003, Estedad 7.3, Chromium
 The acceptance line for prototype (d) on SwiftShader is not met and cannot
 be met at full-screen size on a software renderer; the hardware numbers
 remain unmeasured because this environment has no GPU. The client's
-machines show the real number in the on-page meter.
+machines show the real number in the on-page meter. No reading came back at
+the gate (2026-10-13); the first real-device numbers come from the phase 8
+real-device checklist.
 
 ## Budgets
 
@@ -210,17 +213,26 @@ All 20 were fixed in one batch and re-verified:
 - Row 23: logo variants built in-house; vertical and white versions follow
   the approval.
 - Row 34 (new): approve the 3D interpretation of the mark and the stylized
-  molar, or source a licensed anatomical molar.
+  molar, or source a licensed anatomical molar (the choice is recorded in
+  brief decision 22).
 - Row 35 (new): pick hero direction A or B.
 - Rows 32 (host Node runtime) and 33 (reference recordings) stay open.
 
 ## Risks and open questions
 
 Risks: no hardware GPU numbers yet (the tier policy rests on software
-measurements and on `detect-gpu`); the molar is stylized and may read as a
-cartoon next to real photography; the traced logo may differ from the
-client's original vector in small curves; the WebGL wipe may not justify
-its cost on real hardware either.
+measurements and on `detect-gpu`; no reading came back at the gate, so the
+first real-device numbers come from the phase 8 checklist); the molar is
+stylized and may read as a cartoon next to real photography (it stays the
+default until the client picks from two pictures in phase 8, brief decision
+22); the traced logo may differ from the client's original vector in small
+curves; the WebGL wipe may not justify its cost on real hardware either.
+
+Risks added at the gate (2026-10-13): hero B depends on one real photo that
+does not exist yet (gap 36); the client's first taste reading comes at the
+phase 7 hand-off, after the scroll engine is built (brief decision 20);
+hosting is still open (gap 32), and the phase 7 hand-off needs a staging
+URL.
 
 Questions for the client (five at most):
 
@@ -231,10 +243,83 @@ Questions for the client (five at most):
 4. Stylized molar, or a licensed anatomical model (cost to be checked)?
 5. Has the host answered the Node.js ticket (gap 32)?
 
+The answers of 2026-10-13 are in the next section.
+
+## Client answers at the gate (2026-10-13)
+
+The client answered on 2026-10-13. The studio made the knock-on calls the
+same day. Brief decisions 19 to 22 record both.
+
+- Question 1, hero: B (`design/hero-directions/b.html`). Direction A
+  (`a.html`) stays in the repo as an archived reference only (brief
+  decision 19; gap 35 done).
+- Mark relief over the hero photo: it stays for phase 4 and is judged over
+  the first real photo. It is removed if it covers the focal area or reads
+  as a watermark, and by default if no real photo exists by phase 7.
+- Phones (< 744 px): the scrim (H1, subtext, «تماس با کلینیک»), then the
+  booking card, then a 4:5 photo band with the four trust facts on its
+  bottom edge. The H1 is the phone LCP element; the phone crop loads
+  without priority.
+- From 744 px: the full-bleed landscape photo is the LCP element (one
+  preload with a media query, `fetchpriority=high`). The scrim sits at the
+  start side, the card at the end side, the trust band on the bottom edge
+  (2x2 up to 1023 px, one row of four from 1024 px).
+- Home has two instances of the one booking form: the compact hero card
+  (phone field plus hidden fields) and the full block in scene 10. Ids are
+  prefixed per instance; `booking_submit` carries `location` = `hero` or
+  `block`. Every other page keeps one instance.
+- CTA routing on home: header and sticky-bar «رزرو نوبت» focus the hero
+  phone field while the card is in view, else scroll to the scene 10
+  block. Tier steps and FAQ asides scroll to the block with the tier or
+  service prefilled. Home stays static or ISR and cacheable; both forms
+  fetch their tokens and the hours state from the no-store endpoint.
+- The phone sticky bar stays visible while the hero card is in view; it
+  hides while any input has focus.
+- The scrim keeps one secondary action, «تماس با کلینیک». Its «رزرو نوبت»
+  button is removed, so the card's «ثبت درخواست» is the only primary CTA
+  in the hero. This goes further than review fix 4, which only made the
+  scrim button secondary.
+- Hero card success: compact and in place, items 1-4 of
+  `docs/conversion.md` 5.4, at a reserved height (no layout shift). The
+  full 5.4 content lives in the scene 10 success state and on
+  /رزرو-نوبت/ثبت-شد.
+- Inner pages keep layout family A with the media in a plain 24 px frame,
+  without the tooth-mark mask. One service-page screenshot confirms it at
+  the phase 4 review. Full-bleed B is home only.
+- Home hero photo: an empty clinic interior in natural light, no faces;
+  landscape, at least 4000 px on the long side, plus a 4:5 crop from the
+  same shoot. The key detail sits in the central and upper band (gap 36;
+  shot list section ۰).
+- Question 2, logo trace and 3D mark: no answer. Both are listed again as
+  pending with a screenshot and a yes or no, not as new questions. Phase 3
+  uses the trace as is; launch needs an explicit yes or the original
+  vector (gaps 1 and 34).
+- Question 3, recordings: withdrawn. The client watched all recordings and
+  screenshots and does not judge drafts that will not appear on the site
+  as they are. Taste questions move to the phase 7 hand-off and the phase
+  8 real-device checklist, on real pages only. Gap 33 stays open but
+  optional (brief decision 20).
+- Question 4, molar: the client did not understand the question. It was
+  explained in plain Persian on 2026-10-13, with no new question. The
+  in-house stylized molar is the default; in phase 8 both molars are
+  rendered side by side and the client picks from two pictures. The
+  sourcing rules are in brief decision 22.
+- Question 5, hosting: the host has not answered the Node.js ticket
+  (gap 32). Phase 3 starts host-agnostic (brief decision 21).
+
 ## Prerequisites for the next phase
 
-- Answers to questions 1, 2 and 5; phase 3 scaffolds the application on the
-  hosting path that the answer to 5 selects (C1 or C2 on cPanel, else Liara).
+- Question 1 is answered (hero B). Questions 2 and 5 are open on
+  2026-10-13; neither blocks phase 3.
+- Phase 3 starts host-agnostic (brief decision 21). Every deliverable runs
+  on environment-driven configuration (database adapter, media storage,
+  base URL). The deploy pipeline (deliverable 9), the staging target and
+  the chosen-path steps of `docs/deploy.md` wait until the client confirms
+  the path (C1 or C2 on cPanel, else A). If the host has not answered by
+  the end of the phase 3 build, the phase 3 hand-off asks the client to
+  choose C1 or A. Hosting is settled before phase 7.
+- Phase 3 uses the traced logo in `design/brand/` as is. An approved trace
+  or the original vector replaces those files (gap 1).
 - `design/tokens.css`, `design/fonts/`, `design/brand/` and DESIGN.md are
   the inputs of the Tailwind `@theme` and the Next.js font setup.
 - The prototype decisions in `design/NOTES-prototypes.md` (software

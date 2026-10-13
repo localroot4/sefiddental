@@ -42,10 +42,11 @@ page), «بیشتر بدانید», «کلیک کنید», «همین حالا �
 سطح».
 
 Free consultation (confirmed): the fact «مشاورهٔ اول رایگان است» appears in
-the hero subtext, the booking lead and the pricing page, behind the feature
-flag `freeConsultation`. It is a fact line, never a button label; the
-button stays «رزرو نوبت». The booking chip «معاینه» becomes «معاینه و
-مشاورهٔ رایگان» while the flag is on.
+the hero subtext, the home trust band, the booking lead (not in the home
+hero card, which sits beside or below the subtext) and the pricing page,
+behind the feature flag `freeConsultation`. It is a fact line, never a
+button label; the button stays «رزرو نوبت». The booking chip «معاینه»
+becomes «معاینه و مشاورهٔ رایگان» while the flag is on.
 
 WhatsApp is the primary messenger: it has been reachable in Iran without a
 VPN since the restrictions were lifted in December 2024 (re-check before
@@ -56,7 +57,7 @@ footer and on the address page.
 
 | Template | Hero primary | Hero secondary | In-page | End of page |
 |---|---|---|---|---|
-| T-home | رزرو نوبت | تماس با کلینیک | tier step: رزرو نوبت (tier prefilled); FAQ aside: call, WhatsApp, booking | booking block |
+| T-home | ثبت درخواست (hero booking card, compact form; the only primary CTA in the hero) | تماس با کلینیک (on the scrim, its only action) | tier step: رزرو نوبت (scrolls to the booking block, tier prefilled); FAQ aside: call, WhatsApp, booking (scrolls to the booking block, service prefilled) | booking block (full form) |
 | T-service | رزرو نوبت (service prefilled) | پیام در واتساپ (service text) | FAQ aside | booking block |
 | T-service-tiers | رزرو نوبت | پیام در واتساپ | per tier: رزرو نوبت (tier prefilled) | booking block |
 | T-services-hub, T-category | none | none | cell and card links | booking block |
@@ -84,19 +85,27 @@ through the FAQ, the drawer, the mega menu row and the footer.
 - Three equal cells, 64 px tall plus `env(safe-area-inset-bottom)`, icon
   above label: «تماس» | «واتساپ» | «رزرو نوبت» (filled, primary).
 - Always visible while the page scrolls. It hides only when (a) the page's
-  booking block or the footer contact block is in view, (b) a form field has
-  focus (keyboard open), or (c) the drawer or a dialog is open. Implemented
-  with IntersectionObserver and focus events; no scroll listeners. The page
-  gets bottom padding equal to the bar height so nothing is covered.
+  end-of-page booking block or the footer contact block is in view, (b) a
+  form field has focus (keyboard open), or (c) the drawer or a dialog is
+  open. On home the hero booking card does not hide the bar: while the card
+  is in view, the bar stays visible and its «رزرو نوبت» cell moves focus to
+  the card's phone field. When a press inside the same form (for example
+  on its submit button) takes focus from a field, the bar returns only
+  after that press ends, so the tap lands on the button and not on the
+  returning bar. Implemented with IntersectionObserver and focus events;
+  no scroll listeners. The page gets bottom padding equal to the bar height
+  so nothing is covered.
 - Closed hours: the call cell opens a small sheet instead of dialing:
   «کلینیک الان بسته است. ساعات کاری: هر روز ۱۰ تا ۲۰، به‌جز تعطیلات
   رسمی.» with «رزرو نوبت» (primary) and «تماس با کلینیک» (secondary, for
   people who still want to try). Without JS the cell stays a plain `tel:`
-  link.
+  link. The same sheet serves the home hero's «تماس با کلینیک» and the
+  header phone link.
 
 ## 5. Booking flow
 
-Entry points: header CTA, hero, sticky bar, section CTAs, tier steps,
+Entry points: header CTA, the home hero card (an inline form), hero CTAs on
+other templates, sticky bar, section CTAs, tier steps,
 dentist pages, pricing, article service boxes, 404, the address page
 (inline form), `/رزرو-نوبت`.
 
@@ -104,10 +113,18 @@ Mechanics:
 
 - Every CTA is a real link to `/رزرو-نوبت?service={key}&tier={key}` (ASCII
   parameters; the page canonicalizes to `/رزرو-نوبت`).
-- One form instance per page. If the page already shows the inline booking
-  block, CTAs scroll to it and set the service; otherwise they open the same
-  form in a `<dialog>`. This keeps ids unique; ids are still prefixed per
-  instance as a safeguard.
+- One form instance per page, except home. Home has two inline instances
+  of the one booking form component: the compact hero card (5.1, compact
+  variant) and the full booking block in scene 10. Home opens no dialog.
+  CTA routing on home: the header and sticky-bar «رزرو نوبت» move focus to
+  the hero card's phone field while the card is in view, otherwise they
+  scroll to the booking block; tier steps and the FAQ aside scroll to the
+  booking block with the tier or service prefilled. `booking_submit`
+  carries `location` = `hero` or `block` (section 9).
+- Every other page keeps one instance. If the page already shows the inline
+  booking block, CTAs scroll to it and set the service; otherwise they open
+  the same form in a `<dialog>`. Ids are prefixed per instance on every
+  page, so the two home instances never share an id.
 - Dialog: on fine pointers focus moves to the phone field; on touch devices
   focus moves to the dialog heading so the keyboard does not cover the lead.
   Esc and the close button close it; focus returns to the opener.
@@ -138,11 +155,27 @@ width; double submit is blocked.
 Below the button, during opening hours only: «یا با ۰۲۱ ۵۵۱۰ ۱۰۵۴ تماس
 بگیرید.» (the number is a `tel:` link and an LTR island).
 
+Compact variant (home hero card only): the phone field (row 1) plus the
+hidden fields; the service, tier and dentist fields stay empty. Heading
+«درخواست نوبت», the lead without the free-consultation line, the privacy
+line above the button as in the full form, and «ثبت درخواست». No name,
+chips, note or phone fallback line: the hours-dependent line would appear
+after the hours fetch and shift the hero, and the scrim's «تماس با کلینیک»
+covers calling. Validation, messages, limits and endpoint are the same as
+the full form; the behavior without JavaScript is in section 6. The
+reference `design/hero-directions/b.html` still repeats the
+free-consultation line in the card lead and puts the privacy line under
+the button; the app follows this section (open gaps in
+`design/NOTES-styleguide.md`).
+
 ### 5.2 Validation and errors
 
 Inline, below the field, with `aria-invalid="true"` and `aria-describedby`
 pointing at the message. Validation runs on blur and on submit, never on
-every keystroke. On submit errors, focus moves to the first invalid field;
+every keystroke. Blur validation does not run when the blur comes from a
+press on the form's own submit button; submit validation runs instead. A
+message that appears or clears on that blur would move the button under
+the tap. On submit errors, focus moves to the first invalid field;
 the note `<details>` opens when its error shows; typed values are kept.
 
 | Case | Message |
@@ -170,7 +203,13 @@ the note `<details>` opens when its error shows; typed values are kept.
 
 ### 5.4 Success (peak-end moment)
 
-The dialog success state and `/رزرو-نوبت/ثبت-شد` (noindex) share one design.
+The dialog success state, the inline booking block success state (on home,
+scene 10) and `/رزرو-نوبت/ثبت-شد` (noindex) share one design: items 1-6
+below. The home hero card shows a compact success in place: items 1-4 only
+(the drawn check, «درخواست شما ثبت شد», the callback line with the masked
+number, and the caller-number line with «ذخیرهٔ شمارهٔ کلینیک»). The card
+keeps its height (a reserved minimum block size), so nothing in the hero
+moves. Items 5 and 6 stay in the booking block and on the success page.
 The success page shows only with a one-time flash from a real submission;
 opened directly, it redirects to `/رزرو-نوبت`. Focus moves to the success
 heading.
@@ -208,11 +247,20 @@ in Asia/Tehran on every request. States:
 tomorrow, otherwise the weekday and Jalali date («شنبه ۱۲ مهر»).
 
 Caching decision (made now because it shapes forms, security and copy): any
-route that renders a form (booking, emergency, address, and the inline
-booking block on content pages) gets its CSRF token, signed time token and
-hours state from a small `no-store` endpoint when the form mounts, so the
-page itself can stay static or ISR. Booking and emergency pages are fully
-dynamic (`no-store`). No CDN or application cache ever serves a token.
+route that renders a form (booking, emergency, address, home with the hero
+card and the booking block, and the inline booking block on content pages)
+gets its CSRF token, signed time token and hours state from a small
+`no-store` endpoint when the form mounts, so the page itself can stay
+static or ISR. Booking and emergency pages are fully dynamic (`no-store`).
+No CDN or application cache ever serves a token. Home stays static or ISR
+and cacheable: it sends one token request after `load`, so the request never
+competes with the LCP image, and both home instances share the response. A
+submit before the response arrives keeps the button in its loading state
+until it does. The home HTML never contains a token, a timestamp or an
+hours-dependent sentence. Without JavaScript neither home form has a token,
+so both post to `/رزرو-نوبت`; the booking page renders with the values kept
+and the line «درخواست هنوز ثبت نشده است. یک بار دیگر «ثبت درخواست» را
+بزنید.»
 Inline scripts in static pages use CSP hashes; dynamic routes use nonces.
 
 ## 7. Emergency flow (`/اورژانس`)
@@ -343,8 +391,8 @@ Two channels, one delegated listener. Links carry
 
 | Event | Trigger | Extra parameters |
 |---|---|---|
-| `booking_open` | dialog opened, inline form scrolled to, or booking page viewed | `location` (header, hero, sticky, section, tier, aside, article, page) |
-| `booking_submit` | valid submit sent | `has_name`, `time_pref`, `tier` |
+| `booking_open` | dialog opened, inline booking block scrolled to by a CTA, booking page viewed, or the first focus of the home hero card's phone field (never on view alone: the card is in every home first screen) | `location` (header, hero, sticky, section, tier, aside, article, page) |
+| `booking_submit` | valid submit sent | `location` (the form instance: `hero` or `block` on home; `block`, `dialog` or `page` elsewhere), `has_name`, `time_pref`, `tier` |
 | `booking_success` | server confirmed | `duplicate` |
 | `booking_error` | inline or server error shown | `error_type` |
 | `call_click` | any `tel:` link | `location`, `open_state` |

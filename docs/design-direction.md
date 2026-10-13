@@ -49,7 +49,7 @@ Rules:
   for text under 16 px. Verify every pair with a script in phase 2 and record
   the table in `docs/design/DESIGN.md`.
 - Gradients: none in UI chrome. A soft two-stop teal gradient is allowed only
-  inside the intro mark and the hero mask edge.
+  inside the intro mark.
 
 ## 2. Typography
 
@@ -80,8 +80,10 @@ desktop, 3 on phones. Hero subtext max 20 words.
 
 - Base 4 px. Scale: 4, 8, 12, 16, 24, 32, 48, 64, 96, 128.
 - Section padding `clamp(4rem, 6vw + 1rem, 8rem)`. Content container 1280 px,
-  full-bleed media 1440 px. Gutters 16 (phone), 24 (tablet), 32 (desktop).
-- Radius system, applied everywhere without exception: buttons and chips pill
+  wide media 1440 px; the home hero photo spans the viewport width. Gutters
+  16 (phone), 24 (tablet), 32 (desktop).
+- Radius system, applied everywhere with one exception (full-bleed media
+  touches the viewport sides and has square corners): buttons and chips pill
   (999 px), inputs 12 px, cards 20 px, media 24 px, modals and sheets 28 px,
   badges 8 px.
 - Elevation: tinted navy shadows only. Raised: `0 1px 2px rgb(10 36 63 / .06),
@@ -98,20 +100,27 @@ desktop, 3 on phones. Hero subtext max 20 words.
 - RTL mirroring: mirror arrows and chevrons with `rtl:-scale-x-100`. Never
   mirror phones, clocks, checkmarks, play buttons or logos.
 - Photography: real clinic photos only. Warm, soft grading. Faces look toward
-  the content or the CTA. Aspect ratios: hero 4:5 on phones and 3:2 on
-  desktop, cards 4:3, dentist portraits 4:5, before/after pairs 1:1. Every
-  image has a Persian `alt`. AVIF and WebP with `srcset` and `sizes`, blur
-  placeholders generated at upload, `fetchpriority="high"` for the LCP image.
+  the content or the CTA. Aspect ratios: inner-page heroes 4:5 on phones and
+  3:2 on desktop, cards 4:3, dentist portraits 4:5, before/after pairs 1:1.
+  Home hero: an empty clinic interior with no faces; from 744 px a landscape
+  source cropped by its focal point (boxes from about 1.1:1 on tablets to
+  7:3 on wide desktops); under 744 px a 4:5 band under the booking card.
+  Every image has a Persian `alt`. AVIF and WebP with `srcset` and `sizes`,
+  blur placeholders generated at upload, `fetchpriority="high"` for the LCP
+  image (on home the hero photo from 744 px; under 744 px the LCP is the H1
+  text).
 - AI-generated people, stock smiles and clip-art teeth are banned.
 
 ## 5. Brand motifs
 
 Reuse the logo's own geometry so the site feels designed by the same hand:
 
-- The teal mark (toothpaste on a toothbrush head, per the client): hero
-  image mask, loading indicator, favicon, bullet in brand-soft, section
-  ornament at low opacity. In copy and code call it "the mark"; never draw a
-  literal brush or paste next to it.
+- The teal mark (toothpaste on a toothbrush head, per the client): the intro
+  reveal mask that opens onto the hero, loading indicator, favicon, bullet in
+  brand-soft, section ornament at low opacity, the footer playground and the
+  3D world. Page heroes carry no mark mask (decision 2026-10-13). In copy
+  and code call it "the mark"; never draw a literal brush or paste next to
+  it.
 - The square diamond dots: particles in the intro, markers for steps, active
   state in pagination.
 - The long horizontal bar of the wordmark (the brush handle): progress line
@@ -124,8 +133,8 @@ than twice on one page. Max two consecutive image-plus-text splits.
 
 | Code | Family | Where |
 |---|---|---|
-| A | Asymmetric split hero, text start, masked image end; stacked on phones | home, service pages |
-| B | Fact row: 3-6 short verified facts in one quiet row (trust band on home, facts on services, insurers on pricing) | home, service, dentist, pricing, about |
+| A | Asymmetric split hero, text start, image end in a plain 24 px media frame (no mark mask); stacked on phones | service pages and other inner templates |
+| B | Fact row: 3-6 short verified facts in one quiet row (trust band on the bottom edge of the home hero, facts on services, insurers on pricing) | home, service, dentist, pricing, about |
 | C | Grid or bento with exactly as many cells as items (home and hub: 5 cells, 3 categories plus orthodontics and pediatric dentistry) | home, hubs, related items, financing |
 | D | Pinned morph section (SVG tooth morphing through the 3 restoration tiers), stepper on phones | home, restoration page |
 | E | Compare slider for before/after | home, gallery, service pages |
@@ -134,21 +143,27 @@ than twice on one page. Max two consecutive image-plus-text splits.
 | H | Video testimonial cards with poster frames and consent note | home, about, service pages |
 | I | FAQ accordion with a sticky aside (call, WhatsApp, book) | service pages, pricing |
 | J | Inline booking block with static map and hours. J-form: the same block without the map | most templates (J); address page (J-form) |
+| M | Full-bleed photo hero: headline on a scrim at the start side, floating booking card (compact form) at the end side, trust band (B) on its bottom edge; phones: scrim, card, then a 4:5 photo band with the facts | home only |
 
 Two more families are defined in `docs/ia.md` section 6: K (reading
 column) and L (focused task). Section order for every template lives in
-`docs/ia.md`; home is A, B, C, D, E, F, G (first-visit journey), H, I (FAQ),
-J, footer.
-Hero stack: at most four text elements: optional short label, headline,
-subtext, two CTAs («رزرو نوبت» primary, secondary per `docs/conversion.md`
-section 3).
+`docs/ia.md`; home is M (hero B, chosen by the client on 2026-10-13), B
+(the trust band on the hero's bottom edge), C, D, E, F, G (first-visit
+journey), H, I (FAQ), J, footer.
+Hero stack on inner pages: at most four text elements: optional short
+label, headline, subtext, two CTAs («رزرو نوبت» primary, secondary per
+`docs/conversion.md` section 3). Home hero (M): the scrim holds the
+headline, the subtext and one secondary CTA «تماس با کلینیک», with no label
+line; the booking card's «ثبت درخواست» is the only primary CTA in the hero.
 Navigation: desktop one line, max 72 px high: خدمات (mega menu), پزشکان,
 قبل و بعد, هزینه و پرداخت, تماس, then theme toggle, phone and «رزرو نوبت».
 Phones: logo, call icon, menu button, full-screen drawer with grouped
 services and 48 px rows, and a bottom sticky bar: تماس | واتساپ | رزرو نوبت.
-The bar stays visible and hides only when the booking block or footer
-contact is in view, a field has focus, or a modal is open (rules in
-`docs/conversion.md` section 4). It respects safe-area insets.
+The bar stays visible and hides only when the end-of-page booking block or
+the footer contact is in view, a field has focus, or a modal is open (rules
+in `docs/conversion.md` section 4). On home it stays visible while the hero
+booking card is in view, and its «رزرو نوبت» cell then focuses the card's
+phone field. It respects safe-area insets.
 
 ## 7. Components and states
 
@@ -200,15 +215,16 @@ Principles:
 - Content pages never load three.js; the restoration page may lazy-load the
   molar scene behind an intersection trigger at tiers 2 and 3.
 
-Intro storyboard (first visit per session, total <= 1400 ms, tap, Esc or
-«رد کردن انیمیشن» skips, static under reduced motion):
+Intro storyboard (first visit per session, total <= 1400 ms, a tap, any key
+(Esc and Tab included) or «رد کردن انیمیشن» skips, static under reduced
+motion):
 
 | Time | What happens |
 |---|---|
-| 0 ms | Overlay in the surface color covers the viewport. Hero markup and the preloaded hero poster render beneath it, so LCP is not delayed. The teal mark outline sits at center. |
+| 0 ms | Overlay in the surface color covers the viewport. Hero markup and the LCP element (the preloaded hero photo from 744 px, the H1 under 744 px) render beneath it, so LCP is not delayed. The teal mark outline sits at center. |
 | 0-500 ms | The four diamond dots fly in from the viewport edges and settle with a soft overshoot. The long bar draws from right to left as the real loading progress (page, then experience assets), minimum 400 ms. |
 | 500-900 ms | The two strokes of the teal mark snap together. The letters of «سفید» fill through a mask. |
-| 900-1300 ms | The teal mark scales up as a clip-path mask and reveals the hero beneath. Hero text settles in from 16 px offsets with a 60 ms stagger. The WebGL world, if ready, fades in behind the hero; otherwise the poster stays until it is. |
+| 900-1300 ms | The teal mark scales up (an inline SVG mask scaled by transform) and reveals the hero beneath. The scrim text settles in from 16 px offsets with a 60 ms stagger, then the booking card. The WebGL world mounts after load but renders no frames while the hero photo covers the viewport; it appears as the hero scrolls away. |
 | 1400 ms | Overlay removed from the DOM, focus and scroll restored. |
 
 Micro-interactions: button press `scale(.98)`, card hover 2 px lift, input
@@ -239,5 +255,6 @@ Decorative status dots. Small uppercase labels above every heading (max one
 per three sections). Centered everything. Stock smiles and AI people. Fake
 precise numbers. Emoji in the UI. Em dashes in copy. Scroll cues. Custom
 cursors. Infinite marquees. Glassmorphism, except a light scrim behind the
-navigation. Spinners where a skeleton fits. 3D for show. Anything that moves
+navigation (the home hero scrim is an 88% surface sheet with no blur, not
+glass). Spinners where a skeleton fits. 3D for show. Anything that moves
 without a reason.

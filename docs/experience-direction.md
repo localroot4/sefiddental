@@ -39,12 +39,16 @@ Two findings change the plan:
   opposite loading model works: usable at once, native scroll smoothed by
   Lenis, light WebGL, phones at a tenth of the desktop bytes, and a real
   Persian version with a Persian display font. Its pinned "monument" scene
-  with counters sliding over it, its persistent accent pill, and its fanned
-  depth cards are patterns we adopt; its 64 MB desktop intro video and
-  ghosted outline words are not.
+  (a pinned 3D object with text sliding over it, as our scene 4 pins the
+  molar), its persistent accent pill, and its fanned depth cards are
+  patterns we adopt. Its 64 MB desktop intro video and ghosted outline words
+  are not. Its sliding counters are not either: our trust facts are static
+  text on the hero's bottom edge (scene 2).
 
-Phase 2 still asks the client for phone recordings of both reference sites
-(gap 33) for real frame rates and taste calibration.
+Taste calibration moved from the phase 2 gate to the phase 7 hand-off and
+the phase 8 real-device checklist, where the client judges the real scenes
+against both reference sites (brief decision 20). Gap 33 (the client's phone
+recordings of both reference sites) stays open but optional.
 
 ## 2. The concept: «سفر یک لبخند»
 
@@ -56,9 +60,9 @@ spectacle serves conversion, not the other way round.
 
 | # | Scene | Direction | Story beat and job | Mechanics | Fallback (tier 0, reduced motion) |
 |---|---|---|---|---|---|
-| 0 | Intro | none | The mark assembles from scattered diamonds; the bar is the loading line | Inline CSS plus tiny JS as before; the WebGL world fades in beneath when ready | Static logo, no overlay |
-| 1 | Hero «اولین کلینیک دندانپزشکی دیجیتال جنوب تهران» | vertical | Promise and first action | Text settles; the 3D mark floats and refracts the light; real photo poster is the LCP element | Poster image, text |
-| 2 | Trust band | vertical | Credibility | Numbers count up once; the camera tilts slightly | Static numbers |
+| 0 | Intro | none | The mark assembles from scattered diamonds; the bar is the loading line | Inline CSS plus tiny JS; the mark opens as a mask onto the hero B composition; the WebGL world mounts beneath after `load` and renders no frames while the hero photo covers the viewport | Static logo, no overlay |
+| 1 | Hero «اولین کلینیک دندانپزشکی دیجیتال جنوب تهران» (direction B) | vertical | Promise and first action | Full-bleed real photo (the LCP element from 744 px; on phones the H1 is) with the headline on a scrim and the floating booking card; text and card settle once; no WebGL frames while the photo covers the world; on exit the photo scrolls away and uncovers the porcelain world | Same photo, scrim, card and facts, no motion |
+| 2 | Trust band and hero exit | vertical | Credibility | Static facts on the hero's bottom edge, in the first screen from 744 px (on phones, on the photo band after the card); the band leaves with the hero; the camera tilts slightly | Static facts |
 | 3 | Services «چه کاری می‌توانیم بکنیم» | vertical to **horizontal** | Orientation | Pinned section; five service worlds slide horizontally; the mark morphs into each category icon as it passes; cards are DOM, the backdrop is WebGL | Vertical bento, no pin |
 | 4 | Three restoration levels | horizontal continues, then unpins | Signature differentiator | A 3D molar on a turntable; scrolling advances معمولی, VIP, CIP; color characterization layers appear as a shader on CIP; tier CTA follows | SVG morph stepper (phase 2 prototype) |
 | 5 | Digital workflow «از اسکن تا لبخند» | **diagonal** | Reassurance: the method | Camera flies along a diagonal path: scan (point cloud forms the tooth), design (wireframe to solid), make (the tooth gets its enamel), smile (warm light); real photos as billboards | Vertical steps with images |
@@ -79,7 +83,8 @@ Rules:
   swipeable row; the diagonal scene becomes a stepped vertical sequence with
   the same visuals at lower cost.
 - Text is real DOM text, server-rendered, always readable without WebGL.
-- Each scene has exactly one job and one CTA at most.
+- Each scene has exactly one job and one primary CTA at most (in the hero,
+  the card's «ثبت درخواست»; «تماس با کلینیک» is secondary).
 - Nothing autoplays sound. No cursor replacement. No infinite loaders.
 
 ## 3. Quality tiers (the game settings)
@@ -95,7 +100,7 @@ same visit except after an idle period. The user can override in a small
 |---|---|---|---|---|---|---|---|
 | 3 | Desktop with a discrete GPU, recent iPhone or flagship Android | 2.0 | bloom, grain, depth of field (light) | 100% | soft | all | yes |
 | 2 | Average laptop, mid Android (2022+) | 1.5 | grain only | 50% | hard | all | yes (>= 1024 px) |
-| 1 | Old laptop, low-end Android | 1.0 | none | 20% | none | hero and molar only; others become image sequences or stills | no |
+| 1 | Old laptop, low-end Android | 1.0 | none | 20% | none | the world at the hero exit and the molar only; others become image sequences or stills | no |
 | 0 | No WebGL 2, reduced motion, data saver, or sustained drops at tier 1 | none | none | none | none | none: posters, SVG and CSS only | no |
 
 Targets: 60 fps at tiers 3 and 2; never under 50 fps at tier 1; tier 0 has
@@ -109,13 +114,14 @@ The first paint never waits for WebGL.
 
 | Page class | What loads first | Initial JS | WebGL assets | LCP | INP |
 |---|---|---|---|---|---|
-| Home (experience) | server HTML, CSS, fonts, hero poster (LCP), intro | <= 180 KB gzipped (React, GSAP core, Lenis, the scroll engine) | three.js and scenes after `load`, by scene order, behind the intro bar; total <= 2.5 MB at tier 3, <= 1.2 MB at tier 2, <= 500 KB at tier 1 | <= 2.5 s on 4G | <= 200 ms |
+| Home (experience) | server HTML, CSS, fonts, the hero photo (the LCP from 744 px; on phones the H1 is the LCP and the photo band loads without priority), intro | <= 180 KB gzipped (React, GSAP core, Lenis, the scroll engine) | three.js and scenes after `load`, by scene order, behind the intro bar; total <= 2.5 MB at tier 3, <= 1.2 MB at tier 2, <= 500 KB at tier 1 | <= 2.5 s on 4G | <= 200 ms |
 | Content pages (services, dentists, pricing, articles, guides, address) | server HTML, CSS, fonts, images | <= 90 KB gzipped; no three.js | none, except one optional lazy canvas on the restoration page | <= 2.5 s | <= 200 ms |
 | Booking and emergency | server HTML, CSS, fonts | <= 70 KB gzipped | none | <= 2.0 s | <= 200 ms |
 
 Fonts <= 120 KB total. CSS <= 50 KB gzipped. CLS <= 0.05 everywhere. The
 canvas is `position: fixed` behind the content, so loading it never shifts
-layout. Lighthouse mobile: Performance >= 90 on home at tier 1 settings,
+layout. While the hero photo covers the viewport, the canvas renders no
+frames. Lighthouse mobile: Performance >= 90 on home at tier 1 settings,
 >= 95 on every content page; Accessibility, Best Practices and SEO 100.
 
 ## 5. Interaction rules
@@ -141,8 +147,12 @@ layout. Lighthouse mobile: Performance >= 90 on home at tier 1 settings,
   teal line used for loading and scene transitions. Scene 5 may show the
   paste squeezing onto the brush as the "care" beat; keep it abstract, never
   cartoon.
-- One anatomical molar model (phase 2 sources or models it): enamel material
-  with subsurface-like translucency, used in scenes 4 and 5.
+- One molar model, used in scenes 4 and 5. Default: the stylized in-house
+  `design/brand/3d/molar.glb` from phase 2 (free, built; brief decision 22).
+  Enamel material with subsurface-like translucency. A realistic licensed
+  model may replace it without changing the scene contract, only if the
+  client picks it from side-by-side renders in phase 8 (gap 34). Sourcing
+  and license rules are in brief decision 22.
 - Porcelain relief material for the world: matte white with soft shadows
   and a fine grain, derived from the Immersive Garden observation; the
   materials and particle ideas listed in `docs/discovery/threeui-review.md`
@@ -167,7 +177,9 @@ layout. Lighthouse mobile: Performance >= 90 on home at tier 1 settings,
 - Frame times measured in Chromium with 4x and 6x CPU throttling and with a
   software GPU (SwiftShader) to emulate tiers 1 and 0; results in the report.
 - Real devices when the client can test: one mid Android, one iPhone, one
-  old laptop; a short checklist in Persian.
+  old laptop; a short checklist in Persian. It also asks which scene feels
+  closest to immersive-g.com and hidokmeh.com, and which does not (brief
+  decision 20).
 - Scroll back and forth at high speed, resize mid-scroll, rotate the phone,
   switch theme mid-scene, toggle reduced motion mid-scene: nothing breaks.
 - Memory profile over a full scroll: no growth after scenes unload.

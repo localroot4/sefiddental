@@ -13,12 +13,18 @@ copy-guidelines.md`, previous reports.
 ## Deliverables
 
 1. Booking: one-step form as a page (`/رزرو-نوبت`) and as a `<dialog>`
-   opened from every «رزرو نوبت» CTA with the service prefilled, exactly per
-   `docs/conversion.md` sections 5 and 6 (one form instance per page, token
-   endpoint, 419 recovery, touch focus rule). The plain HTML form works
-   without JavaScript. Success page and in-dialog success state with the
-   computed callback line, save-contact vCard, call and WhatsApp fallbacks,
-   and the check-draw animation. Specific inline errors with `aria-invalid`.
+   opened from «رزرو نوبت» CTAs on pages without an inline booking form,
+   with the service prefilled, exactly per `docs/conversion.md` sections 5
+   and 6 (one form instance per page except home, which has the compact
+   hero card and the full booking block and opens no dialog; one token
+   response shared by both home instances; 419 recovery; touch focus rule). Wire the phase 4 home hero card and booking
+   block to the same pipeline; `booking_submit` carries `location` (`hero`
+   or `block` on home). The plain HTML form works without JavaScript.
+   Success page and in-dialog success state with the computed callback
+   line, save-contact vCard, call and WhatsApp fallbacks, and the
+   check-draw animation; the compact in-place success of the home hero
+   card (items 1-4 of 5.4, card height kept). Specific inline errors with
+   `aria-invalid`.
 2. Emergency: `/اورژانس` exactly per `docs/conversion.md` section 7: order
    per hours state, the two-level safety box with `tel:115`, server-validated
    triage, the avulsion text, the self-care block placeholder for phase 6,
@@ -48,7 +54,10 @@ copy-guidelines.md`, previous reports.
 8. Privacy page draft covering what the booking form stores and who sees it.
 9. Playwright e2e: booking happy path, validation errors, Persian digits
    input, duplicate within 10 minutes, emergency rate limit, modal keyboard
-   use, no-JS form submission. Screenshots under `docs/qa/phase-05/`.
+   use, no-JS form submission, booking from the home hero card and the home
+   booking block with and without JavaScript, and a submit from a cached
+   home page with the token fetched after `load`. Screenshots under
+   `docs/qa/phase-05/`.
 10. `docs/reports/phase-05.md`.
 
 ## Steps
@@ -70,7 +79,14 @@ copy-guidelines.md`, previous reports.
   success and land in the suspicious list; the fourth booking from one
   phone in a day shows the neutral message; a duplicate within 10 minutes
   appends a note.
-- The form submits without JavaScript and shows the same success page.
+- The booking page form submits without JavaScript and shows the same
+  success page. Without JavaScript, the home hero card and the home booking
+  block post to `/رزرو-نوبت`; that page keeps the values and shows
+  «درخواست هنوز ثبت نشده است. یک بار دیگر «ثبت درخواست» را بزنید.»; the
+  second submit there succeeds (`docs/conversion.md` section 6).
+- The home HTML contains no token, no timestamp and no hours-dependent
+  sentence; two visitors served the same cached home both submit
+  successfully. The hero card success causes no layout shift.
 - Emergency page order changes with the hours state; the call button is
   in the first screen at 360x640 during hours; triage is validated on the
   server; copy never promises a slot.

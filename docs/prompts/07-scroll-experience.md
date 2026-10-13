@@ -11,7 +11,8 @@ with the independent critic timing frames.
 
 `docs/experience-direction.md`, `docs/experience/storyboard.md`,
 `design/prototypes/`, `docs/design/DESIGN.md`, the phase 3 scaffold, the
-phase 4 home markup, performance baselines from previous reports.
+phase 4 home markup, performance baselines from previous reports, the
+staging target (hosting is settled before this phase, brief decision 21).
 
 ## Deliverables
 
@@ -21,21 +22,33 @@ phase 4 home markup, performance baselines from previous reports.
    rotation, theme switch and reduced-motion switch mid-scroll, and clean
    teardown on route change.
 2. Intro in production per `docs/design-direction.md` section 8: inline CSS
-   plus under 2 KB inline JS with a CSP hash, session-once, skip on tap, Esc
-   or «رد کردن انیمیشن», reduced-motion branch, zero CLS, hero painted
-   beneath at first paint, the bar bound to the real experience-asset
-   loading progress with a minimum duration, no intro on other routes.
+   plus under 2 KB inline JS with a CSP hash, session-once, skip on tap, any
+   key (Tab and Esc included) or «رد کردن انیمیشن», `main` inert while the
+   overlay is up, reduced-motion branch, zero CLS, hero B (photo, scrim,
+   card) painted beneath at first paint and revealed through the mark mask,
+   the bar bound to the real experience-asset loading progress with a
+   minimum duration, no intro on other routes.
 3. Scenes 1-3 and 5-11 as DOM choreography with placeholders for the WebGL
-   layers: hero settle and text staging; trust counters; the horizontal
-   pinned services scene (desktop and tablet landscape) with the mark
-   morphing into category icons (MorphSVG) and the phone swipe-row version
-   with native scroll snapping; the diagonal workflow scene with real photos
-   as billboards along the path and its stepped phone version; before/after
-   with the DOM clip-path slider; dentists depth parallax (fine pointer
-   only); patient voices carousel; the warm light shift as CSS variables;
-   the booking stage; the footer playground with GSAP Draggable and
-   InertiaPlugin, bounds, floor, return-home timer, touch support, keyboard
-   «پخش دوباره» button.
+   layers: hero settle (the scrim text, then the card; no pointer parallax
+   next to the form); the hero exit (native scroll; the trust band leaves
+   with the hero; at 1024 px and wider and tiers 1-3 the photo moves at
+   0.85x, transform only, and uncovers the layer where the phase 8 world
+   appears; scene 2 keeps its 100-140 vh range); static trust facts with no
+   count-up; the horizontal pinned services scene (desktop and tablet
+   landscape) with the mark morphing into category icons (MorphSVG) and the
+   phone swipe-row version with native scroll snapping; the diagonal
+   workflow scene with real photos as billboards along the path and its
+   stepped phone version; before/after with the DOM clip-path slider;
+   dentists depth parallax (fine pointer only); patient voices carousel; the
+   warm light shift as CSS variables; the booking stage; the footer
+   playground with GSAP Draggable and InertiaPlugin, bounds, floor,
+   return-home timer, touch support, keyboard «پخش دوباره» button.
+   Optional hero exit enhancement at 1024 px and wider, tiers 2-3 only: the
+   photo contracts into the mark shape (an SVG mask scaled by transform).
+   Keep it only if it holds 60 fps at 4x CPU throttle. Remove the static
+   mark relief from the hero if no real hero photo exists by this phase, or
+   if it covers the photo's focal area or reads as a watermark (brief
+   decision 19).
 4. Scene 4 (restoration tiers) as the SVG morph stepper from phase 2, with
    the tier CTA following the active step; the 3D molar replaces it at
    tiers 2 and 3 in phase 8.
@@ -46,8 +59,9 @@ phase 4 home markup, performance baselines from previous reports.
    scene reached depth as `scene_view` with the scene id).
 7. Performance evidence: before and after Lighthouse on home at tiers 0 and
    1; frame-time samples per scene at 4x and 6x CPU throttling; INP of the
-   booking dialog opened from the booking scene; memory before and after a
-   full scroll; screenshots and recordings under `docs/qa/phase-07/`.
+   hero card submit and of the scene 10 booking block (home opens no
+   dialog); memory before and after a full scroll; screenshots and
+   recordings under `docs/qa/phase-07/`.
 8. `docs/reports/phase-07.md`.
 
 ## Steps
@@ -81,6 +95,8 @@ phase 4 home markup, performance baselines from previous reports.
 
 ## Hand-off
 
-Ask the client to scroll the home page on their phone and desktop and answer
-one question per scene: keep, tone down, or change. Ask whether the
+Ask the client to scroll the real home page on the staging URL on their
+phone and desktop and answer one question per scene: keep, tone down, or
+change. Then ask which scene feels closest to immersive-g.com and
+hidokmeh.com, and which does not (brief decision 20). Ask whether the
 playground feels right.

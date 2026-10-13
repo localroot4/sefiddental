@@ -7,8 +7,13 @@ experience on the home page.
 
 ## Status
 
-Phase 1 (discovery) is done. The build runs in ten gated phases. Each phase
-has a prompt in `docs/prompts/` and ends with a report in `docs/reports/`.
+Phases 1 (discovery) and 2 (brand, design system and experience
+storyboard) are done. At the phase 2 gate (2026-10-13) the client chose
+home hero direction B (`docs/brief.md` decision 19). Phase 3 (foundation)
+is next. It starts host-agnostic, because the host has not answered the
+Node.js ticket (gap 32). The logo trace and 3D mark approvals are pending
+(gaps 1 and 34). The build runs in ten gated phases. Each phase has a
+prompt in `docs/prompts/` and ends with a report in `docs/reports/`.
 
 ## Where things live
 
@@ -35,7 +40,7 @@ has a prompt in `docs/prompts/` and ends with a report in `docs/reports/`.
 Open a new session on `main`, then:
 
 ```
-Read docs/prompts/00-master.md completely, then execute docs/prompts/02-design-system.md.
+Read docs/prompts/00-master.md completely, then execute docs/prompts/03-foundation.md.
 ```
 
 Replace the phase file for later phases. The application code arrives in

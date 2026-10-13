@@ -8,3 +8,4 @@ vendor/
 /storage/*.key
 !design/vendor/
 !design/vendor/**
+__pycache__/

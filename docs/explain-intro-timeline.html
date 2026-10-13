@@ -61,7 +61,7 @@
       <h2>روش ما: Overlapping reveal <small>محتوا زیر پرده آماده است</small></h2>
       <div class="track" id="t2">
         <div class="seg s-html" style="inset-inline-start:0;inline-size:10%">HTML</div>
-        <div class="seg s-lcp" style="inset-inline-start:10%;inline-size:90%;opacity:.35">LCP زود<span class="long"> (محتوا و تصویر هیرو رندر شده)</span></div>
+        <div class="seg s-lcp" style="inset-inline-start:10%;inline-size:90%;opacity:.35">LCP زود<span class="long"> (محتوای هیرو رندر شده: عکس یا تیتر)</span></div>
         <div class="seg s-reveal" style="inset-inline-start:10%;inline-size:25%">پرده<span class="long">ٔ برند ≤ ۱٫۴ ثانیه</span></div>
         <div class="cursor"></div>
       </div>
@@ -71,7 +71,7 @@
   </div>
 
   <div class="note">
-    <p><strong>چرا مهم است:</strong> گوگل زمان نمایش بزرگ‌ترین عنصر (LCP) را می‌سنجد. در روش قدیمی این زمان پشت انیمیشن می‌افتد و رتبه و تبدیل پایین می‌آید. در روش ما تصویر هیرو همان ابتدا رندر می‌شود؛ پرده فقط روی آن است و با یک لمس کنار می‌رود.</p>
+    <p><strong>چرا مهم است:</strong> گوگل زمان نمایش بزرگ‌ترین عنصر (LCP) را می‌سنجد. در روش قدیمی این زمان پشت انیمیشن می‌افتد و رتبه و تبدیل پایین می‌آید. در روش ما محتوای هیرو همان ابتدا رندر می‌شود: از عرض ۷۴۴ پیکسل به بالا عکس هیرو، در موبایل تیتر. پرده فقط روی آن است و با یک لمس یا یک کلید کنار می‌رود.</p>
     <p><strong>کار مهندس ارشد:</strong> انیمیشن را روی محتوای آماده می‌کشد، کوتاه نگه می‌دارد، فقط بار اول نشان می‌دهد، و با prefers-reduced-motion خاموشش می‌کند.</p>
     <p><strong>تلهٔ رایج:</strong> «صبر کن تا همه چیز لود شود، بعد صفحه را نشان بده.» این یعنی کاربر موبایل با اینترنت کند تا ۳ ثانیه هیچ چیز نمی‌بیند و می‌رود.</p>
   </div>

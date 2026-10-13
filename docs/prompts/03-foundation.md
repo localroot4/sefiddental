@@ -11,6 +11,19 @@ performance engineer. No public page design beyond the base layout.
 `docs/design/DESIGN.md`, `design/`, the hosting answer from the client
 (gap 32), the phase 1 and 2 reports.
 
+Hosting status on 2026-10-13: the host has not answered the Node.js ticket
+(gap 32). If gap 32 is still open, start this phase host-agnostic (brief
+decision 21). Build every deliverable on environment-driven configuration
+(database adapter, media storage, base URL). Record the probe facts known so
+far in `docs/deploy.md`. Hold deliverable 9 (the deploy pipeline and the
+staging target), the chosen-path steps of `docs/deploy.md` and the deploy
+parts of steps 2 and 5 until the client confirms the path
+(`docs/architecture.md` section 2: no deploy code before that confirmation).
+While gap 32 is open, the report lists these items and the `docs/deploy.md`
+acceptance line as open, blocked by gap 32. Hosting must be settled before
+phase 7, because the phase 7 hand-off needs a staging URL that the client
+opens on a phone. Use the traced logo in `design/brand/` as is (gap 1).
+
 ## Deliverables
 
 1. Hosting decision recorded in `docs/deploy.md` after the probe in
@@ -24,9 +37,10 @@ performance engineer. No public page design beyond the base layout.
 2. Next.js app (current stable, App Router, TypeScript strict) at the
    repository root with Payload 3 mounted at `/admin`, locale `fa`, RTL,
    PostgreSQL adapter (SQLite adapter for tests), media collection with
-   sharp conversions (AVIF, WebP, sizes, blur placeholder) stored in object
-   storage behind an adapter with a local fallback, `.env.example` complete
-   and commented.
+   sharp conversions (AVIF, WebP, sizes, blur placeholder) and focal-point
+   crops (the home hero needs a landscape crop and a 4:5 crop for phones,
+   brief decision 19) stored in object storage behind an adapter with a
+   local fallback, `.env.example` complete and commented.
 3. Collections and globals per `docs/architecture.md` section 4 with access
    control (admin, editor), drafts and versions, scheduled publish, Persian
    slug hook, audit trail, and seeders that import `docs/content/*.yaml` and
@@ -99,6 +113,11 @@ performance engineer. No public page design beyond the base layout.
 
 ## Hand-off
 
-Confirm the hosting option with the client, list the platform accounts and
+Confirm the hosting option with the client. If the host has not answered
+by the end of the build (gap 32), ask the client to choose C1 (their own
+server through WHM root) or A (a Node PaaS in Iran, Liara first, for a
+small monthly fee that they approve). List the platform accounts and
 environment values they must create, and name any budget that the platform
-cannot meet.
+cannot meet. List the pending approvals again, not as new questions: the
+logo trace (gap 1) and the 3D mark (gap 34), each with one screenshot and a
+yes or no. Launch needs an explicit yes, or the original logo vector.

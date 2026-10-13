@@ -10,7 +10,7 @@ this file in the same commit.
 |---|---|---|
 | Framework | Next.js, current stable (16 or later), App Router, TypeScript strict | Server components by default; client islands for motion and WebGL |
 | CMS | Payload CMS 3.x inside the same Next.js app, admin at `/admin`, locale `fa`, RTL | Collections, drafts and versions, scheduled publish, access control, media with sharp, live preview |
-| Database | PostgreSQL (Payload Postgres adapter) on a PaaS or a VPS; Payload's SQLite adapter on cPanel paths (C2) | The data model is identical; the adapter is a configuration choice made in phase 3 |
+| Database | PostgreSQL (Payload Postgres adapter) on a PaaS or a VPS; Payload's SQLite adapter on cPanel paths (C2) | The data model is identical; the adapter is an environment setting, and the confirmed hosting path (section 2) sets it |
 | Styling | Tailwind CSS v4 with `@theme` tokens from `design/tokens.css`; CSS modules for complex scenes | one token file, no ad-hoc colors |
 | UI motion | Motion (`motion/react`) for component states and layout animation | client islands only |
 | Scroll engine | GSAP 3 (ScrollTrigger, Flip, MorphSVG, Draggable, InertiaPlugin) plus Lenis | one master timeline per page; see `docs/experience-direction.md` |
@@ -75,6 +75,18 @@ across the Iran border. Slow content updates and fragile builds.
 Phase 3 runs the probe above, records the facts in `docs/deploy.md`, and
 asks the client to confirm the path before writing deploy code.
 
+Status on 2026-10-13 (gap 32): on 2026-10-12 cPanel showed the Node.js
+Selector but no installed Node version (probe step 2). The ticket that asks
+the host to enable Node 20 or 22 has no answer. Phase 3 starts now and
+stays host-agnostic (brief decision 21): every deliverable runs on
+environment-driven configuration (database adapter, media storage, base
+URL). The deploy pipeline (phase 3 deliverable 9), the staging target and
+the chosen-path steps of `docs/deploy.md` wait until the client confirms
+the path. If the host has not answered by the end of the phase 3 build, the
+phase 3 hand-off asks the client to choose C1 or A. Hosting must be settled
+before phase 7, because the phase 7 hand-off needs a staging URL that the
+client opens on a phone.
+
 Deployment pipeline (option A): CI runs lint, types, unit tests, build,
 Playwright smoke, Lighthouse budgets; on success deploys; Payload migrations
 run on release; the previous release is kept for one-command rollback.
@@ -91,9 +103,12 @@ run on release; the previous release is kept for one-command rollback.
 - Canonical without trailing slash; `www` to apex; HTTP to HTTPS; query
   strings canonicalize to the base URL (gallery filters, booking params).
 - Rendering: content pages are static or ISR (revalidate on publish through
-  Payload hooks); home is static with client islands; booking, emergency and
-  anything with a form is dynamic (`no-store`) so CSRF tokens, signed time
-  tokens and hours state are fresh on every request.
+  Payload hooks); home is static (or ISR) with client islands, although its
+  hero card and booking block render forms. Pages with an inline form (home,
+  address, content pages with a booking block) stay static or ISR and get
+  the CSRF token, the signed time token and the hours state from a
+  `no-store` endpoint (`docs/conversion.md` section 6). Only the booking and
+  emergency pages are dynamic (`no-store`).
 
 ## 4. Data model (Payload collections and globals)
 
@@ -164,13 +179,18 @@ with zod; the forms also work as plain HTML posts.
 ## 7. Performance
 
 - Server HTML first; the experience canvas mounts after `load` and after
-  the intro's minimum duration; scenes load in scroll order with `Preload`
+  the intro's minimum duration, and renders no frames while the home hero
+  photo covers the viewport; scenes load in scroll order with `Preload`
   and are disposed when far out of view.
 - Per-page budgets in `docs/experience-direction.md` section 4, enforced by
   Lighthouse CI assertions and a bundle-size check in CI.
 - Images: `next/image` with AVIF and WebP, responsive sizes, blur
-  placeholders from Payload, hero poster preloaded with
-  `fetchpriority="high"`.
+  placeholders from Payload. The home hero photo is one art-directed
+  `<picture>` (Next.js `getImageProps`): from 744 px the landscape crop is
+  the LCP element and is preloaded with `fetchpriority="high"` through one
+  preload with a media query; under 744 px the H1 text is the LCP element
+  and the 4:5 crop loads without priority. Both crops come from one shoot.
+  On other pages the LCP image gets `fetchpriority="high"`.
 - Static assets immutable for one year; HTML `no-cache` on dynamic routes;
   ISR for content routes.
 
@@ -206,10 +226,12 @@ with zod; the forms also work as plain HTML posts.
 - Vitest: slug utility, digit and phone normalization, booking validation
   and limits, duplicate handling, redirects, schema builders, hours state
   and callback copy, quality tier selection logic.
-- Playwright: home loads and intro skips, booking happy and error paths,
-  emergency gate, drawer, theme toggle, compare slider keyboard use,
-  article page; screenshots at 390x844, 820x1180 and 1440x900 in both
-  themes under `docs/qa/`; frame-time sampling on home with CPU throttling.
+- Playwright: home loads and intro skips, booking happy and error paths
+  (booking page, dialog, the home hero card and the home booking block),
+  the cached home HTML contains no token, emergency gate, drawer, theme
+  toggle, compare slider keyboard use, article page; screenshots at
+  390x844, 820x1180 and 1440x900 in both themes under `docs/qa/`;
+  frame-time sampling on home with CPU throttling.
 - axe-core on every public template. Lighthouse CI with budgets.
 - Every bug fix adds a test that fails before the fix.
 

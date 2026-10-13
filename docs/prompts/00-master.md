@@ -67,7 +67,11 @@ the same commit.
   phone numbers.
 - Ask the client only when different answers lead to materially different
   work. Otherwise decide, record the decision in the report, and continue.
-  Never ask the same question twice; check `docs/reports/` first.
+  Never ask the same question twice; check `docs/reports/` first. If the
+  client did not understand a question, explain it once more in plain
+  words, with a picture of each option where it helps; that is not a new
+  question. If the client did not answer a question, list it again as
+  pending, not as a new question.
 
 ## 4. Quality bar
 
@@ -96,12 +100,15 @@ Experience craft (home and any scene):
 
 - Scroll is never hijacked. Native scroll maps to one timeline position;
   scrolling back at any speed is clean.
-- Every scene has one job and at most one CTA; spectacle never hides the
-  call, WhatsApp and booking actions.
+- Every scene has one job and at most one primary CTA; spectacle never
+  hides the call, WhatsApp and booking actions.
 - Quality tiers 0-3 are implemented and tested; tier 0 is a complete,
   beautiful site with no WebGL. 60 fps at tiers 3 and 2, never under 50 at
   tier 1, measured with CPU throttling and a software GPU.
-- The first paint never waits for WebGL; the hero poster is the LCP element.
+- The first paint never waits for WebGL. On home the LCP element is the
+  hero photo from 744 px (one preload with a media query,
+  `fetchpriority=high`) and the H1 text on phones; no WebGL frames render
+  over the hero photo (brief decision 19).
 - Text is real DOM text in the server HTML, in reading order; the canvas is
   decorative and `aria-hidden`.
 - `prefers-reduced-motion` gives the tier 0 experience everywhere.
@@ -150,7 +157,13 @@ Engineering:
 6. Reply to the client in Persian: result in two sentences, what was verified
    and how in one line, then the «👈» list with exactly what they must check,
    decide or send, with paste-ready commands in their own code blocks. The
-   client approves or requests changes before the next phase.
+   client approves or requests changes before the next phase. Ask the
+   client to judge look and feel only on real pages and real scenes, never
+   on prototypes or drafts; the studio judges those against the acceptance
+   criteria. The taste questions on the home experience come at the phase 7
+   hand-off and in the phase 8 real-device checklist (brief decision 20).
+   Write each question in plain words; a technical choice comes with a
+   picture of each option.
 
 Report template (`docs/reports/phase-NN.md`):
 
@@ -193,8 +206,8 @@ Date, commit range, versions used
 | Phase | File | Gate output |
 |---|---|---|
 | 01 | `01-discovery.md` | done: strategy, IA, keyword map, conversion plan, GBP guide, shot list |
-| 02 | `02-design-system.md` | DESIGN.md, tokens, styleguide, experience storyboard, intro and scene prototypes, hero directions |
-| 03 | `03-foundation.md` | Next.js + Payload skeleton, hosting decision, CI, deploy, seeders, quality-tier scaffold |
+| 02 | `02-design-system.md` | done: DESIGN.md, tokens, styleguide, experience storyboard, intro and scene prototypes, hero directions (the client chose B on 2026-10-13, brief decision 19; the logo trace and 3D mark approvals stay pending, gaps 1 and 34) |
+| 03 | `03-foundation.md` | Next.js + Payload skeleton on environment-driven configuration, CI, seeders, quality-tier scaffold; the deploy pipeline, the staging target and the chosen-path steps of `docs/deploy.md` wait until the client confirms the hosting path (gap 32, brief decision 21) |
 | 04 | `04-core-pages.md` | content pages, navigation, footer, light motion |
 | 05 | `05-conversion.md` | booking, emergency, pricing and financing, tiers page, notifications, measurement |
 | 06 | `06-content-seo.md` | articles engine, editorial system, schema, OG, service copy, seed articles, redirects, admin polish |

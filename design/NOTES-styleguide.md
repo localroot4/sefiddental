@@ -17,8 +17,8 @@ radius system exactly as the tokens (pill, 12, 20, 24, 28, 8).
 | File | What it is |
 |---|---|
 | `design/styleguide.html` | one page, every component in both themes, with the theme toggle (`data-theme` on `<html>`, default follows the system, saved in `localStorage` as `sefid-theme`) |
-| `design/hero-directions/a.html` | home hero direction A: header, asymmetric split hero, trust band |
-| `design/hero-directions/b.html` | home hero direction B: header, full-bleed hero with the floating booking card, trust band inside the hero |
+| `design/hero-directions/a.html` | home hero direction A (not chosen; archived reference, not used on home): header, asymmetric split hero, trust band |
+| `design/hero-directions/b.html` | home hero direction B, chosen by the client on 2026-10-13 and the reference for phase 4: header, full-bleed hero with the floating booking card, trust band inside the hero |
 | `docs/qa/phase-02/*.png` | screenshots: styleguide full page and both heroes at 390x844, 820x1180, 1440x900, light and dark, plus the open phone drawer at 390 |
 
 ## Component inventory (styleguide order)
@@ -62,14 +62,23 @@ loaded, Chromium via Playwright:
 
 Hero checks: headline 2 lines at 1024, 1280, 1440 and 1920 in both
 directions; nav 72 px on one line from 1024; at 390x844 the CTAs end at
-423 px (A) and 432 px (B), above the sticky bar at 780 px.
+423 px (A) and 402 px (B, one «تماس با کلینیک» button), above the sticky
+bar at 780 px.
+
+Hero B was measured again on 2026-10-13 after the decision edits: no
+overflow at 320, 360, 375, 390, 414, 430, 744, 820, 1023, 1024, 1280,
+1440 and 1920 px in both themes.
 
 Behavior checks (scripted): drawer opens, Tab stays inside across 40
 presses, Esc closes and focus returns to the menu button; landline input
 shows the landline message with `aria-invalid`; a valid number shows
 «در حال ثبت», then the success state with the masked number and focus on
 its heading; arrow keys move the compare slider; the theme toggle writes
-`sefid-theme` to localStorage.
+`sefid-theme` to localStorage. In hero B (2026-10-13) the success state
+also shows the caller-number line and «ذخیرهٔ شمارهٔ کلینیک» (a vCard
+download). The card height does not change, and the layout-shift sum is 0
+at 320, 390, 820, 1024 and 1440 px in both themes. The header, drawer and
+sticky-bar «رزرو نوبت» links focus `#bk-phone`.
 
 Two inspection rounds were done: one batched fix round (phone header
 overflow, 320 px pagination wrap, grid row stretching, logo rendering,
@@ -84,13 +93,16 @@ headline size, hero spacing, tablet grid for B) and one confirmation round.
   (CORS), so the mark and the wordmark are inline symbols filled with
   tokens. Over HTTP either method works.
 - Hero headline: the six-word positioning line does not fit two lines at
-  display-1 (72 px) in a 672 px column, so the heroes use
-  `clamp(2.25rem, 1rem + 3vw, 3.75rem)` (60 px at 1440). Everything else
+  display-1 (72 px) in a 672 px column, so the heroes use a smaller clamp:
+  `clamp(2.25rem, 1rem + 3vw, 3.75rem)` in `a.html` and
+  `clamp(2rem, 1rem + 3vw, 3.75rem)` in `b.html` (`docs/design/DESIGN.md`
+  section 2). Both give 59 px at 1440, with a 60 px cap. Everything else
   uses the token scale as is.
-- Hero mask: an SVG `clipPath` in `objectBoundingBox` units. The masked
-  block keeps the mark's own proportion (168 : 207) on tablets and
-  desktops and 4:5 on phones, so the shape is never stretched; the photo
-  asset itself is still 3:2 on desktop and is cropped by the mark.
+- Hero mask (direction A only, not chosen): an SVG `clipPath` in
+  `objectBoundingBox` units. The masked block keeps the mark's own
+  proportion (168 : 207) on tablets and desktops and 4:5 on phones, so the
+  shape is never stretched; the photo asset itself is still 3:2 on desktop
+  and is cropped by the mark.
 - `heading` uses Vazirmatn 600, because Estedad ships as a single 700
   weight (as `DESIGN.md` specifies).
 - `clip-path: inset()` and `transform-origin` are physical by nature; the
@@ -113,10 +125,55 @@ the trust band is a quiet row under the hero on a sunken band. B is a
 full-bleed photo: the headline sits on a translucent sheet at the start
 side, a floating booking card with the one-field form takes the end side,
 and the mark appears as a large faint porcelain relief in the top corner.
-In B the trust band lives on the bottom edge of the hero itself, so the
-first viewport already contains proof and the form, while A keeps the
-first viewport to the promise and the two CTAs and lets the photo carry
-the mood.
+From 744 px the trust band of B lives on the bottom edge of the hero
+itself, so the first viewport already contains proof and the form. Under
+744 px the facts sit on the bottom edge of the 4:5 photo band under the
+card, below the first screen. A keeps the first viewport to the promise
+and the two CTAs and lets the photo carry the mood.
+
+Decision (2026-10-13): the client chose B. Phase 4 builds the hero from
+`b.html`. These gaps between the prototype and the binding docs were closed
+in `b.html` on 2026-10-13:
+
+- The photo caption carries the new brief: an empty clinic interior in
+  natural light, no faces, the key detail in the central and upper band,
+  plus a 4:5 phone crop from the same shoot.
+- The scrim «رزرو نوبت» button is removed; the scrim keeps
+  «تماس با کلینیک» only.
+- Under 744 px the hero runs scrim, card, then a 4:5 photo band with the
+  four facts on its bottom edge. At 390x844 the card ends at 822 px and the
+  photo band starts at 854 px.
+- The compact success shows items 1-4 of `docs/conversion.md` 5.4 in the
+  same grid cell as the form, so the card keeps its height.
+- The H1 uses the 2rem floor (`docs/design/DESIGN.md` section 2): 3 lines
+  from 360 to 414 px, 2 lines at 430 px and from 1024 px.
+- The fourth fact reads «بیمه‌های طرف قرارداد» with
+  «ایران، کارآفرین، پاسارگاد، البرز، ما و سایر بیمه‌ها» (brief decision 14).
+
+These gaps are still open in `b.html`. Phase 4 closes them in the app:
+
+1. The H1 still wraps to 4 lines at 744 px (and at 320 px, below the
+   360 px floor of the phase 4 headline check).
+2. The privacy line sits under the button; `docs/conversion.md` 5.1 puts
+   it above.
+3. The card lead repeats «مشاورهٔ اول رایگان است» next to the subtext and
+   the trust band.
+4. Closed on 2026-10-13 (see above).
+5. The photo is a placeholder `div`; production uses one `<picture>`
+   (`docs/design/DESIGN.md` section 7, home hero).
+6. From 744 px the relief paints above the photo at 70% opacity (it is
+   hidden under 744 px). Phase 4 judges it over the first real photo and
+   removes it if it covers the focal area or reads as a watermark. If no
+   real photo exists by phase 7, it is removed.
+7. At 390x844 the submit button ends at 744 px, 36 px above the sticky
+   bar (780 px). With the privacy line above the button
+   (`docs/conversion.md` 5.1, compact variant), it ends at 797 px, 17 px
+   under the bar, until the phone field takes focus and the bar hides.
+   Phase 4 keeps the whole submit above the bar.
+8. Every «رزرو نوبت» link (`#book`) focuses the card's phone field in
+   `b.html`, which has no scene 10 block. On home, phase 4 focuses the
+   phone field only while the card is in view; otherwise the link scrolls
+   to the booking block in scene 10.
 
 ## After the phase 2 review
 

@@ -15,10 +15,11 @@ Everything built so far, every report, `docs/brief.md` section 7,
 
 1. `docs/qa/audit-accessibility.md` - axe-core on every public template in
    both themes and all tiers of home; manual keyboard-only walkthrough of
-   booking, emergency, navigation, the pinned scenes, the slider and the
-   FAQ; screen reader order; focus visibility; target sizes; reduced
-   motion; 200% zoom; color-only information. Every finding fixed or
-   justified.
+   booking (the booking page, the dialog on a content page, the home hero
+   card with the intro running and skipped, the home booking block),
+   emergency, navigation, the pinned scenes, the slider and the FAQ; screen
+   reader order; focus visibility; target sizes; reduced motion; 200% zoom;
+   color-only information. Every finding fixed or justified.
 2. `docs/qa/audit-performance.md` - Lighthouse mobile and desktop for home
    at tiers 0 and 1, services hub, a service page, the restoration page, a
    dentist page, an article, booking, pricing, address, in both themes; lab

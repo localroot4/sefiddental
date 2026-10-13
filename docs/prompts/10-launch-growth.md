@@ -17,11 +17,14 @@ from the client (never stored in the repository).
    storage provisioned, domain attached, HTTPS certificate active, HSTS
    enabled after a successful HTTPS check, the platform scheduler or
    external ping configured for cron routes, backups scheduled, admin MFA
-   enrolled, analytics id set, Search Console verification ready, and the
-   R1 check passed: the live site fetched successfully from outside Iran
-   and by the Search Console live test.
+   enrolled, analytics id set, Search Console verification ready, an
+   explicit yes from the client on the logo trace (or the original vector
+   in its place) and on the 3D mark (gaps 1 and 34), and the R1 check
+   passed: the live site fetched successfully from outside Iran and by the
+   Search Console live test.
 2. Deployment: run the pipeline to production; verify home at two tiers, a
-   service page, booking (test submission then mark as spam), admin login,
+   service page, booking from the cached home hero card and from the
+   booking page (test submissions, then mark as spam), admin login,
    sitemap, robots, `/api/health`, redirects from the old URL map, OG
    preview, both themes, Lighthouse on the live site.
 3. Search and maps: submit the sitemap in Search Console; request indexing
@@ -45,7 +48,8 @@ from the client (never stored in the repository).
 
 ## Steps
 
-1. Dry run the whole launch against the staging target from phase 3.
+1. Dry run the whole launch against the staging target (built with the
+   deploy pipeline once the hosting path is confirmed, brief decision 21).
 2. Ask the client for the go in Persian with the exact list of irreversible
    actions. Proceed only after a clear yes.
 3. Deploy, verify, and watch logs for thirty minutes.

@@ -175,7 +175,9 @@ Family variants used below (defined in `docs/design-direction.md` section 6):
 B is a fact row of 3-6 items; C is a grid or bento with exactly as many cells
 as items; G-static is the journey as vertical steps with no pinning or pan
 (the pinned pan exists only on the home page); J-form is the booking block
-without the map.
+without the map. A is the asymmetric split hero of inner pages: text at the
+start side, media in a plain 24 px radius frame, no mark mask. M is the
+full-bleed photo hero, used on home only (brief decision 19).
 
 Rules checked for every template: one H1; one primary CTA per section; no
 family more than twice; at most two consecutive image-and-text splits.
@@ -184,8 +186,8 @@ family more than twice; at most two consecutive image-and-text splits.
 
 | # | Section | Family | Job | CTA |
 |---|---|---|---|---|
-| 1 | Hero: positioning line, subtext up to 20 words, real photo in the tooth-mark mask | A | Promise and first action | «رزرو نوبت» + «تماس با کلینیک» |
-| 2 | Trust band: up to 4 verified facts | B | Credibility in 3 seconds | none |
+| 1 | Hero (direction B): positioning line and subtext (up to 20 words) on a scrim at the start side, over a full-bleed real clinic photo; floating booking card with the compact form (phone field plus the hidden fields) at the end side; phones: scrim, card, then a 4:5 photo band | M | Promise and first action | «ثبت درخواست» in the card (primary) + «تماس با کلینیک» on the scrim (secondary) |
+| 2 | Trust band: up to 4 verified facts, on the hero's bottom edge from 744 px (2x2 at 744-1023, one row of four from 1024) and on the bottom edge of the phone photo band | B | Credibility in 3 seconds | none |
 | 3 | Services bento: 5 cells (3 categories, orthodontics, pediatric); cosmetic is the large cell | C | Orientation | cell links |
 | 4 | Three restoration tiers: معمولی, VIP, CIP morph | D | Signature differentiator | «رزرو نوبت» with the tier |
 | 5 | Before/after: 1 featured compare slider plus 2 thumbnails | E | Proof for cosmetic money services | link «همهٔ نمونه‌ها» |
@@ -193,9 +195,11 @@ family more than twice; at most two consecutive image-and-text splits.
 | 7 | First-visit journey: four steps from consultation to aftercare (pinned pan on desktop) | G | Remove fear and pressure | link «راهنمای اولین مراجعه» |
 | 8 | Patient videos: three testimonials with posters | H | Social proof | none |
 | 9 | FAQ: price, pain, insurance, financing, duration, emergency | I | Objections | sticky aside: call, WhatsApp, booking |
-| 10 | Booking block with static map and hours | J | Action | «ثبت درخواست» |
+| 10 | Booking block with static map and hours; the full form, the second form instance on home | J | Action | «ثبت درخواست» |
 
-Ten sections, ten families, one image-text split (the hero).
+Ten sections, ten families (M, B, C, D, E, F, G, H, I, J), no image-text
+split (the hero is full-bleed). The booking form appears twice (the hero
+card inside M and the booking block J), within the limit of two per family.
 
 ### T-service (17 pages; T-service-tiers adds section 3)
 
@@ -244,7 +248,7 @@ Ten sections, ten families, one image-text split (the hero).
 | Call, WhatsApp, booking on phones | sticky bar, always within thumb reach |
 | One H1 per template | yes |
 | One primary CTA per section | yes; per-case gallery links use the secondary style |
-| Home families | 10 distinct, none repeated; one image-text split |
+| Home families | 10 distinct; no image-text split; the booking form twice (hero card and booking block), within the limit |
 | Service template | 10 sections and 10 families; 11 with D on the restoration page |
 | Signature scroll moments | home only (hero transition, tiers morph, journey pan); other pages use static variants |
 | Every indexable URL has a keyword row | yes, see `docs/seo/keyword-map.md` |
