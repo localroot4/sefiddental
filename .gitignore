@@ -1,11 +1,45 @@
+# Secrets: only .env.example is tracked
 .env
 .env.*
 !.env.example
+
+# OS files
 .DS_Store
 Thumbs.db
+
+# Dependencies (a folder named vendor is never used for app code)
 node_modules/
 vendor/
-/storage/*.key
 !design/vendor/
 !design/vendor/**
 __pycache__/
+
+/storage/*.key
+
+# Next.js build output and generated types
+.next/
+/out/
+/build/
+next-env.d.ts
+*.tsbuildinfo
+
+# Generated public assets (scripts/sync-public-assets.mjs)
+public/brand/
+public/fonts/
+public/detect-gpu/
+public/maintenance.html
+
+# Local media and databases
+/media/
+/.data/
+*.db
+*.db-shm
+*.db-wal
+
+# Test, coverage and audit output
+/coverage/
+.vitest/
+playwright-report/
+test-results/
+blob-report/
+.lighthouseci/

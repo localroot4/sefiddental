@@ -1,0 +1,18 @@
+// Global admin styles. Payload's CSS sits in @layer payload-default, so these unlayered rules win.
+// --font-vazirmatn comes from next/font (src/lib/fonts.ts) on <html> via the layout's htmlProps.
+:root {
+  --font-body: var(--font-vazirmatn), system-ui, sans-serif;
+}
+
+// Payload's mobile list rule (@payloadcms/ui views/List/index.scss, max-width 1024px) bleeds the
+// table to the viewport edges with physical `left` and `padding-left`. In RTL that pushes the
+// table past the left edge and the whole page scrolls sideways. Mirror it. `[dir='rtl']` also
+// matches Payload's dir="RTL": HTML matches the dir attribute value case-insensitively.
+@media (max-width: 1024px) {
+  html[dir='rtl'] .collection-list .table {
+    left: auto;
+    right: calc(var(--gutter-h) * -1);
+    padding-left: 0;
+    padding-right: var(--gutter-h);
+  }
+}
