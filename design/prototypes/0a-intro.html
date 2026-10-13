@@ -14,9 +14,8 @@
 <link rel="preload" href="../fonts/Vazirmatn%5Bwght%5D.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="../fonts/Estedad-Bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../fonts/fonts.css">
 <style>
-@font-face{font-family:"Vazirmatn";src:url("../fonts/Vazirmatn%5Bwght%5D.woff2") format("woff2");font-weight:400 700;font-display:swap}
-@font-face{font-family:"Estedad";src:url("../fonts/Estedad-Bold.woff2") format("woff2");font-weight:700;font-display:swap}
 @font-face{font-family:"Vazirmatn Fallback";src:local("Tahoma"),local("Arial");size-adjust:104%;ascent-override:95%;descent-override:35%}
 
 :root{--on-brand:#fff;--k:.34}
@@ -70,7 +69,7 @@ button{font:inherit;color:inherit}
 /* hero, family A */
 .hero{padding-block:clamp(2.5rem,5vw,5rem)}
 .hero .wrap{display:grid;gap:var(--space-8);align-items:center}
-.hero-text{display:grid;gap:var(--space-4);max-inline-size:34rem}
+.hero-text{display:grid;gap:var(--space-4);max-inline-size:42rem}
 .hero .label{font-size:var(--text-caption);font-weight:500;color:var(--color-ink-muted);margin:0}
 .hero h1{font-size:var(--text-display-1);line-height:var(--leading-display);text-wrap:balance}
 .hero p.lead{font-size:var(--text-body-lg);line-height:var(--leading-body-lg);color:var(--color-ink-muted);margin:0;max-inline-size:var(--measure)}
@@ -261,12 +260,14 @@ var n=0,N=6,tick=function(){
 for(var i=1;i<=5;i++)setTimeout(tick,i*84);
 document.fonts.ready.then(tick);
 function at(ms,fn){setTimeout(fn,Math.max(0,ms-(performance.now()-t0)))}
+/* fixed budget: the loading wait is capped at 600 ms, the whole intro at 1400 ms */
 function run(){
-  var s=Math.max(500,performance.now()-t0);
+  var s=Math.min(600,Math.max(500,performance.now()-t0));
   at(s,function(){I.classList.add('s2')});
-  at(s+400,function(){I.classList.add('s3');h.classList.add('s3')});
-  at(s+900,end);
+  at(s+350,function(){I.classList.add('s3');h.classList.add('s3')});
+  at(s+750,end);
 }
+at(1400,function(){end(0)});
 I.addEventListener('click',function(){end(1)});
 addEventListener('keydown',function(e){if(e.key==='Escape')end(1)});
 })();

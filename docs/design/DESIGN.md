@@ -25,10 +25,11 @@ explicit theme is set. Components never use raw hex.
 | `--color-brand-logo` | `#00827A` | `#00827A` | the logo itself and 3D materials only |
 | `--color-brand-strong` | `#00655F` | `#5FD0C6` | hover and pressed, small brand text |
 | `--color-brand-soft` | `#ECF6F4` | `#0F3B3A` | tinted surfaces behind brand elements, chips |
+| `--color-brand-glow` | `rgb(0 130 122 / 0.18)` | `rgb(43 181 170 / 0.22)` | glow behind the mark in 3D scenes and halos; never a surface |
 | `--color-on-brand` | `#FFFFFF` | `#071A2B` | label on primary buttons |
 | `--color-ink` | `#0A243F` | `#EAF1F4` | headings and body text |
 | `--color-ink-muted` | `#4A5C70` | `#A9B8C6` | secondary text |
-| `--color-ink-faint` | `#7B8A9A` | `#7C8FA1` | captions, placeholders (3:1, never essential text) |
+| `--color-ink-faint` | `#7B8A9A` | `#7C8FA1` | non-text only: placeholder glyphs, dividers, decorative icons (3:1); never for text, captions use ink-muted |
 | `--color-surface` | `#F7F8F7` | `#071A2B` | page background |
 | `--color-surface-raised` | `#FFFFFF` | `#0D2A45` | cards, sheets, navigation |
 | `--color-surface-sunken` | `#EEF2F1` | `#051522` | section bands |
@@ -40,7 +41,7 @@ explicit theme is set. Components never use raw hex.
 | `--color-danger` / `-fill` | `#C81E2E` / `#DA2031` | `#FF8A8A` / `#DA2031` | error text / destructive fill (white label) |
 | `--color-warning` / `-fill` | `#A85012` / `#E07F38` | `#F0A05A` / `#E07F38` | warning text / fill, the emergency badge |
 | `--color-info` / `-fill` | `#1A6F94` / `#59C1EF` | `#8FD6F7` / `#59C1EF` | informational text / fill |
-| `--color-cat-*` | peach, teal, green, sky, yellow | same | the five service categories: icons and illustrations only |
+| `--color-cat-*` | rose, teal, green, sky, yellow | same | the five service categories: icons and illustrations only |
 | `--color-focus` | `#007A72` | `#5FD0C6` | focus ring, 2 px ring with a 2 px surface gap |
 
 Rules: one accent for UI (brand teal); peach is a highlight, never a second
@@ -60,7 +61,7 @@ and the hero mask edge only.
 | --color-ink-muted on --color-surface | secondary text | 6.45 OK | 8.69 OK | 4.5 |
 | --color-ink-muted on --color-surface-raised | secondary on cards | 6.87 OK | 7.22 OK | 4.5 |
 | --color-ink-muted on --color-surface-sunken | secondary on bands | 6.09 OK | 9.11 OK | 4.5 |
-| --color-ink-faint on --color-surface | captions and placeholders (large or non-essential) | 3.32 OK | 5.29 OK | 3.0 |
+| --color-ink-faint on --color-surface | non-text: placeholder glyphs and dividers | 3.32 OK | 5.29 OK | 3.0 |
 | --color-brand on --color-surface | links and brand text >= 16 px | 4.90 OK | 6.96 OK | 4.5 |
 | --color-brand on --color-surface-raised | links on cards | 5.22 OK | 5.78 OK | 4.5 |
 | --color-brand-strong on --color-surface | small brand text | 6.52 OK | 9.50 OK | 4.5 |
@@ -123,8 +124,8 @@ justify; no italic for Persian; no fake bold; measure 62ch; headlines max
 
 - Base 4 px; scale 4, 8, 12, 16, 24, 32, 48, 64, 96, 128 (`--space-*`).
 - Section padding `clamp(4rem, 6vw + 1rem, 8rem)`; content container
-  80rem, full-bleed media 90rem; gutters 16 / 24 / 32 px at phone / tablet
-  / desktop.
+  80rem, full-bleed media 90rem; gutters (`--gutter`) 16 px under 744, 24 px
+  from 744 and 32 px from 1280.
 - Radius system, no exceptions: pill 999 px (buttons, chips, the sticky
   pill), input 12 px, card 20 px, media 24 px, sheet and modal 28 px,
   badge 8 px.
@@ -133,6 +134,10 @@ justify; no italic for Persian; no fake bold; measure 62ch; headlines max
   sheet. Dark theme uses lighter surfaces and borders, weaker shadows.
   Cards only when elevation communicates hierarchy; never cards inside
   cards.
+- Tailwind v4 mapping (phase 3): `--color-*`, `--radius-*` and `--shadow-*`
+  keep their names inside `@theme`; `--space-N` becomes `--spacing-N`;
+  `--text-role` keeps its name and gains `--text-role--line-height`;
+  `--dur-*` and `--ease-*` stay plain custom properties for CSS and GSAP.
 - Breakpoints: 744 (tablet), 1024 (desktop layouts, pinned scenes allowed),
   1280 (full nav with the phone number), 1536 (max type). Phone layouts
   are designed first.
@@ -243,7 +248,7 @@ per section 4. Numbers formatted with `Intl.NumberFormat('fa-IR')`.
 ## 9. Motion tokens and rules (content pages and UI)
 
 Durations `--dur-1` 120 ms (micro), `--dur-2` 200 ms (UI), `--dur-3` 320 ms
-(reveals), `--dur-4` 600 ms (choreography); easings `--ease-out`
+(reveals), `--dur-4` 600 ms (choreography), `--dur-5` 1250 ms (the intro only, hard cap 1400 ms); easings `--ease-out`
 `cubic-bezier(0.16, 1, 0.3, 1)` and `--ease-in-out`
 `cubic-bezier(0.65, 0, 0.35, 1)`; all durations become 0 under reduced
 motion (the token file does this). Rules: motivated only; transform and

@@ -42,7 +42,8 @@
   .static-world { position: fixed; inset: 0; display: none; place-items: center; background: var(--color-surface); }
   .static-world.is-on { display: grid; }
   .static-world svg { width: min(52vw, 320px); height: auto; filter: drop-shadow(0 18px 28px rgb(10 36 63 / 0.14)); }
-  .static-world .enamel { fill: #F6F1E7; transition: fill var(--dur-3) var(--ease-out); }
+  /* a white tooth with an outline so tier 0 is visible on both surfaces */
+  .static-world .enamel { fill: #FFFFFF; stroke: var(--color-line-strong); stroke-width: 2; stroke-linejoin: round; transition: fill var(--dur-3) var(--ease-out); }
   .static-world .cip { opacity: 0; transition: opacity var(--dur-3) var(--ease-out); }
   .static-world[data-level="vip"] .enamel { fill: #FBF8F2; }
   .static-world[data-level="cip"] .enamel { fill: #F6EEDF; }
@@ -176,7 +177,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const css = (name) => getComputedStyle(root).getPropertyValue(name).trim();
 const fa = (n) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
 
-const state = { tier: 3, theme: 'light', source: '—', webgl: true, stats: { fps: 0, ms: 0 }, world: null, running: false, raf: 0, scrub: 0 };
+const state = { tier: 3, theme: 'light', source: 'ــ', webgl: true, stats: { fps: 0, ms: 0 }, world: null, running: false, raf: 0, scrub: 0 };
 
 // ---------- asset
 let molarGeometry = null;
@@ -445,7 +446,7 @@ function rebuild() {
   if (state.world) { state.world.dispose(); state.world = null; }
   const tier = effectiveTier(state.tier);
   const useWebgl = tier > 0 && state.webgl;
-  staticWorld.classList.toggle('is-on', !useWebgl);
+  staticWorld.classList.toggle('is-on', !useWebgl); staticWorld.setAttribute('aria-hidden', String(useWebgl));
   canvas.style.display = useWebgl ? 'block' : 'none';
   if (useWebgl) {
     try {
@@ -456,7 +457,7 @@ function rebuild() {
       start();
     } catch (err) {
       console.error('WebGL world failed, showing the static fallback:', err);
-      state.webgl = false; staticWorld.classList.add('is-on'); canvas.style.display = 'none';
+      state.webgl = false; staticWorld.classList.add('is-on'); staticWorld.setAttribute('aria-hidden', 'false'); canvas.style.display = 'none';
     }
   }
   status();
@@ -470,7 +471,7 @@ function status() {
     const T = TIERS[tier];
     parts.push(`تیر ${fa(tier)}: DPR ${fa(Math.min(devicePixelRatio || 1, T.dpr).toFixed(1))} · پس‌پردازش ${T.post === 'none' ? 'خاموش' : T.post === 'grain' ? 'گرین' : 'بلوم و گرین'} · سایه ${T.shadows === 'soft' ? 'نرم' : T.shadows === 'hard' ? 'سخت' : 'خاموش'} · انتقال نور ${T.transmission ? fa(T.transmission) : 'خاموش'}`);
     parts.push(`مدل: ${state.source}`);
-  } else { fpsEl.textContent = '—'; }
+  } else { fpsEl.textContent = 'ــ'; }
   statusEl.textContent = parts.join(' | ');
 }
 function setTheme(theme) {

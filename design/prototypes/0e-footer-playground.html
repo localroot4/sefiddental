@@ -15,9 +15,8 @@
 <link rel="preload" href="../fonts/Vazirmatn%5Bwght%5D.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="../fonts/Estedad-Bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../fonts/fonts.css">
 <style>
-@font-face{font-family:"Vazirmatn";src:url("../fonts/Vazirmatn%5Bwght%5D.woff2") format("woff2");font-weight:400 700;font-display:swap}
-@font-face{font-family:"Estedad";src:url("../fonts/Estedad-Bold.woff2") format("woff2");font-weight:700;font-display:swap}
 :root{--on-brand:#fff}
 [data-theme="dark"]{--on-brand:#071A2B}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--on-brand:#071A2B}}
@@ -48,7 +47,7 @@ button{font:inherit;color:inherit}
 .meter bdi{font-weight:600;color:var(--color-brand-strong)}
 .tiers{display:inline-flex;align-items:center;gap:var(--space-1);border:1px solid var(--color-line);border-radius:var(--radius-pill);padding:2px;background:var(--color-surface-raised);margin:0}
 .tiers legend{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%)}
-.tiers label{position:relative;display:inline-grid;place-items:center;min-inline-size:var(--target);min-block-size:40px;border-radius:var(--radius-pill);cursor:pointer;font-weight:500}
+.tiers label{position:relative;display:inline-grid;place-items:center;min-inline-size:var(--target);min-block-size:var(--target);border-radius:var(--radius-pill);cursor:pointer;font-weight:500}
 .tiers input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
 .tiers input:checked + span{color:var(--on-brand)}
 .tiers label:has(input:checked){background:var(--color-brand)}
@@ -216,10 +215,12 @@ gsap.registerPlugin(ScrollTrigger, Draggable, InertiaPlugin);
   var parts = gsap.utils.toArray('.part');
   var replay = document.getElementById('replay');
   var reduce = matchMedia('(prefers-reduced-motion: reduce)');
-  var tier = 3, drags = [], idle = null, dropped = false, dropTrigger = null;
+  var userTier = 3, tier = 3, drags = [], idle = null, dropped = false, dropTrigger = null, dropTween = null;
 
-  function setTier(t) {
-    tier = reduce.matches ? 0 : t;
+  /* the chosen tier and the effective one are kept apart: reduced motion lowers the effective tier only */
+  function setTier(t) { userTier = t; apply(); }
+  function apply() {
+    tier = reduce.matches ? 0 : userTier;
     root.classList.toggle('static', tier === 0);
     teardown();
     if (tier === 0) { gsap.set(parts, { clearProps: 'transform' }); replay.hidden = true; return; }
@@ -232,6 +233,7 @@ gsap.registerPlugin(ScrollTrigger, Draggable, InertiaPlugin);
   function teardown() {
     drags.forEach(function (d) { d.kill(); }); drags = [];
     if (idle) { idle.kill(); idle = null; }
+    if (dropTween) { dropTween.kill(); dropTween = null; }
     gsap.killTweensOf(parts);
   }
   /* distance from a part's home to the header line (the top of the footer box) */
@@ -242,13 +244,14 @@ gsap.registerPlugin(ScrollTrigger, Draggable, InertiaPlugin);
     dropped = true;
     gsap.killTweensOf(parts);
     gsap.set(parts, { x: 0, y: function (i, el) { return fromLine(el); } });
-    gsap.to(parts, {
+    dropTween = gsap.to(parts, {
       y: 0, ease: 'bounce.out', duration: 1.3,
       stagger: { each: 0.07, from: 'start' },
       onComplete: armIdle
     });
   }
   function goHome() {
+    if (tier === 0) return;
     gsap.to(parts, { x: 0, y: 0, rotation: 0, ease: 'expo.out', duration: 1.2, stagger: 0.04 });
   }
   function armIdle() {
@@ -278,7 +281,7 @@ gsap.registerPlugin(ScrollTrigger, Draggable, InertiaPlugin);
   }
   replay.addEventListener('click', drop);
   document.getElementById('tiers').addEventListener('change', function (e) { setTier(+e.target.value); });
-  reduce.addEventListener('change', function () { setTier(tier); });
+  reduce.addEventListener('change', apply);
   setTier(+document.querySelector('input[name="tier"]:checked').value);
   window.__pg = { drop: drop, goHome: goHome, parts: parts, tier: function () { return tier; } };
 })();

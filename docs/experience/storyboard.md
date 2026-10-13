@@ -196,6 +196,21 @@ vertical to horizontal (scene 3), horizontal back to a vertical scrub
 These sit inside the experience budgets (2.5 MB, 1.2 MB, 0.5 MB) with room
 for photography.
 
+## Prototype measurements (phase 2, software GPU)
+
+Numbers from `design/NOTES-prototypes.md`; WebGL values are floors from a
+software renderer, DOM values are representative of a slow laptop.
+
+| Scene | Prototype | Result |
+|---|---|---|
+| 0 Intro | 0a | 1250 ms (hard cap 1400), CLS 0, skip and session-once work, reduced motion ends in under 2 ms |
+| 1 Hero world | 00 | 7 / 4 / 2 fps at tiers 1 / 2 / 3 on the software GPU; auto drop 3 to 2 in 4 s, to 1 in 7 s |
+| 3 Services | 0b | 60 fps at 1x and 4x CPU, 56 at 6x; phone row is native scroll snap |
+| 4 Restoration levels | 0d | 8 fps at tier 1 on the software GPU (fill-bound): software renderers become tier 0 |
+| 5 Workflow | 0c | 60 / 54 / 50 fps at 1x / 4x / 6x, DOM only |
+| 6 Before and after | 0f | DOM slider fully keyboard-driven; WebGL wipe 16 to 24 fps on the software GPU |
+| 11 Footer | 0e | 60 / 54 / 48 fps at 1x / 4x / 6x; drag, throw, return home and replay work |
+
 ## Open points for the client at this gate
 
 1. Hero direction A or B (see `design/hero-directions/`).

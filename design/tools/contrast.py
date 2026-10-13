@@ -14,7 +14,7 @@ dark=dict(light); dark.update(dict(re.findall(r'(--color-[a-z-]+):\s*(#[0-9A-Fa-
 # (text token, surface token, role, minimum)
 pairs=[('--color-ink','--color-surface','body text',4.5),('--color-ink','--color-surface-raised','text on cards',4.5),('--color-ink','--color-surface-sunken','text on bands',4.5),
 ('--color-ink-muted','--color-surface','secondary text',4.5),('--color-ink-muted','--color-surface-raised','secondary on cards',4.5),('--color-ink-muted','--color-surface-sunken','secondary on bands',4.5),
-('--color-ink-faint','--color-surface','captions and placeholders (large or non-essential)',3.0),
+('--color-ink-faint','--color-surface','non-text: placeholder glyphs and dividers',3.0),
 ('--color-brand','--color-surface','links and brand text >= 16 px',4.5),('--color-brand','--color-surface-raised','links on cards',4.5),('--color-brand-strong','--color-surface','small brand text',4.5),
 ('--color-brand','--color-brand-soft','brand text on soft chip',4.5),('--color-ink','--color-brand-soft','ink on soft chip',4.5),
 ('--color-on-brand','--color-brand','label on primary button',4.5),

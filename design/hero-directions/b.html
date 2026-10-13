@@ -6,10 +6,9 @@
 <title>جهت ب: عکس تمام‌عرض</title>
 <link rel="icon" href="../brand/favicon.svg">
 <link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../fonts/fonts.css">
 <script>(function(){try{var t=localStorage.getItem("sefid-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}})();</script>
 <style>
-@font-face{font-family:"Vazirmatn";src:url("../fonts/Vazirmatn%5Bwght%5D.woff2") format("woff2");font-weight:400 700;font-display:swap}
-@font-face{font-family:"Estedad";src:url("../fonts/Estedad-Bold.woff2") format("woff2");font-weight:700;font-display:swap}
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;font-family:var(--font-body);font-size:var(--text-body);line-height:var(--leading-body);color:var(--color-ink);background:var(--color-surface);padding-block-end:calc(var(--sticky-bar-h) + env(safe-area-inset-bottom))}
@@ -31,7 +30,7 @@ a{color:inherit}
 /* header */
 .site-header{position:sticky;inset-block-start:0;z-index:30;background:color-mix(in srgb,var(--color-surface-raised) 88%,transparent);backdrop-filter:blur(12px);border-block-end:1px solid var(--color-line)}
 .nav{display:flex;align-items:center;gap:var(--space-3);block-size:64px}
-.logo{display:inline-flex;align-items:center;gap:var(--space-2);text-decoration:none;flex:none}
+.logo{display:inline-flex;align-items:center;gap:var(--space-2);text-decoration:none;flex:none;min-block-size:var(--target)}
 .logo-mark{inline-size:27px;block-size:34px;fill:var(--color-brand-logo);flex:none}
 .logo-word{inline-size:92px;block-size:31px;fill:var(--color-ink);flex:none}
 .nav-primary{display:none;flex:1}
@@ -169,7 +168,7 @@ body.field-focus .sticky-bar,body.drawer-open .sticky-bar{transform:translateY(1
     <a class="logo" href="#" aria-label="کلینیک دندانپزشکی سفید، صفحهٔ اصلی"><svg class="logo-mark" aria-hidden="true"><use href="#m-mark"/></svg><svg class="logo-word" aria-hidden="true"><use href="#m-word"/></svg></a>
     <nav class="nav-primary" aria-label="ناوبری اصلی">
       <ul>
-        <li><button class="nav-item" type="button" aria-expanded="false" aria-haspopup="true">خدمات <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></button></li>
+        <li><a class="nav-item" href="#">خدمات</a></li>
         <li><a class="nav-item" href="#">پزشکان</a></li>
         <li><a class="nav-item" href="#">قبل و بعد</a></li>
         <li><a class="nav-item" href="#">هزینه و پرداخت</a></li>
@@ -207,7 +206,7 @@ body.field-focus .sticky-bar,body.drawer-open .sticky-bar{transform:translateY(1
     <div class="hero-copy scrim">
       <h1 class="hero-h1" id="hero-h1">اولین کلینیک دندانپزشکی دیجیتال جنوب تهران</h1>
       <p class="hero-sub">مشاورهٔ اول رایگان است. در همان جلسه معاینه می‌شوید و برنامهٔ درمان و هزینه را شفاف می‌شنوید.</p>
-      <div class="hero-cta"><a class="btn btn-primary btn-lg" href="#book">رزرو نوبت</a><a class="btn btn-secondary btn-lg" href="tel:+982155101054">تماس با کلینیک</a></div>
+      <div class="hero-cta"><a class="btn btn-secondary btn-lg" href="#book">رزرو نوبت</a><a class="btn btn-secondary btn-lg" href="tel:+982155101054">تماس با کلینیک</a></div>
     </div>
     <div class="hero-card" id="book">
       <form id="bk" novalidate>

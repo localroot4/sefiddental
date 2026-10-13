@@ -1,0 +1,33 @@
+<!doctype html>
+<!-- Builds the three brand geometries and exports them as binary glTF.
+     Serve the repository root over HTTP and open this page; then run
+     gltf-transform draco on each download (see ../brand/3d/README.md). -->
+<html lang="en" dir="ltr"><head><meta charset="utf-8"><title>Brand glTF export</title>
+<style>body{font:16px/1.5 system-ui,sans-serif;margin:2rem;color:#0A243F;background:#F7F8F7}a{display:block;margin:.5rem 0}</style></head>
+<body>
+<h1>Brand glTF export</h1>
+<p id="status">Building…</p>
+<div id="links"></div>
+<script type="module">
+import * as THREE from '../vendor/three.js';
+import { buildMarkGeometry, buildDiamondGeometry, buildMolarGeometry, triangleCount } from '../brand/3d/build-brand-geometry.js';
+const items = [
+  ['mark', 'sefid-mark', 'porcelain', buildMarkGeometry()],
+  ['diamond', 'sefid-diamond', 'porcelain', buildDiamondGeometry()],
+  ['molar', 'sefid-molar', 'enamel', buildMolarGeometry()],
+];
+const exporter = new THREE.GLTFExporter();
+const links = document.getElementById('links');
+for (const [file, name, materialName, geom] of items) {
+  const mesh = new THREE.Mesh(geom, new THREE.MeshStandardMaterial({ name: materialName, color: '#F4F3EF', roughness: 0.55, metalness: 0 }));
+  mesh.name = name;
+  const buf = await exporter.parseAsync(mesh, { binary: true });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([buf], { type: 'model/gltf-binary' }));
+  a.download = file + '.raw.glb';
+  a.textContent = `${file}.raw.glb: ${triangleCount(geom)} triangles, ${buf.byteLength.toLocaleString('en')} bytes`;
+  links.appendChild(a);
+}
+document.getElementById('status').textContent = 'Done. Download each file, then compress it with gltf-transform draco.';
+</script>
+</body></html>

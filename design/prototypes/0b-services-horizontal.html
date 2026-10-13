@@ -14,9 +14,8 @@
 <link rel="preload" href="../fonts/Vazirmatn%5Bwght%5D.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="../fonts/Estedad-Bold.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="../tokens.css">
+<link rel="stylesheet" href="../fonts/fonts.css">
 <style>
-@font-face{font-family:"Vazirmatn";src:url("../fonts/Vazirmatn%5Bwght%5D.woff2") format("woff2");font-weight:400 700;font-display:swap}
-@font-face{font-family:"Estedad";src:url("../fonts/Estedad-Bold.woff2") format("woff2");font-weight:700;font-display:swap}
 :root{--on-brand:#fff}
 [data-theme="dark"]{--on-brand:#071A2B}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--on-brand:#071A2B}}
@@ -81,6 +80,15 @@ button{font:inherit;color:inherit}
 .world .foot a:hover{color:var(--color-brand-strong)}
 .world .count{color:var(--color-ink-muted)}
 .progress{display:none}
+.sr{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.tiers{display:inline-flex;align-items:center;gap:var(--space-1);border:1px solid var(--color-line);border-radius:var(--radius-pill);padding:2px;background:var(--color-surface-raised);margin:0}
+.tiers legend{position:absolute;inline-size:1px;block-size:1px;overflow:hidden;clip-path:inset(50%)}
+.tiers label{position:relative;display:inline-grid;place-items:center;min-inline-size:var(--target);min-block-size:var(--target);border-radius:var(--radius-pill);cursor:pointer;font-weight:500}
+.tiers input{position:absolute;inset:0;opacity:0;margin:0;cursor:pointer}
+.tiers input:checked + span{color:var(--on-brand)}
+.tiers label:has(input:checked){background:var(--color-brand)}
+.tiers label:has(input:focus-visible){box-shadow:var(--focus-ring)}
+.tiers .t{font-size:var(--text-small);color:var(--color-ink-muted);padding-inline-start:var(--space-3)}
 
 /* phones and tablets: native snap row, mark static, no pin */
 @media (max-width:1023px){
@@ -97,6 +105,13 @@ button{font:inherit;color:inherit}
   .world h3{font-size:var(--text-display-2);line-height:var(--leading-display-2)}
   .progress{display:block;position:relative;block-size:4px;border-radius:var(--radius-pill);background:var(--color-line);overflow:hidden}
   .progress i{position:absolute;inset:0;display:block;background:var(--color-brand);border-radius:inherit;transform-origin:100% 50%;transform:scaleX(0)}
+  /* tiers 0 and 1 never pin (experience direction, section 3): the worlds wrap into a grid and the mark stays still */
+  .scene.bento .stage{block-size:auto}
+  .scene.bento .rail{overflow:visible}
+  .scene.bento .track{flex-wrap:wrap;transform:none !important;will-change:auto}
+  .scene.bento .world{flex-basis:clamp(300px,30%,420px);min-block-size:auto}
+  .scene.bento .world h3{font-size:var(--text-heading);line-height:var(--leading-heading)}
+  .scene.bento .progress{display:none}
 }
 @media (prefers-reduced-motion:reduce) and (min-width:1024px){
   .stage{block-size:auto}
@@ -129,6 +144,14 @@ button{font:inherit;color:inherit}
   <div class="wrap">
     <p class="q"><b>سؤال:</b> آیا صحنهٔ افقی خدمات با پین و اسکراب روی اسکرول بومی، برگشت سریع و تغییر اندازه را تحمل می‌کند و زیر ۱۰۲۴ پیکسل به ردیف اسنپ بومی برمی‌گردد؟</p>
     <div class="tools">
+      <fieldset class="tiers" id="tiers">
+              <legend>سطح کیفیت</legend>
+              <span class="t">کیفیت</span>
+              <label><input type="radio" name="tier" value="0"><span>۰</span></label>
+              <label><input type="radio" name="tier" value="1"><span>۱</span></label>
+              <label><input type="radio" name="tier" value="2"><span>۲</span></label>
+              <label><input type="radio" name="tier" value="3" checked><span>۳</span></label>
+            </fieldset>
       <span class="meter" id="fps" aria-live="off">سنجهٔ فریم: آماده</span>
       <button class="btn btn-secondary btn-sm" id="theme" type="button" aria-pressed="false">حالت تیره</button>
     </div>
@@ -232,29 +255,38 @@ gsap.registerPlugin(ScrollTrigger, MorphSVGPlugin);
   var icons = ['#ic-cosmetic', '#ic-surgery', '#ic-restorative', '#ic-ortho', '#ic-kids'];
   var dist = function () { return Math.max(0, track.scrollWidth - rail.clientWidth); };
   var mm = gsap.matchMedia();
-  mm.add({ desktop: '(min-width: 1024px)', phone: '(max-width: 1023px)', reduce: '(prefers-reduced-motion: reduce)' }, function (ctx) {
-    if (!ctx.conditions.desktop || ctx.conditions.reduce) return;
-    var tl = gsap.timeline({
-      defaults: { ease: 'none' },
-      scrollTrigger: {
-        trigger: scene,
-        pin: true,
-        scrub: 0.6,
-        start: 'top top',
-        end: function () { return '+=' + dist(); },
-        invalidateOnRefresh: true,
-        anticipatePin: 1
-      }
+  var tier = 3;
+  /* tiers 0 and 1 never pin: the worlds wrap into a grid and the mark stays still */
+  function build() {
+    mm.revert();
+    scene.classList.toggle('bento', tier < 2);
+    if (tier < 2) return;
+    mm.add({ desktop: '(min-width: 1024px)', phone: '(max-width: 1023px)', reduce: '(prefers-reduced-motion: reduce)' }, function (ctx) {
+      if (!ctx.conditions.desktop || ctx.conditions.reduce) return;
+      var tl = gsap.timeline({
+        defaults: { ease: 'none' },
+        scrollTrigger: {
+          trigger: scene,
+          pin: true,
+          scrub: 0.6,
+          start: 'top top',
+          end: function () { return '+=' + dist(); },
+          invalidateOnRefresh: true,
+          anticipatePin: 1
+        }
+      });
+      tl.to(track, { x: function () { return dist(); }, duration: 1 }, 0);
+      tl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: 1 }, 0);
+      icons.forEach(function (id, i) {
+        var at = Math.max(0, i / 4 - 0.1);
+        tl.to(morph, { morphSVG: { shape: id, shapeIndex: 'auto' }, ease: 'power1.inOut', duration: 0.08 }, at);
+      });
+      return function () { morph.setAttribute('d', markD); };
     });
-    tl.to(track, { x: function () { return dist(); }, duration: 1 }, 0);
-    tl.fromTo(bar, { scaleX: 0 }, { scaleX: 1, duration: 1 }, 0);
-    icons.forEach(function (id, i) {
-      var at = Math.max(0, i / 4 - 0.1);
-      tl.to(morph, { morphSVG: { shape: id, shapeIndex: 'auto' }, ease: 'power1.inOut', duration: 0.08 }, at);
-    });
-    return function () { morph.setAttribute('d', markD); };
-  });
-  window.__st = { dist: dist, ScrollTrigger: ScrollTrigger };
+  }
+  build();
+  document.getElementById('tiers').addEventListener('change', function (e) { tier = +e.target.value; build(); });
+  window.__st = { dist: dist, ScrollTrigger: ScrollTrigger, tier: function () { return tier; } };
 })();
 </script>
 <script>

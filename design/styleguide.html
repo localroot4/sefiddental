@@ -6,10 +6,9 @@
 <title>راهنمای طراحی کلینیک سفید</title>
 <link rel="icon" href="brand/favicon.svg">
 <link rel="stylesheet" href="tokens.css">
+<link rel="stylesheet" href="fonts/fonts.css">
 <script>(function(){try{var t=localStorage.getItem("sefid-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}})();</script>
 <style>
-@font-face{font-family:"Vazirmatn";src:url("fonts/Vazirmatn%5Bwght%5D.woff2") format("woff2");font-weight:400 700;font-display:swap}
-@font-face{font-family:"Estedad";src:url("fonts/Estedad-Bold.woff2") format("woff2");font-weight:700;font-display:swap}
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;scroll-padding-block-start:calc(var(--nav-h) + 1rem)}
 body{margin:0;font-family:var(--font-body);font-size:var(--text-body);line-height:var(--leading-body);color:var(--color-ink);background:var(--color-surface);padding-block-end:calc(var(--sticky-bar-h) + env(safe-area-inset-bottom))}
@@ -43,7 +42,7 @@ a{color:inherit}
 /* ---------- header ---------- */
 .site-header{position:sticky;inset-block-start:0;z-index:30;background:color-mix(in srgb,var(--color-surface-raised) 88%,transparent);backdrop-filter:blur(12px);border-block-end:1px solid var(--color-line)}
 .nav{display:flex;align-items:center;gap:var(--space-3);block-size:64px}
-.logo{display:inline-flex;align-items:center;gap:var(--space-2);text-decoration:none;flex:none}
+.logo{display:inline-flex;align-items:center;gap:var(--space-2);text-decoration:none;flex:none;min-block-size:var(--target)}
 .logo-mark{inline-size:27px;block-size:34px;fill:var(--color-brand-logo);flex:none}
 .logo-word{inline-size:92px;block-size:31px;fill:var(--color-ink);flex:none}
 .nav-primary{display:none;flex:1}
@@ -55,6 +54,9 @@ a{color:inherit}
 .icon-btn{display:inline-grid;place-items:center;inline-size:var(--target);block-size:var(--target);border:0;background:none;border-radius:var(--radius-pill);cursor:pointer;color:inherit;text-decoration:none}
 .icon-btn:hover{background:var(--color-brand-soft)}
 .nav-phone{display:none;font-weight:600;font-size:var(--text-small);text-decoration:none;padding-inline:var(--space-2);min-block-size:var(--target);align-items:center}
+/* small link rows and standalone phone links keep a 44 px hit area; footer links grow sideways without moving */
+.row.sm .link,p.row a,.link.ltr{display:inline-flex;align-items:center;min-block-size:var(--target);padding-inline:var(--space-2)}
+footer li a{display:inline-flex;align-items:center;min-block-size:var(--target);padding-inline:var(--space-2);margin-inline-end:calc(-1 * var(--space-2))}
 .nav .nav-book,.nav .theme-toggle{display:none}
 .theme-toggle{position:relative}
 .theme-toggle .ico{position:absolute;transition:opacity var(--dur-2) var(--ease-out),transform var(--dur-3) var(--ease-out)}
@@ -140,7 +142,7 @@ textarea.input{resize:vertical;min-block-size:6rem}
 .booking .more summary::-webkit-details-marker{display:none}
 .booking .more[open] summary .ico{transform:rotate(180deg)}
 .hp{position:absolute;inset-inline-start:-9999px;opacity:0;block-size:0;inline-size:0}
-.counter{color:var(--color-ink-faint)}
+.counter{color:var(--color-ink-muted)}
 .success{display:grid;gap:var(--space-3);justify-items:start}
 .check-draw{inline-size:4rem;block-size:4rem;fill:none;stroke:var(--color-success);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .check-draw circle,.check-draw path{stroke-dasharray:1;stroke-dashoffset:1;animation:draw var(--dur-4) var(--ease-out) forwards}
@@ -266,7 +268,7 @@ body.field-focus .sticky-bar,body.drawer-open .sticky-bar{transform:translateY(1
 .cols{display:grid;gap:var(--space-6);align-items:start}
 .cols > *,.stack > *{min-inline-size:0}
 @media (min-width:1024px){.cols{grid-template-columns:1fr 1fr}}
-.lbl{font-size:var(--text-caption);color:var(--color-ink-faint);font-weight:500}
+.lbl{font-size:var(--text-caption);color:var(--color-ink-muted);font-weight:500}
 .swatches{display:grid;gap:var(--space-3);grid-template-columns:repeat(auto-fill,minmax(15rem,1fr))}
 .sw{display:grid;grid-template-columns:5.5rem 1fr;gap:var(--space-3);align-items:center}
 .sw-pair{display:grid;grid-template-columns:1fr 1fr;block-size:3.5rem;border-radius:var(--radius-input);overflow:hidden;border:1px solid var(--color-line)}
@@ -320,7 +322,7 @@ body.field-focus .sticky-bar,body.drawer-open .sticky-bar{transform:translateY(1
     <a class="logo" href="#" aria-label="کلینیک دندانپزشکی سفید، صفحهٔ اصلی"><svg class="logo-mark" aria-hidden="true"><use href="#m-mark"/></svg><svg class="logo-word" aria-hidden="true"><use href="#m-word"/></svg></a>
     <nav class="nav-primary" aria-label="ناوبری اصلی">
       <ul>
-        <li><button class="nav-item" type="button" aria-expanded="false" aria-haspopup="true">خدمات <svg class="ico ico-sm" aria-hidden="true"><use href="#i-chev"/></svg></button></li>
+        <li><a class="nav-item" href="#">خدمات</a></li>
         <li><a class="nav-item is-active" href="#" aria-current="page">پزشکان</a></li>
         <li><a class="nav-item" href="#">قبل و بعد</a></li>
         <li><a class="nav-item" href="#">هزینه و پرداخت</a></li>

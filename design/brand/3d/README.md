@@ -68,3 +68,16 @@ const { scene } = await loader.loadAsync('../brand/3d/mark.glb');
 `design/vendor/draco/` holds the matching wasm decoder and wrapper; nothing
 is fetched from a CDN. The three files decode in about 150 ms on the
 software GPU, including the decoder start.
+
+## Rebuilding the files
+
+1. Serve the repository root (`python3 -m http.server 8077 --bind 127.0.0.1`)
+   and open `design/tools/export-brand-glb.html`. It runs the builder,
+   exports each mesh as binary glTF with `GLTFExporter` and offers one
+   download per file (`mark.raw.glb`, `diamond.raw.glb`, `molar.raw.glb`).
+2. Compress each file with the Draco CLI, default settings:
+
+```sh
+npx @gltf-transform/cli draco mark.raw.glb mark.glb
+```
+

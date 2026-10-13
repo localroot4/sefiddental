@@ -34,7 +34,7 @@
   --color-info-fill: #59C1EF;
   --color-on-fill: #0A243F;      /* text on success, info and warning fills; danger fill takes white */
   /* category accents: icons and illustrations only */
-  --color-cat-cosmetic: #E8AF76;
+  --color-cat-cosmetic: #C4606F;   /* rose: distinct from the warm accent, 3.8:1 on the surface */
   --color-cat-surgery: #00827A;
   --color-cat-restorative: #77BA6B;
   --color-cat-ortho: #59C1EF;
@@ -89,6 +89,7 @@
   --dur-2: 200ms;
   --dur-3: 320ms;
   --dur-4: 600ms;
+  --dur-5: 1250ms;   /* the intro only; hard cap 1400 ms */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
   /* targets */
@@ -161,5 +162,5 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  :root { --dur-1: 0ms; --dur-2: 0ms; --dur-3: 0ms; --dur-4: 0ms; }
+  :root { --dur-1: 0ms; --dur-2: 0ms; --dur-3: 0ms; --dur-4: 0ms; --dur-5: 0ms; }
 }

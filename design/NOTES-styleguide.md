@@ -117,3 +117,9 @@ In B the trust band lives on the bottom edge of the hero itself, so the
 first viewport already contains proof and the form, while A keeps the
 first viewport to the promise and the two CTAs and lets the photo carry
 the mood.
+
+## After the phase 2 review
+
+- «خدمات» in the navigation is a plain link until the mega menu exists (phase 3); the earlier button carried `aria-haspopup` with no panel.
+- `--color-ink-faint` is no longer used for text; captions and counters use `--color-ink-muted`.
+- Section-index links, footer links and standalone phone links keep a 44 px hit area; links inside running sentences stay inline (WCAG inline exception).

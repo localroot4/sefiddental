@@ -161,7 +161,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)');
 const css = (name) => getComputedStyle(root).getPropertyValue(name).trim();
 const fa = (n) => String(n).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[d]);
 
-const state = { tier: 3, theme: 'light', webgl: true, mode: '—', p: 0.5, v: 0, stats: { fps: 0, ms: 0 }, world: null, running: false, raf: 0 };
+const state = { tier: 3, theme: 'light', webgl: true, mode: 'ــ', p: 0.5, v: 0, stats: { fps: 0, ms: 0 }, world: null, running: false, raf: 0 };
 
 // ---------- procedural placeholder pictures (1024 x 640)
 const W = 1024, H = 640;
@@ -359,7 +359,10 @@ handle.addEventListener('keydown', (e) => {
 });
 
 // ---------- tier and theme
-function effectiveTier(n) { return reduced.matches ? 0 : n; }
+const phone = matchMedia('(max-width: 1023px)');
+phone.addEventListener('change', () => rebuild());
+/* phones take the DOM slider whatever the tier (experience direction, scene 6) */
+function effectiveTier(n) { return (reduced.matches || phone.matches) ? 0 : n; }
 function setTier(n) {
   n = Math.max(0, Math.min(3, Number(n)));
   state.tier = n;
@@ -387,7 +390,7 @@ function status() {
   const parts = [];
   if (reduced.matches) parts.push('کاهش حرکت فعال است: تیر ۰');
   if (!state.webgl) parts.push('WebGL در دسترس نیست');
-  if (state.mode === 'DOM') { parts.push('حالت: clip-path در DOM'); fpsEl.textContent = '—'; }
+  if (state.mode === 'DOM') { parts.push('حالت: clip-path در DOM'); fpsEl.textContent = 'ــ'; }
   else { const T = TIERS[tier]; parts.push(`تیر ${fa(tier)}: WebGL · DPR ${fa(Math.min(devicePixelRatio || 1, T.dpr).toFixed(1))} · گرین ${T.grain ? 'روشن' : 'خاموش'}`); }
   statusEl.textContent = parts.join(' | ');
 }
