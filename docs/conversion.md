@@ -391,7 +391,7 @@ Two channels, one delegated listener. Links carry
 
 | Event | Trigger | Extra parameters |
 |---|---|---|
-| `booking_open` | dialog opened, inline booking block scrolled to by a CTA, booking page viewed, or the first focus of the home hero card's phone field (never on view alone: the card is in every home first screen) | `location` (header, hero, sticky, section, tier, aside, article, page) |
+| `booking_open` | dialog opened, inline booking block scrolled to by a CTA, booking page viewed, or the first focus of the home hero card's phone field (never on view alone: the card is in every home first screen). When a header or sticky-bar «رزرو نوبت» moves focus to the hero phone field, send one `booking_open` with that CTA's `location` (`header` or `sticky`). A direct tap or Tab into the field sends `location` = `hero`. The hero card sends at most one `booking_open` per page view | `location` (header, hero, sticky, section, tier, aside, article, page) |
 | `booking_submit` | valid submit sent | `location` (the form instance: `hero` or `block` on home; `block`, `dialog` or `page` elsewhere), `has_name`, `time_pref`, `tier` |
 | `booking_success` | server confirmed | `duplicate` |
 | `booking_error` | inline or server error shown | `error_type` |

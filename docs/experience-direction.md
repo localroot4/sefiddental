@@ -61,7 +61,7 @@ spectacle serves conversion, not the other way round.
 | # | Scene | Direction | Story beat and job | Mechanics | Fallback (tier 0, reduced motion) |
 |---|---|---|---|---|---|
 | 0 | Intro | none | The mark assembles from scattered diamonds; the bar is the loading line | Inline CSS plus tiny JS; the mark opens as a mask onto the hero B composition; the WebGL world mounts beneath after `load` and renders no frames while the hero photo covers the viewport | Static logo, no overlay |
-| 1 | Hero «اولین کلینیک دندانپزشکی دیجیتال جنوب تهران» (direction B) | vertical | Promise and first action | Full-bleed real photo (the LCP element from 744 px; on phones the H1 is) with the headline on a scrim and the floating booking card; text and card settle once; no WebGL frames while the photo covers the world; on exit the photo scrolls away and uncovers the porcelain world | Same photo, scrim, card and facts, no motion |
+| 1 | Hero «اولین کلینیک دندانپزشکی دیجیتال جنوب تهران» (direction B) | vertical | Promise and first action | Full-bleed real photo (the LCP element from 744 px; on phones a scrim text element is, the H1 or the subtext) with the headline on a scrim and the floating booking card; text and card settle once; no WebGL frames while the photo covers the world; on exit the photo scrolls away and uncovers the porcelain world | Same photo, scrim, card and facts, no motion |
 | 2 | Trust band and hero exit | vertical | Credibility | Static facts on the hero's bottom edge, in the first screen from 744 px (on phones, on the photo band after the card); the band leaves with the hero; the camera tilts slightly | Static facts |
 | 3 | Services «چه کاری می‌توانیم بکنیم» | vertical to **horizontal** | Orientation | Pinned section; five service worlds slide horizontally; the mark morphs into each category icon as it passes; cards are DOM, the backdrop is WebGL | Vertical bento, no pin |
 | 4 | Three restoration levels | horizontal continues, then unpins | Signature differentiator | A 3D molar on a turntable; scrolling advances معمولی, VIP, CIP; color characterization layers appear as a shader on CIP; tier CTA follows | SVG morph stepper (phase 2 prototype) |
@@ -114,7 +114,7 @@ The first paint never waits for WebGL.
 
 | Page class | What loads first | Initial JS | WebGL assets | LCP | INP |
 |---|---|---|---|---|---|
-| Home (experience) | server HTML, CSS, fonts, the hero photo (the LCP from 744 px; on phones the H1 is the LCP and the photo band loads without priority), intro | <= 180 KB gzipped (React, GSAP core, Lenis, the scroll engine) | three.js and scenes after `load`, by scene order, behind the intro bar; total <= 2.5 MB at tier 3, <= 1.2 MB at tier 2, <= 500 KB at tier 1 | <= 2.5 s on 4G | <= 200 ms |
+| Home (experience) | server HTML, CSS, fonts, the hero photo (the LCP from 744 px; on phones a scrim text element, the H1 or the subtext, is the LCP and the photo band starts below the first screen and loads without priority), intro | <= 180 KB gzipped (React, GSAP core, Lenis, the scroll engine) | three.js and scenes after `load`, by scene order, behind the intro bar; total <= 2.5 MB at tier 3, <= 1.2 MB at tier 2, <= 500 KB at tier 1 | <= 2.5 s on 4G | <= 200 ms |
 | Content pages (services, dentists, pricing, articles, guides, address) | server HTML, CSS, fonts, images | <= 90 KB gzipped; no three.js | none, except one optional lazy canvas on the restoration page | <= 2.5 s | <= 200 ms |
 | Booking and emergency | server HTML, CSS, fonts | <= 70 KB gzipped | none | <= 2.0 s | <= 200 ms |
 

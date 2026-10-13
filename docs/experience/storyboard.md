@@ -45,7 +45,7 @@ vertical to horizontal (scene 3), horizontal back to a vertical scrub
   (brief decision 19), so the mark reveal carries the brand.
 - 0%: overlay in the surface color, mark outline at center, hero B already
   painted beneath (the hero photo is the LCP element from 744 px; on
-  phones the H1 is, see scene 1).
+  phones a scrim text element is, the H1 or the subtext, see scene 1).
 - 50%: four diamonds have flown in and settled; the bar is drawing right to
   left as the real loading line (minimum 400 ms, maximum 1300 ms).
 - 100%: mark strokes snapped, «سفید» filled, the mark scaled up as a mask
@@ -112,12 +112,18 @@ vertical to horizontal (scene 3), horizontal back to a vertical scrub
   The first screen is the header, the scrim and the card. At 390x844 the
   phone field and «ثبت درخواست» are on it. On 640 px tall phones the phone
   field is below the first screen; the sticky-bar «رزرو نوبت» focuses it.
-  The H1 is the LCP element; the 4:5 crop loads without priority.
+  The scrim-and-card block is at least the first screen tall
+  (`calc(100svh - 65px)`), so the 4:5 band always starts below the first
+  screen and loads without priority. The LCP element is a scrim text
+  element (the H1, or the subtext where its box is larger), never an
+  image.
 - T0: the same layout, no motion.
 - Assets: the hero photo, landscape plus a 4:5 crop from the same shoot
   (brief in `docs/content/shot-list.fa.md`: an empty clinic interior in
-  natural light, no faces; the key detail in the central and upper band);
-  no glTF in this scene. Cost: one image decode, zero WebGL frames.
+  natural light, no faces; the key detail in the central and upper band
+  of the landscape crop and in the top third of the 4:5 crop, because the
+  trust band covers the bottom 37-61% of the phone band); no glTF in this
+  scene. Cost: one image decode, zero WebGL frames.
 
 ## Scene 2: Trust band and hero exit (100-140 vh)
 
@@ -128,7 +134,7 @@ vertical to horizontal (scene 3), horizontal back to a vertical scrub
   from 744 px, under the intro overlay. Until gap 15 closes, use the facts
   of b.html: «مشاورهٔ اول رایگان», «هر روز ۱۰ تا ۲۰», «تماس پذیرش تا ۱۰
   دقیقه» and «بیمه‌های طرف قرارداد» with «ایران، کارآفرین، پاسارگاد، البرز،
-  ما و سایر بیمه‌ها». The label follows brief decision 14: five insurers
+  بیمهٔ ما و سایر بیمه‌ها». The label follows brief decision 14: five insurers
   by name, the rest under «سایر بیمه‌ها».
 - 0%: the band on screen with the hero. 50%: the band leaves with the
   hero; the world shows behind the photo: the mark relief at the end side,
@@ -303,9 +309,13 @@ Answers of 2026-10-13:
 1. Hero direction: B, `design/hero-directions/b.html` (brief decision 19).
    Scenes 0, 1, 2 and 10 above follow it; direction A is archived.
 2. Approval of the traced logo and of the 3D interpretation of the mark:
-   not answered yet (gaps 1 and 34). They are listed again as pending, with
-   a screenshot and a yes or no; launch needs an explicit yes or the
-   original vector. Phase 3 uses the trace as is.
+   not answered yet (gaps 1 and 34). Both are listed again as pending, not
+   as new questions. The phase 3 hand-off shows the final asset
+   `design/brand/logo-horizontal.svg` beside the client's original PNG,
+   with a yes or no (gap 1); launch needs an explicit yes or the original
+   vector, and phase 3 uses the trace as is. The 3D mark is not judged from
+   a draft (brief decision 20): the phase 8 hand-off shows it in the real
+   scene next to the two molar pictures, with a yes or no (gap 34a).
 3. Which prototype feels closest to the reference sites: not judged. The
    client watched every recording and screenshot and called them drafts
    that will not ship as they are. The comparison moves to the phase 7

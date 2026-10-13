@@ -36,11 +36,13 @@ timeline and tier provider, performance baselines.
    budgets, preloading in scroll order. Molar choice (gap 34, brief
    decision 22): render the stylized molar and the realistic candidate
    side by side in the scene 4 light, so the client picks from two
-   pictures under `docs/qa/phase-08/`. Before the candidate is used, a
-   person confirms the license field on its model page and keeps the
-   downloaded `license.txt`. The credit duties and the paid fallback are in
-   brief decision 22. Spend no money without the client's explicit approval
-   of the price. The stylized molar stays until the client picks.
+   pictures under `docs/qa/phase-08/`. Save a render of the mark as a
+   porcelain relief in the real scene 2 next to them (gap 34a). Before the
+   candidate is used, a person confirms the license field on its model page
+   and keeps the downloaded `license.txt`. The credit duties and the paid
+   fallback are in brief decision 22. Spend no money without the client's
+   explicit approval of the price. The stylized molar stays until the
+   client picks.
 4. Quality tiers end to end: `detect-gpu` plus device signals at first
    visit; the live monitor steps down after 2 seconds under 55 fps and
    never steps up during the visit except after idle; tier settings
@@ -96,4 +98,7 @@ timeline and tier provider, performance baselines.
 Ask the client to run the real-device checklist and report fps feel, any
 device that struggles, which scene feels closest to the reference sites and
 which does not, and whether any scene should be bolder or calmer. Show the
-two molar pictures and ask which tooth they want in scene 4 (gap 34).
+two molar pictures and ask which tooth they want in scene 4 (gap 34b).
+Next to them, show the mark as a porcelain relief in the scene 2 render and
+ask yes or no (gap 34a, pending since the phase 2 gate, not a new
+question); launch needs an explicit yes.

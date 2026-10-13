@@ -45,7 +45,7 @@ radius system exactly as the tokens (pill, 12, 20, 24, 28, 8).
 | Skeleton | card skeleton with an opacity pulse (no shimmer gradient), static under reduced motion |
 | Empty state | one sentence, one action, the mark in brand-soft |
 | Sticky bar | fixed at the bottom under 1024 px, 64 px plus safe-area, three cells, the booking cell filled; hides while a field has focus or the drawer is open |
-| Navigation | 72 px desktop bar with five items, the active item marked by the bar motif, theme toggle, phone as an LTR island from 1280 px (call icon below that), «رزرو نوبت» pill, logo at the end side; phone header with logo, call icon and menu button; full-screen `<dialog>` drawer with 48 px rows, three service groups as disclosures, Esc and close button, Tab trapped, focus returned to the opener |
+| Navigation | 72 px desktop bar with five items, the active item marked by the bar motif, theme toggle, phone as an LTR island from 1280 px (call icon below that), «رزرو نوبت» pill, logo at the start side (the right in RTL); phone header with logo, call icon and menu button; full-screen `<dialog>` drawer with 48 px rows, three service groups as disclosures, Esc and close button, Tab trapped, focus returned to the opener |
 | Footer | four groups per `docs/ia.md` section 3, address block always open, the other groups are disclosures on phones, bottom row with socials, license placeholders and the copyright |
 
 ## Measured results
@@ -137,18 +137,26 @@ in `b.html` on 2026-10-13:
 
 - The photo caption carries the new brief: an empty clinic interior in
   natural light, no faces, the key detail in the central and upper band,
-  plus a 4:5 phone crop from the same shoot.
+  plus a 4:5 phone crop from the same shoot with the key detail in the top
+  third (the trust band covers the bottom 37-61% of the phone band).
 - The scrim «رزرو نوبت» button is removed; the scrim keeps
   «تماس با کلینیک» only.
 - Under 744 px the hero runs scrim, card, then a 4:5 photo band with the
   four facts on its bottom edge. At 390x844 the card ends at 822 px and the
-  photo band starts at 854 px.
+  photo band starts at 854 px. The scrim and the card fill at least
+  `calc(100svh - 65px)` (the 64 px header plus its hairline), so on taller
+  phones the band also starts below the first screen and the phone LCP
+  stays a scrim text element (the H1 or the subtext).
+- The phone field skips blur validation when the blur comes from a press
+  on «ثبت درخواست»; submit validation runs instead (`docs/conversion.md`
+  5.2).
 - The compact success shows items 1-4 of `docs/conversion.md` 5.4 in the
   same grid cell as the form, so the card keeps its height.
 - The H1 uses the 2rem floor (`docs/design/DESIGN.md` section 2): 3 lines
   from 360 to 414 px, 2 lines at 430 px and from 1024 px.
 - The fourth fact reads «بیمه‌های طرف قرارداد» with
-  «ایران، کارآفرین، پاسارگاد، البرز، ما و سایر بیمه‌ها» (brief decision 14).
+  «ایران، کارآفرین، پاسارگاد، البرز، بیمهٔ ما و سایر بیمه‌ها» (brief
+  decision 14).
 
 These gaps are still open in `b.html`. Phase 4 closes them in the app:
 

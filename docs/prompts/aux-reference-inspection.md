@@ -1,6 +1,6 @@
 # Reference and Old-Site Inspection (browser session)
 
-Run this in a Claude Code session that has a real browser (Chrome extension,
+Run this in a session that has a real browser (Chrome extension,
 built-in browser, or Playwright with network access). The build sessions
 cannot reach these sites. Inspect three sites, write one report, commit it
 to this repository, and push. Follow the repository rules in

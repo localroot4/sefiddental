@@ -109,7 +109,8 @@ body.field-focus .sticky-bar,body.drawer-open .sticky-bar{transform:translateY(1
 .facts-row span{font-size:var(--text-caption);line-height:1.6;color:var(--color-ink-muted)}
 @media (min-width:1024px){.facts-row{grid-template-columns:repeat(4,1fr)}}
 /* hero B. Phones (< 744 px): scrim, booking card, then a 4:5 photo band with the trust facts on its bottom edge.
-   The phone LCP is the H1; the 4:5 crop loads without priority.
+   The phone LCP is a scrim text element (the H1, or the subtext where its box is larger). The scrim and the card fill at least
+   the first screen (100svh minus the 64 px header and its 1 px hairline), so the 4:5 band starts below it and loads without priority.
    From 744 px: full-bleed landscape photo behind the scrim (start side), the booking card (end side) and the trust band (bottom edge).
    The landscape crop is the LCP from 744 px: one preload with media="(min-width: 744px)" and fetchpriority="high". */
 .hero{position:relative;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr);background:var(--color-surface-sunken)}
@@ -144,8 +145,9 @@ body.field-focus .sticky-bar,body.drawer-open .sticky-bar{transform:translateY(1
 .card-success .btn{margin-block-start:var(--space-1)}
 .trust{grid-row:2;grid-column:1;align-self:end;position:relative;background:color-mix(in srgb,var(--color-surface-raised) 90%,transparent);border-block-start:1px solid var(--color-line)}
 .trust .container{padding-block:var(--space-6)}
-/* phones: tighter hero spacing keeps the submit and the success actions clear of the sticky bar; no relief (it is judged over the landscape photo from 744 px) */
-@media (max-width:743.98px){.hero-grid{padding-block:var(--space-4) var(--space-8);gap:var(--space-4)}.hero-relief{display:none}}
+/* phones: tighter hero spacing keeps the submit and the success actions clear of the sticky bar; the block is at least the first screen tall
+   with its content centered, so the 4:5 band never enters the first screen; no relief (it is judged over the landscape photo from 744 px) */
+@media (max-width:743.98px){.hero-grid{padding-block:var(--space-4) var(--space-8);gap:var(--space-4);min-block-size:calc(100svh - 65px);align-content:center}.hero-relief{display:none}}
 @media (min-width:744px){
   .hero{display:block}
   .hero-photo{position:absolute;inset:0;align-self:auto;justify-self:auto;aspect-ratio:auto;border:0;align-content:end;padding-block-end:calc(var(--space-4) + 9rem)}
@@ -252,7 +254,7 @@ body.field-focus .sticky-bar,body.drawer-open .sticky-bar{transform:translateY(1
   <li><b>مشاورهٔ اول رایگان</b><span>معاینه و برنامهٔ درمان در همان جلسه</span></li>
   <li><b>هر روز ۱۰ تا ۲۰</b><span>به‌جز تعطیلات رسمی</span></li>
   <li><b>تماس پذیرش تا ۱۰ دقیقه</b><span>معمولاً، در ساعات کاری</span></li>
-  <li><b>بیمه‌های طرف قرارداد</b><span>ایران، کارآفرین، پاسارگاد، البرز، ما و سایر بیمه‌ها</span></li>
+  <li><b>بیمه‌های طرف قرارداد</b><span>ایران، کارآفرین، پاسارگاد، البرز، بیمهٔ ما و سایر بیمه‌ها</span></li>
 </ul></div></div>
 </section>
 </main>
@@ -275,9 +277,11 @@ $$("[data-close-drawer]").forEach(b=>b.addEventListener("click",()=>drawer.close
 drawer.addEventListener("close",()=>{document.body.classList.remove("drawer-open");$$(".nav-menu").forEach(x=>x.setAttribute("aria-expanded","false"));if(opener)opener.focus()});
 drawer.addEventListener("keydown",e=>{if(e.key!=="Tab")return;const f=$$("a[href],button:not([disabled]),summary,[tabindex]:not([tabindex='-1'])",drawer).filter(el=>el.offsetParent!==null);if(!f.length)return;const a=document.activeElement;if(e.shiftKey&&a===f[0]){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&a===f[f.length-1]){e.preventDefault();f[0].focus()}});
 // the bar hides while a field has focus; when a press (mouse, pen or touch) takes focus from a field, the bar returns only after the press ends (docs/conversion.md)
-let pressing=false;
+let pressing=false,pressTarget=null;
 const barBack=()=>{const a=document.activeElement;if(!a||!a.matches("input,textarea,select"))document.body.classList.remove("field-focus")};
-document.addEventListener("pointerdown",()=>{pressing=true},true);
+document.addEventListener("pointerdown",e=>{pressing=true;pressTarget=e.target},true);
+// a touch tap moves focus after pointerup, so the press target is kept until that press's click or the next key
+["click","keydown"].forEach(t=>document.addEventListener(t,()=>{pressTarget=null},true));
 ["pointerup","pointercancel"].forEach(t=>document.addEventListener(t,()=>{pressing=false;setTimeout(barBack)},true));
 document.addEventListener("focusin",e=>{if(e.target.matches("input,textarea,select"))document.body.classList.add("field-focus")});
 document.addEventListener("focusout",()=>{if(!pressing)barBack()});
@@ -291,7 +295,8 @@ const toEn=s=>s.replace(/[۰-۹]/g,d=>fa.indexOf(d)).replace(/[٠-٩]/g,d=>"٠١
 const norm=v=>{let d=toEn(v).replace(/[^\d+]/g,"");if(d.startsWith("+98"))d="0"+d.slice(3);else if(d.startsWith("0098"))d="0"+d.slice(4);else if(/^9\d{9}$/.test(d))d="0"+d;return d};
 const check=v=>{const d=norm(v);if(!d)return "شمارهٔ موبایل را وارد کنید.";if(/^0[1-8]\d{9}$/.test(d))return "این شمارهٔ تلفن ثابت است. شمارهٔ موبایل را وارد کنید.";if(!/^09\d{9}$/.test(d))return "شمارهٔ موبایل باید ۱۱ رقم باشد و با ۰۹ شروع شود.";return ""};
 const setErr=msg=>{if(msg){perr.innerHTML='<svg class="ico ico-sm" aria-hidden="true"><use href="#i-danger"/></svg>'+msg;perr.hidden=false;phone.setAttribute("aria-invalid","true");phone.setAttribute("aria-describedby","bk-phone-help bk-phone-err")}else{perr.hidden=true;phone.removeAttribute("aria-invalid");phone.setAttribute("aria-describedby","bk-phone-help")}};
-phone.addEventListener("blur",()=>{if(phone.value.trim())setErr(check(phone.value))});
+// no blur validation when a press on the submit takes focus: a message there would move the button under the press; submit validation runs instead (docs/conversion.md 5.2)
+phone.addEventListener("blur",()=>{if(submit.contains(pressTarget))return;if(phone.value.trim())setErr(check(phone.value))});
 form.addEventListener("submit",e=>{e.preventDefault();if(submit.hasAttribute("data-loading"))return;const msg=check(phone.value);setErr(msg);if(msg){phone.focus();status.textContent=msg;return}
   const d=norm(phone.value);submit.setAttribute("data-loading","");submit.setAttribute("aria-busy","true");$(".btn-label",submit).textContent="در حال ثبت";status.textContent="در حال ثبت درخواست";
   setTimeout(()=>{$("#bk-done-phone").textContent=toFa(d.slice(0,4))+" ••• "+toFa(d.slice(-4));card.classList.add("is-done");$("#bk-done").focus({preventScroll:true});card.scrollIntoView({block:"nearest",behavior:matchMedia("(prefers-reduced-motion: reduce)").matches?"auto":"smooth"});status.textContent="درخواست شما ثبت شد"},900)});

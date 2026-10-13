@@ -118,6 +118,9 @@ by the end of the build (gap 32), ask the client to choose C1 (their own
 server through WHM root) or A (a Node PaaS in Iran, Liara first, for a
 small monthly fee that they approve). List the platform accounts and
 environment values they must create, and name any budget that the platform
-cannot meet. List the pending approvals again, not as new questions: the
-logo trace (gap 1) and the 3D mark (gap 34), each with one screenshot and a
-yes or no. Launch needs an explicit yes, or the original logo vector.
+cannot meet. List the pending logo approval again, not as a new question:
+the trace (gap 1), shown as the final asset `design/brand/logo-horizontal.svg`
+beside the client's original PNG (`content/brand/logo-horizontal.png`), with
+a yes or no. Launch needs an explicit yes, or the original logo vector. Do
+not ask about the 3D mark here; the phase 8 hand-off shows it in the real
+scene (gap 34a, brief decision 20).

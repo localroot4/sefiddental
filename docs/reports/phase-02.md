@@ -258,8 +258,9 @@ same day. Brief decisions 19 to 22 record both.
   as a watermark, and by default if no real photo exists by phase 7.
 - Phones (< 744 px): the scrim (H1, subtext, «تماس با کلینیک»), then the
   booking card, then a 4:5 photo band with the four trust facts on its
-  bottom edge. The H1 is the phone LCP element; the phone crop loads
-  without priority.
+  bottom edge. The phone LCP element is a scrim text element (the H1 or
+  the subtext), never an image; the 4:5 band starts below the first screen
+  and loads without priority.
 - From 744 px: the full-bleed landscape photo is the LCP element (one
   preload with a media query, `fetchpriority=high`). The scrim sits at the
   start side, the card at the end side, the trust band on the bottom edge
@@ -288,12 +289,17 @@ same day. Brief decisions 19 to 22 record both.
   the phase 4 review. Full-bleed B is home only.
 - Home hero photo: an empty clinic interior in natural light, no faces;
   landscape, at least 4000 px on the long side, plus a 4:5 crop from the
-  same shoot. The key detail sits in the central and upper band (gap 36;
-  shot list section ۰).
+  same shoot. The key detail sits in the central and upper band of the
+  landscape crop and in the top third of the 4:5 crop, because the trust
+  band covers the bottom 37-61% of the phone band (gap 36; shot list
+  section ۰).
 - Question 2, logo trace and 3D mark: no answer. Both are listed again as
-  pending with a screenshot and a yes or no, not as new questions. Phase 3
-  uses the trace as is; launch needs an explicit yes or the original
-  vector (gaps 1 and 34).
+  pending, not as new questions. The phase 3 hand-off shows the final
+  asset `design/brand/logo-horizontal.svg` beside the client's original
+  PNG, with a yes or no (gap 1). Phase 3 uses the trace as is; launch
+  needs an explicit yes or the original vector. The 3D mark is not judged
+  from a draft (brief decision 20): the phase 8 hand-off shows it in the
+  real scene next to the two molar pictures, with a yes or no (gap 34a).
 - Question 3, recordings: withdrawn. The client watched all recordings and
   screenshots and does not judge drafts that will not appear on the site
   as they are. Taste questions move to the phase 7 hand-off and the phase

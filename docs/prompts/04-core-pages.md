@@ -36,8 +36,11 @@ the gaps between b.html and the binding docs are listed in
      trust band on the hero's bottom edge (2x2 up to 1023 px, one row of
      four from 1024 px).
    - Under 744 px: the scrim, then the card, then a 4:5 photo band with the
-     four facts on its bottom edge. The H1 is the LCP element; the 4:5 crop
-     loads without priority.
+     four facts on its bottom edge. The scrim-and-card block is at least
+     `calc(100svh - 65px)` tall (the 64 px header plus its hairline), so the
+     4:5 band starts below the first screen and loads without priority. The
+     LCP element is a scrim text element (the H1, or the subtext where its
+     box is larger, as at 430 px), never an image.
    - The scrim holds the H1, the subtext and «تماس با کلینیک» (secondary)
      only; b.html's scrim «رزرو نوبت» is removed. The card's «ثبت درخواست»
      is the only primary CTA in the hero.
@@ -54,7 +57,8 @@ the gaps between b.html and the binding docs are listed in
    - Until the photo exists, the hero uses labeled placeholders with the
      brief of gap 36 (`docs/content/shot-list.fa.md`): an empty clinic
      interior in natural light, no faces, the key detail in the central
-     and upper band.
+     and upper band of the landscape crop and in the top third of the 4:5
+     crop (the trust band covers the bottom 37-61% of the phone band).
 4. Services hub, category pages, the service template (all sections of
    `docs/ia.md` T-service, empty sections hidden), the restoration page with
    the three tiers as a static comparison and the anchor `#سطح-ترمیم`.
@@ -98,9 +102,11 @@ the gaps between b.html and the binding docs are listed in
   show above the sticky bar without scrolling; the bar covers no part of
   the submit (`docs/experience/storyboard.md` scene 1; open b.html gap 7
   in `design/NOTES-styleguide.md`). The LCP element is the photo from
-  744 px and the H1 under 744 px. No layout shift when the token and hours
-  data arrive or when the card shows success. Text over the photo sits only
-  on the scrim or the trust band (`docs/design/DESIGN.md` section 1.1).
+  744 px; under 744 px it is a scrim text element (the H1 or the subtext),
+  never an image, checked at 390x844, 430x932 and 440x956. No layout shift
+  when the token and hours data arrive or when the card shows success. Text
+  over the photo sits only on the scrim or the trust band
+  (`docs/design/DESIGN.md` section 1.1).
 - Home uses at least five layout families, none more than twice.
 - All numbers verified or hidden; all photos real or labeled placeholders.
 - The service template renders every section from a seeded service.

@@ -46,9 +46,10 @@ the same commit.
 - Git: work on `main`. Commit as `localroot4 <atilnic@gmail.com>` (author and
   committer). Small atomic commits, one concern each, imperative title plus a
   short body. No trailers, no co-author lines, no tool or model names
-  anywhere in the repository. Never create `CLAUDE.md`, a `.claude/` folder,
-  or any branch whose name contains "claude". Push to `origin main` when a
-  phase's work is verified.
+  anywhere in the repository. Never create the assistant's project
+  instruction file or settings folder in the repository, or any branch
+  named after the assistant. Push to `origin main` when a phase's work is
+  verified.
 - Current stable versions. Before using any Next.js, Payload, three.js,
   React Three Fiber, drei, GSAP, Lenis or Tailwind API you are not certain
   about, read its official documentation. Version-sensitive APIs are never
@@ -107,8 +108,9 @@ Experience craft (home and any scene):
   tier 1, measured with CPU throttling and a software GPU.
 - The first paint never waits for WebGL. On home the LCP element is the
   hero photo from 744 px (one preload with a media query,
-  `fetchpriority=high`) and the H1 text on phones; no WebGL frames render
-  over the hero photo (brief decision 19).
+  `fetchpriority=high`) and a scrim text element on phones (the H1 or the
+  subtext, never an image; the 4:5 band starts below the first screen); no
+  WebGL frames render over the hero photo (brief decision 19).
 - Text is real DOM text in the server HTML, in reading order; the canvas is
   decorative and `aria-hidden`.
 - `prefers-reduced-motion` gives the tier 0 experience everywhere.
@@ -184,8 +186,8 @@ Date, commit range, versions used
 
 ## 6. Environment notes
 
-- You run in Claude Code. Node 22, npm and Playwright with a preinstalled
-  Chromium are available in cloud sessions
+- You run in a cloud development session. Node 22, npm and Playwright
+  with a preinstalled Chromium are available in cloud sessions
   (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`; never run
   `playwright install`). Lighthouse CI uses the same Chromium through
   `CHROME_PATH`. Use `--use-gl=swiftshader` or `--use-angle=swiftshader`

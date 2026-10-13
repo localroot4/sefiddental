@@ -107,8 +107,9 @@ desktop, 3 on phones. Hero subtext max 20 words.
   7:3 on wide desktops); under 744 px a 4:5 band under the booking card.
   Every image has a Persian `alt`. AVIF and WebP with `srcset` and `sizes`,
   blur placeholders generated at upload, `fetchpriority="high"` for the LCP
-  image (on home the hero photo from 744 px; under 744 px the LCP is the H1
-  text).
+  image (on home the hero photo from 744 px; under 744 px the LCP is a
+  scrim text element, the H1 or the subtext, never an image, and the 4:5
+  band starts below the first screen).
 - AI-generated people, stock smiles and clip-art teeth are banned.
 
 ## 5. Brand motifs
@@ -221,7 +222,7 @@ motion):
 
 | Time | What happens |
 |---|---|
-| 0 ms | Overlay in the surface color covers the viewport. Hero markup and the LCP element (the preloaded hero photo from 744 px, the H1 under 744 px) render beneath it, so LCP is not delayed. The teal mark outline sits at center. |
+| 0 ms | Overlay in the surface color covers the viewport. Hero markup and the LCP element (the preloaded hero photo from 744 px, a scrim text element under 744 px) render beneath it, so LCP is not delayed. The teal mark outline sits at center. |
 | 0-500 ms | The four diamond dots fly in from the viewport edges and settle with a soft overshoot. The long bar draws from right to left as the real loading progress (page, then experience assets), minimum 400 ms. |
 | 500-900 ms | The two strokes of the teal mark snap together. The letters of «سفید» fill through a mask. |
 | 900-1300 ms | The teal mark scales up (an inline SVG mask scaled by transform) and reveals the hero beneath. The scrim text settles in from 16 px offsets with a 60 ms stagger, then the booking card. The WebGL world mounts after load but renders no frames while the hero photo covers the viewport; it appears as the hero scrolls away. |

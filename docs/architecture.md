@@ -188,8 +188,10 @@ with zod; the forms also work as plain HTML posts.
   placeholders from Payload. The home hero photo is one art-directed
   `<picture>` (Next.js `getImageProps`): from 744 px the landscape crop is
   the LCP element and is preloaded with `fetchpriority="high"` through one
-  preload with a media query; under 744 px the H1 text is the LCP element
-  and the 4:5 crop loads without priority. Both crops come from one shoot.
+  preload with a media query; under 744 px a scrim text element (the H1 or
+  the subtext) is the LCP element, never an image, and the 4:5 band starts
+  below the first screen and loads without priority. Both crops come from
+  one shoot.
   On other pages the LCP image gets `fetchpriority="high"`.
 - Static assets immutable for one year; HTML `no-cache` on dynamic routes;
   ISR for content routes.

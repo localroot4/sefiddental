@@ -167,8 +167,11 @@ justify; no italic for Persian; no fake bold; measure 62ch; headlines max
 - Breakpoints: 744 (tablet), 1024 (desktop layouts, pinned scenes allowed),
   1280 (full nav with the phone number), 1536 (max type). Phone layouts
   are designed first.
-- Targets: 44x44 CSS px minimum, 52 px for primary CTAs; 48 px rows in the
-  drawer. Navigation height 72 px. Sticky bar 64 px plus the safe-area.
+- Targets: 44x44 CSS px minimum for every standalone control, 52 px for
+  primary CTAs; 48 px rows in the drawer. Inline text links inside a
+  sentence (for example «حریم خصوصی» in the booking privacy line) are
+  exempt, as in WCAG 2.2 SC 2.5.8, and keep at least 24 px spacing from
+  other targets. Navigation height 72 px. Sticky bar 64 px plus the safe-area.
 
 ## 4. Iconography and imagery
 
@@ -185,7 +188,9 @@ justify; no italic for Persian; no fake bold; measure 62ch; headlines max
   b.html: 1.12:1 at 744x1133, 1.28:1 at 820x1180, about 3:2 at 1024x768,
   16:9 at 1440x900 and 7:3 at 1920x1080); the key detail sits in the
   central and upper band. Under 744 px it is a 4:5 band under the
-  booking card, cropped from the same shoot.
+  booking card, cropped from the same shoot; its key detail sits in the
+  top third, because the trust band covers the bottom 37-61% of the band
+  (430 to 320 px).
   AVIF with WebP fallback, responsive sizes, blur placeholders, Persian
   `alt` on every image. AI-generated people, stock smiles and clip-art
   teeth are banned. Missing photos are neutral labeled blocks of the exact
@@ -257,7 +262,7 @@ themes. Reference implementation: `design/styleguide.html`.
 | Button | primary (brand fill, on-brand label), secondary (brand outline), ghost (text), danger (danger fill, white); heights 44 and 52; pill; label plus optional start or end icon mirrored in RTL; hover darkens to brand-strong; active `scale(.98)`; loading keeps width, spinner replaces the icon, label stays; disabled 50% with no hover |
 | Link | brand color, underline grows from the start side on hover, focus ring |
 | Navigation | desktop bar 72 px, logo at the start side (the right in RTL, as on phones), 5 items, services mega menu (click or keyboard; hover intent on fine pointers), theme toggle, phone LTR island (hidden under 1280, icon remains), «رزرو نوبت» pill; phone header with a call icon (closed-hours sheet) and a drawer button; drawer full screen, 48 px rows, two levels, focus trapped, Esc closes |
-| Home hero | family M. One `<picture>` with art-directed sources (full-bleed landscape from 744 px, a 4:5 band under 744 px): never a CSS background, never `loading="lazy"`. From 744 px the landscape crop is the LCP: one preload with a media query and `fetchpriority="high"`. Under 744 px the H1 is the LCP and the 4:5 crop loads without priority. Scrim panel at the start side (surface 88%, no blur, sheet radius 28, padding 24, 32 from 1280) with the H1 (hero clamp, section 2), the subtext and «تماس با کلینیک» (secondary); no other button. Booking card at the end side (card radius 20, raised surface, hairline, `--shadow-floating`; 21rem at 744, 22rem at 1024, 26rem from 1280) with the compact booking form; its «ثبت درخواست» is the only primary CTA in the hero. Trust band (four facts on surface-raised 90%, hairline top) on the hero's bottom edge from 744 px and on the photo band's bottom edge on phones. From 1024 the hero has `min-block-size: min(100svh - var(--nav-h), 52rem)`. The static mark relief follows section 5 |
+| Home hero | family M. One `<picture>` with art-directed sources (full-bleed landscape from 744 px, a 4:5 band under 744 px): never a CSS background, never `loading="lazy"`. From 744 px the landscape crop is the LCP: one preload with a media query and `fetchpriority="high"`. Under 744 px the LCP is a scrim text element (the H1, or the subtext where its box is larger), never an image; the scrim-and-card block is at least `calc(100svh - 65px)` tall (the 64 px phone header plus its hairline), so the 4:5 band always starts below the first screen and loads without priority. Scrim panel at the start side (surface 88%, no blur, sheet radius 28, padding 24, 32 from 1280) with the H1 (hero clamp, section 2), the subtext and «تماس با کلینیک» (secondary); no other button. Booking card at the end side (card radius 20, raised surface, hairline, `--shadow-floating`; 21rem at 744, 22rem at 1024, 26rem from 1280) with the compact booking form; its «ثبت درخواست» is the only primary CTA in the hero. Trust band (four facts on surface-raised 90%, hairline top) on the hero's bottom edge from 744 px and on the photo band's bottom edge on phones. From 1024 the hero has `min-block-size: min(100svh - var(--nav-h), 52rem)`. The static mark relief follows section 5 |
 | Sticky bar | under 1024 px: «تماس» \| «واتساپ» \| «رزرو نوبت» (primary cell), 64 px plus safe-area; visibility rules in `docs/conversion.md` section 4 |
 | Closed-hours sheet | 28 px radius sheet from the bottom with hours and two actions |
 | Input | label above, help text, 12 px radius, 44 px height, line-strong border, focus ring; error text below with `aria-invalid` and `aria-describedby`; phone input is an LTR island with `inputmode="numeric"` |
