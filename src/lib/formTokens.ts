@@ -20,7 +20,10 @@ export const FORM_COOKIE_OPTIONS: {
   sameSite: 'lax';
   maxAge: 86400;
 } = { path: '/', secure: true, httpOnly: true, sameSite: 'lax', maxAge: 86400 };
-/** Request header the proxy uses to hand a fresh sid to the booking and emergency renders. */
+/**
+ * Request header the proxy uses to hand a fresh sid to the booking and emergency renders.
+ * @public Frozen signature; consumed in wave 2.
+ */
 export const FORM_SID_HEADER = 'x-sefid-form-sid';
 export const MIN_AGE_MS = 2000;
 export const CLOCK_SKEW_MS = 5000;

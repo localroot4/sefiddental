@@ -1,7 +1,7 @@
 // Home placeholder (phase 3): no public design yet. The server HTML is the complete tier-0 page;
 // ExperienceRoot adds the scroll engine and the canvas after hydration. Phase 7 replaces the
 // sections with the eleven scenes of docs/experience/storyboard.md.
-import { getFeatures } from '@/experience/featuresStub';
+import { getFeatures } from '@/lib/data/globals';
 import { ExperienceRoot } from '@/experience/ExperienceRoot';
 import { PLACEHOLDER_SCENE_IDS } from '@/experience/scenes/registry';
 import { siteCapFrom } from '@/lib/qualityTier';

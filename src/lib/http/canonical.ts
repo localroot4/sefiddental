@@ -1,6 +1,6 @@
 import type { ServerEnv } from '@/lib/env';
 import type { PathKind } from '@/lib/http/classify';
-import { normalizePath } from '@/lib/http/pathsStub';
+import { normalizePath } from '@/lib/paths';
 
 /** Last value of a comma-separated forwarded header: the one our own proxy wrote. */
 function lastHop(value: string | null): string | null {

@@ -30,5 +30,8 @@ export function createRingBuffer(capacity: number): RingBuffer {
 /** Last 200 warn, error and fatal lines of this process (already redacted); empty after a restart. */
 export const warnLines = createRingBuffer(200);
 
-/** Shown next to the buffer: the buffer covers this process only. */
+/**
+ * Shown next to the buffer: the buffer covers this process only.
+ * @public Consumed by the wave-2 status view.
+ */
 export const processStartedAt = new Date().toISOString();

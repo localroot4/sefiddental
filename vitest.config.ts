@@ -51,7 +51,7 @@ export default defineConfig({
         test: {
           name: 'int',
           environment: 'node',
-          include: ['tests/int/**/*.int.test.ts'],
+          include: ['tests/int/**/*.int.test.ts', 'tests/setup/**/*.int.test.ts'],
           globalSetup: ['./tests/setup/intGlobal.ts'],
           setupFiles: ['./tests/setup/int.ts'],
           // One database per worker and no parallel files: tests share tables, never rows.

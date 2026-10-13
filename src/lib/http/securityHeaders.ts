@@ -1,7 +1,7 @@
 import type { ServerEnv } from '@/lib/env';
 import type { PathKind } from '@/lib/http/classify';
 import { API_CSP, CSP_REPORT_GROUP, CSP_REPORT_PATH, type buildCsp } from '@/lib/http/csp';
-import { normalizePath } from '@/lib/http/pathsStub';
+import { normalizePath } from '@/lib/paths';
 
 /** X-Robots-Tag per kind (spec 7.1): staging and every non-page response stay out of indexes. */
 function robotsTag(kind: PathKind, pathname: string, allowIndexing: boolean): string | null {

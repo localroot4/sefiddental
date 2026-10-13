@@ -1,5 +1,4 @@
 import { nodemailerAdapter } from '@payloadcms/email-nodemailer';
-import { lexicalEditor } from '@payloadcms/richtext-lexical';
 import { s3Storage } from '@payloadcms/storage-s3';
 import { fa } from '@payloadcms/translations/languages/fa';
 import path from 'node:path';
@@ -8,9 +7,12 @@ import { buildConfig } from 'payload';
 import { payloadTotp } from 'payload-totp';
 import sharp from 'sharp';
 
-import { Media } from './collections/Media';
-import { Users } from './collections/Users';
+import { canRunJobs } from './access/jobs';
+import { collections } from './collections';
+import { richTextEditor } from './fields/richText';
+import { globals } from './globals';
 import { readEnv } from './lib/env';
+import { log } from './lib/log/logger';
 import { databaseAdapter } from './payload/db';
 
 const srcDir = path.dirname(fileURLToPath(import.meta.url));
@@ -23,9 +25,11 @@ export default buildConfig({
   secret: env.payloadSecret,
   // Defaults that call third-party hosts (slow or blocked from Iran) are off.
   telemetry: false,
+  // The site's pino logger: JSON lines, redaction, 4xx errors at warn (Lane P, spec 12.1).
+  logger: log,
   graphQL: { disable: true },
   admin: {
-    user: Users.slug,
+    user: 'users',
     avatar: 'default',
     meta: {
       // Payload inserts the space before the suffix (next/dist/utilities/meta.js).
@@ -44,11 +48,17 @@ export default buildConfig({
     },
   },
   i18n: { supportedLanguages: { fa }, fallbackLanguage: 'fa' },
-  collections: [Users, Media],
-  editor: lexicalEditor(),
+  collections,
+  globals,
+  editor: richTextEditor,
+  // Payload's own /api/payload-jobs/run: the cron bearer or a TOTP-verified admin (the site's
+  // scheduler is /api/cron/tick). The schedulePublish task comes from the collections' drafts.
+  jobs: { access: { run: canRunJobs } },
   db: databaseAdapter(srcDir),
   sharp,
-  typescript: { outputFile: path.resolve(srcDir, 'payload-types.ts') },
+  // Types come only from `npm run generate:types` (freeze 2.3; CI checks drift). Payload's
+  // default regenerates the file in a child process on every non-production boot, int tests too.
+  typescript: { outputFile: path.resolve(srcDir, 'payload-types.ts'), autoGenerate: false },
   // Temp files keep large uploads out of RAM; per-type limits live on the media collection.
   upload: { useTempFiles: true, limits: { fileSize: 60 * MiB }, requestSizeLimit: 64 * MiB },
   // Password-reset mail: SMTP when configured, else Payload logs the message.

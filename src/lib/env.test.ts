@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { dbKindFromUrl, parseEnv } from './env';
 
@@ -55,6 +55,21 @@ describe('env', () => {
     expect(() =>
       parseEnv({ NODE_ENV: 'production', NEXT_PHASE: 'phase-production-build' }),
     ).toThrow(/DATABASE_URL missing[\s\S]*PAYLOAD_SECRET missing/);
+  });
+
+  it('E4b the build phase fills missing dev secrets without a warning line', async () => {
+    // A fresh module: the per-process secrets of earlier tests would skip the warning anyway.
+    vi.resetModules();
+    const fresh = await import('./env');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const build = { ...BASE, NODE_ENV: 'production', NEXT_PHASE: 'phase-production-build' };
+      const env = fresh.parseEnv(build);
+      expect(env.ipHashSecret.length).toBeGreaterThanOrEqual(43);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('E5 a complete production environment parses', () => {

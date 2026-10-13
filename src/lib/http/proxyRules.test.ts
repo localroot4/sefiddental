@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizePath } from '@/lib/http/pathsStub';
+import { normalizePath } from '@/lib/paths';
 import {
   isAuthLimitedPath,
   isFirstUserPath,

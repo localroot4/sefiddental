@@ -1,4 +1,4 @@
-import { normalizePath } from '@/lib/http/pathsStub';
+import { normalizePath } from '@/lib/paths';
 
 /** Route kind of a request; it selects the CSP, the security headers and the proxy steps. */
 export type PathKind = 'internal' | 'api' | 'admin' | 'feed' | 'page';

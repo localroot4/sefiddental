@@ -1,0 +1,69 @@
+# Page registry seed (freeze decision 49): one row per key of spec-data table 2.8a.
+# title is the visible H1; seo_title is the title topic without the suffix
+# (docs/seo/keyword-map.md section 1). Hub slugs are owned by the route tree.
+pages:
+  - key: home
+    slug: ''
+    # Client slogan; fallback «کلینیک دندانپزشکی سفید در جنوب تهران» if the claim cannot be supported (gap 28)
+    title: اولین کلینیک دندانپزشکی دیجیتال جنوب تهران
+    seo_title: دندانپزشکی دیجیتال جنوب تهران
+  - key: services-hub
+    slug: خدمات
+    title: خدمات دندانپزشکی کلینیک سفید
+    seo_title: خدمات دندانپزشکی
+  - key: dentists-hub
+    slug: پزشکان
+    title: پزشکان کلینیک دندانپزشکی سفید
+    seo_title: دندانپزشکان ما
+  - key: cases
+    slug: قبل-و-بعد
+    title: قبل و بعد درمان
+    seo_title: نمونه‌کار دندانپزشکی زیبایی
+  - key: pricing
+    slug: هزینه-و-پرداخت
+    title: هزینه‌ها، بیمه و شرایط پرداخت
+    seo_title: هزینه دندانپزشکی، بیمه و وام
+  - key: guide-hub
+    slug: راهنمای-بیمار
+    title: راهنمای بیمار
+    seo_title: راهنمای بیمار
+  - key: guide-first-visit
+    slug: اولین-مراجعه
+    title: اولین مراجعه به کلینیک سفید چگونه است؟
+    seo_title: اولین مراجعه به دندانپزشکی
+  - key: guide-dental-fear
+    slug: ترس-از-دندانپزشکی
+    title: ترس از دندانپزشکی و راه‌های کنترل آن
+    seo_title: ترس از دندانپزشکی
+  - key: guide-aftercare
+    slug: مراقبت-بعد-از-درمان
+    title: مراقبت‌های بعد از درمان
+    seo_title: مراقبت بعد از درمان دندان
+  - key: emergency
+    slug: اورژانس
+    title: درد شدید دندان دارید؟
+    seo_title: دندانپزشکی اورژانسی جنوب تهران
+  - key: about
+    slug: درباره-ما
+    title: درباره کلینیک دندانپزشکی سفید
+    seo_title: درباره ما
+  - key: address
+    slug: آدرس
+    title: آدرس و ساعات کاری کلینیک دندانپزشکی سفید
+    seo_title: آدرس و ساعات کاری
+  - key: booking
+    slug: رزرو-نوبت
+    title: رزرو نوبت
+    seo_title: رزرو نوبت دندانپزشکی
+  - key: booking-success
+    slug: ثبت-شد
+    title: درخواست ثبت شد
+    noindex: true
+  - key: articles
+    slug: مقالات
+    title: مقالات سلامت دهان و دندان
+    seo_title: مقالات سلامت دهان و دندان
+  - key: privacy
+    slug: حریم-خصوصی
+    title: حریم خصوصی
+    seo_title: حریم خصوصی

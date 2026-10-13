@@ -65,7 +65,9 @@ function main() {
     for (const hit of findBidiControls(readFileSync(file, 'utf8'))) {
       found += 1;
       const where = `${path.relative(root, file)}:${hit.line}:${hit.column}`;
-      console.error(`${where} ${hit.codePoint}: write it as an escape (\\u${hit.codePoint.slice(2)})`);
+      console.error(
+        `${where} ${hit.codePoint}: write it as an escape (\\u${hit.codePoint.slice(2)})`,
+      );
     }
   }
   if (found > 0) {

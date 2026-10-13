@@ -16,8 +16,6 @@ export interface ExperienceQuery {
   stress: number;
 }
 
-export const STRESS_MAX = 8;
-
 export function parseExperienceQuery(search: string): ExperienceQuery {
   const params = new URLSearchParams(search);
   const debug = params.get('debug');

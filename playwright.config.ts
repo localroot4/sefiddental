@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig, devices, type PlaywrightTestConfig } from '@playwright/test';
 
 import { defaultLaunch, noWebgl2Launch, swiftShaderLaunch } from './tests/helpers/launch';
+import { e2eDatabaseUrl } from './tests/setup/e2eGlobal';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,11 +22,13 @@ const baseURL = `http://localhost:${PORT}`;
 // e2e always runs the artifact that deploys (`node .next/standalone/server.js` through
 // scripts/start-standalone.mjs) on a migrated database, never a pushed one (freeze 7.2):
 // E2E_DATABASE_URL in CI, else the local file `npm run db:e2e` builds.
+const databaseUrl = e2eDatabaseUrl();
+
 function serverEnv(port: number, extra: Record<string, string> = {}): Record<string, string> {
   return {
     PORT: String(port),
     SITE_URL: `http://localhost:${port}`,
-    DATABASE_URL: process.env.E2E_DATABASE_URL ?? 'file:./.data/e2e.db',
+    DATABASE_URL: databaseUrl,
     DB_PUSH: 'false',
     QA_ROUTES: '1',
     ...extra,
@@ -101,6 +104,8 @@ export default defineConfig({
   workers: CI ? 2 : undefined,
   reporter: CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
   use: { baseURL, trace: 'on-first-retry' },
+  // Resets the e2e accounts after the servers start (tests/setup/e2eUsers.ts).
+  globalSetup: './tests/setup/e2eGlobal.ts',
   webServer: [
     standaloneServer(PORT, 'app'),
     // The maintenance suite (503 page) talks to a second server with the switch on.

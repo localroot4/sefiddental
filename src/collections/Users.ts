@@ -1,9 +1,14 @@
 import type { Access, CollectionConfig } from 'payload';
 
-import { hasRole, isAdmin, isAdminField, isStaff } from '../access/roles';
-import { firstUserIsAdmin } from '../hooks/firstUserIsAdmin';
-import { enforcePasswordPolicy } from '../hooks/passwordPolicy';
-import { readEnv } from '../lib/env';
+import { hasRole, hiddenForEditors, isAdmin, isAdminField, isStaff } from '@/access/roles';
+import { auditCollection, auditForgotPassword, auditLogin, auditLogout } from '@/hooks/audit';
+import { firstUserIsAdmin } from '@/hooks/firstUserIsAdmin';
+import { normalizeFields } from '@/hooks/normalize';
+import { enforcePasswordPolicy } from '@/hooks/passwordPolicy';
+import { readEnv } from '@/lib/env';
+
+// Audited: account creation, name, email and role changes, sign-in, sign-out, reset requests.
+const audit = auditCollection({ only: ['name', 'email', 'role'] });
 
 const adminOrSelf: Access = ({ req }) => {
   if (hasRole(req.user, 'admin')) return true;
@@ -21,7 +26,7 @@ export const Users: CollectionConfig = {
     group: 'سیستم',
     useAsTitle: 'name',
     defaultColumns: ['name', 'email', 'role', 'updatedAt'],
-    hidden: ({ user }) => !hasRole(user, 'admin'),
+    hidden: hiddenForEditors,
   },
   auth: {
     maxLoginAttempts: 5,
@@ -41,7 +46,13 @@ export const Users: CollectionConfig = {
   },
   hooks: {
     beforeOperation: [enforcePasswordPolicy],
+    beforeValidate: [normalizeFields({ names: ['name'] })],
     beforeChange: [firstUserIsAdmin],
+    afterChange: [audit.afterChange],
+    afterDelete: [audit.afterDelete],
+    afterLogin: [auditLogin],
+    afterLogout: [auditLogout],
+    afterForgotPassword: [auditForgotPassword],
   },
   fields: [
     {

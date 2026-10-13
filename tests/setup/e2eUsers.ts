@@ -1,17 +1,20 @@
-// Creates the e2e accounts (one admin, one editor) with fresh random passwords and writes them to
-// .data/e2e-users.json (gitignored, mode 0600) for the e2e specs. No seeder creates users
-// (spec-data section 2), and the first-user page is blocked unless ALLOW_FIRST_USER=true.
+// Creates the e2e accounts (one admin, one editor) with fresh random passwords, removes their
+// TOTP enrollment, and writes the passwords to .data/e2e-users.json (gitignored, mode 0600) for
+// the e2e specs. No seeder creates users (spec-data section 2), and the first-user page is
+// blocked unless ALLOW_FIRST_USER=true. Every e2e run starts with unenrolled accounts, so the
+// MFA spec always walks through enrollment.
 //
 // Runs only against an e2e database (its name or file name contains "e2e"), after migrate and
-// seed:  npx payload run tests/setup/e2eUsers.ts
+// seed. Playwright's global setup (tests/setup/e2eGlobal.ts) runs it before every e2e run:
+//   npx payload run tests/setup/e2eUsers.ts
 import { randomBytes } from 'node:crypto';
-import { chmodSync, mkdirSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import config from '@payload-config';
 import { getPayload } from 'payload';
 
-import { E2E_USERS_FILE, type E2eAccounts } from '../helpers/users';
+import { E2E_TOTP_FILE, E2E_USERS_FILE, type E2eAccounts } from '../helpers/users';
 
 function assertE2eDatabase(url = ''): void {
   let name = '';
@@ -52,7 +55,8 @@ for (const role of ['admin', 'editor'] as const) {
     await payload.update({
       collection: 'users',
       id: existing.id,
-      data: { password, role },
+      // overrideAccess (Local API default) also passes the plugin's read-only totpSecret field.
+      data: { password, role, totpSecret: null },
       context,
     });
   } else {
@@ -68,4 +72,8 @@ const file = path.resolve(process.cwd(), E2E_USERS_FILE);
 mkdirSync(path.dirname(file), { recursive: true });
 writeFileSync(file, `${JSON.stringify(accounts, null, 2)}\n`, { mode: 0o600 });
 chmodSync(file, 0o600);
+// TOTP secrets of the previous run belong to enrollments removed above.
+rmSync(path.resolve(process.cwd(), E2E_TOTP_FILE), { force: true });
 payload.logger.info(`e2e accounts ready: ${accounts.admin.email}, ${accounts.editor.email}`);
+// Close the database pool, or `payload run` keeps the process alive on Postgres.
+await payload.destroy();

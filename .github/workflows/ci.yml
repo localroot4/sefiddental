@@ -1,0 +1,181 @@
+# Every gate of docs/prompts/03-foundation.md on every push and pull request. No deploy job:
+# deliverable 9 waits for the hosting path (gap 32). No stored secrets: every secret the app
+# needs is random per run and masked in the log. Actions are pinned to commit SHAs (the
+# versions of critic 4.2, latest patch on 2026-10-13).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  checks:
+    name: Lint, types, unit and SQLite integration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      # typecheck and knip load src/payload.config.ts; no database connection is opened.
+      DATABASE_URL: postgres://ci:ci@localhost:5432/static-checks-only
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Generate per-run secrets
+        run: |
+          for name in PAYLOAD_SECRET FORM_TOKEN_SECRET CRON_SECRET IP_HASH_SECRET INTERNAL_API_TOKEN; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+          done
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm run knip
+      - name: No literal bidi control characters in source files
+        run: node scripts/check-bidi.mjs
+      - run: npm run test:coverage
+      - run: npm run test:tz
+      - name: Integration tests on SQLite (one temporary database per worker)
+        run: npm run test:int
+      # The log lists every advisory; the gate is critical because the 10 high advisories of
+      # 2026-10-13 sit in Payload 3.90.2's own dependency tree (npm's only "fix" is a downgrade).
+      # Raise the level to high once the integrator clears them (overrides or a Payload release).
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=critical
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: vitest-coverage
+          path: coverage/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  app:
+    name: Drift, Postgres integration, build, e2e, bundle and Lighthouse
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sefid_int
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Freeze section 4, CI table. Integration tests and e2e use separate databases (G17);
+      # both are migrated, never pushed (freeze 7.2).
+      SITE_URL: http://localhost:3000
+      GIT_SHA: ${{ github.sha }}
+      ALLOW_INDEXING: 'false'
+      TRUST_PROXY_HEADERS: 'false'
+      QA_ROUTES: '1'
+      MEDIA_DIR: ${{ runner.temp }}/media
+      DB_PUSH: 'false'
+      INT_DATABASE_URL: postgres://postgres:postgres@localhost:5432/sefid_int
+      E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/sefid_e2e
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Generate per-run secrets
+        run: |
+          for name in PAYLOAD_SECRET FORM_TOKEN_SECRET CRON_SECRET IP_HASH_SECRET INTERNAL_API_TOKEN; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+          done
+      - run: npm ci
+      - name: Create the e2e database
+        run: psql postgres://postgres:postgres@localhost:5432/postgres -c 'CREATE DATABASE sefid_e2e'
+
+      - name: Generated files match the config (types, import map, migrations on both adapters)
+        run: |
+          mkdir -p .data
+          DATABASE_URL="$INT_DATABASE_URL" npm run generate:types
+          DATABASE_URL="$INT_DATABASE_URL" npm run generate:importmap
+          DATABASE_URL="$INT_DATABASE_URL" npm run migrate:create -- --skip-empty
+          DATABASE_URL=file:./.data/drift.db npm run migrate:create -- --skip-empty
+          drift="$(git status --porcelain -- src/payload-types.ts 'src/app/(payload)/admin/importMap.js' src/migrations)"
+          if [ -n "$drift" ]; then
+            echo "$drift"
+            git diff -- src/payload-types.ts 'src/app/(payload)/admin/importMap.js'
+            echo "::error::Generated files are stale: run generate:types, generate:importmap and migrate:create, then commit."
+            exit 1
+          fi
+
+      - name: Integration tests on Postgres (own migrated database)
+        run: |
+          DATABASE_URL="$INT_DATABASE_URL" npm run migrate
+          npm run test:int
+
+      - name: Migrate and seed the e2e database
+        run: |
+          DATABASE_URL="$E2E_DATABASE_URL" npm run migrate
+          # A failed or a silent seeder run prints no summary line (payload run can exit 0 early).
+          DATABASE_URL="$E2E_DATABASE_URL" npm run seed | tee "$RUNNER_TEMP/seed.log"
+          if ! grep -q 'seed: mode' "$RUNNER_TEMP/seed.log"; then
+            echo "::error::The seeder printed no summary line: the e2e database is not seeded."
+            exit 1
+          fi
+
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**/*.ts', 'src/**/*.tsx', 'src/**/*.css') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+      - name: Build without a .env file
+        run: |
+          if [ -e .env ]; then echo "::error::.env must not exist in CI"; exit 1; fi
+          DATABASE_URL="$E2E_DATABASE_URL" npm run build
+      - name: No prerendered public HTML
+        run: node scripts/check-no-prerender.mjs
+
+      - name: Install the Chromium Playwright expects
+        run: npx playwright install --with-deps chromium
+      - name: Point Lighthouse at the same Chromium
+        run: echo "CHROME_PATH=$(node -e "import('@playwright/test').then((m) => console.log(m.chromium.executablePath()))")" >> "$GITHUB_ENV"
+
+      - name: End-to-end tests on the standalone server
+        run: npm run test:e2e
+      - name: Initial JS per page class
+        run: npm run check:bundle
+      - name: Lighthouse CI, light and dark
+        run: npm run lhci
+
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-budgets-lighthouse
+          path: |
+            playwright-report/
+            test-results/
+            .lighthouseci/
+          retention-days: 14
+          include-hidden-files: true
+          if-no-files-found: ignore

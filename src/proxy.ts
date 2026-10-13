@@ -1,76 +1,129 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 
-import { readEnv } from './lib/env';
+import { readEnv } from '@/lib/env';
+import { canonicalRedirect, requestProtocol } from '@/lib/http/canonical';
+import { classifyPath } from '@/lib/http/classify';
+import { clientIpFrom, rateLimitKey } from '@/lib/http/clientIp';
+import { buildCsp, newNonce } from '@/lib/http/csp';
+import { normalizePath } from '@/lib/paths';
+import { destination, getProxyConfig, recordRedirectHit } from '@/lib/http/proxyConfig';
+import { isAuthLimitedPath, isFirstUserPath, maintenanceBypass } from '@/lib/http/proxyRules';
+import { createRateLimiter } from '@/lib/http/rateLimit';
+import { requestIdFrom, sanitizeRequestHeaders } from '@/lib/http/requestId';
+import { securityHeaders } from '@/lib/http/securityHeaders';
+import {
+  goneResponse,
+  maintenanceResponse,
+  tooManyRequestsResponse,
+  type PlainResponse,
+} from '@/lib/http/systemResponses';
+import { accessLine } from '@/lib/log/accessLine';
 
 /**
- * Request pipeline skeleton (wave 0). Integration B composes the full pipeline from the
- * platform modules: maintenance, auth rate limits, redirects, canonical redirects, CSP and
- * security headers. Imports stay dependency-free: no Payload, node:fs or next/headers.
+ * Request pipeline (freeze 3.13). Imports stay dependency-free: no Payload, node:fs or
+ * next/headers. Every rule that blocks, limits or looks up a path compares normalizePath()
+ * output (freeze A1).
  */
 
-const TRUSTED_REQUEST_ID = /^[A-Za-z0-9._-]{8,64}$/;
+// Decision 41: 10 requests per 15 minutes per client key on the credential endpoints.
+const authLimiter = createRateLimiter({ limit: 10, windowMs: 15 * 60_000 });
 
-// Headers only the proxy may set; a client-supplied copy is dropped.
-const PROXY_OWNED_HEADERS = ['x-nonce', 'x-pathname', 'x-request-id'];
+const send = (r: PlainResponse) =>
+  new NextResponse(r.body, { status: r.status, headers: r.headers });
 
-function isAdminPath(pathname: string): boolean {
-  return pathname === '/admin' || pathname.startsWith('/admin/');
+function redirectTo(target: URL, status: number, reqId: string): NextResponse {
+  const res = NextResponse.redirect(target, status);
+  res.headers.set('X-Request-Id', reqId);
+  return res;
 }
 
-/**
- * The path as Next and Payload route it: percent-decoded, single slashes, no trailing slash,
- * ASCII lowercase (Payload matches endpoint and admin view paths case-insensitively). Rules
- * that block or limit a route compare this form, never the raw pathname. Lane P replaces it
- * with normalizePath() from src/lib/paths.ts.
- */
-function routePath(pathname: string): string {
-  const decoded = pathname.replace(/(?:%[0-9A-Fa-f]{2})+/g, (run) => {
-    try {
-      return decodeURIComponent(run);
-    } catch {
-      return run; // not valid UTF-8: keep the escapes
-    }
-  });
-  const single = decoded.replace(/\/{2,}/g, '/');
-  const trimmed = single.length > 1 ? single.replace(/\/+$/, '') : single;
-  return trimmed.replace(/[A-Z]/g, (c) => c.toLowerCase());
-}
-
-// Every method: the page and the endpoint stay closed until ALLOW_FIRST_USER=true.
-function isFirstUserPath(pathname: string): boolean {
-  const path = routePath(pathname);
-  return path === '/admin/create-first-user' || path === '/api/users/first-register';
-}
-
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  // 0, 1: environment, routed path, kind. request.url carries the bind host, never the public one.
   const env = readEnv();
-  const { pathname } = request.nextUrl;
+  const url = new URL(request.url);
+  const { pathname } = url;
+  const path = normalizePath(pathname);
+  const kind = classifyPath(pathname);
+  const trust = env.trustProxyHeaders;
+  const method = request.method.toUpperCase();
 
-  const incomingId = request.headers.get('x-request-id');
-  const requestId =
-    env.trustProxyHeaders && incomingId && TRUSTED_REQUEST_ID.test(incomingId)
-      ? incomingId
-      : crypto.randomUUID();
+  // 2, 2a: request id, proxy-owned request headers; payload-totp reads the admin path.
+  const reqId = requestIdFrom(request.headers, trust);
+  const headers = sanitizeRequestHeaders(request.headers, kind, trust, reqId);
+  if (kind === 'admin') headers.set('x-pathname', pathname);
 
-  if (!env.allowFirstUser && isFirstUserPath(pathname)) {
+  // 3: internal routes check their own token; nothing else applies.
+  if (kind === 'internal') {
+    const res = NextResponse.next({ request: { headers } });
+    res.headers.set('X-Request-Id', reqId);
+    return res;
+  }
+
+  // 4: maintenance (static 503 page, JSON for API calls).
+  if (env.maintenance && !maintenanceBypass(kind, path, request.cookies.has('payload-token'))) {
+    accessLine({ level: 'debug', msg: 'maintenance', reqId, route: pathname });
+    return send(maintenanceResponse({ kind, env, reqId }));
+  }
+
+  // 4a: first-user screen and endpoint, every method.
+  if (!env.allowFirstUser && isFirstUserPath(path)) {
     return new NextResponse('Not Found', {
       status: 404,
-      headers: { 'content-type': 'text/plain; charset=utf-8', 'x-request-id': requestId },
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'X-Request-Id': reqId },
     });
   }
 
-  const requestHeaders = new Headers(request.headers);
-  for (const name of PROXY_OWNED_HEADERS) requestHeaders.delete(name);
-  requestHeaders.set('x-request-id', requestId);
+  // 4b: credential endpoints, per client key (the trusted hop of X-Forwarded-For, else shared).
+  if (isAuthLimitedPath(method, path)) {
+    const verdict = authLimiter.hit(rateLimitKey(clientIpFrom(request.headers, env)), Date.now());
+    if (!verdict.ok) {
+      accessLine({ level: 'info', msg: 'rate_limited', reqId, route: pathname });
+      return send(tooManyRequestsResponse({ retryAfterSec: verdict.retryAfterSec, reqId }));
+    }
+  }
 
-  // payload-totp reads the current admin path from x-pathname in a server component.
-  const admin = isAdminPath(pathname);
-  if (admin) requestHeaders.set('x-pathname', pathname);
+  // 5: redirects table (pages, GET and HEAD), before the canonical check: one hop.
+  let ga4MeasurementId: string | null = null;
+  if (kind === 'page' && (method === 'GET' || method === 'HEAD')) {
+    const config = await getProxyConfig(env);
+    ga4MeasurementId = config.ga4MeasurementId;
+    const hit = config.redirects.get(path);
+    if (hit) {
+      event.waitUntil(recordRedirectHit(env, hit.from));
+      if (hit.status === 410) {
+        accessLine({ level: 'info', msg: 'gone', reqId, route: pathname });
+        return send(goneResponse({ reqId }));
+      }
+      accessLine({ level: 'info', msg: 'redirect', reqId, route: pathname, status: hit.status });
+      return redirectTo(destination(hit, url, env), hit.status, reqId);
+    }
+  }
 
-  const response = NextResponse.next({ request: { headers: requestHeaders } });
-  response.headers.set('x-request-id', requestId);
-  if (admin) response.headers.set('x-pathname', pathname);
-  return response;
+  // 6: protocol, host, trailing slash, Arabic letters, ASCII case: one 301.
+  const canonical = canonicalRedirect({ url, headers: request.headers, env, kind });
+  if (canonical) {
+    accessLine({ level: 'info', msg: 'canonical_redirect', reqId, route: pathname });
+    return redirectTo(canonical, 301, reqId);
+  }
+
+  // 7: nonce and CSP for HTML kinds; Next reads the nonce from the request CSP header.
+  const draft = request.cookies.has('__prerender_bypass');
+  const nonce = kind === 'page' || kind === 'admin' ? newNonce() : null;
+  const csp = nonce === null ? null : buildCsp({ kind, nonce, env, draft, ga4MeasurementId });
+  if (nonce !== null && csp !== null) {
+    headers.set('x-nonce', nonce);
+    headers.set('content-security-policy', csp.value);
+  }
+  // 7a (phase 5): needsFormSession(method, path) -> form cookie and x-sefid-form-sid (Lane U).
+
+  // 8: pass through with the route-dependent headers.
+  const res = NextResponse.next({ request: { headers } });
+  const https = requestProtocol(request.headers, trust) === 'https' || url.protocol === 'https:';
+  for (const [name, value] of securityHeaders({ kind, csp, env, https, reqId, pathname, draft })) {
+    res.headers.set(name, value);
+  }
+  if (kind === 'admin') res.headers.set('x-pathname', pathname);
+  return res;
 }
 
 // Every path except build assets, public static files and media files: uploads stream to

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import type { ServerEnv } from '@/lib/env';
-import type { RedirectRow, RedirectStatus } from '@/lib/http/redirectsStub';
+import type { RedirectRow, RedirectStatus } from '@/lib/data/redirects';
 import { accessLine } from '@/lib/log/accessLine';
 
 export interface ProxyConfigView {

@@ -20,20 +20,67 @@ export interface Config {
   };
   blocks: {};
   collections: {
-    users: User;
+    bookings: Booking;
+    pages: Page;
+    'service-categories': ServiceCategory;
+    services: Service;
+    'service-tiers': ServiceTier;
+    doctors: Doctor;
+    articles: Article;
+    'article-categories': ArticleCategory;
+    tags: Tag;
+    insurances: Insurance;
+    'financing-options': FinancingOption;
     media: Media;
+    testimonials: Testimonial;
+    cases: Case;
+    redirects: Redirect;
+    'events-daily': EventsDaily;
+    'audit-log': AuditLog;
+    users: User;
     'totp-attempts': TotpAttempt;
     'payload-kv': PayloadKv;
+    'payload-jobs': PayloadJob;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
   };
-  collectionsJoins: {};
+  collectionsJoins: {
+    'service-categories': {
+      services: 'services';
+    };
+    services: {
+      performedBy: 'doctors';
+      tiers: 'service-tiers';
+    };
+    doctors: {
+      authoredArticles: 'articles';
+      reviewedArticles: 'articles';
+      cases: 'cases';
+    };
+  };
   collectionsSelect: {
-    users: UsersSelect<false> | UsersSelect<true>;
+    bookings: BookingsSelect<false> | BookingsSelect<true>;
+    pages: PagesSelect<false> | PagesSelect<true>;
+    'service-categories': ServiceCategoriesSelect<false> | ServiceCategoriesSelect<true>;
+    services: ServicesSelect<false> | ServicesSelect<true>;
+    'service-tiers': ServiceTiersSelect<false> | ServiceTiersSelect<true>;
+    doctors: DoctorsSelect<false> | DoctorsSelect<true>;
+    articles: ArticlesSelect<false> | ArticlesSelect<true>;
+    'article-categories': ArticleCategoriesSelect<false> | ArticleCategoriesSelect<true>;
+    tags: TagsSelect<false> | TagsSelect<true>;
+    insurances: InsurancesSelect<false> | InsurancesSelect<true>;
+    'financing-options': FinancingOptionsSelect<false> | FinancingOptionsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    testimonials: TestimonialsSelect<false> | TestimonialsSelect<true>;
+    cases: CasesSelect<false> | CasesSelect<true>;
+    redirects: RedirectsSelect<false> | RedirectsSelect<true>;
+    'events-daily': EventsDailySelect<false> | EventsDailySelect<true>;
+    'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
+    users: UsersSelect<false> | UsersSelect<true>;
     'totp-attempts': TotpAttemptsSelect<false> | TotpAttemptsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
+    'payload-jobs': PayloadJobsSelect<false> | PayloadJobsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -42,15 +89,33 @@ export interface Config {
     defaultIDType: number;
   };
   fallbackLocale: null;
-  globals: {};
-  globalsSelect: {};
+  globals: {
+    clinic: Clinic;
+    'seo-defaults': SeoDefault;
+    features: Feature;
+    notifier: Notifier;
+    'system-state': SystemState;
+  };
+  globalsSelect: {
+    clinic: ClinicSelect<false> | ClinicSelect<true>;
+    'seo-defaults': SeoDefaultsSelect<false> | SeoDefaultsSelect<true>;
+    features: FeaturesSelect<false> | FeaturesSelect<true>;
+    notifier: NotifierSelect<false> | NotifierSelect<true>;
+    'system-state': SystemStateSelect<false> | SystemStateSelect<true>;
+  };
   locale: null;
   widgets: {
     collections: CollectionsWidget;
   };
   user: User;
   jobs: {
-    tasks: unknown;
+    tasks: {
+      schedulePublish: TaskSchedulePublish;
+      inline: {
+        input: unknown;
+        output: unknown;
+      };
+    };
     workflows: unknown;
   };
 }
@@ -71,6 +136,1113 @@ export interface UserAuthOperations {
     email: string;
     password: string;
   };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "bookings".
+ */
+export interface Booking {
+  id: number;
+  /**
+   * عنوان فهرست؛ شماره کامل فقط داخل پرونده دیده می‌شود.
+   */
+  listTitle?: string | null;
+  /**
+   * شمارهٔ موبایل به شکل بین‌المللی. با دکمهٔ تماس شماره بگیرید.
+   */
+  phone: string;
+  /**
+   * همان شماره به شکل ۰۹…؛ جست‌وجو با رقم فارسی یا انگلیسی کار می‌کند.
+   */
+  phoneNational: string;
+  /**
+   * نام بیمار، اگر وارد کرده است.
+   */
+  name?: string | null;
+  /**
+   * نوع درخواست.
+   */
+  kind: 'regular' | 'emergency';
+  /**
+   * گزینه‌ای که بیمار در فرم انتخاب کرد.
+   */
+  bookingGroup?: ('exam' | 'cosmetic' | 'implant' | 'restore' | 'root_canal' | 'ortho' | 'kids' | 'other') | null;
+  /**
+   * خدمت دقیق، اگر صفحه آن را می‌دانست.
+   */
+  service?: (number | null) | Service;
+  /**
+   * شناسهٔ خدمت در لحظهٔ ثبت (حتی اگر خدمت بعداً حذف شود).
+   */
+  serviceKey?: string | null;
+  /**
+   * سطح انتخاب‌شده، مثل vip.
+   */
+  tier?: string | null;
+  /**
+   * پزشکی که بیمار از صفحهٔ او آمده است.
+   */
+  doctor?: (number | null) | Doctor;
+  /**
+   * زمان دلخواه بیمار.
+   */
+  preferredTime?: ('morning' | 'evening' | 'any') | null;
+  /**
+   * توضیح بیمار.
+   */
+  note?: string | null;
+  /**
+   * نشانه‌هایی که بیمار علامت زد.
+   */
+  triage?: ('severe_pain' | 'swelling' | 'broken' | 'avulsion' | 'bleeding')[] | null;
+  /**
+   * پس از تماس ثبت کنید. برای آمار سوءاستفاده از مسیر فوری لازم است.
+   */
+  emergencyOutcome?: ('truly_urgent' | 'not_urgent') | null;
+  /**
+   * وضعیت پیگیری.
+   */
+  status: 'new' | 'contacted' | 'scheduled' | 'done' | 'cancelled' | 'spam' | 'suspicious';
+  /**
+   * علامت‌های سیستم. «اولویت فوری برداشته شد» یعنی درخواست‌های فوری بعدی این شماره عادی حساب می‌شوند.
+   */
+  flags?:
+    | (
+        'honeypot' | 'too_fast' | 'ip_rate' | 'emergency_ip_rate' | 'restored' | 'emergency_priority_removed' | 'manual'
+      )[]
+    | null;
+  /**
+   * فرمی که درخواست از آن آمد.
+   */
+  formLocation?: ('hero' | 'block' | 'dialog' | 'page' | 'emergency' | 'admin') | null;
+  /**
+   * پاسخ بیمار به «از کجا با ما آشنا شدید؟».
+   */
+  heardFrom?: ('google' | 'maps' | 'instagram' | 'referral' | 'returning' | 'signage' | 'directory' | 'other') | null;
+  /**
+   * تا این زمان باید با بیمار تماس گرفته شود.
+   */
+  callbackDueAt?: string | null;
+  urgencyRank?: number | null;
+  /**
+   * نخستین کسی که وضعیت را از «جدید» تغییر داد.
+   */
+  handledBy?: (number | null) | User;
+  /**
+   * زمان نخستین پیگیری.
+   */
+  handledAt?: string | null;
+  /**
+   * یادداشت‌های پذیرش. یادداشت‌های قبلی ویرایش نمی‌شوند؛ یادداشت تازه اضافه کنید.
+   */
+  adminNotes?:
+    | {
+        text: string;
+        author?: (number | null) | User;
+        at?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * درخواست‌های تکراری همین شماره در ۱۰ دقیقه. چیزی بازنویسی نمی‌شود.
+   */
+  duplicateSubmissions?:
+    | {
+        at?: string | null;
+        name?: string | null;
+        note?: string | null;
+        serviceKey?: string | null;
+        preferredTime?: string | null;
+        sourceUrl?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * صفحه‌ای که فرم از آن ارسال شد.
+   */
+  sourceUrl?: string | null;
+  /**
+   * پارامترهای کمپین، اگر بود.
+   */
+  utm?: {
+    source?: string | null;
+    medium?: string | null;
+    campaign?: string | null;
+    term?: string | null;
+    content?: string | null;
+  };
+  /**
+   * نوع دستگاه (بدون ذخیرهٔ اطلاعات کامل مرورگر).
+   */
+  device?: ('mobile' | 'tablet' | 'desktop' | 'unknown') | null;
+  /**
+   * اثر یک‌طرفهٔ IP برای محدودیت‌ها. IP خام ذخیره نمی‌شود.
+   */
+  ipHash?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "services".
+ */
+export interface Service {
+  id: number;
+  /**
+   * شناسهٔ ثابت خدمت. در فرم نوبت (service_key) و آمار استفاده می‌شود و تغییر نمی‌کند.
+   */
+  key: string;
+  /**
+   * دستهٔ این خدمت. فقط در مسیر راهنما (بردکرامب) دیده می‌شود، نه در نشانی.
+   */
+  category: number | ServiceCategory;
+  /**
+   * نام کوتاه در منو و کارت‌ها.
+   */
+  navLabel: string;
+  /**
+   * تیتر اصلی صفحه. یک بار در صفحه می‌آید و اصطلاح اصلی جست‌وجو را دارد.
+   */
+  h1: string;
+  /**
+   * بخش آخر نشانی، مثل «لمینت-سرامیکی». تغییر آن پس از انتشار، انتقال ۳۰۱ می‌سازد.
+   */
+  slug: string;
+  /**
+   * گزینهٔ فرم نوبت که این خدمت زیر آن ثبت می‌شود.
+   */
+  bookingGroup: 'exam' | 'cosmetic' | 'implant' | 'restore' | 'root_canal' | 'ortho' | 'kids' | 'other';
+  /**
+   * اهمیت تجاری: ۱ مهم‌ترین. خدمات مهم‌تر در منو بالاتر می‌آیند.
+   */
+  priority: number;
+  /**
+   * ترتیب در فهرست دسته.
+   */
+  order?: number | null;
+  /**
+   * زیر تیتر صفحه، پیوند آرام «درد شدید دارید؟» نمایش داده شود.
+   */
+  emergencyLink?: boolean | null;
+  /**
+   * جملهٔ خلاصهٔ زیر تیتر و روی کارت‌ها.
+   */
+  summary?: string | null;
+  /**
+   * عکس واقعی بالای صفحه (۳:۲ در دسکتاپ، ۴:۵ در موبایل). نقطهٔ کانونی را در کتابخانهٔ رسانه تنظیم کنید.
+   */
+  heroMedia?: (number | null) | Media;
+  /**
+   * واقعیت‌های کوتاه ردیف بالای صفحه. فقط موارد پرشده نمایش داده می‌شوند.
+   */
+  facts?: {
+    /**
+     * تعداد جلسه‌ها، مثلاً «۲ تا ۳ جلسه».
+     */
+    sessions?: string | null;
+    /**
+     * مدت هر جلسه یا کل درمان.
+     */
+    duration?: string | null;
+    /**
+     * نوع بی‌حسی، اگر لازم است.
+     */
+    anesthesia?: string | null;
+    /**
+     * زمان بهبود یا بازگشت به کار روزمره.
+     */
+    recovery?: string | null;
+  };
+  /**
+   * قیمت «از …» به تومان، بدون جداکننده. خالی بماند، قیمتی نمایش داده نمی‌شود.
+   */
+  priceFrom?: number | null;
+  /**
+   * متن اصلی صفحه: چیست، برای چه کسی مناسب است، مراحل درمان.
+   */
+  body?:
+    | (
+        | {
+            body: {
+              root: {
+                type: string;
+                children: {
+                  type: any;
+                  version: number;
+                  [k: string]: unknown;
+                }[];
+                direction: ('ltr' | 'rtl') | null;
+                format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+                indent: number;
+                version: number;
+              };
+              [k: string]: unknown;
+            };
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'content';
+          }
+        | {
+            items?:
+              | {
+                  title: string;
+                  text: string;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'steps';
+          }
+        | {
+            tone?: ('info' | 'warning') | null;
+            text: string;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'callout';
+          }
+      )[]
+    | null;
+  /**
+   * پرسش‌های پرتکرار این خدمت (۵ تا ۸ پرسش واقعی).
+   */
+  faqs?:
+    | {
+        /**
+         * پرسش، همان‌طور که بیمار می‌پرسد.
+         */
+        question: string;
+        /**
+         * پاسخ کوتاه و دقیق، بدون وعده.
+         */
+        answer: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * تا سه خدمت مرتبط برای انتهای صفحه.
+   */
+  relatedServices?: (number | Service)[] | null;
+  /**
+   * دندانپزشکی که محتوای پزشکی این صفحه را بازبینی کرده است.
+   */
+  reviewedBy?: (number | null) | Doctor;
+  /**
+   * تاریخ آخرین بازبینی پزشکی.
+   */
+  reviewedAt?: string | null;
+  reviewedAt_tz?: SupportedTimezones;
+  /**
+   * این صفحه ادعای پزشکی دارد و به منبع و بازبین نیاز دارد.
+   */
+  isMedical?: boolean | null;
+  /**
+   * منابع علمی ادعاهای پزشکی این صفحه.
+   */
+  sources?:
+    | {
+        /**
+         * عنوان منبع
+         */
+        title: string;
+        publisher?: ('ADA' | 'AAPD' | 'AAP' | 'Cochrane' | 'NHS' | 'IADT' | 'journal' | 'other') | null;
+        /**
+         * نشانی منبع
+         */
+        url: string;
+        accessedOn?: string | null;
+        accessedOn_tz?: SupportedTimezones;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * اصطلاح‌های جست‌وجویی که این صفحه مالک آن‌هاست (نقشهٔ کلمات کلیدی). فقط برای مرجع داخلی.
+   */
+  searchTerms?: string[] | null;
+  /**
+   * یادداشت داخلی، در سایت دیده نمی‌شود.
+   */
+  internalNote?: string | null;
+  /**
+   * دامنهٔ این خدمت با کلینیک تأیید شده است (ردیف ۲۷ کمبودها).
+   */
+  scopeVerified?: boolean | null;
+  /**
+   * پزشکانی که این خدمت را انجام می‌دهند.
+   */
+  performedBy?: {
+    docs?: (number | Doctor)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * سطح‌های این خدمت (فقط ترمیم دندان).
+   */
+  tiers?: {
+    docs?: (number | ServiceTier)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  seo?: {
+    /**
+     * عنوان در نتیجهٔ گوگل، بدون پسوند «| کلینیک دندانپزشکی سفید». خالی بماند، تیتر صفحه استفاده می‌شود. با پسوند حداکثر ۶۰ نویسه.
+     */
+    title?: string | null;
+    /**
+     * توضیح زیر عنوان در گوگل: ۱۲۰ تا ۱۶۰ نویسه، با دلیلی برای کلیک و نام محله اگر به کار می‌آید.
+     */
+    description?: string | null;
+    /**
+     * تصویر اشتراک‌گذاری. خالی بماند، تصویر صفحه یا تصویر پیش‌فرض استفاده می‌شود.
+     */
+    image?: (number | null) | Media;
+    /**
+     * این صفحه در گوگل نمایه نشود.
+     */
+    noindex?: boolean | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "service-categories".
+ */
+export interface ServiceCategory {
+  id: number;
+  /**
+   * شناسهٔ ثابت سیستمی. در نشانی‌ها و آمار استفاده می‌شود و پس از ساخت تغییر نمی‌کند.
+   */
+  key: string;
+  /**
+   * عنوان کامل دسته، همان‌که بالای صفحهٔ دسته دیده می‌شود.
+   */
+  title: string;
+  /**
+   * تیتر اصلی صفحهٔ دسته. خالی بماند، عنوان دسته استفاده می‌شود.
+   */
+  h1?: string | null;
+  /**
+   * نام کوتاه در منوی خدمات.
+   */
+  navLabel: string;
+  /**
+   * این دسته صفحهٔ جدا ندارد و مستقیم به صفحهٔ خدمتش می‌رود (مثل ارتودنسی).
+   */
+  standalone?: boolean | null;
+  /**
+   * خدمتی که این دسته به آن ختم می‌شود.
+   */
+  standaloneService?: (number | null) | Service;
+  /**
+   * بخش آخر نشانی صفحهٔ دسته. خالی بگذارید تا از نام منو ساخته شود.
+   */
+  slug?: string | null;
+  /**
+   * رنگ نماد دسته. فقط برای آیکن و تصویرسازی است، نه دکمه و متن.
+   */
+  accent: 'cosmetic' | 'surgery' | 'restorative' | 'ortho' | 'kids';
+  /**
+   * نام آیکن دسته در مجموعهٔ Phosphor.
+   */
+  icon?: string | null;
+  /**
+   * یک یا دو جمله دربارهٔ این دسته برای کارت و صفحهٔ دسته.
+   */
+  summary?: string | null;
+  /**
+   * ترتیب نمایش؛ عدد کوچک‌تر زودتر نمایش داده می‌شود.
+   */
+  order?: number | null;
+  /**
+   * خدمات این دسته.
+   */
+  services?: {
+    docs?: (number | Service)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  seo?: {
+    /**
+     * عنوان در نتیجهٔ گوگل، بدون پسوند «| کلینیک دندانپزشکی سفید». خالی بماند، تیتر صفحه استفاده می‌شود. با پسوند حداکثر ۶۰ نویسه.
+     */
+    title?: string | null;
+    /**
+     * توضیح زیر عنوان در گوگل: ۱۲۰ تا ۱۶۰ نویسه، با دلیلی برای کلیک و نام محله اگر به کار می‌آید.
+     */
+    description?: string | null;
+    /**
+     * تصویر اشتراک‌گذاری. خالی بماند، تصویر صفحه یا تصویر پیش‌فرض استفاده می‌شود.
+     */
+    image?: (number | null) | Media;
+    /**
+     * این صفحه در گوگل نمایه نشود.
+     */
+    noindex?: boolean | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * عکس‌ها را JPEG بفرستید (عکس HEIC آیفون پذیرفته نمی‌شود). حداکثر ۲۰ مگابایت برای عکس و ۶۰ مگابایت برای ویدیو.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media".
+ */
+export interface Media {
+  id: number;
+  /**
+   * متن جایگزین: آنچه در تصویر دیده می‌شود، به فارسی و کوتاه. برای ویدیو، عنوان ویدیو.
+   */
+  alt: string;
+  /**
+   * زیرنویس زیر تصویر، اگر لازم است.
+   */
+  caption?: string | null;
+  /**
+   * نام عکاس یا منبع.
+   */
+  credit?: string | null;
+  /**
+   * پیش‌نمایش محو، خودکار ساخته می‌شود.
+   */
+  blurDataURL?: string | null;
+  /**
+   * پیش‌نمایش محو برش ۴:۵.
+   */
+  blurDataURLPortrait?: string | null;
+  seedSource?: string | null;
+  prefix?: string | null;
+  _objectKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  url?: string | null;
+  thumbnailURL?: string | null;
+  filename?: string | null;
+  mimeType?: string | null;
+  filesize?: number | null;
+  width?: number | null;
+  height?: number | null;
+  focalX?: number | null;
+  focalY?: number | null;
+  sizes?: {
+    thumb?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w640?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w640Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w960?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w960Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w1280?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w1280Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w1600?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w1600Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w1920?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w1920Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w2560?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    w2560Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    p640?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    p640Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    p828?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    p828Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    p1080?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    p1080Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    s640?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    s640Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    s1080?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+    s1080Avif?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
+  };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "doctors".
+ */
+export interface Doctor {
+  id: number;
+  /**
+   * نام و نام خانوادگی، بدون «دکتر». سایت «دکتر» را خودش اضافه می‌کند.
+   */
+  name: string;
+  /**
+   * بخش آخر نشانی صفحهٔ پزشک، مثل «دکتر-نام-خانوادگی».
+   */
+  slug: string;
+  /**
+   * عنوان تخصص. واژهٔ «متخصص» فقط برای تخصص بورد تأییدشده مجاز است.
+   */
+  specialty: string;
+  /**
+   * تخصص بورد این پزشک با مدرک تأیید شده است.
+   */
+  specialtyConfirmed?: boolean | null;
+  /**
+   * شمارهٔ نظام پزشکی. بدون آن پزشک منتشر نمی‌شود.
+   */
+  councilNumber: string;
+  /**
+   * مدرک‌ها، هر کدام در یک ردیف.
+   */
+  degrees?: string[] | null;
+  /**
+   * سال‌های سابقهٔ کار، فقط اگر تأیید شده است.
+   */
+  yearsExperience?: number | null;
+  /**
+   * عضویت در انجمن‌های علمی.
+   */
+  memberships?: string[] | null;
+  /**
+   * معرفی کوتاه، بدون ادعای «بهترین» یا وعدهٔ نتیجه.
+   */
+  bio?: string | null;
+  /**
+   * عکس پرتره ۴:۵، واقعی، نگاه به سمت محتوا.
+   */
+  photo: number | Media;
+  /**
+   * خدماتی که این پزشک انجام می‌دهد.
+   */
+  services?: (number | Service)[] | null;
+  /**
+   * ترتیب در فهرست پزشکان.
+   */
+  order?: number | null;
+  /**
+   * مقاله‌هایی که این پزشک نوشته است.
+   */
+  authoredArticles?: {
+    docs?: (number | Article)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * مقاله‌هایی که این پزشک بازبینی کرده است.
+   */
+  reviewedArticles?: {
+    docs?: (number | Article)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  /**
+   * نمونه‌های قبل و بعد این پزشک.
+   */
+  cases?: {
+    docs?: (number | Case)[];
+    hasNextPage?: boolean;
+    totalDocs?: number;
+  };
+  seo?: {
+    /**
+     * عنوان در نتیجهٔ گوگل، بدون پسوند «| کلینیک دندانپزشکی سفید». خالی بماند، تیتر صفحه استفاده می‌شود. با پسوند حداکثر ۶۰ نویسه.
+     */
+    title?: string | null;
+    /**
+     * توضیح زیر عنوان در گوگل: ۱۲۰ تا ۱۶۰ نویسه، با دلیلی برای کلیک و نام محله اگر به کار می‌آید.
+     */
+    description?: string | null;
+    /**
+     * تصویر اشتراک‌گذاری. خالی بماند، تصویر صفحه یا تصویر پیش‌فرض استفاده می‌شود.
+     */
+    image?: (number | null) | Media;
+    /**
+     * این صفحه در گوگل نمایه نشود.
+     */
+    noindex?: boolean | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles".
+ */
+export interface Article {
+  id: number;
+  /**
+   * عنوان مقاله با اصطلاح اصلی جست‌وجو.
+   */
+  title: string;
+  /**
+   * نشانی کوتاه فارسی. پس از انتشار تغییر ندهید مگر لازم باشد؛ تغییر آن انتقال ۳۰۱ می‌سازد.
+   */
+  slug: string;
+  /**
+   * خلاصهٔ دوخطی بالای مقاله و روی کارت.
+   */
+  excerpt: string;
+  /**
+   * تصویر شاخص. متن جایگزین آن در کتابخانهٔ رسانه اجباری است.
+   */
+  cover: number | Media;
+  /**
+   * متن مقاله. دست‌کم دو پیوند داخلی به صفحه‌های سایت بگذارید.
+   */
+  body: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  };
+  /**
+   * دستهٔ مقاله.
+   */
+  category: number | ArticleCategory;
+  /**
+   * برچسب‌ها. صفحه‌های برچسب در گوگل نمایه نمی‌شوند.
+   */
+  tags?: (number | Tag)[] | null;
+  /**
+   * خدمت اصلی که مقاله به آن پیوند می‌دهد و کادر انتهای مقاله را می‌سازد.
+   */
+  primaryService: number | Service;
+  /**
+   * دو مقالهٔ مرتبط. خالی بماند، سیستم خودش پیدا می‌کند.
+   */
+  relatedArticles?: (number | Article)[] | null;
+  /**
+   * نویسنده، اگر یکی از پزشکان است.
+   */
+  authorDoctor?: (number | null) | Doctor;
+  /**
+   * نام نویسنده، اگر از کارکنان است (نه پزشک).
+   */
+  staffAuthorName?: string | null;
+  /**
+   * مقاله ادعای پزشکی دارد. در این حالت بازبین و منبع اجباری است.
+   */
+  isMedical?: boolean | null;
+  /**
+   * دندانپزشکی که محتوای پزشکی را بازبینی کرده است.
+   */
+  reviewer?: (number | null) | Doctor;
+  /**
+   * تاریخ بازبینی پزشکی.
+   */
+  reviewedAt?: string | null;
+  reviewedAt_tz?: SupportedTimezones;
+  /**
+   * منابع علمی: ADA، AAPD، AAP، Cochrane، NHS یا مقالهٔ داوری‌شده.
+   */
+  sources?:
+    | {
+        /**
+         * عنوان منبع
+         */
+        title: string;
+        publisher?: ('ADA' | 'AAPD' | 'AAP' | 'Cochrane' | 'NHS' | 'IADT' | 'journal' | 'other') | null;
+        /**
+         * نشانی منبع
+         */
+        url: string;
+        accessedOn?: string | null;
+        accessedOn_tz?: SupportedTimezones;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * پرسش‌های پرتکرار در انتهای مقاله.
+   */
+  faqs?:
+    | {
+        /**
+         * پرسش، همان‌طور که بیمار می‌پرسد.
+         */
+        question: string;
+        /**
+         * پاسخ کوتاه و دقیق، بدون وعده.
+         */
+        answer: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * زمان مطالعه به دقیقه، خودکار محاسبه می‌شود.
+   */
+  readingTime?: number | null;
+  /**
+   * تاریخ انتشار. خالی بماند، هنگام انتشار پر می‌شود.
+   */
+  publishedAt?: string | null;
+  /**
+   * تاریخ آخرین به‌روزرسانی مهم محتوا. برای اصلاح غلط تایپی تغییر ندهید.
+   */
+  contentUpdatedAt?: string | null;
+  /**
+   * مرحلهٔ کار تحریریه. انتشار جدا از این مرحله است.
+   */
+  reviewState: 'writing' | 'in_review' | 'approved';
+  seo: {
+    /**
+     * عنوان در نتیجهٔ گوگل، بدون پسوند «| کلینیک دندانپزشکی سفید». خالی بماند، تیتر صفحه استفاده می‌شود. با پسوند حداکثر ۶۰ نویسه.
+     */
+    title?: string | null;
+    /**
+     * توضیح زیر عنوان در گوگل: ۱۲۰ تا ۱۶۰ نویسه، با دلیلی برای کلیک و نام محله اگر به کار می‌آید.
+     */
+    description: string;
+    /**
+     * تصویر اشتراک‌گذاری. خالی بماند، تصویر صفحه یا تصویر پیش‌فرض استفاده می‌شود.
+     */
+    image?: (number | null) | Media;
+    /**
+     * این صفحه در گوگل نمایه نشود.
+     */
+    noindex?: boolean | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "article-categories".
+ */
+export interface ArticleCategory {
+  id: number;
+  /**
+   * نام دسته. نباید با نام یک خدمت یکی باشد (مثلاً «ایمپلنت» نه، «جایگزینی دندان» بله).
+   */
+  title: string;
+  /**
+   * بخش آخر نشانی.
+   */
+  slug: string;
+  /**
+   * توضیح کوتاه بالای صفحهٔ فهرست.
+   */
+  description?: string | null;
+  seo?: {
+    /**
+     * عنوان در نتیجهٔ گوگل، بدون پسوند «| کلینیک دندانپزشکی سفید». خالی بماند، تیتر صفحه استفاده می‌شود. با پسوند حداکثر ۶۰ نویسه.
+     */
+    title?: string | null;
+    /**
+     * توضیح زیر عنوان در گوگل: ۱۲۰ تا ۱۶۰ نویسه، با دلیلی برای کلیک و نام محله اگر به کار می‌آید.
+     */
+    description?: string | null;
+    /**
+     * تصویر اشتراک‌گذاری. خالی بماند، تصویر صفحه یا تصویر پیش‌فرض استفاده می‌شود.
+     */
+    image?: (number | null) | Media;
+    /**
+     * این صفحه در گوگل نمایه نشود.
+     */
+    noindex?: boolean | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tags".
+ */
+export interface Tag {
+  id: number;
+  /**
+   * نام برچسب.
+   */
+  title: string;
+  /**
+   * بخش آخر نشانی.
+   */
+  slug: string;
+  /**
+   * توضیح کوتاه بالای صفحهٔ فهرست.
+   */
+  description?: string | null;
+  seo?: {
+    /**
+     * عنوان در نتیجهٔ گوگل، بدون پسوند «| کلینیک دندانپزشکی سفید». خالی بماند، تیتر صفحه استفاده می‌شود. با پسوند حداکثر ۶۰ نویسه.
+     */
+    title?: string | null;
+    /**
+     * توضیح زیر عنوان در گوگل: ۱۲۰ تا ۱۶۰ نویسه، با دلیلی برای کلیک و نام محله اگر به کار می‌آید.
+     */
+    description?: string | null;
+    /**
+     * تصویر اشتراک‌گذاری. خالی بماند، تصویر صفحه یا تصویر پیش‌فرض استفاده می‌شود.
+     */
+    image?: (number | null) | Media;
+    /**
+     * این صفحه در گوگل نمایه نشود.
+     */
+    noindex?: boolean | null;
+  };
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cases".
+ */
+export interface Case {
+  id: number;
+  /**
+   * عنوان کوتاه، مثل «لمینت سرامیکی شش دندان جلو». بدون وعدهٔ نتیجه.
+   */
+  title: string;
+  /**
+   * خدمت این نمونه. فیلتر صفحهٔ قبل و بعد از آن ساخته می‌شود.
+   */
+  service: number | Service;
+  /**
+   * پزشک انجام‌دهنده، اگر منتشر شده است.
+   */
+  doctor?: (number | null) | Doctor;
+  /**
+   * عکس قبل. کادر، نور و بزرگنمایی باید با عکس بعد یکی باشد.
+   */
+  before: number | Media;
+  /**
+   * عکس بعد.
+   */
+  after: number | Media;
+  /**
+   * چه کاری انجام شد و در چند جلسه. بدون وعده.
+   */
+  notes?: string | null;
+  /**
+   * رضایت کتبی بیمار گرفته شده است. بدون آن منتشر نمی‌شود.
+   */
+  consentConfirmed?: boolean | null;
+  /**
+   * در صفحهٔ خانه نمایش داده شود.
+   */
+  featuredOnHome?: boolean | null;
+  /**
+   * ترتیب نمایش؛ عدد کوچک‌تر زودتر نمایش داده می‌شود.
+   */
+  order?: number | null;
+  /**
+   * پوشهٔ منبع در مخزن (برای ورود خودکار).
+   */
+  sourceFolder?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "service-tiers".
+ */
+export interface ServiceTier {
+  id: number;
+  /**
+   * خدمتی که این سطح به آن تعلق دارد.
+   */
+  service: number | Service;
+  /**
+   * شناسهٔ ثابت سطح، مثل standard، vip، cip. در نشانی نوبت (tier) استفاده می‌شود.
+   */
+  key: string;
+  /**
+   * نام سطح، مثل «معمولی»، «VIP»، «CIP».
+   */
+  name: string;
+  /**
+   * توضیح کوتاه تفاوت این سطح. بدون وعدهٔ نتیجه.
+   */
+  description: string;
+  /**
+   * مواد و روش کار، فقط اگر تأیید شده است.
+   */
+  materials?: string | null;
+  /**
+   * نکته‌های کوتاه مقایسه.
+   */
+  highlights?: string[] | null;
+  /**
+   * قیمت «از …» به تومان. خالی بماند، فقط جایگاه نسبی سطح نمایش داده می‌شود.
+   */
+  priceFrom?: number | null;
+  /**
+   * ترتیب از پایه تا بالاترین سطح.
+   */
+  order?: number | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -110,24 +1282,474 @@ export interface User {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media".
+ * via the `definition` "pages".
  */
-export interface Media {
+export interface Page {
   id: number;
-  alt: string;
-  prefix?: string | null;
-  _objectKey?: string | null;
+  /**
+   * شناسهٔ ثابت صفحه. مسیر و قالب صفحه از آن می‌آید.
+   */
+  key:
+    | 'home'
+    | 'services-hub'
+    | 'dentists-hub'
+    | 'cases'
+    | 'pricing'
+    | 'guide-hub'
+    | 'guide-first-visit'
+    | 'guide-dental-fear'
+    | 'guide-aftercare'
+    | 'emergency'
+    | 'about'
+    | 'address'
+    | 'booking'
+    | 'booking-success'
+    | 'articles'
+    | 'privacy';
+  /**
+   * تیتر اصلی صفحه (H1).
+   */
+  title: string;
+  /**
+   * بخش آخر نشانی. برای صفحه‌های اصلی ثابت است.
+   */
+  slug?: string | null;
+  /**
+   * نشانی کامل صفحه، خودکار ساخته می‌شود.
+   */
+  path: string;
+  /**
+   * جملهٔ زیر تیتر.
+   */
+  lead?: string | null;
+  /**
+   * بخش بالای صفحهٔ خانه.
+   */
+  hero?: {
+    /**
+     * عکس افقی تمام‌عرض (از ۷۴۴ پیکسل). فضای خالی کلینیک، نور طبیعی، بدون چهره. نقطهٔ کانونی را روی جزء اصلی در نوار میانی و بالایی بگذارید.
+     */
+    photo?: (number | null) | Media;
+    /**
+     * عکس ۴:۵ موبایل از همان عکاسی. خالی بماند، از عکس افقی با نقطهٔ کانونی بریده می‌شود. جزء اصلی در یک‌سوم بالایی باشد.
+     */
+    photoPortrait?: (number | null) | Media;
+    /**
+     * متن زیر تیتر، حداکثر ۲۰ واژه.
+     */
+    subtext?: string | null;
+  };
+  /**
+   * عکس بالای صفحه (۳:۲ دسکتاپ، ۴:۵ موبایل).
+   */
+  heroMedia?: (number | null) | Media;
+  /**
+   * بخش‌های محتوایی صفحه به ترتیب نمایش.
+   */
+  blocks?:
+    | (
+        | {
+            body: {
+              root: {
+                type: string;
+                children: {
+                  type: any;
+                  version: number;
+                  [k: string]: unknown;
+                }[];
+                direction: ('ltr' | 'rtl') | null;
+                format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+                indent: number;
+                version: number;
+              };
+              [k: string]: unknown;
+            };
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'content';
+          }
+        | {
+            /**
+             * پرسش‌های پرتکرار.
+             */
+            items?:
+              | {
+                  /**
+                   * پرسش، همان‌طور که بیمار می‌پرسد.
+                   */
+                  question: string;
+                  /**
+                   * پاسخ کوتاه و دقیق، بدون وعده.
+                   */
+                  answer: string;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'faq';
+          }
+        | {
+            items?:
+              | {
+                  label: string;
+                  value: string;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'facts';
+          }
+        | {
+            tone?: ('info' | 'warning') | null;
+            text: string;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'callout';
+          }
+      )[]
+    | null;
+  /**
+   * بازبین پزشکی این راهنما.
+   */
+  reviewer?: (number | null) | Doctor;
+  /**
+   * تاریخ بازبینی.
+   */
+  reviewedAt?: string | null;
+  reviewedAt_tz?: SupportedTimezones;
+  /**
+   * منابع علمی این راهنما.
+   */
+  sources?:
+    | {
+        /**
+         * عنوان منبع
+         */
+        title: string;
+        publisher?: ('ADA' | 'AAPD' | 'AAP' | 'Cochrane' | 'NHS' | 'IADT' | 'journal' | 'other') | null;
+        /**
+         * نشانی منبع
+         */
+        url: string;
+        accessedOn?: string | null;
+        accessedOn_tz?: SupportedTimezones;
+        id?: string | null;
+      }[]
+    | null;
+  seo?: {
+    /**
+     * عنوان در نتیجهٔ گوگل، بدون پسوند «| کلینیک دندانپزشکی سفید». خالی بماند، تیتر صفحه استفاده می‌شود. با پسوند حداکثر ۶۰ نویسه.
+     */
+    title?: string | null;
+    /**
+     * توضیح زیر عنوان در گوگل: ۱۲۰ تا ۱۶۰ نویسه، با دلیلی برای کلیک و نام محله اگر به کار می‌آید.
+     */
+    description?: string | null;
+    /**
+     * تصویر اشتراک‌گذاری. خالی بماند، تصویر صفحه یا تصویر پیش‌فرض استفاده می‌شود.
+     */
+    image?: (number | null) | Media;
+    /**
+     * این صفحه در گوگل نمایه نشود.
+     */
+    noindex?: boolean | null;
+  };
   updatedAt: string;
   createdAt: string;
-  url?: string | null;
-  thumbnailURL?: string | null;
-  filename?: string | null;
-  mimeType?: string | null;
-  filesize?: number | null;
-  width?: number | null;
-  height?: number | null;
-  focalX?: number | null;
-  focalY?: number | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "insurances".
+ */
+export interface Insurance {
+  id: number;
+  /**
+   * نام بیمه، مثل «بیمه ایران».
+   */
+  name: string;
+  /**
+   * لوگوی بیمه با پس‌زمینهٔ شفاف.
+   */
+  logo?: (number | null) | Media;
+  /**
+   * جزو پنج بیمهٔ اصلی است. بقیه زیر «سایر بیمه‌ها» می‌آیند.
+   */
+  featured?: boolean | null;
+  /**
+   * ترتیب نمایش؛ عدد کوچک‌تر زودتر نمایش داده می‌شود.
+   */
+  order?: number | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "financing-options".
+ */
+export interface FinancingOption {
+  id: number;
+  /**
+   * شناسهٔ ثابت گزینه، در متن پیام واتساپ و آمار استفاده می‌شود.
+   */
+  key: string;
+  /**
+   * نام گزینه، مثل «وام درمان».
+   */
+  title: string;
+  /**
+   * نام شریک مالی. تا نام قطعی نشده، گزینه را فعال نکنید.
+   */
+  provider?: string | null;
+  /**
+   * سقف مبلغ به تومان، بدون جداکننده. در سایت با حروف هم نوشته می‌شود.
+   */
+  maxAmountToman?: number | null;
+  /**
+   * چه کسی و با چه مدرکی درخواست می‌دهد.
+   */
+  whoApplies?: string | null;
+  /**
+   * تفاوت هزینه با پرداخت نقدی، شفاف.
+   */
+  surchargeNote?: string | null;
+  /**
+   * شرایط دقیق (مدت، مدارک).
+   */
+  terms?: string | null;
+  /**
+   * وضعیت تأیید این گزینه با شریک مالی.
+   */
+  approvalStatus: 'approved' | 'pending';
+  /**
+   * تاریخ تأیید.
+   */
+  approvedOn?: string | null;
+  approvedOn_tz?: SupportedTimezones;
+  /**
+   * نمایش در سایت. فقط وقتی روشن کنید که شریک و شرایط قطعی است.
+   */
+  enabled?: boolean | null;
+  /**
+   * ترتیب نمایش؛ عدد کوچک‌تر زودتر نمایش داده می‌شود.
+   */
+  order?: number | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "testimonials".
+ */
+export interface Testimonial {
+  id: number;
+  /**
+   * نام کوچک یا حروف اول بیمار. نام کامل ننویسید.
+   */
+  patientLabel: string;
+  /**
+   * خدمتی که بیمار دربارهٔ آن صحبت می‌کند.
+   */
+  service?: (number | null) | Service;
+  /**
+   * نوع نظر.
+   */
+  type: 'video' | 'text';
+  /**
+   * فایل ویدیو (MP4 یا WebM). از سرویس بیرونی پیوند ندهید.
+   */
+  video?: (number | null) | Media;
+  /**
+   * تصویر پیش‌نمایش ویدیو.
+   */
+  poster?: (number | null) | Media;
+  /**
+   * جملهٔ بیمار، یک تا سه خط، بدون ویرایش معنا.
+   */
+  quote?: string | null;
+  /**
+   * خلاصهٔ گفته‌های ویدیو برای موتور جست‌وجو و کاربران بدون صدا.
+   */
+  transcriptSummary?: string | null;
+  /**
+   * تاریخ ضبط.
+   */
+  recordedAt?: string | null;
+  recordedAt_tz?: SupportedTimezones;
+  /**
+   * مدت ویدیو به ثانیه.
+   */
+  durationSeconds?: number | null;
+  /**
+   * رضایت کتبی بیمار برای انتشار گرفته شده و در پرونده است. بدون آن منتشر نمی‌شود.
+   */
+  consentConfirmed?: boolean | null;
+  /**
+   * در صفحهٔ خانه نمایش داده شود (حداکثر سه مورد).
+   */
+  showOnHome?: boolean | null;
+  /**
+   * ترتیب نمایش؛ عدد کوچک‌تر زودتر نمایش داده می‌شود.
+   */
+  order?: number | null;
+  seedKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects".
+ */
+export interface Redirect {
+  id: number;
+  /**
+   * نشانی قدیمی، بدون دامنه و بدون علامت سؤال. مثال: /vip
+   */
+  from: string;
+  /**
+   * نشانی مقصد در همین سایت.
+   */
+  to?: string | null;
+  /**
+   * نوع انتقال. برای تغییر دائمی همیشه ۳۰۱.
+   */
+  statusCode: '301' | '302' | '308' | '410';
+  /**
+   * فعال است. برای غیرفعال کردن به‌جای حذف، تیک را بردارید.
+   */
+  active?: boolean | null;
+  /**
+   * این انتقال از کجا آمده است.
+   */
+  source: 'manual' | 'slug_change' | 'alias' | 'import' | 'auto_removed';
+  /**
+   * یادداشت داخلی.
+   */
+  note?: string | null;
+  /**
+   * تعداد دفعه‌های استفاده.
+   */
+  hits?: number | null;
+  /**
+   * آخرین استفاده.
+   */
+  lastHitAt?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "events-daily".
+ */
+export interface EventsDaily {
+  id: number;
+  /**
+   * روز (به وقت تهران).
+   */
+  date: string;
+  /**
+   * نام رویداد.
+   */
+  event: string;
+  /**
+   * جای کلیک یا فرم.
+   */
+  location: string;
+  /**
+   * نوع صفحه.
+   */
+  pageType: string;
+  /**
+   * خدمت مرتبط.
+   */
+  serviceKey: string;
+  /**
+   * تعداد.
+   */
+  count: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-log".
+ */
+export interface AuditLog {
+  id: number;
+  /**
+   * کار انجام‌شده.
+   */
+  action:
+    | 'create'
+    | 'update'
+    | 'publish'
+    | 'unpublish'
+    | 'trash'
+    | 'restore'
+    | 'delete'
+    | 'login'
+    | 'logout'
+    | 'forgot_password'
+    | 'seed';
+  /**
+   * نوع موجودیت.
+   */
+  entityType: 'collection' | 'global' | 'auth' | 'system';
+  /**
+   * مجموعه یا تنظیمات.
+   */
+  entitySlug: string;
+  /**
+   * شناسهٔ سند.
+   */
+  docId?: string | null;
+  /**
+   * عنوان سند در لحظهٔ تغییر.
+   */
+  docLabel?: string | null;
+  /**
+   * فیلدهای تغییرکرده (بدون مقدار).
+   */
+  changedFields?: string[] | null;
+  /**
+   * تغییر وضعیت.
+   */
+  statusFrom?: string | null;
+  /**
+   * تغییر وضعیت.
+   */
+  statusTo?: string | null;
+  /**
+   * کاربر.
+   */
+  actor?: (number | null) | User;
+  /**
+   * انجام‌دهنده.
+   */
+  actorLabel: string;
+  /**
+   * نقش در آن لحظه.
+   */
+  actorRole?: string | null;
+  /**
+   * شناسهٔ درخواست برای پیدا کردن در گزارش‌ها.
+   */
+  requestId?: string | null;
+  ipHash?: string | null;
+  /**
+   * توضیح (مثلاً خلاصهٔ اجرای بذر داده).
+   */
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -157,18 +1779,166 @@ export interface PayloadKv {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-jobs".
+ */
+export interface PayloadJob {
+  id: number;
+  /**
+   * Input data provided to the job
+   */
+  input?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  taskStatus?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  completedAt?: string | null;
+  totalTried?: number | null;
+  /**
+   * If hasError is true this job will not be retried
+   */
+  hasError?: boolean | null;
+  /**
+   * If hasError is true, this is the error that caused it
+   */
+  error?:
+    | {
+        [k: string]: unknown;
+      }
+    | unknown[]
+    | string
+    | number
+    | boolean
+    | null;
+  /**
+   * Task execution log
+   */
+  log?:
+    | {
+        executedAt: string;
+        completedAt: string;
+        taskSlug: 'inline' | 'schedulePublish';
+        taskID: string;
+        input?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        output?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        state: 'failed' | 'succeeded';
+        error?:
+          | {
+              [k: string]: unknown;
+            }
+          | unknown[]
+          | string
+          | number
+          | boolean
+          | null;
+        id?: string | null;
+      }[]
+    | null;
+  taskSlug?: ('inline' | 'schedulePublish') | null;
+  queue?: string | null;
+  waitUntil?: string | null;
+  processing?: boolean | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
   id: number;
   document?:
     | ({
-        relationTo: 'users';
-        value: number | User;
+        relationTo: 'bookings';
+        value: number | Booking;
+      } | null)
+    | ({
+        relationTo: 'pages';
+        value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'service-categories';
+        value: number | ServiceCategory;
+      } | null)
+    | ({
+        relationTo: 'services';
+        value: number | Service;
+      } | null)
+    | ({
+        relationTo: 'service-tiers';
+        value: number | ServiceTier;
+      } | null)
+    | ({
+        relationTo: 'doctors';
+        value: number | Doctor;
+      } | null)
+    | ({
+        relationTo: 'articles';
+        value: number | Article;
+      } | null)
+    | ({
+        relationTo: 'article-categories';
+        value: number | ArticleCategory;
+      } | null)
+    | ({
+        relationTo: 'tags';
+        value: number | Tag;
+      } | null)
+    | ({
+        relationTo: 'insurances';
+        value: number | Insurance;
+      } | null)
+    | ({
+        relationTo: 'financing-options';
+        value: number | FinancingOption;
       } | null)
     | ({
         relationTo: 'media';
         value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'testimonials';
+        value: number | Testimonial;
+      } | null)
+    | ({
+        relationTo: 'cases';
+        value: number | Case;
+      } | null)
+    | ({
+        relationTo: 'redirects';
+        value: number | Redirect;
+      } | null)
+    | ({
+        relationTo: 'users';
+        value: number | User;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -214,6 +1984,820 @@ export interface PayloadMigration {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "bookings_select".
+ */
+export interface BookingsSelect<T extends boolean = true> {
+  listTitle?: T;
+  phone?: T;
+  phoneNational?: T;
+  name?: T;
+  kind?: T;
+  bookingGroup?: T;
+  service?: T;
+  serviceKey?: T;
+  tier?: T;
+  doctor?: T;
+  preferredTime?: T;
+  note?: T;
+  triage?: T;
+  emergencyOutcome?: T;
+  status?: T;
+  flags?: T;
+  formLocation?: T;
+  heardFrom?: T;
+  callbackDueAt?: T;
+  urgencyRank?: T;
+  handledBy?: T;
+  handledAt?: T;
+  adminNotes?:
+    | T
+    | {
+        text?: T;
+        author?: T;
+        at?: T;
+        id?: T;
+      };
+  duplicateSubmissions?:
+    | T
+    | {
+        at?: T;
+        name?: T;
+        note?: T;
+        serviceKey?: T;
+        preferredTime?: T;
+        sourceUrl?: T;
+        id?: T;
+      };
+  sourceUrl?: T;
+  utm?:
+    | T
+    | {
+        source?: T;
+        medium?: T;
+        campaign?: T;
+        term?: T;
+        content?: T;
+      };
+  device?: T;
+  ipHash?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages_select".
+ */
+export interface PagesSelect<T extends boolean = true> {
+  key?: T;
+  title?: T;
+  slug?: T;
+  path?: T;
+  lead?: T;
+  hero?:
+    | T
+    | {
+        photo?: T;
+        photoPortrait?: T;
+        subtext?: T;
+      };
+  heroMedia?: T;
+  blocks?:
+    | T
+    | {
+        content?:
+          | T
+          | {
+              body?: T;
+              id?: T;
+              blockName?: T;
+            };
+        faq?:
+          | T
+          | {
+              items?:
+                | T
+                | {
+                    question?: T;
+                    answer?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        facts?:
+          | T
+          | {
+              items?:
+                | T
+                | {
+                    label?: T;
+                    value?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        callout?:
+          | T
+          | {
+              tone?: T;
+              text?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
+  reviewer?: T;
+  reviewedAt?: T;
+  reviewedAt_tz?: T;
+  sources?:
+    | T
+    | {
+        title?: T;
+        publisher?: T;
+        url?: T;
+        accessedOn?: T;
+        accessedOn_tz?: T;
+        id?: T;
+      };
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+        noindex?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "service-categories_select".
+ */
+export interface ServiceCategoriesSelect<T extends boolean = true> {
+  key?: T;
+  title?: T;
+  h1?: T;
+  navLabel?: T;
+  standalone?: T;
+  standaloneService?: T;
+  slug?: T;
+  accent?: T;
+  icon?: T;
+  summary?: T;
+  order?: T;
+  services?: T;
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+        noindex?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "services_select".
+ */
+export interface ServicesSelect<T extends boolean = true> {
+  key?: T;
+  category?: T;
+  navLabel?: T;
+  h1?: T;
+  slug?: T;
+  bookingGroup?: T;
+  priority?: T;
+  order?: T;
+  emergencyLink?: T;
+  summary?: T;
+  heroMedia?: T;
+  facts?:
+    | T
+    | {
+        sessions?: T;
+        duration?: T;
+        anesthesia?: T;
+        recovery?: T;
+      };
+  priceFrom?: T;
+  body?:
+    | T
+    | {
+        content?:
+          | T
+          | {
+              body?: T;
+              id?: T;
+              blockName?: T;
+            };
+        steps?:
+          | T
+          | {
+              items?:
+                | T
+                | {
+                    title?: T;
+                    text?: T;
+                    id?: T;
+                  };
+              id?: T;
+              blockName?: T;
+            };
+        callout?:
+          | T
+          | {
+              tone?: T;
+              text?: T;
+              id?: T;
+              blockName?: T;
+            };
+      };
+  faqs?:
+    | T
+    | {
+        question?: T;
+        answer?: T;
+        id?: T;
+      };
+  relatedServices?: T;
+  reviewedBy?: T;
+  reviewedAt?: T;
+  reviewedAt_tz?: T;
+  isMedical?: T;
+  sources?:
+    | T
+    | {
+        title?: T;
+        publisher?: T;
+        url?: T;
+        accessedOn?: T;
+        accessedOn_tz?: T;
+        id?: T;
+      };
+  searchTerms?: T;
+  internalNote?: T;
+  scopeVerified?: T;
+  performedBy?: T;
+  tiers?: T;
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+        noindex?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "service-tiers_select".
+ */
+export interface ServiceTiersSelect<T extends boolean = true> {
+  service?: T;
+  key?: T;
+  name?: T;
+  description?: T;
+  materials?: T;
+  highlights?: T;
+  priceFrom?: T;
+  order?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "doctors_select".
+ */
+export interface DoctorsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  specialty?: T;
+  specialtyConfirmed?: T;
+  councilNumber?: T;
+  degrees?: T;
+  yearsExperience?: T;
+  memberships?: T;
+  bio?: T;
+  photo?: T;
+  services?: T;
+  order?: T;
+  authoredArticles?: T;
+  reviewedArticles?: T;
+  cases?: T;
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+        noindex?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "articles_select".
+ */
+export interface ArticlesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  excerpt?: T;
+  cover?: T;
+  body?: T;
+  category?: T;
+  tags?: T;
+  primaryService?: T;
+  relatedArticles?: T;
+  authorDoctor?: T;
+  staffAuthorName?: T;
+  isMedical?: T;
+  reviewer?: T;
+  reviewedAt?: T;
+  reviewedAt_tz?: T;
+  sources?:
+    | T
+    | {
+        title?: T;
+        publisher?: T;
+        url?: T;
+        accessedOn?: T;
+        accessedOn_tz?: T;
+        id?: T;
+      };
+  faqs?:
+    | T
+    | {
+        question?: T;
+        answer?: T;
+        id?: T;
+      };
+  readingTime?: T;
+  publishedAt?: T;
+  contentUpdatedAt?: T;
+  reviewState?: T;
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+        noindex?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "article-categories_select".
+ */
+export interface ArticleCategoriesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  description?: T;
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+        noindex?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "tags_select".
+ */
+export interface TagsSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  description?: T;
+  seo?:
+    | T
+    | {
+        title?: T;
+        description?: T;
+        image?: T;
+        noindex?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "insurances_select".
+ */
+export interface InsurancesSelect<T extends boolean = true> {
+  name?: T;
+  logo?: T;
+  featured?: T;
+  order?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "financing-options_select".
+ */
+export interface FinancingOptionsSelect<T extends boolean = true> {
+  key?: T;
+  title?: T;
+  provider?: T;
+  maxAmountToman?: T;
+  whoApplies?: T;
+  surchargeNote?: T;
+  terms?: T;
+  approvalStatus?: T;
+  approvedOn?: T;
+  approvedOn_tz?: T;
+  enabled?: T;
+  order?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "media_select".
+ */
+export interface MediaSelect<T extends boolean = true> {
+  alt?: T;
+  caption?: T;
+  credit?: T;
+  blurDataURL?: T;
+  blurDataURLPortrait?: T;
+  seedSource?: T;
+  prefix?: T;
+  _objectKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  url?: T;
+  thumbnailURL?: T;
+  filename?: T;
+  mimeType?: T;
+  filesize?: T;
+  width?: T;
+  height?: T;
+  focalX?: T;
+  focalY?: T;
+  sizes?:
+    | T
+    | {
+        thumb?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w640?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w640Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w960?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w960Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w1280?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w1280Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w1600?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w1600Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w1920?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w1920Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w2560?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        w2560Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        p640?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        p640Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        p828?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        p828Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        p1080?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        p1080Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        s640?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        s640Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        s1080?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+        s1080Avif?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
+      };
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "testimonials_select".
+ */
+export interface TestimonialsSelect<T extends boolean = true> {
+  patientLabel?: T;
+  service?: T;
+  type?: T;
+  video?: T;
+  poster?: T;
+  quote?: T;
+  transcriptSummary?: T;
+  recordedAt?: T;
+  recordedAt_tz?: T;
+  durationSeconds?: T;
+  consentConfirmed?: T;
+  showOnHome?: T;
+  order?: T;
+  seedKey?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "cases_select".
+ */
+export interface CasesSelect<T extends boolean = true> {
+  title?: T;
+  service?: T;
+  doctor?: T;
+  before?: T;
+  after?: T;
+  notes?: T;
+  consentConfirmed?: T;
+  featuredOnHome?: T;
+  order?: T;
+  sourceFolder?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects_select".
+ */
+export interface RedirectsSelect<T extends boolean = true> {
+  from?: T;
+  to?: T;
+  statusCode?: T;
+  active?: T;
+  source?: T;
+  note?: T;
+  hits?: T;
+  lastHitAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "events-daily_select".
+ */
+export interface EventsDailySelect<T extends boolean = true> {
+  date?: T;
+  event?: T;
+  location?: T;
+  pageType?: T;
+  serviceKey?: T;
+  count?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "audit-log_select".
+ */
+export interface AuditLogSelect<T extends boolean = true> {
+  action?: T;
+  entityType?: T;
+  entitySlug?: T;
+  docId?: T;
+  docLabel?: T;
+  changedFields?: T;
+  statusFrom?: T;
+  statusTo?: T;
+  actor?: T;
+  actorLabel?: T;
+  actorRole?: T;
+  requestId?: T;
+  ipHash?: T;
+  note?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
@@ -241,26 +2825,6 @@ export interface UsersSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "media_select".
- */
-export interface MediaSelect<T extends boolean = true> {
-  alt?: T;
-  prefix?: T;
-  _objectKey?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  url?: T;
-  thumbnailURL?: T;
-  filename?: T;
-  mimeType?: T;
-  filesize?: T;
-  width?: T;
-  height?: T;
-  focalX?: T;
-  focalY?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "totp-attempts_select".
  */
 export interface TotpAttemptsSelect<T extends boolean = true> {
@@ -275,6 +2839,37 @@ export interface TotpAttemptsSelect<T extends boolean = true> {
 export interface PayloadKvSelect<T extends boolean = true> {
   key?: T;
   data?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "payload-jobs_select".
+ */
+export interface PayloadJobsSelect<T extends boolean = true> {
+  input?: T;
+  taskStatus?: T;
+  completedAt?: T;
+  totalTried?: T;
+  hasError?: T;
+  error?: T;
+  log?:
+    | T
+    | {
+        executedAt?: T;
+        completedAt?: T;
+        taskSlug?: T;
+        taskID?: T;
+        input?: T;
+        output?: T;
+        state?: T;
+        error?: T;
+        id?: T;
+      };
+  taskSlug?: T;
+  queue?: T;
+  waitUntil?: T;
+  processing?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -310,6 +2905,584 @@ export interface PayloadMigrationsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clinic".
+ */
+export interface Clinic {
+  id: number;
+  /**
+   * نام رسمی کلینیک، همان تابلو.
+   */
+  nameFa: string;
+  /**
+   * نام کوتاه، مثل «کلینیک سفید».
+   */
+  nameShortFa?: string | null;
+  /**
+   * نام لاتین برای داده‌های ساخت‌یافته.
+   */
+  nameEn?: string | null;
+  /**
+   * شعار کلینیک. ادعای «اولین» فقط با تصمیم کلینیک (ردیف ۲۸ کمبودها).
+   */
+  tagline?: string | null;
+  /**
+   * کلینیک مدرک ادعای شعار را داده یا نگه‌داشتن آن را به‌عنوان شعار پذیرفته است (ردیف ۲۸).
+   */
+  taglineApproved?: boolean | null;
+  /**
+   * تیتر صفحهٔ آدرس و ساعات.
+   */
+  contactHeadline?: string | null;
+  /**
+   * دامنهٔ سایت، بدون https.
+   */
+  domain: string;
+  address: {
+    /**
+     * نشانی کامل همان‌طور که روی نقشه‌ها ثبت است.
+     */
+    fullFa: string;
+    /**
+     * شهر.
+     */
+    city: string;
+    /**
+     * محله.
+     */
+    district?: string | null;
+    /**
+     * کد پستی ده‌رقمی.
+     */
+    postalCode?: string | null;
+    /**
+     * عرض جغرافیایی از نشان یا بلد.
+     */
+    lat?: number | null;
+    /**
+     * طول جغرافیایی از نشان یا بلد.
+     */
+    lng?: number | null;
+    /**
+     * پارکینگ، مترو، اتوبوس.
+     */
+    accessNotes?: string | null;
+  };
+  phones: {
+    /**
+     * تلفن ثابت؛ با رقم فارسی یا انگلیسی وارد کنید، به شکل بین‌المللی ذخیره می‌شود.
+     */
+    landline: string;
+    /**
+     * موبایل کلینیک.
+     */
+    mobile?: string | null;
+    /**
+     * شمارهٔ واتساپ.
+     */
+    whatsapp?: string | null;
+    /**
+     * این شماره واتساپ دارد و پاسخ داده می‌شود (ردیف ۱۶ کمبودها).
+     */
+    whatsappVerified?: boolean | null;
+    /**
+     * شمارهٔ تلگرام.
+     */
+    telegram?: string | null;
+    /**
+     * شمارهٔ تلگرام تأیید شده است.
+     */
+    telegramVerified?: boolean | null;
+  };
+  reception: {
+    /**
+     * پذیرش معمولاً تا چند دقیقه پس از ثبت تماس می‌گیرد.
+     */
+    callbackMinutes: number;
+    /**
+     * شماره‌ای که پذیرش از آن تماس می‌گیرد. خالی بماند، این خط در پیام موفقیت پنهان است.
+     */
+    callerNumber?: string | null;
+  };
+  hours: {
+    /**
+     * توضیح کوتاه ساعات، مثل «همه‌روزه به‌جز تعطیلات رسمی».
+     */
+    note?: string | null;
+    /**
+     * برنامهٔ هفتگی. هر روز فقط در یک ردیف.
+     */
+    weekly: {
+      days: ('sat' | 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri')[];
+      open: string;
+      close: string;
+      id?: string | null;
+    }[];
+    /**
+     * تعطیلات رسمی و روزهای با ساعت متفاوت. تعطیلات هر سال را از تقویم رسمی وارد کنید. بدون ساعت یعنی تعطیل.
+     */
+    holidays?:
+      | {
+          dateJalali: string;
+          /**
+           * خودکار از تاریخ شمسی ساخته می‌شود.
+           */
+          date?: string | null;
+          labelFa: string;
+          open?: string | null;
+          close?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  social?: {
+    /**
+     * نام کاربری اینستاگرام بدون @.
+     */
+    instagram?: string | null;
+    /**
+     * کانال تلگرام، اگر هست.
+     */
+    telegramChannel?: string | null;
+    /**
+     * کانال آپارات، اگر هست.
+     */
+    aparat?: string | null;
+  };
+  maps?: {
+    /**
+     * پیوند مسیریابی در هر برنامه.
+     */
+    googleMapsUrl?: string | null;
+    /**
+     * پیوند مسیریابی در هر برنامه.
+     */
+    neshanUrl?: string | null;
+    /**
+     * پیوند مسیریابی در هر برنامه.
+     */
+    baladUrl?: string | null;
+    /**
+     * پیوند مسیریابی در هر برنامه.
+     */
+    wazeUrl?: string | null;
+    /**
+     * تصویر ثابت نقشه (بدون نقشهٔ گوگل).
+     */
+    staticMap?: (number | null) | Media;
+  };
+  /**
+   * عدد فقط وقتی در سایت نمایش داده می‌شود که «تأییدشده» تیک بخورد (ردیف ۱۵ کمبودها).
+   */
+  stats?: {
+    yearsActive?: {
+      value?: number | null;
+      verified?: boolean | null;
+    };
+    specialistDentists?: {
+      value?: number | null;
+      verified?: boolean | null;
+    };
+    specialtyClinics?: {
+      value?: number | null;
+      verified?: boolean | null;
+    };
+    insurers?: {
+      value?: number | null;
+      verified?: boolean | null;
+    };
+  };
+  legal?: {
+    /**
+     * شمارهٔ پروانهٔ کلینیک برای پانویس.
+     */
+    licenseNumber?: string | null;
+    /**
+     * نام مسئول فنی برای پانویس.
+     */
+    technicalSupervisor?: string | null;
+  };
+  emergency?: {
+    /**
+     * سیاست نوبت فوری، بدون وعدهٔ نوبت قطعی.
+     */
+    policy?: string | null;
+    /**
+     * مرکز شبانه‌روزی نزدیک برای ساعات تعطیل (ردیف ۳۱).
+     */
+    nearby24hCenter?: string | null;
+    /**
+     * کلینیک تأیید کرده درخواست‌های فوری در ساعت شروع کار زودتر تماس گرفته می‌شوند (ردیف ۱۹).
+     */
+    priorityPromiseConfirmed?: boolean | null;
+  };
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "seo-defaults".
+ */
+export interface SeoDefault {
+  id: number;
+  /**
+   * نام سایت در عنوان‌ها و داده‌های ساخت‌یافته.
+   */
+  siteName: string;
+  /**
+   * پسوند عنوان صفحه‌ها.
+   */
+  titleSuffix: string;
+  /**
+   * پسوند کوتاه برای صفحهٔ پزشکان.
+   */
+  shortTitleSuffix: string;
+  /**
+   * توضیح پیش‌فرض برای صفحه‌هایی که توضیح ندارند.
+   */
+  defaultDescription?: string | null;
+  /**
+   * تصویر پیش‌فرض اشتراک‌گذاری.
+   */
+  defaultOgImage?: (number | null) | Media;
+  /**
+   * محله‌ها و مناطقی که کلینیک به آن‌ها خدمت می‌دهد.
+   */
+  areaServed?: string[] | null;
+  /**
+   * محله‌های فرعی (ردیف ۱۳ کمبودها).
+   */
+  secondaryAreas?: string[] | null;
+  /**
+   * کد تأیید سرچ کنسول (ردیف ۱۲).
+   */
+  gscVerification?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "features".
+ */
+export interface Feature {
+  id: number;
+  /**
+   * جملهٔ «مشاورهٔ اول رایگان است» و گزینهٔ «معاینه و مشاورهٔ رایگان» نمایش داده شود.
+   */
+  freeConsultation?: boolean | null;
+  /**
+   * مسیر درخواست فوری فعال است.
+   */
+  emergencyEnabled?: boolean | null;
+  /**
+   * انیمیشن کوتاه ورود در صفحهٔ خانه.
+   */
+  introEnabled?: boolean | null;
+  /**
+   * نقش برجستهٔ لوگو روی عکس خانه. اگر روی جزء اصلی عکس افتاد، خاموش کنید.
+   */
+  heroMarkRelief?: boolean | null;
+  /**
+   * گوگل آنالیتیکس پس از بارگذاری صفحه فعال شود.
+   */
+  ga4Enabled?: boolean | null;
+  /**
+   * شناسهٔ اندازه‌گیری GA4 (ردیف ۱۲).
+   */
+  ga4MeasurementId?: string | null;
+  /**
+   * سقف کیفیت گرافیک برای همهٔ بازدیدکنندگان. فقط برای عیب‌یابی تغییر دهید.
+   */
+  qualityTierOverride: 'auto' | '0' | '1' | '2' | '3';
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notifier".
+ */
+export interface Notifier {
+  id: number;
+  mail?: {
+    /**
+     * ارسال اعلان نوبت با ایمیل.
+     */
+    enabled?: boolean | null;
+    /**
+     * گیرندگان اعلان.
+     */
+    recipients?:
+      | {
+          email: string;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  telegram?: {
+    /**
+     * ارسال اعلان در تلگرام (بعداً).
+     */
+    enabled?: boolean | null;
+    /**
+     * شناسهٔ گفت‌وگوی تلگرام.
+     */
+    chatId?: string | null;
+  };
+  sms?: {
+    /**
+     * پیامک از طریق فراپیامک (بعداً).
+     */
+    enabled?: boolean | null;
+    /**
+     * شمارهٔ خط ارسال.
+     */
+    senderNumber?: string | null;
+    /**
+     * موبایل‌هایی که اعلان نوبت می‌گیرند.
+     */
+    adminRecipients?:
+      | {
+          phone: string;
+          id?: string | null;
+        }[]
+      | null;
+    /**
+     * پیامک تأیید برای بیمار (حداکثر یکی در ۲۴ ساعت برای هر شماره).
+     */
+    patientConfirmation?: boolean | null;
+  };
+  /**
+   * یک خطای تکراری در این بازه فقط یک بار اعلان می‌شود.
+   */
+  errorDedupMinutes: number;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "system-state".
+ */
+export interface SystemState {
+  id: number;
+  lastCronRunAt?: string | null;
+  lastCronRanJobs?: number | null;
+  lastCronFailed?: number | null;
+  lastCronDurationMs?: number | null;
+  lastCronError?: string | null;
+  updatedAt?: string | null;
+  createdAt?: string | null;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "clinic_select".
+ */
+export interface ClinicSelect<T extends boolean = true> {
+  nameFa?: T;
+  nameShortFa?: T;
+  nameEn?: T;
+  tagline?: T;
+  taglineApproved?: T;
+  contactHeadline?: T;
+  domain?: T;
+  address?:
+    | T
+    | {
+        fullFa?: T;
+        city?: T;
+        district?: T;
+        postalCode?: T;
+        lat?: T;
+        lng?: T;
+        accessNotes?: T;
+      };
+  phones?:
+    | T
+    | {
+        landline?: T;
+        mobile?: T;
+        whatsapp?: T;
+        whatsappVerified?: T;
+        telegram?: T;
+        telegramVerified?: T;
+      };
+  reception?:
+    | T
+    | {
+        callbackMinutes?: T;
+        callerNumber?: T;
+      };
+  hours?:
+    | T
+    | {
+        note?: T;
+        weekly?:
+          | T
+          | {
+              days?: T;
+              open?: T;
+              close?: T;
+              id?: T;
+            };
+        holidays?:
+          | T
+          | {
+              dateJalali?: T;
+              date?: T;
+              labelFa?: T;
+              open?: T;
+              close?: T;
+              id?: T;
+            };
+      };
+  social?:
+    | T
+    | {
+        instagram?: T;
+        telegramChannel?: T;
+        aparat?: T;
+      };
+  maps?:
+    | T
+    | {
+        googleMapsUrl?: T;
+        neshanUrl?: T;
+        baladUrl?: T;
+        wazeUrl?: T;
+        staticMap?: T;
+      };
+  stats?:
+    | T
+    | {
+        yearsActive?:
+          | T
+          | {
+              value?: T;
+              verified?: T;
+            };
+        specialistDentists?:
+          | T
+          | {
+              value?: T;
+              verified?: T;
+            };
+        specialtyClinics?:
+          | T
+          | {
+              value?: T;
+              verified?: T;
+            };
+        insurers?:
+          | T
+          | {
+              value?: T;
+              verified?: T;
+            };
+      };
+  legal?:
+    | T
+    | {
+        licenseNumber?: T;
+        technicalSupervisor?: T;
+      };
+  emergency?:
+    | T
+    | {
+        policy?: T;
+        nearby24hCenter?: T;
+        priorityPromiseConfirmed?: T;
+      };
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "seo-defaults_select".
+ */
+export interface SeoDefaultsSelect<T extends boolean = true> {
+  siteName?: T;
+  titleSuffix?: T;
+  shortTitleSuffix?: T;
+  defaultDescription?: T;
+  defaultOgImage?: T;
+  areaServed?: T;
+  secondaryAreas?: T;
+  gscVerification?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "features_select".
+ */
+export interface FeaturesSelect<T extends boolean = true> {
+  freeConsultation?: T;
+  emergencyEnabled?: T;
+  introEnabled?: T;
+  heroMarkRelief?: T;
+  ga4Enabled?: T;
+  ga4MeasurementId?: T;
+  qualityTierOverride?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "notifier_select".
+ */
+export interface NotifierSelect<T extends boolean = true> {
+  mail?:
+    | T
+    | {
+        enabled?: T;
+        recipients?:
+          | T
+          | {
+              email?: T;
+              id?: T;
+            };
+      };
+  telegram?:
+    | T
+    | {
+        enabled?: T;
+        chatId?: T;
+      };
+  sms?:
+    | T
+    | {
+        enabled?: T;
+        senderNumber?: T;
+        adminRecipients?:
+          | T
+          | {
+              phone?: T;
+              id?: T;
+            };
+        patientConfirmation?: T;
+      };
+  errorDedupMinutes?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "system-state_select".
+ */
+export interface SystemStateSelect<T extends boolean = true> {
+  lastCronRunAt?: T;
+  lastCronRanJobs?: T;
+  lastCronFailed?: T;
+  lastCronDurationMs?: T;
+  lastCronError?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  globalType?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "collections_widget".
  */
 export interface CollectionsWidget {
@@ -317,6 +3490,47 @@ export interface CollectionsWidget {
     [k: string]: unknown;
   };
   width: 'full';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskSchedulePublish".
+ */
+export interface TaskSchedulePublish {
+  input: {
+    type?: ('publish' | 'unpublish') | null;
+    locale?: string | null;
+    doc?:
+      | ({
+          relationTo: 'pages';
+          value: number | Page;
+        } | null)
+      | ({
+          relationTo: 'services';
+          value: number | Service;
+        } | null)
+      | ({
+          relationTo: 'doctors';
+          value: number | Doctor;
+        } | null)
+      | ({
+          relationTo: 'articles';
+          value: number | Article;
+        } | null)
+      | ({
+          relationTo: 'testimonials';
+          value: number | Testimonial;
+        } | null)
+      | ({
+          relationTo: 'cases';
+          value: number | Case;
+        } | null);
+    global?: string | null;
+    user?: {
+      relationTo: 'users';
+      value: number | User;
+    } | null;
+  };
+  output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

@@ -1,5 +1,5 @@
 import { scrubPhones } from '@/lib/log/redact';
-import { EVENT_NAMES, type EventName } from '@/lib/track/eventsStub';
+import { EVENT_NAMES, type EventName } from '@/lib/events/allowlist';
 
 declare global {
   interface Window {

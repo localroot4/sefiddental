@@ -1,5 +1,7 @@
 import { unstable_doesMiddlewareMatch } from 'next/experimental/testing/server';
-import { NextRequest } from 'next/server';
+import { NextRequest, type NextFetchEvent } from 'next/server';
+
+const ev = { waitUntil: () => undefined } as unknown as NextFetchEvent;
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // next@16.4.0 ships the matcher helper as unstable_doesMiddlewareMatch; the docs at the tag
@@ -17,10 +19,21 @@ async function loadProxy(extra: Record<string, string> = {}) {
   return import('./proxy');
 }
 
-describe('proxy skeleton', () => {
-  beforeEach(() => vi.spyOn(console, 'warn').mockImplementation(() => {}));
+describe('proxy', () => {
+  beforeEach(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Page requests read the proxy config from the internal route: offline here, so the empty
+    // view answers at once (getProxyConfig never throws).
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => {
+        throw new Error('offline in unit tests');
+      }),
+    );
+  });
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
@@ -39,15 +52,22 @@ describe('proxy skeleton', () => {
 
   it('PX2 first-user routes return 404 unless ALLOW_FIRST_USER=true', async () => {
     const blocked = await loadProxy({ ALLOW_FIRST_USER: 'false' });
-    const page = blocked.proxy(new NextRequest('http://localhost/admin/create-first-user'));
+    const page = await blocked.proxy(
+      new NextRequest('http://localhost/admin/create-first-user'),
+      ev,
+    );
     expect(page.status).toBe(404);
-    const api = blocked.proxy(
+    const api = await blocked.proxy(
       new NextRequest('http://localhost/api/users/first-register', { method: 'POST' }),
+      ev,
     );
     expect(api.status).toBe(404);
 
     const allowed = await loadProxy({ ALLOW_FIRST_USER: 'true' });
-    const open = allowed.proxy(new NextRequest('http://localhost/admin/create-first-user'));
+    const open = await allowed.proxy(
+      new NextRequest('http://localhost/admin/create-first-user'),
+      ev,
+    );
     expect(open.headers.get('x-middleware-next')).toBe('1');
   });
 
@@ -64,36 +84,111 @@ describe('proxy skeleton', () => {
       ['GET', '/admin/create%2Dfirst-user'],
       ['GET', '/Admin/Create-First-User'],
     ] as const) {
-      const res = proxy(new NextRequest(`http://localhost${path}`, { method }));
+      const res = await proxy(new NextRequest(`http://localhost${path}`, { method }), ev);
       expect(res.status, `${method} ${path}`).toBe(404);
     }
-    const login = proxy(new NextRequest('http://localhost/admin/login'));
+    const login = await proxy(new NextRequest('http://localhost/admin/login'), ev);
     expect(login.headers.get('x-middleware-next')).toBe('1');
-    const malformed = proxy(new NextRequest('http://localhost/api/users/first%E0register'));
+    const malformed = await proxy(
+      new NextRequest('http://localhost/api/users/first%E0register'),
+      ev,
+    );
     expect(malformed.headers.get('x-middleware-next')).toBe('1');
   });
 
   it('PX3 admin requests carry x-pathname; client copies of proxy headers are dropped', async () => {
     const { proxy } = await loadProxy();
-    const admin = proxy(new NextRequest('http://localhost/admin/setup-totp'));
+    const admin = await proxy(new NextRequest('http://localhost/admin/setup-totp'), ev);
     expect(admin.headers.get('x-middleware-request-x-pathname')).toBe('/admin/setup-totp');
     expect(admin.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/);
 
-    const site = proxy(
+    const site = await proxy(
       new NextRequest('http://localhost/', {
         headers: { 'x-pathname': '/admin', 'x-nonce': 'forged', 'x-request-id': 'forged-id-123' },
       }),
+      ev,
     );
     expect(site.headers.get('x-middleware-request-x-pathname')).toBeNull();
-    expect(site.headers.get('x-middleware-request-x-nonce')).toBeNull();
+    expect(site.headers.get('x-middleware-request-x-nonce')).not.toBe('forged'); // fresh nonce (X18)
     expect(site.headers.get('x-request-id')).not.toBe('forged-id-123');
   });
 
   it('PX4 a trusted proxy may supply the request id', async () => {
     const { proxy } = await loadProxy({ TRUST_PROXY_HEADERS: 'true' });
-    const res = proxy(
+    const res = await proxy(
       new NextRequest('http://localhost/', { headers: { 'x-request-id': 'edge-req-12345' } }),
+      ev,
     );
     expect(res.headers.get('x-request-id')).toBe('edge-req-12345');
+  });
+  it('PX6 the auth limiter counts every routed spelling of the login path in one bucket', async () => {
+    const { proxy } = await loadProxy();
+    const spellings = [
+      '/api/users/login',
+      '/api/users/login/',
+      '/api/users/LOGIN',
+      '/api/users/log%69n',
+    ];
+    for (let i = 0; i < 10; i += 1) {
+      const path = spellings[i % spellings.length];
+      const res = await proxy(new NextRequest(`http://localhost${path}`, { method: 'POST' }), ev);
+      expect(res.status, `request ${i + 1} ${path}`).toBe(200);
+    }
+    const limited = await proxy(
+      new NextRequest('http://localhost/api/users/log%69n', { method: 'POST' }),
+      ev,
+    );
+    expect(limited.status).toBe(429);
+    expect(Number(limited.headers.get('retry-after'))).toBeGreaterThan(0);
+    const page = await proxy(new NextRequest('http://localhost/admin/login'), ev);
+    expect(page.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('PX7 pages get a nonce CSP and the security headers; the nonce reaches the request', async () => {
+    const { proxy } = await loadProxy();
+    const res = await proxy(new NextRequest('http://localhost/'), ev);
+    const csp = res.headers.get('content-security-policy') ?? '';
+    const nonce = res.headers.get('x-middleware-request-x-nonce') ?? '';
+    expect(nonce.length).toBeGreaterThan(10);
+    expect(csp).toContain(`'nonce-${nonce}'`);
+    expect(csp).not.toContain('unsafe-inline');
+    expect(res.headers.get('x-middleware-request-content-security-policy')).toBe(csp);
+    expect(res.headers.get('x-frame-options')).toBe('DENY');
+    expect(res.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('PX8 maintenance answers 503 on pages and lets health and the admin through', async () => {
+    const { proxy } = await loadProxy({ MAINTENANCE_MODE: 'on' });
+    const page = await proxy(new NextRequest('http://localhost/'), ev);
+    expect(page.status).toBe(503);
+    expect(page.headers.get('retry-after')).toBe('900');
+    const health = await proxy(new NextRequest('http://localhost/api/health'), ev);
+    expect(health.headers.get('x-middleware-next')).toBe('1');
+    const admin = await proxy(new NextRequest('http://localhost/admin'), ev);
+    expect(admin.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('PX9 redirect rows from the proxy config answer before the canonical step', async () => {
+    const { proxy } = await loadProxy({ SITE_URL: 'http://localhost' });
+    const body = {
+      v: 1,
+      generatedAt: '2026-10-13T00:00:00.000Z',
+      redirects: [
+        ['/vip', '/خدمات', 301],
+        ['/old-page', null, 410],
+      ],
+      ga4MeasurementId: null,
+    };
+    const fetchMock = vi.fn(async (input: string | URL | Request) =>
+      String(input).endsWith('/proxy-config') ? Response.json(body) : new Response(null),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const hit = await proxy(new NextRequest('http://localhost/VIP/?utm_source=x&a=1'), ev);
+    expect(hit.status).toBe(301);
+    expect(decodeURIComponent(hit.headers.get('location') ?? '')).toBe(
+      'http://localhost/خدمات?utm_source=x',
+    );
+    const gone = await proxy(new NextRequest('http://localhost/old-page'), ev);
+    expect(gone.status).toBe(410);
   });
 });

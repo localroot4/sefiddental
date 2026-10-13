@@ -6,6 +6,8 @@ import path from 'node:path';
 import { z } from 'zod';
 
 export const E2E_USERS_FILE = '.data/e2e-users.json';
+/** TOTP secrets of accounts the MFA spec enrolled in this run, by email (gitignored, 0600). */
+export const E2E_TOTP_FILE = '.data/e2e-totp.json';
 
 const account = z.object({ email: z.email(), password: z.string().min(12) });
 const accountsSchema = z.object({ admin: account, editor: account });
@@ -20,7 +22,7 @@ export function e2eAccounts(): E2eAccounts {
     raw = readFileSync(file, 'utf8');
   } catch {
     throw new Error(
-      `${E2E_USERS_FILE} is missing. Create the e2e accounts first: npx payload run tests/setup/e2eUsers.ts (with DATABASE_URL of the e2e database).`,
+      `${E2E_USERS_FILE} is missing. Playwright's global setup writes it (tests/setup/e2eGlobal.ts); by hand: npx payload run tests/setup/e2eUsers.ts with DATABASE_URL of the e2e database.`,
     );
   }
   return accountsSchema.parse(JSON.parse(raw));

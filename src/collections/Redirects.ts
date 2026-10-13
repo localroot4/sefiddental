@@ -1,0 +1,137 @@
+import type { CollectionConfig } from 'payload';
+
+import { adminAccess } from '@/access/presets';
+import { hiddenForEditors } from '@/access/roles';
+import { contentHooks } from '@/hooks/compose';
+import { flattenRedirect, normalizeRedirect, repointChains } from '@/hooks/redirects';
+
+const BLOCKED_PREFIXES = ['/admin', '/api', '/_next'];
+
+const fromRule = (value: unknown, { data }: { data: Record<string, unknown> }): true | string => {
+  if (typeof value !== 'string' || !value.startsWith('/')) return 'نشانی قدیمی باید با / شروع شود.';
+  if (value === '/') return 'صفحهٔ خانه را نمی‌توان منتقل کرد.';
+  if (value.includes('?')) return 'نشانی قدیمی بدون علامت سؤال و پارامتر وارد شود.';
+  if (BLOCKED_PREFIXES.some((p) => value === p || value.startsWith(`${p}/`))) {
+    return 'نشانی‌های سیستمی (admin، api، _next) را نمی‌توان منتقل کرد.';
+  }
+  if (typeof data.to === 'string' && data.to.split('#')[0] === value) return 'مبدأ و مقصد یکی است.';
+  return true;
+};
+
+const toRule = (value: unknown, { data }: { data: Record<string, unknown> }): true | string => {
+  if (data.statusCode === '410') return true;
+  if (typeof value !== 'string' || value === '') return 'مقصد را وارد کنید (به‌جز انتقال ۴۱۰).';
+  if (!value.startsWith('/') || value.startsWith('//')) {
+    return 'مقصد باید نشانی‌ای در همین سایت باشد و با / شروع شود.';
+  }
+  return true;
+};
+
+/**
+ * spec-data 2.13: a flat `from -> to` table, one indexed read per request. Admin only; the
+ * proxy reads it through the internal route, never public REST. Hit counts are written with one
+ * SQL statement (src/lib/data/redirects.ts), never through hooks.
+ */
+export const Redirects: CollectionConfig = {
+  slug: 'redirects',
+  labels: { singular: 'تغییر مسیر', plural: 'تغییر مسیرها' },
+  admin: {
+    group: 'سیستم',
+    useAsTitle: 'from',
+    defaultColumns: ['from', 'to', 'statusCode', 'active', 'source', 'hits', 'lastHitAt'],
+    listSearchableFields: ['from', 'to'],
+    hidden: hiddenForEditors,
+  },
+  defaultSort: '-updatedAt',
+  versions: true,
+  ...adminAccess(),
+  hooks: contentHooks('redirects', {
+    beforeValidate: [normalizeRedirect],
+    beforeChange: [flattenRedirect],
+    afterChange: [repointChains],
+    revalidate: 'expire',
+    docTags: false,
+  }),
+  fields: [
+    {
+      name: 'from',
+      type: 'text',
+      label: 'نشانی قدیمی',
+      required: true,
+      unique: true,
+      index: true,
+      validate: fromRule as never,
+      admin: { description: 'نشانی قدیمی، بدون دامنه و بدون علامت سؤال. مثال: /vip' },
+    },
+    {
+      name: 'to',
+      type: 'text',
+      label: 'مقصد',
+      index: true,
+      validate: toRule as never,
+      admin: { description: 'نشانی مقصد در همین سایت.' },
+    },
+    {
+      name: 'statusCode',
+      type: 'select',
+      label: 'نوع انتقال',
+      required: true,
+      defaultValue: '301',
+      options: [
+        { label: '۳۰۱ (دائمی)', value: '301' },
+        { label: '۳۰۲ (موقت)', value: '302' },
+        { label: '۳۰۸ (دائمی، حفظ روش)', value: '308' },
+        { label: '۴۱۰ (حذف‌شده)', value: '410' },
+      ],
+      admin: { description: 'نوع انتقال. برای تغییر دائمی همیشه ۳۰۱.' },
+    },
+    {
+      name: 'active',
+      type: 'checkbox',
+      label: 'فعال',
+      defaultValue: true,
+      index: true,
+      admin: { description: 'فعال است. برای غیرفعال کردن به‌جای حذف، تیک را بردارید.' },
+    },
+    {
+      name: 'source',
+      type: 'select',
+      label: 'منشأ',
+      required: true,
+      index: true,
+      defaultValue: 'manual',
+      options: [
+        { label: 'دستی', value: 'manual' },
+        { label: 'تغییر نشانی', value: 'slug_change' },
+        { label: 'نشانی کوتاه', value: 'alias' },
+        { label: 'نشانی‌های سایت قبلی', value: 'import' },
+        { label: 'حذف یا لغو انتشار', value: 'auto_removed' },
+      ],
+      admin: { description: 'این انتقال از کجا آمده است.' },
+    },
+    {
+      name: 'note',
+      type: 'textarea',
+      label: 'یادداشت',
+      maxLength: 300,
+      admin: { description: 'یادداشت داخلی.' },
+    },
+    {
+      name: 'hits',
+      type: 'number',
+      label: 'دفعه‌های استفاده',
+      defaultValue: 0,
+      admin: { readOnly: true, description: 'تعداد دفعه‌های استفاده.' },
+    },
+    {
+      name: 'lastHitAt',
+      type: 'date',
+      label: 'آخرین استفاده',
+      admin: {
+        readOnly: true,
+        date: { pickerAppearance: 'dayAndTime' },
+        description: 'آخرین استفاده.',
+      },
+    },
+  ],
+};

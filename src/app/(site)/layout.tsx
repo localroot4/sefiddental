@@ -3,61 +3,46 @@ import '../globals.css';
 import type { Metadata, Viewport } from 'next';
 import { headers } from 'next/headers';
 
-import { Estedad, Vazirmatn } from '@/lib/fonts';
-import { THEME_INIT_SCRIPT } from '@/lib/theme/themeInitScript';
+import { SiteShell } from '@/components/layout/SiteShell';
+import { JsonLd } from '@/components/seo/JsonLd';
+import { dentistNode, jsonLdGraph, websiteNode } from '@/lib/seo/jsonld';
+import { buildSiteMetadata } from '@/lib/seo/metadata';
+import { CLINIC, SEO } from '@/lib/seo/siteInputs';
+import { TrackListener } from '@/lib/track/TrackListener';
+
+// Every public page renders per request (freeze decision 1). Explicit, so `next build` never
+// starts a page render that reads Payload: such a render opens the database and, in
+// production mode, runs the pending migrations against whatever DATABASE_URL the build sees.
+export const dynamic = 'force-dynamic';
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
   colorScheme: 'light dark',
-  // Equal to --color-surface in design/tokens.css, light and dark.
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#F7F8F7' },
     { media: '(prefers-color-scheme: dark)', color: '#071A2B' },
   ],
 };
 
-// Interim metadata; the platform lane replaces it with buildSiteMetadata().
-export const metadata: Metadata = {
-  title: 'کلینیک دندانپزشکی سفید',
-  robots: { index: false, follow: false },
-  icons: {
-    icon: [
-      { url: '/brand/favicon.svg', type: 'image/svg+xml' },
-      { url: '/brand/favicon-32.png', type: 'image/png', sizes: '32x32' },
-    ],
-    apple: '/brand/apple-touch-icon.png',
-  },
-};
+export function generateMetadata(): Metadata {
+  return buildSiteMetadata(SEO);
+}
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
-  // Reading request headers renders every public page per request (CSP nonce from the proxy).
   const nonce = (await headers()).get('x-nonce') ?? undefined;
   return (
-    <html
-      lang="fa"
-      dir="rtl"
-      className={`${Vazirmatn.variable} ${Estedad.variable}`}
-      suppressHydrationWarning
+    <SiteShell
+      nonce={nonce}
+      extras={
+        <>
+          <JsonLd data={jsonLdGraph(dentistNode(CLINIC), websiteNode({ name: SEO.siteName }))} />
+          <TrackListener />
+        </>
+      }
     >
-      <head>
-        <script
-          nonce={nonce}
-          suppressHydrationWarning
-          dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }}
-        />
-      </head>
-      <body>
-        <a className="skip-link" href="#main">
-          پرش به محتوای اصلی
-        </a>
-        <div className="site">
-          <main id="main" tabIndex={-1}>
-            {children}
-          </main>
-        </div>
-      </body>
-    </html>
+      {children}
+    </SiteShell>
   );
 }

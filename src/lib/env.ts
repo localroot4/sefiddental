@@ -174,15 +174,18 @@ function isStrict(nodeEnv: ServerEnv['nodeEnv'], source: Source): boolean {
 
 /** Per-process random values for missing dev secrets: stable for the life of the process. */
 const devSecrets = new Map<SecretName, string>();
-function devSecret(name: SecretName): string {
+function devSecret(name: SecretName, quiet: boolean): string {
   let value = devSecrets.get(name);
   if (!value) {
     value = randomBytes(32).toString('base64url');
     devSecrets.set(name, value);
     // One line per secret; the logger is not imported here (the proxy imports this module).
-    console.warn(
-      JSON.stringify({ level: 'warn', msg: `${name} not set: using a random per-process value` }),
-    );
+    // Quiet during `next build`: every build worker would print the same lines.
+    if (!quiet) {
+      console.warn(
+        JSON.stringify({ level: 'warn', msg: `${name} not set: using a random per-process value` }),
+      );
+    }
   }
   return value;
 }
@@ -231,7 +234,7 @@ export function parseEnv(source: Source): ServerEnv {
       missing(name, SECRETS[name]);
       return '';
     }
-    return devSecret(name);
+    return devSecret(name, source.NEXT_PHASE === 'phase-production-build');
   };
 
   if (strict && !raw.SITE_URL) {
