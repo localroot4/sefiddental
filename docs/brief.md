@@ -283,7 +283,6 @@ Placeholders are explicit `[[NEEDS_CLIENT: ...]]` markers and are tracked in
 
 Tracked with status in `docs/content/gaps.md`.
 
-- Logo: a yes on the in-house trace, shown in the phase 3 hand-off as the final asset `design/brand/logo-horizontal.svg` beside the client's original PNG (yes or no), or the original vector files (gap 1)
 - Dentists: name, specialty, medical council number, degree, photo, short bio, services
 - Clinic license number and technical supervisor name for the footer
 - Real photos and videos of the clinic, team and equipment
@@ -292,7 +291,7 @@ Tracked with status in `docs/content/gaps.md`.
 - Equipment list, only if "digital" claims should name devices
 - Financing partner names and exact terms; confirm the 200M and 100M figures
 - WhatsApp and Telegram numbers, Instagram handle
-- Hosting: the host's answer to the cPanel Node.js ticket (gap 32, no answer on 2026-10-13); if the host cannot enable Node 20 or 22, or has not answered by the end of the phase 3 build, the client chooses C1 (WHM root access) or A (a Liara account, a small monthly fee the client approves)
+- Hosting: the host refused Node.js on 2026-10-13 (gap 32); the client approves path A on Liara at the priced monthly total in `docs/deploy.md` (or C1 only if their WHM gives root SSH), creates the Liara account and API token, and says where the DNS for sefiddental.ir is managed
 - Old site backup for the 301 map and content; Search Console and GA4 IDs
 - Google Business Profile creation (guide delivered in phase 1)
 - Parking and public transport notes; secondary neighborhoods

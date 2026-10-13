@@ -87,6 +87,15 @@ phase 3 hand-off asks the client to choose C1 or A. Hosting must be settled
 before phase 7, because the phase 7 hand-off needs a staging URL that the
 client opens on a phone.
 
+Update on 2026-10-13: the host answered that it does not support Node.js,
+so C2 at the current host is out. The client offered to buy a Node host.
+A shared cPanel "Node.js host" does not qualify: such plans list Node 19 or
+older (Next.js 16 needs Node 20.9 or later), Passenger loads CommonJS while
+Payload is ESM, and they usually have no PostgreSQL (Payload has no MySQL
+adapter). The studio recommends path A on Liara; `docs/deploy.md` records
+the probe facts and the purchase list. Deploy code waits for the client's
+approval of the priced path (brief decision 21).
+
 Deployment pipeline (option A): CI runs lint, types, unit tests, build,
 Playwright smoke, Lighthouse budgets; on success deploys; Payload migrations
 run on release; the previous release is kept for one-command rollback.
