@@ -77,8 +77,9 @@ jobs:
           POSTGRES_DB: sefid_int
         ports:
           - 5432:5432
+        # As the postgres role: plain pg_isready connects as root and logs a FATAL every 10 s.
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
