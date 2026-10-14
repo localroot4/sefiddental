@@ -22,7 +22,7 @@ export function e2eAccounts(): E2eAccounts {
     raw = readFileSync(file, 'utf8');
   } catch {
     throw new Error(
-      `${E2E_USERS_FILE} is missing. Playwright's global setup writes it (tests/setup/e2eGlobal.ts); by hand: npx payload run tests/setup/e2eUsers.ts with DATABASE_URL of the e2e database.`,
+      `${E2E_USERS_FILE} is missing. Playwright's global setup writes it (tests/setup/e2eGlobal.ts); by hand: node scripts/payload.mjs run tests/setup/e2eUsers.ts with DATABASE_URL of the e2e database.`,
     );
   }
   return accountsSchema.parse(JSON.parse(raw));

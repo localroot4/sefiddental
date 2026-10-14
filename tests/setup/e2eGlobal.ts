@@ -18,14 +18,14 @@ export default function globalSetup(): void {
   const started = Date.now();
   const file = path.resolve(process.cwd(), E2E_USERS_FILE);
   for (let attempt = 1; attempt <= ATTEMPTS; attempt += 1) {
-    const result = spawnSync('npx', ['payload', 'run', 'tests/setup/e2eUsers.ts'], {
+    const result = spawnSync('node', ['scripts/payload.mjs', 'run', 'tests/setup/e2eUsers.ts'], {
       stdio: 'inherit',
       env: { ...process.env, DATABASE_URL: e2eDatabaseUrl(), DB_PUSH: 'false' },
     });
     if (result.status !== 0) {
       throw new Error(`e2e global setup: tests/setup/e2eUsers.ts exited with ${result.status}.`);
     }
-    // `payload run` can exit 0 before the script ran (ci.yml guards the seeder the same way):
+    // scripts/payload.mjs fixes the early exit of `payload run`; this check stays as a guard:
     // success means the script rewrote the accounts file during this setup.
     if (existsSync(file) && statSync(file).mtimeMs >= started) return;
     console.warn(

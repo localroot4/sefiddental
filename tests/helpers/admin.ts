@@ -74,7 +74,7 @@ export async function signInToAdmin(page: Page, account: E2eAccount): Promise<Ad
     const secret = readSecrets()[account.email];
     if (!secret) {
       throw new Error(
-        `${account.email} has TOTP, but ${E2E_TOTP_FILE} has no secret for it. Reset the e2e accounts: npx payload run tests/setup/e2eUsers.ts`,
+        `${account.email} has TOTP, but ${E2E_TOTP_FILE} has no secret for it. Reset the e2e accounts: node scripts/payload.mjs run tests/setup/e2eUsers.ts`,
       );
     }
     await enterCode(page, secret);

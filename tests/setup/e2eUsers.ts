@@ -6,7 +6,7 @@
 //
 // Runs only against an e2e database (its name or file name contains "e2e"), after migrate and
 // seed. Playwright's global setup (tests/setup/e2eGlobal.ts) runs it before every e2e run:
-//   npx payload run tests/setup/e2eUsers.ts
+//   node scripts/payload.mjs run tests/setup/e2eUsers.ts
 import { randomBytes } from 'node:crypto';
 import { chmodSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
