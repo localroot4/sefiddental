@@ -35,6 +35,7 @@ every dependency to an exact version. Each one has one reason:
 | `@payloadcms/storage-s3` | 3.90.2 | Object storage for media; local disk is the fallback |
 | `@payloadcms/email-nodemailer` | 3.90.2 | Admin mail through the host's SMTP |
 | `payload-totp` | 3.0.6 | MFA; Payload has no built-in TOTP |
+| `tsx` | 4.22.4 | Already installed by Payload; `scripts/payload.mjs` runs the Payload CLI under it and reruns a command whose loader stalls on a cold compile cache |
 | `graphql` | 16.14.2 | Peer dependency of Payload; the GraphQL API is off |
 | `sharp` | 0.35.5 | Payload's image engine: AVIF, WebP, crops, blur placeholders |
 | `zod` | 4.6.7 | Validation at every boundary: environment, request bodies, seed files |

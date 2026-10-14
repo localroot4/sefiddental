@@ -60,8 +60,8 @@ Payload CMS 3.90 runs inside the same app at `/admin`, on PostgreSQL (production
    overwrites. `npm run seed -- sync` overwrites records from the yaml files (refused when
    `NODE_ENV=production`). `npm run seed -- dry-run` reports and writes nothing. Check the output
    for the summary line that starts with `seed: mode:`. The npm scripts call the Payload CLI
-   through `scripts/payload.mjs`, which stops `payload run` from exiting early on a cold
-   compile cache; never call `npx payload` directly.
+   through `scripts/payload.mjs`, which reruns a command whose TypeScript loader stalls on a
+   cold compile cache; never call `npx payload` directly.
 
 5. Create the first admin.
    1. Start the app with `npm run dev`.
