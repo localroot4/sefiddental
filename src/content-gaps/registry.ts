@@ -147,12 +147,12 @@ function anyMatch(
 }
 
 export const GAP_REGISTRY: readonly GapEntry[] = [
-  globalField('clinic.postalCode', null, 'needs_client', 'کد پستی کلینیک', 'clinic', [
+  globalField('clinic.postalCode', 37, 'needs_client', 'کد پستی کلینیک', 'clinic', [
     'address.postalCode',
   ]),
   globalField(
     'clinic.coordinates',
-    null,
+    38,
     'needs_client',
     'مختصات نقشهٔ کلینیک (عرض و طول جغرافیایی)',
     'clinic',
@@ -205,7 +205,7 @@ export const GAP_REGISTRY: readonly GapEntry[] = [
   ),
   {
     id: 'clinic.holidays',
-    gapRow: null,
+    gapRow: 40,
     kind: 'missing_content',
     labelFa: `تعطیلات رسمی ${HOLIDAY_WARNING_DAYS} روز آینده وارد نشده است`,
     target: { type: 'global', slug: 'clinic', field: 'hours.holidays' },
@@ -269,7 +269,7 @@ export const GAP_REGISTRY: readonly GapEntry[] = [
   anyMatch('services.scope', 27, 'needs_verification', 'تأیید دامنهٔ خدمات', 'services', {
     scopeVerified: { equals: false },
   }),
-  anyMatch('insurers.logos', null, 'needs_client', 'لوگوی بیمه‌های اصلی', 'insurances', {
+  anyMatch('insurers.logos', 39, 'needs_client', 'لوگوی بیمه‌های اصلی', 'insurances', {
     and: [{ featured: { equals: true } }, { logo: { exists: false } }],
   }),
   anyMatch(
@@ -282,12 +282,12 @@ export const GAP_REGISTRY: readonly GapEntry[] = [
       and: [published, { or: [{ summary: { exists: false } }, { summary: { equals: '' } }] }],
     },
   ),
-  anyMatch('services.reviewer', null, 'missing_content', 'بازبین پزشکی خدمات', 'services', {
+  anyMatch('services.reviewer', 42, 'missing_content', 'بازبین پزشکی خدمات', 'services', {
     and: [published, { reviewedBy: { exists: false } }],
   }),
   globalField(
     'seo.defaultDescription',
-    null,
+    41,
     'missing_content',
     'توضیح پیش‌فرض سئو',
     'seo-defaults',
