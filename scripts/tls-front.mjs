@@ -5,6 +5,7 @@
 import { readFileSync } from 'node:fs';
 import http from 'node:http';
 import http2 from 'node:http2';
+import { pipeline } from 'node:stream';
 
 const [keyPath, certPath, listenPort, upstreamPort] = process.argv.slice(2);
 
@@ -27,7 +28,8 @@ const server = http2.createSecureServer(
   (req, res) => {
     const upstream = http.request(
       {
-        host: '127.0.0.1',
+        // 'localhost' as the app binds it (HOSTNAME may be localhost on ::1); Node tries both.
+        host: 'localhost',
         port: Number(upstreamPort),
         method: req.method,
         path: req.url,
@@ -36,10 +38,19 @@ const server = http2.createSecureServer(
       },
       (up) => {
         res.writeHead(up.statusCode ?? 502, endToEnd(up.headers));
-        up.pipe(res);
+        // A body cut upstream must end the browser's stream too, not leave it waiting.
+        pipeline(up, res, (error) => {
+          if (error && !res.stream.destroyed)
+            res.stream.close(http2.constants.NGHTTP2_INTERNAL_ERROR);
+        });
       },
     );
+    // The browser cancelled the stream (a prefetch, a navigation): free the upstream socket.
+    res.on('close', () => {
+      if (!res.writableFinished) upstream.destroy();
+    });
     upstream.on('error', (error) => {
+      if (res.stream.destroyed) return;
       console.error(`tls-front: ${req.method} ${req.url} failed upstream: ${error.message}`);
       if (!res.headersSent) res.writeHead(502);
       res.end();

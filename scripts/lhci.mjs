@@ -116,8 +116,7 @@ function measureHost() {
  * A one-day self-signed certificate for localhost and its SPKI pin: Chrome trusts exactly this key
  * through --ignore-certificate-errors-spki-list (lighthouserc.cjs), so the page counts as secure.
  */
-function localCertificate() {
-  const dir = mkdtempSync(path.join(os.tmpdir(), 'lhci-tls-'));
+function localCertificate(dir) {
   const key = path.join(dir, 'key.pem');
   const cert = path.join(dir, 'cert.pem');
   const args =
@@ -137,7 +136,7 @@ function localCertificate() {
     type: 'spki',
     format: 'der',
   });
-  return { dir, key, cert, pin: createHash('sha256').update(spki).digest('base64') };
+  return { key, cert, pin: createHash('sha256').update(spki).digest('base64') };
 }
 
 /** Starts scripts/tls-front.mjs and resolves once it listens. */
@@ -186,15 +185,18 @@ async function main() {
   // check-bundle.mjs and playwright.config.ts; shell values win; CI has no .env.
   const envFile = path.join(root, '.env');
   if (existsSync(envFile)) process.loadEnvFile(envFile);
-  const tls = localCertificate();
-  process.env.LHCI_TLS_PORT ??= '3443';
-  process.env.LHCI_TLS_PIN = tls.pin;
-  const front = await startTlsFront(tls, process.env.LHCI_TLS_PORT, process.env.E2E_PORT ?? '3000');
+  // The key never outlives the run, whatever fails.
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'lhci-tls-'));
+  let front;
   try {
+    const tls = localCertificate(dir);
+    process.env.LHCI_TLS_PORT ??= '3443';
+    process.env.LHCI_TLS_PIN = tls.pin;
+    front = await startTlsFront(tls, process.env.LHCI_TLS_PORT, process.env.E2E_PORT ?? '3000');
     run();
   } finally {
-    front.kill();
-    rmSync(tls.dir, { recursive: true, force: true });
+    front?.kill();
+    rmSync(dir, { recursive: true, force: true });
   }
 }
 

@@ -420,10 +420,10 @@ Node must also set the static set.
 
 7. Serve HTTP/2 to browsers over TLS (nginx 1.25.1 and later:
    `http2 on;` in the `server` block). The Lighthouse gates measure the
-   pages over HTTPS and HTTP/2 (`scripts/lhci.mjs`). Over HTTP/1.1, LCP on
-   a mobile connection is 300 to 470 ms slower on the 404 template, because
-   the browser opens up to six new connections for the fonts, styles and
-   scripts. Check:
+   pages over HTTPS and HTTP/2 (`scripts/lhci.mjs`). Over HTTP/1.1,
+   Lighthouse's mobile simulation puts LCP on the 404 template 300 to 470 ms
+   later, because the browser opens up to six new connections for the fonts,
+   styles and scripts. Check:
 
    ```bash
    curl -sI --http2 https://sefiddental.ir/ | head -1

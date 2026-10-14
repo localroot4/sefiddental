@@ -12,7 +12,8 @@ const dark = process.env.LHCI_THEME === 'dark';
 const port = Number(process.env.E2E_PORT ?? '3000');
 const origin = `http://localhost:${port}`;
 // scripts/lhci.mjs puts HTTPS and HTTP/2 in front of the server (scripts/tls-front.mjs), as
-// production does; LCP over plain HTTP/1.1 measured 300-470 ms slower on the 404 template.
+// production does; over plain HTTP/1.1 Lighthouse's simulation put LCP on the 404 template
+// 300-470 ms later.
 const tlsPin = process.env.LHCI_TLS_PIN;
 const pageOrigin = tlsPin ? `https://localhost:${process.env.LHCI_TLS_PORT}` : origin;
 
