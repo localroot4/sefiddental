@@ -193,7 +193,9 @@ optional molar on the restoration page, sound.
   Node.js app feature) and uses it when it can run Node dependably; a Node
   PaaS inside Iran (Liara, else ArvanCloud) is the fallback. Deployment
   habit stays: push to `main`, auto deploy. Details and the probe checklist
-  in `docs/architecture.md` section 2.
+  in `docs/architecture.md` section 2. Status 2026-10-13: the host refused
+  Node.js; path A on Liara is recommended and waits for the client's
+  approval (gap 32, `docs/deploy.md` section 1).
 - No WordPress. Custom build.
 - Heavy motion lives on the home experience only. Service, dentist, article,
   pricing, address, booking and emergency pages stay light and server-
@@ -238,8 +240,10 @@ shows them next to the measured values. Lighthouse cannot audit an HTTP 404
 document, so the content-page audit runs on a 200 render of the 404
 template (`/qa/not-found`, only when the server runs with `QA_ROUTES=1`).
 INP has no value in a Lighthouse navigation run; CI gates total blocking
-time at 200 ms in its place. Home runs the same audit with warnings only
-until the real home lands in phase 7.
+time at 200 ms in its place. Until the real home lands in phase 7, home
+asserts performance, LCP and script size as warnings and CLS and
+third-party requests as errors; accessibility, best practices, SEO, TBT,
+stylesheet and font size and console errors are not asserted on home yet.
 
 Accessibility: WCAG 2.2 AA. Complete keyboard access, visible focus, 44x44 CSS
 px targets, labels above fields, errors below fields, reduced motion respected,

@@ -15,11 +15,11 @@ this file in the same commit.
 | UI motion | Motion (`motion/react`) for component states and layout animation | client islands only |
 | Scroll engine | GSAP 3.15.0 (ScrollTrigger, Flip, MorphSVG, Draggable, InertiaPlugin) plus Lenis 1.3.26 | one master timeline per page; see `docs/experience-direction.md` |
 | WebGL | three.js r186 (0.186.1), `@react-three/fiber` 9.8.1, `@react-three/drei` 10.7.9, `@react-three/postprocessing`; WebGL 2 with WebGL 1 fallback for tier 1 | KTX2 textures, Draco glTF, one `<Canvas>` fixed behind the page |
-| Quality tiers | `detect-gpu` 5.0.70 plus a frame-time monitor (`PerformanceMonitor` from drei) and `AdaptiveDpr` | tiers 0-3 per `docs/experience-direction.md` section 3 |
+| Quality tiers | `detect-gpu` 5.0.70 plus an in-house frame-time monitor (`src/experience/tier/frameMonitor.ts`: under 55 fps for 2 s drops one tier) and a per-tier DPR cap (`TierDpr.tsx`, not drei's `AdaptiveDpr`) | tiers 0-3 per `docs/experience-direction.md` section 3 |
 | Fonts | Vazirmatn and Estedad via `next/font/local`, subsets, swap | preloaded |
 | Icons | Phosphor Icons React | one family |
 | Dates | `date-fns-jalali` 4.4.0-0 for display; store UTC | Asia/Tehran |
-| Email | Nodemailer (`@payloadcms/email-nodemailer` 3.90.2) through the host's SMTP | admin notifications; without SMTP settings, password-reset mail goes to the server log |
+| Email | Nodemailer (`@payloadcms/email-nodemailer` 3.90.2) through the host's SMTP | admin notifications; without SMTP no reset mail is sent (the log shows only the recipient and subject); recovery is `npm run reset-admin -- <email>` |
 | Tests | Vitest 5.0.4 (unit), Playwright 1.64.0 (e2e, screenshots, frame timing), axe-core (`@axe-core/playwright` 4.13.0), Lighthouse CI 0.15.1 | all in GitHub Actions |
 | Lint | ESLint 9.39.5, Prettier 3.9.10, TypeScript `--noEmit`, `knip` 6.41.0 for dead code | CI gate |
 
@@ -41,7 +41,7 @@ it can run Node dependably, otherwise a Node PaaS. Phase 3 decides with a
 |---|---|---|---|
 | **C1: the client's own server through WHM** | WHM gives root SSH (a VPS or dedicated server with a cPanel license) | none | Install Node 22 LTS and PM2, run the built Next.js app as a service behind Apache or Nginx (cPanel's proxy or an Apache `ProxyPass` include), PostgreSQL from the system packages or Payload's SQLite adapter, media on local disk, cron from the system |
 | **C2: cPanel "Setup Node.js App"** | shared or reseller cPanel on CloudLinux with the Node.js Selector (Passenger) and Node 20 or newer, at least 1 GB of memory for the account | none | Build in GitHub Actions (the server never runs `next build`), deploy the standalone output over SSH or cPanel Git, Passenger runs `server.js`; Payload with the SQLite adapter (one file, backed up nightly; a clinic site writes a few rows a day) or MySQL if Payload's adapter is stable at build time; media on disk under the account; cron through cPanel hitting a route |
-| **A: Node PaaS inside Iran** | neither C1 nor C2 passes the probe | a small monthly fee | Liara first, ArvanCloud second: Next.js preset, managed PostgreSQL, object storage, deploy from GitHub Actions |
+| **A: Node PaaS inside Iran** | neither C1 nor C2 passes the probe | a small monthly fee | Liara first, ArvanCloud second: Docker platform running the standalone build made in CI (`docs/deploy.md` 1.4), managed PostgreSQL, object storage, deploy from GitHub Actions |
 
 Probe checklist for phase 3 (the client runs it with the agent, or shares
 the host name so the agent reads the provider's documentation):
@@ -60,10 +60,10 @@ needs a separate PHP service for bookings and content, so it is not
 recommended.
 
 **Option A: Node PaaS inside Iran.** Liara (liara.ir) or
-ArvanCloud PaaS, both with Next.js app presets, managed PostgreSQL and
-object storage. Deploy from GitHub Actions on push to `main` (Liara CLI or a
-Docker image); environment variables in the platform; media in object
-storage (S3 compatible) with a CDN. Low latency for Iranian visitors;
+ArvanCloud PaaS, both with container platforms, managed PostgreSQL and
+object storage. Deploy from GitHub Actions on push to `main` (a Docker image
+through the Liara CLI); environment variables in the platform; media in
+object storage (S3 compatible) with a CDN. Low latency for Iranian visitors;
 international inbound stays open for Googlebot (confirm with the provider).
 Cost: a small monthly fee the client approves.
 
@@ -96,9 +96,9 @@ client opens on a phone.
 Update on 2026-10-13: the host answered that it does not support Node.js,
 so C2 at the current host is out. The client offered to buy a Node host.
 A shared cPanel "Node.js host" does not qualify: such plans list Node 19 or
-older (Next.js 16 needs Node 20.9 or later), Passenger loads CommonJS while
-Payload is ESM, and they usually have no PostgreSQL (Payload has no MySQL
-adapter). The studio recommends path A on Liara; `docs/deploy.md` records
+older (the app needs Node 22.18 or later, `package.json` `engines`),
+Passenger loads CommonJS while Payload is ESM, and they usually have no
+PostgreSQL (Payload has no MySQL adapter). The studio recommends path A on Liara; `docs/deploy.md` records
 the probe facts and the purchase list. Deploy code waits for the client's
 approval of the priced path (brief decision 21).
 
@@ -120,9 +120,9 @@ run on release; the previous release is kept for one-command rollback.
   the route pattern from the raw Unicode folder name and tests it against
   the percent-encoded path). Each Persian dynamic route therefore renders
   from an ASCII folder under `src/app/(site)/r/`, and the proxy rewrites the
-  public path through one table (`routeRewrite` in
-  `src/lib/http/proxyRules.ts`): `/خدمات/<slug>` (services and categories)
-  from `r/services`, `/پزشکان/<slug>` from `r/doctors`, `/مقالات/دسته/<slug>`
+  public path through one table (`PERSIAN_DYNAMIC_ROUTES`, read by
+  `routeRewrite` in `src/lib/http/proxyRules.ts`): `/خدمات/<slug>`
+  (services and categories) from `r/services`, `/پزشکان/<slug>` from `r/doctors`, `/مقالات/دسته/<slug>`
   from `r/article-categories`, `/مقالات/برچسب/<slug>` from `r/tags`,
   `/مقالات/<slug>` from `r/articles`, `/راهنمای-بیمار/<slug>` from
   `r/guides`. Only one segment after the prefix rewrites. A direct request
@@ -276,8 +276,11 @@ with zod; the forms also work as plain HTML posts.
   attempts in 15 minutes per client on sign-in, password reset and the TOTP
   endpoints), strong passwords (at least 12 characters, never containing
   the email's local part), roles admin and editor (editor: articles, cases,
-  testimonials, bookings), audit trail. Scheduled publish runs as a server
-  user that needs no TOTP.
+  testimonials, bookings), audit trail. Scheduled publish runs as the user
+  who scheduled it. The schedule-publish server function checks update
+  access (TOTP-wrapped) first, and the TOTP exemption for a user without a
+  session strategy holds only inside `/api/cron/tick` (`asJobRunner()`). So
+  scheduled publishes run only through the cron tick.
 - Content access (phase 3): the public site reads content through Payload's
   Local API only. Anonymous REST reads are denied on every collection and
   global; the one exception is media files, which public pages embed.
@@ -302,7 +305,10 @@ with zod; the forms also work as plain HTML posts.
   hour.
 - Backups: nightly PostgreSQL dump to object storage with 14-day retention
   plus the platform's own backups; restore runbook.
-- Maintenance mode: a branded static page served by the platform.
+- Maintenance mode: `MAINTENANCE_MODE=on` makes the app answer public
+  requests with a branded static 503 (`docs/deploy.md` 2.12). The same page,
+  written to `public/maintenance.html` at build, lets the platform or
+  reverse proxy answer while Node is down.
 
 ## 10. Testing
 
@@ -323,7 +329,8 @@ with zod; the forms also work as plain HTML posts.
 `npm run dev` (Next.js with Payload), local PostgreSQL (Docker or the
 platform's dev database), `npm run build && npm start` for production
 checks, Playwright with the preinstalled Chromium in cloud sessions
-(`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`). Seeders import
+(`PW_CHROMIUM_EXECUTABLE=/opt/pw-browsers/chromium-1194/chrome-linux/chrome`,
+never `playwright install` there; README "Tests"). Seeders import
 `docs/content/*.yaml` and `content/data/*.yaml`; the page registry seed
 lives in code (`src/seed/data/pages.yaml`), because the route tree owns the
 page keys and hub slugs (phase 3 change).

@@ -14,7 +14,7 @@ Phases append rows; the client closes them. Status: open, received, done.
 | 7 | Equipment list, only if "digital" claims should name devices | about, services | client | open |
 | 8 | Financing partner names and exact terms; confirm 200M and 100M | pricing page | client | open |
 | 9 | WhatsApp and Telegram numbers, Instagram handle | contact, sticky bar | client | open |
-| 10 | Hosting facts: provider, PHP version, SSH, cron, Node, docroot | phase 3 deploy | client | open |
+| 10 | Hosting facts: provider, PHP version, SSH, cron, Node, docroot | phase 3 deploy | client | open: superseded by row 32 for the old host (no Node.js, 2026-10-13); the approved path's facts are recorded in `docs/deploy.md` section 3 |
 | 11 | Old site backup and URL list | 301 map, content import | client | open |
 | 12 | Google Business Profile created; Search Console and GA4 IDs | phase 6 and 10 | client | open |
 | 13 | Parking and public transport notes; secondary neighborhoods | contact, local SEO | client | open |

@@ -218,8 +218,13 @@ node .next/standalone/server.js
   Every path in the environment must be absolute.
 - It listens on `HOSTNAME`:`PORT` (defaults `0.0.0.0`:`3000`).
 - At start the app validates the environment. A missing or short value stops
-  the process with one line per problem, for example
-  `CRON_SECRET missing: set it to openssl rand -base64 48`. Values are never
+  the process (exit 1) with one fatal JSON line, for example:
+
+  ```json
+  {"level":"fatal","msg":"env_invalid","detail":"Environment is incomplete:\nCRON_SECRET missing: set it to `openssl rand -base64 48`; the cron caller sends it as a bearer token"}
+  ```
+
+  `detail` has one entry per problem, separated by `\n`. Values are never
   printed.
 - Locally, `npm run start:standalone` does the copy and the start and reads the
   repository `.env`.
@@ -260,7 +265,7 @@ Request handling:
 | Name | Required in production | Secret | Purpose |
 |---|---|---|---|
 | `ALLOW_INDEXING` | `true` on production only | no | `false`: robots.txt disallows everything, pages carry `X-Robots-Tag: noindex`, sitemaps list no URL. Staging stays `false`. |
-| `TRUST_PROXY_HEADERS` | `true` behind a proxy | no | Trust `X-Forwarded-For`, `X-Forwarded-Proto`, `X-Forwarded-Host` and an incoming `X-Request-Id` (2.4). |
+| `TRUST_PROXY_HEADERS` | `true` behind a proxy | no | Trust `X-Forwarded-For`, `X-Forwarded-Proto` and an incoming `X-Request-Id` (2.4). `X-Forwarded-Host` is never read: the canonical check uses `Host`. |
 | `TRUSTED_PROXY_HOPS` | no (default `1`) | no | Number of proxies in front of Node that append to `X-Forwarded-For` (2.4). |
 | `MAINTENANCE_MODE` | no (default `off`) | no | `on`: public requests get the 503 maintenance response (2.12). |
 | `MAINTENANCE_RETRY_AFTER` | no (default `900`) | no | `Retry-After` seconds on the maintenance response. |
@@ -281,7 +286,7 @@ Media and e-mail:
 | `S3_FORCE_PATH_STYLE` | no (default `false`) | no | `true` for providers that need path-style URLs (Liara, ArvanCloud). |
 | `S3_ACCESS_KEY_ID` | with `S3_BUCKET` | yes | Access key of the media bucket. |
 | `S3_SECRET_ACCESS_KEY` | with `S3_BUCKET` | yes | Secret key of the media bucket. |
-| `SMTP_HOST` | no (empty = mail goes to the log) | no | SMTP server for password-reset mail. Set it in production, else reset links appear in the server log. |
+| `SMTP_HOST` | no (empty = no reset mail) | no | SMTP server for password-reset mail. Without it reset mail is not sent (the log shows only the recipient and subject) and the status view says reset does not work. Recover an admin with `npm run reset-admin -- <email>` from a checkout with the production `DATABASE_URL` and `PAYLOAD_SECRET` (the artifact has no Payload CLI, as in 2.7). |
 | `SMTP_PORT` | no (default `587`) | no | `587` STARTTLS, `465` implicit TLS. |
 | `SMTP_USER` | no | no | SMTP user. |
 | `SMTP_PASS` | no | yes | SMTP password. |
@@ -293,7 +298,7 @@ Process (set by the host or the image):
 |---|---|---|---|
 | `NODE_ENV` | never set | no | `server.js` sets `production`. |
 | `PORT` | platform | no | Listening port. Default `3000`. |
-| `HOSTNAME` | `0.0.0.0` in a container | no | Bind address. Docker sets `HOSTNAME` to the container id, so set it explicitly. |
+| `HOSTNAME` | `0.0.0.0` in a container | no | Bind address. Docker sets `HOSTNAME` to the container id, so set it explicitly. Never `127.0.0.1` or `::1`: the start refuses a loopback IP (Next 16.4 then proxies every rewrite to itself). To bind loopback, use `localhost`; if `localhost` resolves to `::1` on the host, also set `INTERNAL_ORIGIN=http://localhost:$PORT`. |
 | `TZ` | `UTC` | no | Process time zone. The code stores UTC and never depends on it. |
 | `NODE_OPTIONS` | `--max-old-space-size=640` on 1 GB | no | Heap limit. Tune after measuring RSS (probe P4). |
 | `NEXT_TELEMETRY_DISABLED` | `1` | no | Next.js telemetry off (build and run). |
@@ -308,8 +313,7 @@ Backup job (held with deliverable 9; 2.10):
 
 Never in production: `PROXY_CONFIG_TTL_MS`, `INT_DATABASE_URL`,
 `E2E_DATABASE_URL`, `E2E_PORT`, `PW_CHROMIUM_EXECUTABLE`, `CHROME_PATH`,
-`QA_SCREENSHOTS`, `PW_BUDGETS`, `LHCI_THEME`, `CI`, `SEFID_TEST_DB_DIR`,
-`PAYLOAD_FORCE_DRIZZLE_PUSH`. Set by Next.js and Payload, never by us:
+`QA_SCREENSHOTS`, `LHCI_THEME`, `CI`, `PAYLOAD_FORCE_DRIZZLE_PUSH`. Set by Next.js and Payload, never by us:
 `NEXT_PHASE`, `NEXT_RUNTIME`, `VITEST_POOL_ID`, `PAYLOAD_MIGRATING`.
 
 ### 2.4 Behind a proxy: TRUST_PROXY_HEADERS and TRUSTED_PROXY_HOPS
@@ -376,7 +380,44 @@ Node must also set the static set.
    Payload accepts uploads up to that size (`requestSizeLimit` in
    `src/payload.config.ts`); the nginx default of 1 MB rejects most images.
 
-Where the platform router sets headers itself (Liara), check items 1 to 3 on
+4. Pass `Host` unchanged and set the forwarding headers. The canonical
+   redirect reads `Host` only, and the app keeps an incoming `X-Request-Id`
+   only when it matches `^[A-Za-z0-9._-]{8,64}$`. Never forward a client's
+   own `X-Request-Id`. nginx (untested):
+
+   ```nginx
+   proxy_set_header Host $host;
+   proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+   proxy_set_header X-Forwarded-Proto $scheme;
+   proxy_set_header X-Request-Id $request_id;
+   ```
+
+5. Answer 400 for an invalid percent-escape under `/api` and `/admin`; Next
+   answers a bare 500 first (SEC-S9). nginx (untested), inside the `/api/`
+   and `/admin` locations:
+
+   ```nginx
+   if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
+   ```
+
+6. Rate-limit POST and PATCH on `/api/media` per client, for example 10 a
+   minute with a burst of 5, and keep the 64 MiB body cap of item 3 (UP-5).
+   nginx (untested); an empty key is not counted, so other methods pass:
+
+   ```nginx
+   # http block
+   map $request_method $media_write_key {
+       POST    $binary_remote_addr;
+       PATCH   $binary_remote_addr;
+       default "";
+   }
+   limit_req_zone $media_write_key zone=media:10m rate=10r/m;
+
+   # location /api/media
+   limit_req zone=media burst=5;
+   ```
+
+Where the platform router sets headers itself (Liara), check items 1 to 6 on
 staging and record what the platform allows in section 3.
 
 ### 2.6 Health check
@@ -610,9 +651,8 @@ otherwise:
    with the time unit verified on staging, time zone UTC.
 3. The GitHub Actions deploy job: build the artifact (2.2), the Dockerfile
    (glibc base image, non-root user, the cron and backup schedule), a pinned
-   `@liara/cli` version, deploy to staging on push to `main`, deploy to
-   production by manual dispatch with a reviewer, and the post-deploy health
-   and `version` check.
+   `@liara/cli` version, deploy to staging, then production, on push to
+   `main` (brief section 6), with a post-deploy health and `version` check.
 4. Secrets in GitHub environments: `LIARA_API_TOKEN` in the `staging` and
    `production` environments, with its expiry date written here. App secrets
    stay in the Liara app environment, never in GitHub.

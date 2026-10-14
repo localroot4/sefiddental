@@ -28,10 +28,10 @@ Payload CMS 3.90 runs inside the same app at `/admin`, on PostgreSQL (production
    | `MEDIA_DIR` | an absolute upload directory outside `.next`, for example `/home/you/sefid-media` |
    | `ALLOW_FIRST_USER` | `true` until step 5 ends |
 
-   `npm run dev` needs only `DATABASE_URL` and `PAYLOAD_SECRET`: it replaces the other secrets
-   with random values per process and uploads to `<repo>/media`. The standalone server
-   (`npm run start`, e2e, `check:bundle`, `lhci`) runs as production and stops when one of these
-   values is missing.
+   `npm run dev` needs only `DATABASE_URL` and `PAYLOAD_SECRET`: it derives each missing secret
+   from `PAYLOAD_SECRET` (an HMAC per name, one warning line each) and uploads to
+   `<repo>/media`. The standalone server (`npm run start`, e2e, `check:bundle`, `lhci`) runs as
+   production and stops when one of these values is missing.
 
 2. Install the exact locked dependencies.
 
@@ -117,7 +117,8 @@ npm run dev
 | `migrate` | Applies pending migrations to `DATABASE_URL` |
 | `migrate:create` | Writes a migration for the adapter that `DATABASE_URL` selects |
 | `migrate:status` | Lists applied and pending migrations |
-| `seed` | Imports the yaml content; mode `create-only` (default), `sync` or `dry-run` |
+| `seed` | Imports the yaml content; mode `create-only` (default), `sync` or `dry-run`; `DB_PUSH` defaults to `false` |
+| `reset-admin` | `npm run reset-admin -- <email>`: sets a random password that meets the policy, clears TOTP, unlocks the account and prints the password once. The recovery path without SMTP |
 | `db:e2e` | Rebuilds `.data/e2e.db`: a fresh SQLite file, migrated and seeded |
 
 ## Tests
