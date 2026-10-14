@@ -16,6 +16,7 @@ import { normalizePath } from '@/lib/paths';
 import { destination, getProxyConfig, recordRedirectHit } from '@/lib/http/proxyConfig';
 import {
   isAuthLimitedPath,
+  isClosedPayloadPath,
   isFirstUserPath,
   maintenanceBypass,
   needsFormSession,
@@ -78,8 +79,8 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     return send(maintenanceResponse({ kind, env, reqId }));
   }
 
-  // 4a: first-user screen and endpoint, every method.
-  if (!env.allowFirstUser && isFirstUserPath(path)) {
+  // 4a: first-user screen and endpoint, and Payload endpoints the site does not use; every method.
+  if ((!env.allowFirstUser && isFirstUserPath(path)) || isClosedPayloadPath(path)) {
     return new NextResponse('Not Found', {
       status: 404,
       headers: { 'content-type': 'text/plain; charset=utf-8', 'X-Request-Id': reqId },
@@ -116,7 +117,10 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const canonical = canonicalRedirect({ url, headers: request.headers, env, kind });
   if (canonical) {
     accessLine({ level: 'info', msg: 'canonical_redirect', reqId, route: pathname });
-    return redirectTo(canonical, 301, reqId);
+    const res = redirectTo(canonical, 301, reqId);
+    // The answer depends on request headers: a shared cache must never store it (CSP-2).
+    res.headers.set('Cache-Control', 'no-store');
+    return res;
   }
 
   // 7: nonce and CSP for HTML kinds; Next reads the nonce from the request CSP header.

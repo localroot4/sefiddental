@@ -1,6 +1,8 @@
 import type { Payload } from 'payload';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { runCronTick } from '@/lib/http/cron';
+
 import { getTestPayload, type StaffUser, staffUsers, unique } from './helpers';
 
 vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
@@ -36,9 +38,8 @@ describe('scheduled publish and booking search', () => {
       } as never,
       waitUntil: new Date(Date.now() - 1000),
     });
-    const result = await payload.jobs.run({ allQueues: true, limit: 20 });
-    const failed = Object.values(result.jobStatus ?? {}).filter((s) => s.status !== 'success');
-    expect(failed).toEqual([]);
+    // The site's scheduler: only its job runner lets the scheduling user skip TOTP (SEC-AUTH-1).
+    expect((await runCronTick(payload)).failed).toBe(0);
     const after = await payload.findByID({ collection: 'testimonials', id: draft.id, depth: 0 });
     expect(after._status).toBe('published');
   });

@@ -1,5 +1,6 @@
 import type { Payload } from 'payload';
 
+import { asJobRunner } from '@/access/totp';
 import { log } from '@/lib/log/logger';
 
 /** The tick's answer (freeze section 6). */
@@ -34,7 +35,9 @@ export async function runCronTick(
   let failure: unknown = null;
   try {
     const schedules = await payload.jobs.handleSchedules({ allQueues: true });
-    const run = await payload.jobs.run({ allQueues: true, limit: CRON_JOB_LIMIT });
+    const run = await asJobRunner(() =>
+      payload.jobs.run({ allQueues: true, limit: CRON_JOB_LIMIT }),
+    );
     const results = Object.values(run.jobStatus ?? {});
     summary = {
       ranJobs: results.length,

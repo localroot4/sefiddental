@@ -141,6 +141,24 @@ test('T-HD7 the media file route (outside the proxy) carries the static set', as
   expectStaticSet(response, '/api/media/file');
 });
 
+test('T-HD7b HTML and JSON on paths the proxy skips cannot be framed (CSP-3)', async ({
+  request,
+}) => {
+  for (const path of ['/brand/x', '/fonts/x', '/favicon.ico.x']) {
+    const response = await request.get(path);
+    expect(response.status(), path).toBe(404);
+    expectStaticSet(response, path);
+    expect(response.headers()['x-frame-options'], path).toBe('DENY');
+    expect(response.headers()['content-security-policy'], path).toContain("frame-ancestors 'none'");
+  }
+  for (const path of ['/api/media', '/api/mediax']) {
+    const response = await request.get(path);
+    expectStaticSet(response, path);
+    expect(response.headers()['content-security-policy'], path).toBe(API_CSP);
+    expect(response.headers()['x-robots-tag'], path).toBe('noindex');
+  }
+});
+
 test('T-HD8 admin HTML: static set, nonce scripts, never unsafe-eval, DENY, noindex', async ({
   request,
 }) => {

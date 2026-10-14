@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { clientIpFrom, hashIp, rateLimitKey } from '@/lib/http/clientIp';
+import { clientIpFrom, hashIp, limitSubject, rateLimitKey } from '@/lib/http/clientIp';
 
 const trusted = (hops = 1) => ({ trustProxyHeaders: true, trustedProxyHops: hops });
 const xff = (value: string) => new Headers({ 'x-forwarded-for': value });
@@ -54,5 +54,24 @@ describe('rateLimitKey and hashIp', () => {
     expect(a).toMatch(/^[0-9a-f]{64}$/);
     expect(a).toBe(hashIp('203.0.113.7', 'secret-a'));
     expect(a).not.toBe(hashIp('203.0.113.7', 'secret-b'));
+  });
+
+  it('K4 one IPv6 /64 is one subject: rotating the interface id never gets a new bucket (SF-1)', () => {
+    expect(rateLimitKey('2001:db8:1:2::1')).toBe(rateLimitKey('2001:db8:1:2:ffff:1:2:3'));
+    expect(hashIp('2001:db8:1:2::1', 's')).toBe(hashIp('2001:db8:1:2::abcd', 's'));
+    expect(limitSubject('2001:db8:1:2:ffff:1:2:3')).toBe('2001:db8:1:2::/64');
+  });
+
+  it('K5 another /64 is another subject', () => {
+    expect(rateLimitKey('2001:db8:1:3::1')).not.toBe(rateLimitKey('2001:db8:1:2::1'));
+  });
+
+  it('K6 spellings of one address are one subject; IPv4 stays as it is', () => {
+    expect(limitSubject('2001:0db8::1')).toBe(limitSubject('2001:db8:0:0:0:0:0:1'));
+    expect(limitSubject('::ffff:203.0.113.9')).toBe('203.0.113.9');
+    expect(rateLimitKey('::ffff:203.0.113.9')).toBe(rateLimitKey('203.0.113.9'));
+    expect(limitSubject('fe80::1%eth0')).toBe('fe80:0:0:0::/64');
+    expect(limitSubject('1::2:3:4:5:1.2.3.4')).toBe('1:0:2:3::/64');
+    expect(limitSubject('203.0.113.7')).toBe('203.0.113.7');
   });
 });

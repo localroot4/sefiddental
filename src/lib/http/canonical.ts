@@ -23,10 +23,14 @@ export function requestProtocol(headers: Headers, trust: boolean): 'https' | 'ht
   return proto === 'https' || proto === 'http' ? proto : null;
 }
 
-/** Host the visitor asked for: trusted X-Forwarded-Host, else Host; lowercase, no trailing dot. */
-function requestHost(headers: Headers, trust: boolean, url: URL): string {
-  const forwarded = trust ? lastHop(headers.get('x-forwarded-host')) : null;
-  return (forwarded ?? headers.get('host') ?? url.host).toLowerCase().replace(/\.$/, '');
+/**
+ * Host the visitor asked for: the Host header (the reverse proxy passes it on), lowercase, no
+ * trailing dot. Never X-Forwarded-Host: a proxy that does not overwrite it lets a client send its
+ * own, which made a cacheable 301 to the requested URL itself (CSP-2). A platform that rewrites
+ * Host gets no canonical redirect, which is safe.
+ */
+function requestHost(headers: Headers, url: URL): string {
+  return (headers.get('host') ?? url.host).toLowerCase().replace(/\.$/, '');
 }
 
 /** Characters the URL parser leaves as they are in a path; everything else is percent-encoded. */
@@ -74,7 +78,7 @@ export function canonicalRedirect(input: {
   const { url, headers, env, kind } = input;
   if (env.nodeEnv !== 'production') return null;
   const site = new URL(env.siteUrl);
-  const host = requestHost(headers, env.trustProxyHeaders, url);
+  const host = requestHost(headers, url);
   if (host !== site.host && host !== `www.${site.host}`) return null;
 
   const proto = requestProtocol(headers, env.trustProxyHeaders) ?? site.protocol.slice(0, -1);

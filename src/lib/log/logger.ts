@@ -9,7 +9,7 @@ import {
 
 import { readEnv, type ServerEnv } from '@/lib/env';
 import { scrubDeep, scrubPhones } from '@/lib/log/redact';
-import { warnLines } from '@/lib/log/ringBuffer';
+import { ringRepeats, warnLines } from '@/lib/log/ringBuffer';
 
 /** Key paths redacted by pino (spec 12.1); value-based phone scrubbing runs as well. */
 export const REDACT_PATHS = [
@@ -32,14 +32,29 @@ export const REDACT_PATHS = [
 const WARN = 40;
 const ERROR = 50;
 
-/** stdout plus the warn+ ring buffer; pino sets `lastLevel` before each write (pino.metadata). */
+/** Level and message of a line, digits ignored (ids, ports and durations vary between repeats). */
+function repeatKey(level: number, line: string): string {
+  let msg: unknown;
+  try {
+    msg = (JSON.parse(line) as { msg?: unknown }).msg;
+  } catch {
+    msg = line;
+  }
+  return `${level}|${String(msg).replace(/[0-9]+/g, '#')}`;
+}
+
+/**
+ * stdout plus the warn+ ring buffer; pino sets `lastLevel` before each write (pino.metadata).
+ * stdout gets every line; the ring one per level and message per 10 minutes (SEC-S4).
+ */
 function stdoutWithRing(): DestinationStream {
   const destination = {
     [Symbol.for('pino.metadata')]: true,
     lastLevel: 0,
     write(line: string) {
       process.stdout.write(line);
-      if (destination.lastLevel >= WARN) warnLines.push(line);
+      const level = destination.lastLevel;
+      if (level >= WARN && ringRepeats(repeatKey(level, line), Date.now())) warnLines.push(line);
     },
   };
   return destination;

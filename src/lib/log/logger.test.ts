@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { createLogger } from '@/lib/log/logger';
+import { warnLines } from '@/lib/log/ringBuffer';
 
 function capture(level: 'info' | 'debug' = 'info') {
   const lines: string[] = [];
@@ -97,5 +98,20 @@ describe('logger (spec 12.1)', () => {
     const { logger, lines } = capture('info');
     logger.debug({ msg: 'hidden' });
     expect(lines).toHaveLength(0);
+  });
+
+  it('LG9 the status ring keeps one line per repeated warning; stdout keeps all (SEC-S4)', () => {
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    try {
+      const logger = createLogger({ logLevel: 'info', gitSha: 'abc1234', nodeEnv: 'production' });
+      for (let i = 0; i < 300; i += 1) logger.error({ msg: `flood_${i}`, id: i });
+      logger.warn({ msg: 'distinct_line' });
+      const ring = warnLines.entries();
+      expect(ring.filter((line) => line.includes('flood_')).length).toBe(1);
+      expect(ring.some((line) => line.includes('distinct_line'))).toBe(true);
+      expect(write).toHaveBeenCalledTimes(301);
+    } finally {
+      write.mockRestore();
+    }
   });
 });

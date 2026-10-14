@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { editorialAccess, taxonomyAccess } from './presets';
 import { hasRole, hiddenForEditors, isAdmin, isStaff, trashOnlyForEditors } from './roles';
-import { totpUnlessServerUser } from './totp';
+import { asJobRunner, totpUnlessServerUser } from './totp';
 
 const admin = { id: 1, role: 'admin', collection: 'users' };
 const editor = { id: 2, role: 'editor', collection: 'users' };
@@ -59,9 +59,14 @@ describe('roles (spec-data 5.1)', () => {
 describe('totpUnlessServerUser (PAY 12.4, freeze decision 27)', () => {
   const inner = vi.fn(() => true);
 
-  it('TS1 a user passed to the Local API without an auth strategy skips the TOTP check', async () => {
+  it('TS1 a user without an auth strategy skips the TOTP check only inside the job runner', async () => {
     const enrolled = { ...editor, hasTotp: true };
-    expect(await totpUnlessServerUser(inner)({ req: req(enrolled) })).toBe(true);
+    expect(await asJobRunner(async () => totpUnlessServerUser(inner)({ req: req(enrolled) }))).toBe(
+      true,
+    );
+    expect(inner).toHaveBeenCalledTimes(1);
+    // SEC-AUTH-1: outside it a missing strategy proves nothing.
+    expect(await totpUnlessServerUser(inner)({ req: req(enrolled) })).toBe(false);
     expect(inner).toHaveBeenCalledTimes(1);
   });
 

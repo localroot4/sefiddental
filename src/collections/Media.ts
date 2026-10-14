@@ -1,6 +1,13 @@
 import { stat } from 'node:fs/promises';
 import path from 'node:path';
-import type { Access, CollectionConfig, ImageSize, UploadConfig } from 'payload';
+import type {
+  Access,
+  CollectionConfig,
+  Endpoint,
+  ImageSize,
+  PayloadRequest,
+  UploadConfig,
+} from 'payload';
 
 import { hasRole, isStaff } from '@/access/roles';
 import { contentHooks } from '@/hooks/compose';
@@ -16,6 +23,44 @@ import { readEnv } from '@/lib/env';
 // Files are public (the site embeds them); documents and the REST list are staff-only.
 const readFilesOrStaff: Access = ({ req, isReadingStaticFile }) =>
   Boolean(isReadingStaticFile) || hasRole(req.user, 'admin', 'editor');
+
+// Editors change live media only: a trashed document is the admin's to restore or delete (UP-9;
+// Payload checks delete access for a move to the trash, never for a restore).
+const updateLiveOrAdmin: Access = ({ req }) =>
+  hasRole(req.user, 'admin') || (hasRole(req.user, 'editor') && { deletedAt: { exists: false } });
+
+const notFound = () => Response.json({ errors: [{ message: 'Not Found' }] }, { status: 404 });
+
+/**
+ * Files of a trashed document stop being public (UP-3): Payload serves every file in staticDir
+ * or the bucket once read access is true, and the trash keeps the files. Staff still see them in
+ * the trash view. A name no file system takes (NUL, over 255 bytes) is a 404 before any lookup.
+ */
+export async function trashedFileIs404(
+  req: Pick<PayloadRequest, 'payload' | 'user'>,
+  { params }: { params: { filename: string } },
+): Promise<Response | undefined> {
+  const name = params.filename;
+  if (name.includes('\0') || Buffer.byteLength(name) > 255) return notFound();
+  if (hasRole(req.user, 'admin', 'editor')) return undefined;
+  const trashed = await req.payload.db.findOne({
+    collection: 'media',
+    where: {
+      and: [
+        { deletedAt: { exists: true } },
+        {
+          or: [
+            { filename: { equals: name } },
+            ...IMAGE_SIZES.map(({ name: size }) => ({
+              [`sizes.${size}.filename`]: { equals: name },
+            })),
+          ],
+        },
+      ],
+    },
+  });
+  return trashed ? notFound() : undefined;
+}
 
 /**
  * Payload answers a file missing from the local disk with 500 and an ERROR log line
@@ -35,8 +80,9 @@ export async function missingLocalFileIs404(
     await stat(file);
   } catch (err) {
     const code = (err as NodeJS.ErrnoException).code;
-    if (code === 'ENOENT' || code === 'ENOTDIR') {
-      return Response.json({ errors: [{ message: 'Not Found' }] }, { status: 404 });
+    // Too long or NUL in the name: a probe, not a server fault (UP-11).
+    if (['ENOENT', 'ENOTDIR', 'ENAMETOOLONG', 'ERR_INVALID_ARG_VALUE'].includes(code ?? '')) {
+      return notFound();
     }
     // Any other error: Payload's fallback stats again, throws and logs it.
   }
@@ -46,6 +92,25 @@ export async function missingLocalFileIs404(
 // Payload types a handler's result as Promise<Response> | Promise<void>; it checks
 // `instanceof Response` at run time, so Promise<Response | undefined> is safe.
 type FileHandler = NonNullable<UploadConfig['handlers']>[number];
+
+/**
+ * HEAD of a media file (UP-13): Payload registers the file route for GET only, so link checkers
+ * and preview bots got 404. Runs Payload's own GET (access, handlers, storage) without the body.
+ */
+const headFile: Endpoint = {
+  path: '/file/:filename',
+  method: 'head',
+  handler: async (req) => {
+    const get = req.payload.collections.media.config.endpoints;
+    const fileGet = Array.isArray(get)
+      ? get.find((e) => e.method === 'get' && e.path === '/file/:filename')
+      : undefined;
+    if (!fileGet) return notFound();
+    const response = await fileGet.handler(req);
+    await response.body?.cancel();
+    return new Response(null, { status: response.status, headers: response.headers });
+  },
+};
 
 const webp = { format: 'webp' as const, options: { quality: 75, effort: 4 } };
 const avif = { format: 'avif' as const, options: { quality: 50, effort: 4 } };
@@ -70,8 +135,10 @@ export const IMAGE_SIZES: ImageSize[] = [
 
 /**
  * spec-data 2.15 and 7: the original keeps its format (PNG keeps alpha) but is re-encoded by
- * the resize cap, which drops EXIF and GPS; AVIF and WebP sizes; content-hashed file names;
- * blur placeholders; Persian limits. Files are public, documents and the REST list staff-only.
+ * the resize cap, which drops an image's EXIF and GPS; AVIF and WebP sizes; content-hashed file
+ * names; blur placeholders; Persian limits. Videos are stored byte for byte, so one that carries a
+ * recording location is refused. A stored file is never replaced: a new file is a new document.
+ * Files are public, documents and the REST list staff-only.
  */
 export const Media: CollectionConfig = {
   slug: 'media',
@@ -82,7 +149,7 @@ export const Media: CollectionConfig = {
     defaultColumns: ['filename', 'alt', 'mimeType', 'width', 'height', 'updatedAt'],
     listSearchableFields: ['alt', 'filename'],
     description:
-      'عکس‌ها را JPEG بفرستید (عکس HEIC آیفون پذیرفته نمی‌شود). حداکثر ۲۰ مگابایت برای عکس و ۶۰ مگابایت برای ویدیو.',
+      'عکس‌ها را JPEG بفرستید (عکس HEIC آیفون پذیرفته نمی‌شود). حداکثر ۲۰ مگابایت برای عکس و ۶۰ مگابایت برای ویدیو. ویدیو پاک‌سازی نمی‌شود: ویدیوی دارای موقعیت مکانی پذیرفته نمی‌شود. برای فایل تازه، رسانهٔ تازه بسازید.',
   },
   defaultSort: '-createdAt',
   trash: true,
@@ -101,9 +168,10 @@ export const Media: CollectionConfig = {
   access: {
     read: readFilesOrStaff,
     create: isStaff,
-    update: isStaff,
+    update: updateLiveOrAdmin,
     delete: ({ req }) => hasRole(req.user, 'admin'),
   },
+  endpoints: [headFile],
   // payload-totp wraps every access function; anonymous file reads must stay open.
   custom: { totp: { disableAccessWrapper: { read: true } } },
   hooks: {
@@ -116,7 +184,7 @@ export const Media: CollectionConfig = {
   upload: {
     staticDir: readEnv().mediaDir,
     mimeTypes: [...MEDIA_TYPES],
-    // The cap forces a sharp re-encode of the original (EXIF and GPS dropped, format kept).
+    // The cap forces a sharp re-encode of an image original (EXIF and GPS dropped, format kept).
     resizeOptions: { width: 4096, height: 4096, fit: 'inside', withoutEnlargement: true },
     constructorOptions: { limitInputPixels: MAX_PIXELS },
     imageSizes: IMAGE_SIZES,
@@ -124,7 +192,7 @@ export const Media: CollectionConfig = {
     focalPoint: true,
     crop: true,
     pasteURL: false,
-    handlers: [missingLocalFileIs404 as FileHandler],
+    handlers: [trashedFileIs404 as FileHandler, missingLocalFileIs404 as FileHandler],
     modifyResponseHeaders: ({ headers }) => {
       headers.set('Cache-Control', MEDIA_CACHE_CONTROL);
       return headers;

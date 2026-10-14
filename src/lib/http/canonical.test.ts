@@ -108,20 +108,23 @@ describe('canonicalRedirect (spec 6.3)', () => {
     expect(redirect('http://sefiddental.ir/x')).toBeNull();
   });
 
-  it('CR7 trusted X-Forwarded-Host wins over Host', () => {
-    const url = new URL('http://localhost:3000/x/');
-    const headers = new Headers({
-      host: 'localhost:3000',
-      'x-forwarded-host': 'www.sefiddental.ir',
-      'x-forwarded-proto': 'https',
-    });
-    const target = canonicalRedirect({
-      url,
-      headers,
-      env: testEnv({ TRUST_PROXY_HEADERS: 'true' }),
-      kind: 'page',
-    });
-    expect(target?.href).toBe('https://sefiddental.ir/x');
+  it('CR7 X-Forwarded-Host is ignored: no self-redirect from a client header (CSP-2)', () => {
+    const env = testEnv({ TRUST_PROXY_HEADERS: 'true' });
+    const ask = (host: string, forwardedHost: string) =>
+      canonicalRedirect({
+        url: new URL('http://localhost:3000/x'),
+        headers: new Headers({
+          host,
+          'x-forwarded-host': forwardedHost,
+          'x-forwarded-proto': 'https',
+        }),
+        env,
+        kind: 'page',
+      });
+    expect(ask('sefiddental.ir', 'www.sefiddental.ir')).toBeNull();
+    expect(ask('sefiddental.ir', 'sefiddental.ir, www.sefiddental.ir')).toBeNull();
+    expect(ask('localhost:3000', 'www.sefiddental.ir')).toBeNull();
+    expect(ask('www.sefiddental.ir', 'sefiddental.ir')?.href).toBe('https://sefiddental.ir/x');
   });
 });
 

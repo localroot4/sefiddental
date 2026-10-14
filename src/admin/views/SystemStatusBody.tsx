@@ -207,7 +207,15 @@ export function SystemStatusBody({ data }: { data: SystemStatusData }) {
                   />
                 ),
               ],
-              ['ارسال ایمیل', config.smtp ? 'از طریق SMTP' : 'فقط در گزارش سرور'],
+              [
+                'ارسال ایمیل',
+                config.smtp ? (
+                  'از طریق SMTP'
+                ) : (
+                  // The console adapter logs only the recipient, never the reset link (SEC-S8).
+                  <Status key="m" ok={false} text="غیرفعال؛ بازنشانی رمز کار نمی‌کند." />
+                ),
+              ],
             ]}
           />
         </Section>

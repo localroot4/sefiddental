@@ -142,6 +142,9 @@ export const bookingRules: CollectionBeforeChangeHook = async ({
   }
   out.flags = flags;
 
+  // Who first acted on a booking is set only here, never from the request (SF-5).
+  out.handledBy = before.handledBy ?? null;
+  out.handledAt = before.handledAt ?? null;
   if (
     operation === 'update' &&
     prevStatus === 'new' &&

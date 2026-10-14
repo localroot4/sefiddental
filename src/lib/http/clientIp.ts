@@ -1,4 +1,5 @@
 import { createHmac, randomBytes } from 'node:crypto';
+import { isIPv6 } from 'node:net';
 
 import type { ServerEnv } from '@/lib/env';
 
@@ -40,13 +41,38 @@ export function clientIpFrom(
   return hop === undefined ? null : normalizeIp(hop);
 }
 
-/** In-memory bucket key: HMAC of the address with the process salt, 16 bytes hex, or 'unknown'. */
-export function rateLimitKey(ip: string | null): string {
-  if (ip === null) return 'unknown';
-  return createHmac('sha256', PROCESS_SALT).update(ip).digest('hex').slice(0, 32);
+/**
+ * The subject a limit counts: IPv4 as it is, IPv4-mapped IPv6 as its IPv4, any other IPv6 as its
+ * /64. One subscriber or VPS holds a whole /64, so per-address buckets let one host rotate
+ * addresses past every limit (SF-1); the canonical form also merges spellings of one address.
+ */
+export function limitSubject(ip: string): string {
+  const address = ip.split('%')[0] ?? ip;
+  if (!isIPv6(address)) return ip;
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(address);
+  if (mapped?.[1]) return mapped[1];
+  const [head = '', tail = ''] = address.split('::');
+  const groups = (part: string) => (part ? part.split(':') : []);
+  // A trailing dotted quad fills two groups.
+  const width = (parts: string[]) => parts.reduce((n, g) => n + (g.includes('.') ? 2 : 1), 0);
+  const h = groups(head);
+  const t = groups(tail);
+  const full = address.includes('::')
+    ? [...h, ...Array<string>(8 - width(h) - width(t)).fill('0'), ...t]
+    : h;
+  return `${full
+    .slice(0, 4)
+    .map((g) => parseInt(g, 16).toString(16))
+    .join(':')}::/64`;
 }
 
-/** Stored hash of an address (bookings, audit-log): HMAC-SHA256 with IP_HASH_SECRET, 64 hex chars. */
+/** In-memory bucket key: HMAC of the limit subject with the process salt, 16 bytes hex, or 'unknown'. */
+export function rateLimitKey(ip: string | null): string {
+  if (ip === null) return 'unknown';
+  return createHmac('sha256', PROCESS_SALT).update(limitSubject(ip)).digest('hex').slice(0, 32);
+}
+
+/** Stored hash of an address's limit subject (bookings, audit-log): HMAC-SHA256 with IP_HASH_SECRET. */
 export function hashIp(ip: string, secret: string): string {
-  return createHmac('sha256', secret).update(ip).digest('hex');
+  return createHmac('sha256', secret).update(limitSubject(ip)).digest('hex');
 }

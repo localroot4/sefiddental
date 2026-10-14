@@ -1,6 +1,12 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["lighthouserc.cjs", "scripts/*.mjs", "src/seed/index.ts", "tests/setup/e2eUsers.ts"],
+  "entry": [
+    "lighthouserc.cjs",
+    "scripts/*.mjs",
+    "src/seed/index.ts",
+    "scripts/reset-admin.ts",
+    "tests/setup/e2eUsers.ts"
+  ],
   "project": [
     "src/**/*.{ts,tsx,css}",
     "tests/**/*.ts",

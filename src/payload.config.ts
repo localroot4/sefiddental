@@ -5,7 +5,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildConfig } from 'payload';
 import { payloadTotp } from 'payload-totp';
-import sharp from 'sharp';
 
 import { canRunJobs } from './access/jobs';
 import { collections } from './collections';
@@ -13,7 +12,8 @@ import { richTextEditor } from './fields/richText';
 import { globals } from './globals';
 import { readEnv } from './lib/env';
 import { log } from './lib/log/logger';
-import { databaseAdapter } from './payload/db';
+import { limitedSharp } from './lib/media/limitedSharp';
+import { databaseAdapter, logPoolErrors } from './payload/db';
 
 const srcDir = path.dirname(fileURLToPath(import.meta.url));
 const env = readEnv();
@@ -70,7 +70,9 @@ export default buildConfig({
   // scheduler is /api/cron/tick). The schedulePublish task comes from the collections' drafts.
   jobs: { access: { run: canRunJobs } },
   db: databaseAdapter(srcDir),
-  sharp,
+  onInit: (payload) => logPoolErrors(payload.db, (line) => log.warn(line)),
+  // One image encode at a time: 23 sizes in parallel peaked at 1.1 GB per upload (UP-6).
+  sharp: limitedSharp(1),
   // Types come only from `npm run generate:types` (freeze 2.3; CI checks drift). Payload's
   // default regenerates the file in a child process on every non-production boot, int tests too.
   typescript: { outputFile: path.resolve(srcDir, 'payload-types.ts'), autoGenerate: false },

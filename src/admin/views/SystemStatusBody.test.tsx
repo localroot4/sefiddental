@@ -128,6 +128,11 @@ describe('System status view body (spec 13.3, freeze 29)', () => {
     expect(html).toContain('۱ کار، ۰ ناموفق، ۴۲ میلی‌ثانیه');
   });
 
+  it('SS2b without SMTP the mail row says reset does not work, not «server log» (SEC-S8)', () => {
+    expect(text(html)).toContain('غیرفعال؛ بازنشانی رمز کار نمی‌کند.');
+    expect(html).not.toContain('فقط در گزارش سرور');
+  });
+
   it('SS3 content gaps link to the admin field; markers carry the field path, never a value', () => {
     expect(html).toContain('<a href="/admin/globals/clinic">کد پستی کلینیک</a>');
     expect(html).toContain('ردیف ۱۲ فهرست کمبودها');

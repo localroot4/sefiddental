@@ -18,6 +18,35 @@ const staticSecurityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains' },
 ];
 
+// Paths the proxy skips (src/proxy.ts matcher; uploads must bypass its body buffer). An unmatched
+// URL there still renders the branded 404 or Payload's JSON, without the proxy's route headers:
+// these rules keep every such response unframeable (CSP-3). Media files keep only framing rules,
+// so a browser still shows an opened image or video.
+const DENY_FRAMING = { key: 'X-Frame-Options', value: 'DENY' };
+const frameOnly = [
+  DENY_FRAMING,
+  {
+    key: 'Content-Security-Policy',
+    value: "frame-ancestors 'none'; base-uri 'none'; object-src 'none'",
+  },
+];
+const mediaApi = [
+  DENY_FRAMING,
+  {
+    key: 'Content-Security-Policy',
+    value: "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+  },
+  { key: 'X-Robots-Tag', value: 'noindex' },
+];
+const proxySkipped = [
+  ...['/brand/:path*', '/fonts/:path*', '/detect-gpu/:path*', '/favicon.ico:rest(.*)'].map(
+    (source) => ({ source, headers: frameOnly }),
+  ),
+  { source: '/api/media/file/:path*', headers: frameOnly },
+  // The REST endpoints and any other path the matcher's `api/media` prefix skips (/api/mediax).
+  { source: '/api/media:rest((?!/file/).*)', headers: mediaApi },
+];
+
 const nextConfig: NextConfig = {
   output: 'standalone',
   poweredByHeader: false,
@@ -49,6 +78,7 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: '/:path*', headers: staticSecurityHeaders },
+      ...proxySkipped,
       {
         source: '/brand/:path*',
         headers: [{ key: 'Cache-Control', value: 'public, max-age=604800' }],

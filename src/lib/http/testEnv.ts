@@ -14,11 +14,12 @@ const PRODUCTION = {
   SITE_URL: 'https://sefiddental.ir',
   GIT_SHA: 'abc1234',
   DATABASE_URL: 'file:./.data/test.db',
-  PAYLOAD_SECRET: SECRET,
+  // Distinct values: production refuses one value for two secrets.
+  PAYLOAD_SECRET: 'p'.repeat(48),
   CRON_SECRET: SECRET,
   INTERNAL_API_TOKEN: 'i'.repeat(48),
-  IP_HASH_SECRET: SECRET,
-  FORM_TOKEN_SECRET: SECRET,
+  IP_HASH_SECRET: 'h'.repeat(48),
+  FORM_TOKEN_SECRET: 'f'.repeat(48),
   MEDIA_DIR: '/srv/media',
 };
 

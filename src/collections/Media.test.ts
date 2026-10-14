@@ -41,6 +41,13 @@ describe('media file handler', () => {
     expect(await ask(missingLocalFileIs404, '../outside.jpg')).toBeUndefined();
   });
 
+  it('MF3 a NUL byte or a name over 255 bytes is a 404, not a 500 with a stack (UP-11)', async () => {
+    const { missingLocalFileIs404 } = await loadMedia({ MEDIA_DIR: dir });
+    expect((await ask(missingLocalFileIs404, 'a\0'))?.status).toBe(404);
+    expect((await ask(missingLocalFileIs404, 'photo.webp\0.png'))?.status).toBe(404);
+    expect((await ask(missingLocalFileIs404, `${'a'.repeat(300)}.jpg`))?.status).toBe(404);
+  });
+
   it('MF2 with S3 configured the storage handler answers instead', async () => {
     const { missingLocalFileIs404 } = await loadMedia({
       MEDIA_DIR: dir,

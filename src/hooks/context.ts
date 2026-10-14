@@ -1,5 +1,7 @@
 import type { PayloadRequest } from 'payload';
 
+import { isWellFormedRequestId } from '@/lib/http/requestId';
+
 /** Flags on `req.context` (freeze section 5). Seeders: seeding, skipRevalidate, skipRedirects. */
 export interface SefidHookContext {
   /** Seeders: one 'seed' audit row per run instead of one per document. */
@@ -24,7 +26,11 @@ export function ctx(req: PayloadRequest): SefidHookContext {
   return req.context as SefidHookContext;
 }
 
-/** The request id the proxy forwards (x-request-id), for log lines and audit rows. */
+/**
+ * The request id the proxy forwards (x-request-id), for log lines and audit rows. Media writes
+ * skip the proxy, so the header may be the client's own: only the proxy's shape is kept (UP-12).
+ */
 export function requestIdOf(req: PayloadRequest): string | undefined {
-  return req.headers?.get?.('x-request-id') ?? undefined;
+  const id = req.headers?.get?.('x-request-id');
+  return isWellFormedRequestId(id) ? id : undefined;
 }

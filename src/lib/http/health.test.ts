@@ -48,6 +48,30 @@ describe('health probe (spec 11.1, critic W11)', () => {
     expect(probe).toHaveBeenCalledTimes(2);
   });
 
+  it('HL5 each change of status is reported once, with the cause (SEC-S5)', async () => {
+    vi.useRealTimers();
+    let clock = 0;
+    let fail = true;
+    const changes: [string, unknown][] = [];
+    const check = createDatabaseHealth({
+      probe: async () => {
+        if (fail) throw new Error('database is not accepting connections');
+      },
+      memoMs: 0,
+      now: () => (clock += 10),
+      onChange: (result, error) => changes.push([result.status, (error as Error | null)?.message]),
+    });
+    await check();
+    await check();
+    fail = false;
+    await check();
+    await check();
+    expect(changes).toEqual([
+      ['down', 'database is not accepting connections'],
+      ['ok', undefined],
+    ]);
+  });
+
   it('HL4 withTimeout passes a fast result through', async () => {
     await expect(withTimeout(Promise.resolve('x'), 10)).resolves.toBe('x');
   });

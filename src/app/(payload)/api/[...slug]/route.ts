@@ -11,9 +11,12 @@ import {
   REST_PUT,
 } from '@payloadcms/next/routes'
 
+// Edited: anonymous media uploads are refused before the body is read (src/payload/mediaWriteGuard.ts).
+import { refuseAnonymousMediaWrites } from '@/payload/mediaWriteGuard'
+
 export const GET = REST_GET(config)
-export const POST = REST_POST(config)
+export const POST = refuseAnonymousMediaWrites(REST_POST(config))
 export const DELETE = REST_DELETE(config)
-export const PATCH = REST_PATCH(config)
+export const PATCH = refuseAnonymousMediaWrites(REST_PATCH(config))
 export const PUT = REST_PUT(config)
 export const OPTIONS = REST_OPTIONS(config)

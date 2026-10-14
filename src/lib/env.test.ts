@@ -10,11 +10,12 @@ const PROD = {
   SITE_URL: 'https://sefiddental.ir',
   GIT_SHA: 'abc123',
   MEDIA_DIR: '/srv/media',
-  CRON_SECRET: SECRET,
-  INTERNAL_API_TOKEN: SECRET,
-  IP_HASH_SECRET: SECRET,
+  CRON_SECRET: 'c'.repeat(43),
+  INTERNAL_API_TOKEN: 'i'.repeat(43),
+  IP_HASH_SECRET: 'h'.repeat(43),
   FORM_TOKEN_SECRET: SECRET,
 };
+const OLD = 'o'.repeat(43);
 
 describe('env', () => {
   it('E1 dbKindFromUrl picks the adapter from the scheme', () => {
@@ -73,10 +74,49 @@ describe('env', () => {
   });
 
   it('E5 a complete production environment parses', () => {
-    const env = parseEnv({ ...PROD, FORM_TOKEN_SECRET_PREVIOUS: 'old', MAINTENANCE_MODE: 'on' });
-    expect(env.formTokenSecrets).toEqual([SECRET, 'old']);
+    const env = parseEnv({ ...PROD, FORM_TOKEN_SECRET_PREVIOUS: OLD, MAINTENANCE_MODE: 'on' });
+    expect(env.formTokenSecrets).toEqual([SECRET, OLD]);
     expect(env.maintenance).toBe(true);
     expect(env.mediaDir).toBe('/srv/media');
+  });
+
+  it('E5b production refuses a short previous form key and one value for two secrets (SEC-S6)', () => {
+    expect(() => parseEnv({ ...PROD, FORM_TOKEN_SECRET_PREVIOUS: 'old' })).toThrow(
+      /FORM_TOKEN_SECRET_PREVIOUS too short/,
+    );
+    expect(() => parseEnv({ ...PROD, CRON_SECRET: PROD.PAYLOAD_SECRET })).toThrow(
+      /secrets must differ/,
+    );
+    // Development keeps working with a short placeholder.
+    expect(parseEnv({ ...BASE, FORM_TOKEN_SECRET_PREVIOUS: 'old' }).formTokenSecrets).toHaveLength(
+      2,
+    );
+  });
+
+  it('E5c a loopback IP as HOSTNAME is refused; localhost and 0.0.0.0 bind (CSP-1)', () => {
+    for (const HOSTNAME of ['127.0.0.1', '127.1.2.3', '::1', '[::1]']) {
+      expect(() => parseEnv({ ...PROD, HOSTNAME }), HOSTNAME).toThrow(/HOSTNAME is a loopback IP/);
+      expect(() => parseEnv({ ...BASE, HOSTNAME }), HOSTNAME).toThrow(/HOSTNAME is a loopback IP/);
+    }
+    for (const HOSTNAME of ['localhost', '0.0.0.0', 'web-1', '']) {
+      expect(parseEnv({ ...PROD, HOSTNAME }).siteUrl, HOSTNAME).toBe('https://sefiddental.ir');
+    }
+  });
+
+  it('E5d a missing dev secret is the same in every copy of this module (SEC-S7)', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      vi.resetModules();
+      const a = (await import('./env')).parseEnv(BASE);
+      vi.resetModules();
+      const b = (await import('./env')).parseEnv(BASE);
+      expect(b.internalApiToken).toBe(a.internalApiToken);
+      expect(b.formTokenSecrets).toEqual(a.formTokenSecrets);
+      expect(a.internalApiToken).not.toBe(a.cronSecret);
+      expect(a.internalApiToken.length).toBeGreaterThanOrEqual(43);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('E6 SITE_URL must be an apex origin without a trailing slash', () => {

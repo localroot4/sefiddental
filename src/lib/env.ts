@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto';
+import { createHmac } from 'node:crypto';
 import path from 'node:path';
 import { z } from 'zod';
 
@@ -166,29 +166,38 @@ const rawSchema = z.object({
   LOG_LEVEL: oneOf(['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const, 'info'),
   PROXY_CONFIG_TTL_MS: integer(30_000, 0),
   PORT: integer(3000, 1),
+  HOSTNAME: text(),
 });
+
+/**
+ * A loopback IP as the bind address: Next 16.4 renames 127.x and [::1] to 'localhost' in
+ * `request.url`, so every proxy rewrite looks external and Next proxies it to itself (CSP-1).
+ */
+const LOOPBACK_IP = /^(?:127(?:\.\d{1,3}){3}|::1|\[::1\])$/;
 
 /** Production at run time is strict; the build phase and dev/test fall back to defaults. */
 function isStrict(nodeEnv: ServerEnv['nodeEnv'], source: Source): boolean {
   return nodeEnv === 'production' && source.NEXT_PHASE !== 'phase-production-build';
 }
 
-/** Per-process random values for missing dev secrets: stable for the life of the process. */
-const devSecrets = new Map<SecretName, string>();
-function devSecret(name: SecretName, quiet: boolean): string {
-  let value = devSecrets.get(name);
-  if (!value) {
-    value = randomBytes(32).toString('base64url');
-    devSecrets.set(name, value);
-    // One line per secret; the logger is not imported here (the proxy imports this module).
-    // Quiet during `next build`: every build worker would print the same lines.
-    if (!quiet) {
-      console.warn(
-        JSON.stringify({ level: 'warn', msg: `${name} not set: using a random per-process value` }),
-      );
-    }
+/**
+ * Missing dev secrets are derived from PAYLOAD_SECRET, so every bundle of the process (proxy,
+ * routes, pages each hold a copy of this module) and every process agree on them (SEC-S7).
+ */
+const warned = new Set<SecretName>();
+function devSecret(name: SecretName, payloadSecret: string, quiet: boolean): string {
+  // One line per secret; the logger is not imported here (the proxy imports this module).
+  // Quiet during `next build`: every build worker would print the same lines.
+  if (!quiet && !warned.has(name)) {
+    warned.add(name);
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        msg: `${name} not set: derived from PAYLOAD_SECRET (dev only)`,
+      }),
+    );
   }
-  return value;
+  return createHmac('sha256', payloadSecret).update(`sefid-dev:${name}`).digest('base64url');
 }
 
 export function parseEnv(source: Source): ServerEnv {
@@ -235,8 +244,26 @@ export function parseEnv(source: Source): ServerEnv {
       missing(name, SECRETS[name]);
       return '';
     }
-    return devSecret(name, source.NEXT_PHASE === 'phase-production-build');
+    return devSecret(
+      name,
+      raw.PAYLOAD_SECRET ?? '',
+      source.NEXT_PHASE === 'phase-production-build',
+    );
   };
+  tooShort('FORM_TOKEN_SECRET_PREVIOUS', raw.FORM_TOKEN_SECRET_PREVIOUS);
+  if (strict) {
+    // One leaked value must not open the others, e.g. the cron bearer signing sessions (SEC-S6).
+    const names = ['PAYLOAD_SECRET', ...(Object.keys(SECRETS) as SecretName[])] as const;
+    const values = names.map((name) => raw[name]).filter(Boolean);
+    if (new Set(values).size !== values.length) {
+      problems.push(`secrets must differ: use one openssl value per name (${names.join(', ')})`);
+    }
+  }
+  if (raw.HOSTNAME && LOOPBACK_IP.test(raw.HOSTNAME)) {
+    problems.push(
+      'HOSTNAME is a loopback IP: Next 16.4 then proxies every rewrite to itself (Persian detail pages answer 500 behind TLS). Use HOSTNAME=localhost to bind loopback, or 0.0.0.0 behind a firewall',
+    );
+  }
 
   if (strict && !raw.SITE_URL) {
     missing('SITE_URL', 'set it to the public origin, e.g. https://sefiddental.ir');

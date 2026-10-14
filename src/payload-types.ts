@@ -589,7 +589,7 @@ export interface ServiceCategory {
   _status?: ('draft' | 'published') | null;
 }
 /**
- * عکس‌ها را JPEG بفرستید (عکس HEIC آیفون پذیرفته نمی‌شود). حداکثر ۲۰ مگابایت برای عکس و ۶۰ مگابایت برای ویدیو.
+ * عکس‌ها را JPEG بفرستید (عکس HEIC آیفون پذیرفته نمی‌شود). حداکثر ۲۰ مگابایت برای عکس و ۶۰ مگابایت برای ویدیو. ویدیو پاک‌سازی نمی‌شود: ویدیوی دارای موقعیت مکانی پذیرفته نمی‌شود. برای فایل تازه، رسانهٔ تازه بسازید.
  *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media".

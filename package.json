@@ -34,7 +34,8 @@
     "migrate": "payload migrate",
     "migrate:create": "payload migrate:create",
     "migrate:status": "payload migrate:status",
-    "seed": "payload run src/seed/index.ts",
+    "seed": "DB_PUSH=${DB_PUSH:-false} payload run src/seed/index.ts",
+    "reset-admin": "payload run scripts/reset-admin.ts",
     "db:e2e": "rm -f .data/e2e.db .data/e2e.db-wal .data/e2e.db-shm && mkdir -p .data && DATABASE_URL=file:./.data/e2e.db DB_PUSH=false payload migrate && DATABASE_URL=file:./.data/e2e.db DB_PUSH=false payload run src/seed/index.ts | tee .data/seed.log && (grep -q 'seed: mode' .data/seed.log || (echo 'db:e2e: the seeder printed no summary line, so .data/e2e.db is not seeded; read .data/seed.log' >&2 && exit 1))"
   },
   "dependencies": {

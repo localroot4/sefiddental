@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import { createRingBuffer } from '@/lib/log/ringBuffer';
+import { createRepeatFilter, createRingBuffer } from '@/lib/log/ringBuffer';
 
 describe('createRingBuffer', () => {
   it('RB1 newest first, at most `capacity` lines', () => {
@@ -18,5 +18,28 @@ describe('createRingBuffer', () => {
 
   it('RB3 rejects a non-positive capacity', () => {
     expect(() => createRingBuffer(0)).toThrow(RangeError);
+  });
+
+  it('RB4 every copy of the module shares one buffer and start time (SEC-S2)', async () => {
+    vi.resetModules();
+    const a = await import('@/lib/log/ringBuffer');
+    vi.resetModules();
+    const b = await import('@/lib/log/ringBuffer');
+    a.warnLines.push('from-route-handler');
+    expect(b.warnLines.entries()[0]).toBe('from-route-handler');
+    expect(b.processStartedAt).toBe(a.processStartedAt);
+    vi.resetModules();
+    const c = await import('@/lib/log/errorDedupe');
+    vi.resetModules();
+    const d = await import('@/lib/log/errorDedupe');
+    expect(d.requestErrors).toBe(c.requestErrors);
+  });
+
+  it('RB5 the repeat filter passes the first line of a key per window', () => {
+    const keep = createRepeatFilter(1000, 2);
+    expect(keep('a', 0)).toBe(true);
+    expect(keep('a', 999)).toBe(false);
+    expect(keep('b', 999)).toBe(true);
+    expect(keep('a', 1000)).toBe(true);
   });
 });

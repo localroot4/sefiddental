@@ -171,6 +171,9 @@ const AUTOSAVE_MERGE_MS = 10 * 60 * 1000;
 export async function writeAudit(req: PayloadRequest, entry: AuditEntry): Promise<void> {
   if (ctx(req).skipAudit) return;
   const actor = entry.actor ?? actorOf(req, entry.action);
+  // The nested Local API calls below clear `req.file` (createLocalReq sets it from their own
+  // `file` option), and the outer upload then never unlinks its temp file (UP-2).
+  const file = req.file;
   try {
     // Autosave flood control: merge into the same actor's recent update row of this document.
     if (entry.action === 'update' && entry.docId && actor.actor !== null) {
@@ -233,6 +236,8 @@ export async function writeAudit(req: PayloadRequest, entry: AuditEntry): Promis
       },
       'audit row not written',
     );
+  } finally {
+    req.file = file;
   }
 }
 

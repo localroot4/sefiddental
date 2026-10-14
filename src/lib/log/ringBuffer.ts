@@ -27,8 +27,31 @@ export function createRingBuffer(capacity: number): RingBuffer {
   };
 }
 
+/** True for the first line of a key in each window (keys are cleared past `maxKeys`). */
+export function createRepeatFilter(windowMs: number, maxKeys = 500) {
+  const seen = new Map<string, number>();
+  return (key: string, nowMs: number): boolean => {
+    const last = seen.get(key);
+    if (last !== undefined && nowMs - last < windowMs) return false;
+    if (seen.size >= maxKeys) seen.clear();
+    seen.set(key, nowMs);
+    return true;
+  };
+}
+
+// One instance per process. The bundler copies this module into each server layer (route
+// handlers, pages, instrumentation); every copy must share the buffer the status view reads.
+const store = globalThis as typeof globalThis & {
+  __sefidWarnLines?: RingBuffer;
+  __sefidRingRepeats?: ReturnType<typeof createRepeatFilter>;
+  __sefidStartedAt?: string;
+};
+
 /** Last 200 warn, error and fatal lines of this process (already redacted); empty after a restart. */
-export const warnLines = createRingBuffer(200);
+export const warnLines = (store.__sefidWarnLines ??= createRingBuffer(200));
+
+/** The ring keeps one line per level and message per 10 minutes: a flood never evicts the rest. */
+export const ringRepeats = (store.__sefidRingRepeats ??= createRepeatFilter(10 * 60_000));
 
 /** Shown next to the buffer: the buffer covers this process only. */
-export const processStartedAt = new Date().toISOString();
+export const processStartedAt = (store.__sefidStartedAt ??= new Date().toISOString());

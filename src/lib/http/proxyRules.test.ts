@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { buildPath, normalizePath, PAGE_PATHS, type PathCollection } from '@/lib/paths';
 import {
   isAuthLimitedPath,
+  isClosedPayloadPath,
   isFirstUserPath,
   maintenanceBypass,
   needsFormSession,
@@ -70,6 +71,38 @@ describe('maintenanceBypass (spec X17)', () => {
     expect(maintenanceBypass('api', '/api/users/me', false)).toBe(false);
     expect(maintenanceBypass('api', '/api/events', false)).toBe(false);
   });
+
+  it('M3 a session cookie never opens the site routes or the scheduler (SF-2)', () => {
+    for (const path of [
+      '/api/events',
+      '/api/form-session',
+      '/api/csp-report',
+      '/api/booking',
+      '/api/emergency',
+      '/api/cron/tick',
+    ]) {
+      expect(maintenanceBypass('api', path, true), path).toBe(false);
+    }
+    expect(maintenanceBypass('api', '/api/users/login', true)).toBe(true);
+  });
+});
+
+describe('isClosedPayloadPath (SEC-S4)', () => {
+  it.each([
+    '/api/users/verify',
+    '/api/users/verify/abc',
+    '/API/Users/Verify/x%61',
+    '/api/users/verify/',
+  ])('V1 %s is closed after normalizePath', (raw) => {
+    expect(isClosedPayloadPath(normalizePath(raw))).toBe(true);
+  });
+
+  it.each(['/api/verify-totp', '/api/users/verifyx', '/api/users/me'])(
+    'V2 %s stays open',
+    (raw) => {
+      expect(isClosedPayloadPath(normalizePath(raw))).toBe(false);
+    },
+  );
 });
 
 describe('needsFormSession', () => {

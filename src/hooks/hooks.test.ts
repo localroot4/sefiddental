@@ -3,11 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
 
 const { changedFields, updateAction } = await import('./audit');
-const { rewritePhoneSearch, STATUS_TRANSITIONS, transitionRule, urgencyRank } =
+const { bookingRules, rewritePhoneSearch, STATUS_TRANSITIONS, transitionRule, urgencyRank } =
   await import('./booking');
 const { articleComputed, pagePath } = await import('./computed');
 const { hashedName, MEDIA_MESSAGES, mediaProblem } = await import('./media');
 const { normalizeData } = await import('./normalize');
+const { requestIdOf } = await import('./context');
 const { normalizeRedirect, normalizeTarget } = await import('./redirects');
 const { revalidateTags } = await import('./revalidate');
 const { revalidateTag } = await import('next/cache');
@@ -116,6 +117,47 @@ describe('H-BOOKING (spec-data 6.9)', () => {
     });
   });
 
+  it('BK3 handledBy and handledAt come from the hook, never from the request (SF-5)', async () => {
+    const editor = { id: 7, role: 'editor' };
+    const run = (operation: 'create' | 'update', data: object, originalDoc?: object) =>
+      bookingRules({
+        data,
+        originalDoc,
+        operation,
+        req: { user: editor },
+      } as never) as Promise<Record<string, unknown>>;
+    const forged = { handledBy: 1, handledAt: '2020-01-01T00:00:00.000Z' };
+    const kept = await run(
+      'update',
+      { ...forged, status: 'new' },
+      { status: 'new', phone: '+989121234567' },
+    );
+    expect(kept).toMatchObject({ handledBy: null, handledAt: null });
+    const first = await run(
+      'update',
+      { ...forged, status: 'contacted' },
+      { status: 'new', phone: '+989121234567' },
+    );
+    expect(first.handledBy).toBe(7);
+    expect(first.handledAt).not.toBe(forged.handledAt);
+    const handled = {
+      status: 'contacted',
+      handledBy: 3,
+      handledAt: '2026-10-01T00:00:00.000Z',
+      phone: '+989121234567',
+    };
+    expect(
+      await run('update', { handledBy: null, handledAt: null, status: 'contacted' }, handled),
+    ).toMatchObject({
+      handledBy: 3,
+      handledAt: '2026-10-01T00:00:00.000Z',
+    });
+    expect(await run('create', { ...forged, phone: '+989121234567' })).toMatchObject({
+      handledBy: null,
+      handledAt: null,
+    });
+  });
+
   it('PS6 exact matches and names: equals stays, names get Persian letters', () => {
     expect(rewritePhoneSearch({ phone: { equals: '+989123456789' } })).toEqual({
       phone: { equals: '+989123456789' },
@@ -216,5 +258,19 @@ describe('H-REVAL (freeze decision 46)', () => {
       throw new Error('Invariant: static generation store missing');
     });
     expect(() => revalidateTags(req, ['glob:clinic'], { expire: 0 })).not.toThrow();
+  });
+});
+
+describe('requestIdOf (UP-12)', () => {
+  const req = (id?: string) =>
+    ({ headers: new Headers(id === undefined ? {} : { 'x-request-id': id }) }) as never;
+
+  it('RI1 keeps the proxy shape only: media writes skip the proxy', () => {
+    expect(requestIdOf(req('0b6f2c1e-5d1a-4a7c-9a35-6f7f9a2b1c3d'))).toBe(
+      '0b6f2c1e-5d1a-4a7c-9a35-6f7f9a2b1c3d',
+    );
+    expect(requestIdOf(req(`forged-${'x'.repeat(3000)}`))).toBeUndefined();
+    expect(requestIdOf(req('create forged <script>'))).toBeUndefined();
+    expect(requestIdOf(req())).toBeUndefined();
   });
 });

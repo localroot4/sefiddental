@@ -69,5 +69,10 @@ export function createErrorDedupe(opts: { windowMs: number; maxEntries?: number 
   };
 }
 
+// One instance per process: each server layer holds its own copy of this module (SEC-S2).
+const store = globalThis as typeof globalThis & { __sefidRequestErrors?: ErrorDedupe };
+
 /** Process-wide instance used by onRequestError; window 60 minutes until the notifier global is read. */
-export const requestErrors = createErrorDedupe({ windowMs: 60 * 60 * 1000 });
+export const requestErrors = (store.__sefidRequestErrors ??= createErrorDedupe({
+  windowMs: 60 * 60 * 1000,
+}));

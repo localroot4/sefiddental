@@ -9,6 +9,12 @@ import type { PathKind } from '@/lib/http/classify';
 /** Payload's first-user screen and endpoint: closed for every method unless ALLOW_FIRST_USER. */
 const FIRST_USER_PATHS = new Set(['/admin/create-first-user', '/api/users/first-register']);
 
+/**
+ * Payload's e-mail verification endpoint. Verification is off, so every call is a 500 with an
+ * ERROR line and a stack that anyone can repeat (SEC-S4): closed like the first-user paths.
+ */
+const VERIFY_EMAIL_PATH = '/api/users/verify';
+
 /** Credential endpoints behind the auth limiter (decision 41): POST only. */
 const AUTH_LIMITED_PATHS = new Set([
   '/api/users/login',
@@ -23,12 +29,26 @@ const AUTH_LIMITED_PATHS = new Set([
  */
 const MAINTENANCE_SIGN_IN_PATHS = new Set(['/api/users/login', '/api/verify-totp']);
 
+/**
+ * The site's own anonymous API routes and its scheduler. The proxy cannot check a Payload
+ * session cookie's value, so in maintenance mode the cookie never opens these (SF-2); the cron
+ * route checks its own bearer but pauses with the site.
+ */
+const SITE_API_PATHS = new Set([
+  '/api/events',
+  '/api/form-session',
+  '/api/csp-report',
+  '/api/booking',
+  '/api/emergency',
+  '/api/cron/tick',
+]);
+
 /** Pages that get the form session cookie from the proxy (spec-utils 7.8, phase 5 forms). */
 const FORM_SESSION_PAGES = new Set(['/رزرو-نوبت', '/اورژانس']);
 
 /**
  * True when the request passes in maintenance mode: the health check, the admin pages, signed-in
- * API calls (Payload session cookie present), the sign-in endpoints, and internal routes (the
+ * Payload API calls (session cookie present; never the site's own routes), the sign-in endpoints, and internal routes (the
  * proxy passes kind 'internal' before the maintenance step; listed here for completeness).
  */
 export function maintenanceBypass(
@@ -38,12 +58,21 @@ export function maintenanceBypass(
 ): boolean {
   if (kind === 'internal' || kind === 'admin') return true;
   if (pathname === '/api/health') return true;
-  if (kind === 'api') return hasPayloadToken || MAINTENANCE_SIGN_IN_PATHS.has(pathname);
+  if (kind === 'api') {
+    return (
+      MAINTENANCE_SIGN_IN_PATHS.has(pathname) || (hasPayloadToken && !SITE_API_PATHS.has(pathname))
+    );
+  }
   return false;
 }
 
 export function isFirstUserPath(pathname: string): boolean {
   return FIRST_USER_PATHS.has(pathname);
+}
+
+/** Payload endpoints the site does not use: 404 for every method and every suffix. */
+export function isClosedPayloadPath(pathname: string): boolean {
+  return pathname === VERIFY_EMAIL_PATH || pathname.startsWith(`${VERIFY_EMAIL_PATH}/`);
 }
 
 export function isAuthLimitedPath(method: string, pathname: string): boolean {

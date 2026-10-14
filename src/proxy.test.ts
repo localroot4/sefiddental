@@ -191,6 +191,55 @@ describe('proxy', () => {
     const gone = await proxy(new NextRequest('http://localhost/old-page'), ev);
     expect(gone.status).toBe(410);
   });
+  it('PX14 Payload e-mail verification is a plain 404 for every method (SEC-S4)', async () => {
+    const { proxy } = await loadProxy();
+    for (const [method, path] of [
+      ['POST', '/api/users/verify/abc'],
+      ['GET', '/api/users/verify/x'],
+      ['POST', '/API/users/verify/%61'],
+    ] as const) {
+      const res = await proxy(new NextRequest(`http://localhost${path}`, { method }), ev);
+      expect(res.status, `${method} ${path}`).toBe(404);
+    }
+  });
+
+  it('PX15 in maintenance a forged session cookie opens no site route (SF-2)', async () => {
+    const { proxy } = await loadProxy({ MAINTENANCE_MODE: 'on' });
+    const res = await proxy(
+      new NextRequest('http://localhost/api/events', {
+        method: 'POST',
+        headers: { cookie: 'payload-token=x' },
+      }),
+      ev,
+    );
+    expect(res.status).toBe(503);
+  });
+
+  it('PX13 a canonical 301 is never stored by a shared cache (CSP-2)', async () => {
+    const { proxy } = await loadProxy({
+      NODE_ENV: 'production',
+      NEXT_PHASE: 'phase-production-build',
+      SITE_URL: 'https://sefiddental.ir',
+      TRUST_PROXY_HEADERS: 'true',
+    });
+    const ask = (headers: Record<string, string>) =>
+      proxy(new NextRequest('http://localhost:3000/x/', { headers }), ev);
+    const hop = await ask({ host: 'sefiddental.ir', 'x-forwarded-proto': 'https' });
+    expect(hop.status).toBe(301);
+    expect(hop.headers.get('cache-control')).toBe('no-store');
+    const own = await proxy(
+      new NextRequest('http://localhost:3000/x', {
+        headers: {
+          host: 'sefiddental.ir',
+          'x-forwarded-proto': 'https',
+          'x-forwarded-host': 'www.sefiddental.ir',
+        },
+      }),
+      ev,
+    );
+    expect(own.status).not.toBe(301);
+  });
+
   it('PX10 booking and emergency pages get the form cookie and the sid header once', async () => {
     const { proxy } = await loadProxy();
     const fresh = await proxy(

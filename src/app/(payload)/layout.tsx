@@ -1,10 +1,12 @@
-/* Based on the file Payload generates; edited only to pass the admin font through htmlProps. */
+/* Based on the file Payload generates; edited to pass the admin font through htmlProps and to
+   replace the schedule-publish server function (src/admin/schedulePublish.ts). */
 import config from '@payload-config';
 import '@payloadcms/next/css';
 import type { ServerFunctionClient } from 'payload';
 import { handleServerFunctions, RootLayout } from '@payloadcms/next/layouts';
 import React from 'react';
 
+import { adminServerFunctions } from '@/admin/schedulePublish';
 import { Vazirmatn } from '@/lib/fonts';
 import { importMap } from './admin/importMap.js';
 import './custom.scss';
@@ -19,6 +21,7 @@ const serverFunction: ServerFunctionClient = async function (args) {
     ...args,
     config,
     importMap,
+    serverFunctions: adminServerFunctions,
   });
 };
 

@@ -3,6 +3,11 @@ import type { PathKind } from '@/lib/http/classify';
 /** An incoming id is kept only from a trusted proxy and only in this shape. */
 const TRUSTED_REQUEST_ID = /^[A-Za-z0-9._-]{8,64}$/;
 
+/** The shape of every id the proxy forwards; anything else is a client's own header. */
+export function isWellFormedRequestId(value: string | null | undefined): value is string {
+  return typeof value === 'string' && TRUSTED_REQUEST_ID.test(value);
+}
+
 /**
  * Headers only the proxy may put on the request that reaches the render: a client copy would
  * forge the CSP nonce, the form session id, the admin path seen by payload-totp or the id.

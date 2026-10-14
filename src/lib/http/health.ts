@@ -28,13 +28,16 @@ export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
 /**
  * Health probe runner (spec 11.1, critic W11): `probe` (for example `payload.count` on users)
  * races a 2000 ms timeout, because a stopped database can hold a pool connect longer. One probe
- * at a time; the result is reused for `memoMs`. `now` is injectable for tests.
+ * at a time; the result is reused for `memoMs`. `now` is injectable for tests. `onChange` hears
+ * each change of status (the first result only when it is down) with the probe's error, so the
+ * log says why the site went down (SEC-S5).
  */
 export function createDatabaseHealth(opts: {
   probe: () => Promise<unknown>;
   timeoutMs?: number;
   memoMs?: number;
   now?: () => number;
+  onChange?: (check: DatabaseCheck, error: unknown) => void;
 }): () => Promise<DatabaseCheck> {
   const timeoutMs = opts.timeoutMs ?? HEALTH_DB_TIMEOUT_MS;
   const memoMs = opts.memoMs ?? HEALTH_MEMO_MS;
@@ -46,10 +49,15 @@ export function createDatabaseHealth(opts: {
     const started = now();
     if (last !== null && started - last.checkedAt < memoMs) return Promise.resolve(last);
     if (inflight) return inflight;
+    let error: unknown = null;
     inflight = withTimeout(Promise.resolve().then(opts.probe), timeoutMs)
       .then((): DatabaseCheck => ({ status: 'ok', latencyMs: now() - started, checkedAt: started }))
-      .catch((): DatabaseCheck => ({ status: 'down', latencyMs: null, checkedAt: started }))
+      .catch((err: unknown): DatabaseCheck => {
+        error = err;
+        return { status: 'down', latencyMs: null, checkedAt: started };
+      })
       .then((result) => {
+        if (result.status !== (last?.status ?? 'ok')) opts.onChange?.(result, error);
         last = result;
         inflight = null;
         return result;

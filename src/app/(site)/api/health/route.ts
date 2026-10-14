@@ -1,12 +1,19 @@
 import { getPayloadClient } from '@/lib/data/payload';
 import { readEnv } from '@/lib/env';
 import { createDatabaseHealth } from '@/lib/http/health';
+import { log } from '@/lib/log/logger';
 
 // Spec 11.1, critic W11: the database answers within 2000 ms or the site is down. The probe is
 // memoized for 5 s, so this public endpoint cannot be used to load the database.
 const checkDatabase = createDatabaseHealth({
   probe: async () =>
     (await getPayloadClient()).count({ collection: 'users', overrideAccess: true }),
+  // One line per change, with the cause (SEC-S5): code and message only, never the whole error.
+  onChange: (check, error) => {
+    if (check.status === 'ok') return log.info({ msg: 'health_db_up' });
+    const { code, message } = (error ?? {}) as { code?: unknown; message?: unknown };
+    log.warn({ msg: 'health_db_down', code, reason: String(message ?? error) });
+  },
 });
 
 async function health(): Promise<{ status: number; body: string }> {
