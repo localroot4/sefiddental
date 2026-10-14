@@ -124,6 +124,13 @@ layout. While the hero photo covers the viewport, the canvas renders no
 frames. Lighthouse mobile: Performance >= 90 on home at tier 1 settings,
 >= 95 on every content page; Accessibility, Best Practices and SEO 100.
 
+Phase 3 measurement: the Next.js 16.4 and React 19.3 framework floor is
+131.8 KiB gzipped, above the content and booking targets. CI gates interim
+initial-JS limits (home 215 KiB, content 150 KiB, booking and emergency
+150 KiB) and every report shows the targets in the table next to the
+measured values. Lighthouse audits content pages on a 200 render of the 404
+template (`/qa/not-found`). Details: `docs/brief.md` section 7.
+
 ## 5. Interaction rules
 
 - Pointer parallax and hover tilt only on fine pointers; touch devices get

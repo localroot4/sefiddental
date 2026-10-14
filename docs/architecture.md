@@ -8,20 +8,26 @@ this file in the same commit.
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Framework | Next.js, current stable (16 or later), App Router, TypeScript strict | Server components by default; client islands for motion and WebGL |
-| CMS | Payload CMS 3.x inside the same Next.js app, admin at `/admin`, locale `fa`, RTL | Collections, drafts and versions, scheduled publish, access control, media with sharp, live preview |
+| Framework | Next.js 16.4.0 with React 19.3.0, App Router, TypeScript 5.9.3 strict, on Node.js 22 (22.18 or later) | Server components by default; client islands for motion and WebGL. TypeScript 5.9.3 is the version verified with Payload 3.90.2 and the lint toolchain |
+| CMS | Payload CMS 3.90.2 inside the same Next.js app, admin at `/admin`, locale `fa`, RTL | Collections, drafts and versions, scheduled publish, access control, media with sharp, live preview |
 | Database | PostgreSQL (Payload Postgres adapter) on a PaaS or a VPS; Payload's SQLite adapter on cPanel paths (C2) | The data model is identical; the adapter is an environment setting, and the confirmed hosting path (section 2) sets it |
-| Styling | Tailwind CSS v4 with `@theme` tokens from `design/tokens.css`; CSS modules for complex scenes | one token file, no ad-hoc colors |
+| Styling | Tailwind CSS 4.3.3 with `@theme` tokens from `design/tokens.css`; CSS modules for complex scenes | one token file, no ad-hoc colors |
 | UI motion | Motion (`motion/react`) for component states and layout animation | client islands only |
-| Scroll engine | GSAP 3 (ScrollTrigger, Flip, MorphSVG, Draggable, InertiaPlugin) plus Lenis | one master timeline per page; see `docs/experience-direction.md` |
-| WebGL | three.js, `@react-three/fiber` 9, `@react-three/drei`, `@react-three/postprocessing`; WebGL 2 with WebGL 1 fallback for tier 1 | KTX2 textures, Draco glTF, one `<Canvas>` fixed behind the page |
-| Quality tiers | `detect-gpu` plus a frame-time monitor (`PerformanceMonitor` from drei) and `AdaptiveDpr` | tiers 0-3 per `docs/experience-direction.md` section 3 |
+| Scroll engine | GSAP 3.15.0 (ScrollTrigger, Flip, MorphSVG, Draggable, InertiaPlugin) plus Lenis 1.3.26 | one master timeline per page; see `docs/experience-direction.md` |
+| WebGL | three.js r186 (0.186.1), `@react-three/fiber` 9.8.1, `@react-three/drei` 10.7.9, `@react-three/postprocessing`; WebGL 2 with WebGL 1 fallback for tier 1 | KTX2 textures, Draco glTF, one `<Canvas>` fixed behind the page |
+| Quality tiers | `detect-gpu` 5.0.70 plus a frame-time monitor (`PerformanceMonitor` from drei) and `AdaptiveDpr` | tiers 0-3 per `docs/experience-direction.md` section 3 |
 | Fonts | Vazirmatn and Estedad via `next/font/local`, subsets, swap | preloaded |
 | Icons | Phosphor Icons React | one family |
-| Dates | `date-fns-jalali` for display; store UTC | Asia/Tehran |
-| Email | Nodemailer through the host's SMTP | admin notifications |
-| Tests | Vitest (unit), Playwright (e2e, screenshots, frame timing), axe-core, Lighthouse CI | all in GitHub Actions |
-| Lint | ESLint, Prettier, TypeScript `--noEmit`, `knip` for dead code | CI gate |
+| Dates | `date-fns-jalali` 4.4.0-0 for display; store UTC | Asia/Tehran |
+| Email | Nodemailer (`@payloadcms/email-nodemailer` 3.90.2) through the host's SMTP | admin notifications; without SMTP settings, password-reset mail goes to the server log |
+| Tests | Vitest 5.0.4 (unit), Playwright 1.64.0 (e2e, screenshots, frame timing), axe-core (`@axe-core/playwright` 4.13.0), Lighthouse CI 0.15.1 | all in GitHub Actions |
+| Lint | ESLint 9.39.5, Prettier 3.9.10, TypeScript `--noEmit`, `knip` 6.41.0 for dead code | CI gate |
+
+Phase 3 pins every version exactly in `package.json`. Other pinned runtime
+packages: `payload-totp` 3.0.6 (MFA, section 8), zod 4.6.7 (validation),
+sharp 0.35.5 (media), pino 9.14.0 (logs), yaml 2.9.1 (seeders). Motion,
+Phosphor Icons and `@react-three/postprocessing` are pinned by the phase
+that first uses them.
 
 ## 2. Hosting and deployment
 
@@ -109,28 +115,51 @@ run on release; the previous release is kept for one-command rollback.
   letters and digits) used by Payload `beforeValidate` hooks; slugs editable
   in admin and unique per collection; a slug change writes a 301 into the
   `redirects` collection.
+- Persian dynamic routes (phase 3 change): Next.js 16.4 never matches a
+  dynamic segment under a Persian folder in a production build (it builds
+  the route pattern from the raw Unicode folder name and tests it against
+  the percent-encoded path). Each Persian dynamic route therefore renders
+  from an ASCII folder under `src/app/(site)/r/`, and the proxy rewrites the
+  public path through one table (`routeRewrite` in
+  `src/lib/http/proxyRules.ts`): `/خدمات/<slug>` (services and categories)
+  from `r/services`, `/پزشکان/<slug>` from `r/doctors`, `/مقالات/دسته/<slug>`
+  from `r/article-categories`, `/مقالات/برچسب/<slug>` from `r/tags`,
+  `/مقالات/<slug>` from `r/articles`, `/راهنمای-بیمار/<slug>` from
+  `r/guides`. Only one segment after the prefix rewrites. A direct request
+  under `/r/` gets the 404, so the internal paths never duplicate content.
+  Canonical URLs, sitemaps and redirects keep the Persian path. Static
+  Persian folders work as they are; never put a `[slug]` folder under a
+  Persian folder name.
 - Canonical without trailing slash; `www` to apex; HTTP to HTTPS; query
   strings canonicalize to the base URL (gallery filters, booking params).
-- Rendering: content pages are static or ISR (revalidate on publish through
-  Payload hooks); home is static (or ISR) with client islands, although its
-  hero card and booking block render forms. Pages with an inline form (home,
-  address, content pages with a booking block) stay static or ISR and get
-  the CSRF token, the signed time token and the hours state from a
-  `no-store` endpoint (`docs/conversion.md` section 6). Only the booking and
-  emergency pages are dynamic (`no-store`).
+- Rendering (phase 3 change, replaces "static or ISR"): every public HTML
+  response renders per request, so it carries a fresh CSP nonce (section 8)
+  and never needs `unsafe-inline`. Data reads are cached and tagged instead
+  (`unstable_cache`, kept while `cacheComponents` is off; entries live in
+  process memory only, so a restart starts cold and never serves an old
+  value). Payload save hooks revalidate the tags, never paths: content
+  collections with the `max` profile (the first request after a save may
+  still get the old version while it refreshes), the globals and
+  `redirects` with `{ expire: 0 }`, so phone, hours and redirects change on
+  the next request. Home keeps its client islands. Pages with an inline form
+  (home, address, content pages with a booking block) still never carry the
+  CSRF token, the signed time token or the hours state in their HTML; they
+  fetch them from the `no-store` endpoint `/api/form-session`
+  (`docs/conversion.md` section 6). The booking and emergency pages are
+  dynamic (`no-store`). TTFB is measured on the chosen host.
 
 ## 4. Data model (Payload collections and globals)
 
 | Collection | Key fields |
 |---|---|
 | service-categories | title, navLabel, slug (nullable for standalone), accent, icon, order, seo |
-| services | category, navLabel, h1, seoTitle, slug, bookingGroup, emergencyLink, summary, body (blocks), priceFrom (nullable), duration, sessions, faqs (array), related, priority, reviewedBy (doctor), reviewedAt, status, seo |
+| services | category, navLabel, h1, seoTitle, slug, bookingGroup, emergencyLink, summary, body (blocks), priceFrom (nullable), duration, sessions, faqs (array), related, priority, reviewedBy (doctor), reviewedAt, `_status`, seo |
 | service-tiers | service, name, description, materials, highlights, priceFrom, order |
-| doctors | name, slug, specialty, specialtyConfirmed (board), councilNumber, degrees, bio, photo, order, services, status, seo |
-| articles | title, slug, excerpt, body (rich text with media), cover, category, tags, author (doctor or staff), reviewer (doctor), sources (array), readingTime, publishedAt, updatedAt, status, seo |
+| doctors | name, slug, specialty, specialtyConfirmed (board), councilNumber, degrees, bio, photo, order, services, `_status`, seo |
+| articles | title, slug, excerpt, body (rich text with media), cover, category, tags, author (doctor or staff), reviewer (doctor), sources (array), readingTime, publishedAt, contentUpdatedAt, `_status`, reviewState (writing, in review, approved), seo |
 | article-categories, tags | title, slug, description, seo |
-| testimonials | patientLabel, service, type (video or text), media, poster, quote, consentConfirmed, order, status |
-| cases | title, service, before, after, notes, consentConfirmed, order, status |
+| testimonials | patientLabel, service, type (video or text), media, poster, quote, consentConfirmed, order, `_status` |
+| cases | title, service, before, after, notes, consentConfirmed, order, `_status` |
 | bookings | phone (E.164), name, service, tier, doctor, preferredTime, note, kind (regular or emergency), triage, emergencyOutcome, status (new, contacted, scheduled, done, cancelled, spam, suspicious), flags, heardFrom, sourceUrl, utm, device, ipHash, adminNotes, handledBy, handledAt |
 | insurances | name, logo, featured, order |
 | financing-options | title, provider, maxAmount, surchargeNote, terms, enabled |
@@ -139,11 +168,31 @@ run on release; the previous release is kept for one-command rollback.
 | events-daily | date, event, location, pageType, serviceKey, count |
 | media | upload with required alt, focal point, sharp conversions (AVIF, WebP, sizes), LQIP |
 | users | admin and editor roles |
+| audit-log | action, entitySlug, docId, docLabel, changedFields (field paths, never values), statusFrom, statusTo, actor, actorRole, requestId, ipHash |
 
-Globals: `clinic` (name, NAP, phones, socials, hours with holiday
+Globals: `clinic` (name, NAP with the coordinates as two number fields
+`address.lat` and `address.lng`, phones, socials, hours with holiday
 overrides, legal: license and supervisor), `seo-defaults`, `features`
 (financing toggles, emergency, intro, analytics id, quality tier override),
-`notifier` (drivers and test action).
+`notifier` (drivers and test action), `system-state` (the last cron run for
+the status view; hidden, admin read only, no versions, not seeded).
+
+Phase 3 changes to this model (the configs in `src/collections/` and
+`src/globals/` hold the full field lists):
+
+- Content collections with drafts use Payload's own `_status` (draft or
+  published). Payload does not allow a field named `status` when drafts are
+  on with the Postgres adapter. `bookings` has no drafts and keeps `status`.
+- `articles.reviewState` holds the editorial stage (writing, in review,
+  approved); publishing stays separate. `articles.contentUpdatedAt` feeds
+  `dateModified`, because Payload's own `updatedAt` moves on every autosave.
+- `audit-log` records who changed what, because Payload versions keep no
+  user. It is written by hooks only and is read only for admins.
+- `system-state` exists so the status view can show the last cron run
+  (section 9).
+- Coordinates are two `number` fields, not Payload's `point` field: `point`
+  does not work on SQLite, and the model must stay identical on both
+  adapters.
 
 Every content record has drafts, versions and an audit trail. Bookings
 export to CSV. Phones are stored normalized and searchable in any digit form.
@@ -202,20 +251,37 @@ with zod; the forms also work as plain HTML posts.
   below the first screen and loads without priority. Both crops come from
   one shoot.
   On other pages the LCP image gets `fetchpriority="high"`.
-- Static assets immutable for one year; HTML `no-cache` on dynamic routes;
-  ISR for content routes.
+- Build assets (`/_next/static`) immutable for one year. Media files
+  `public, max-age=604800` (seven days), because crops regenerate under the
+  same name when an editor moves the focal point. HTML renders per request
+  and no page output is cached (section 3); the tagged data cache keeps
+  content reads fast.
 
 ## 8. Security
 
-- HTTPS and HSTS; CSP with per-request nonces on dynamic routes and hashes
-  for the static inline intro script; `X-Content-Type-Options`,
-  `Referrer-Policy`, `Permissions-Policy`, `X-Frame-Options: DENY` except
-  Payload live preview.
+- HTTPS and HSTS; CSP with a per-request nonce plus `'strict-dynamic'` on
+  every public page (section 3) and on the admin, and hashes for static
+  inline scripts (the theme script now, the intro script in phase 7); outside
+  development, public pages never allow `unsafe-inline` or `unsafe-eval`.
+  `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy`,
+  `X-Frame-Options: DENY` except Payload live preview.
+- Admin CSP (phase 3 change): `style-src` keeps `'unsafe-inline'`, because
+  Payload renders inline styles and exposes no nonce for them. Scripts follow
+  the public rule (nonce, no `unsafe-eval`). The admin policy enforces; a
+  report-only switch (`CSP_ADMIN_MODE`) stays for debugging.
 - CSRF double-submit token on forms; zod validation; parameterized queries
   through Payload; rate limits at the route handlers.
-- Admin: Payload auth with MFA (TOTP) through a maintained plugin or
-  built-in support, login throttling, strong passwords, roles admin and
-  editor (editor: articles, cases, testimonials, bookings), audit trail.
+- Admin: Payload auth with MFA (TOTP) through the community plugin
+  `payload-totp` 3.0.6 (phase 3 choice), login throttling (429 after 10
+  attempts in 15 minutes per client on sign-in, password reset and the TOTP
+  endpoints), strong passwords (at least 12 characters, never containing
+  the email's local part), roles admin and editor (editor: articles, cases,
+  testimonials, bookings), audit trail. Scheduled publish runs as a server
+  user that needs no TOTP.
+- Content access (phase 3): the public site reads content through Payload's
+  Local API only. Anonymous REST reads are denied on every collection and
+  global; the one exception is media files, which public pages embed.
+  GraphQL is off.
 - Uploads: type and size validation, re-encoding with sharp, no SVG from
   editors.
 - `npm audit` in CI; no secrets in the repository or logs; phones never in
@@ -226,6 +292,12 @@ with zod; the forms also work as plain HTML posts.
 - Structured JSON logs with a request id. `/api/health` endpoint. Admin
   "System status" view: Node version, database, queue depth, last cron run,
   last deploy SHA, media storage usage, failed jobs, open content gaps.
+- Scheduled work (phase 3): one route, `GET /api/cron/tick`, called every
+  minute by the host's cron with `Authorization: Bearer CRON_SECRET`. It
+  runs Payload's schedules and job queue (scheduled publish now, the
+  notifier retries of section 5 later, at most 20 jobs per tick) and records
+  the run in the `system-state` global, which the status view shows as the
+  last cron run. `docs/deploy.md` has the host cron setup.
 - Error notifications through the Notifier, deduplicated per signature per
   hour.
 - Backups: nightly PostgreSQL dump to object storage with 14-day retention
@@ -239,7 +311,7 @@ with zod; the forms also work as plain HTML posts.
   and callback copy, quality tier selection logic.
 - Playwright: home loads and intro skips, booking happy and error paths
   (booking page, dialog, the home hero card and the home booking block),
-  the cached home HTML contains no token, emergency gate, drawer, theme
+  the home HTML contains no token, emergency gate, drawer, theme
   toggle, compare slider keyboard use, article page; screenshots at
   390x844, 820x1180 and 1440x900 in both themes under `docs/qa/`;
   frame-time sampling on home with CPU throttling.
@@ -252,4 +324,6 @@ with zod; the forms also work as plain HTML posts.
 platform's dev database), `npm run build && npm start` for production
 checks, Playwright with the preinstalled Chromium in cloud sessions
 (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`). Seeders import
-`docs/content/*.yaml` and `content/data/*.yaml`.
+`docs/content/*.yaml` and `content/data/*.yaml`; the page registry seed
+lives in code (`src/seed/data/pages.yaml`), because the route tree owns the
+page keys and hub slugs (phase 3 change).
