@@ -78,6 +78,23 @@ function savedLhrs() {
     .map((name) => JSON.parse(readFileSync(path.join(lhciDir, name), 'utf8')));
 }
 
+/** One GitHub annotation per failed error-level assertion: CI logs are not always readable. */
+function annotateFailures(theme) {
+  let results = [];
+  try {
+    results = JSON.parse(readFileSync(path.join(lhciDir, 'assertion-results.json'), 'utf8'));
+  } catch {
+    return; // autorun failed before asserting; its own output says why
+  }
+  for (const r of results) {
+    if (r.passed || r.level !== 'error') continue;
+    const what = r.auditProperty ? `${r.auditId}.${r.auditProperty}` : r.auditId;
+    console.log(
+      `::error title=lhci ${theme}::${r.url} ${what} ${r.name}: expected ${r.operator} ${r.expected}, got ${r.actual} (runs ${JSON.stringify(r.values)})`,
+    );
+  }
+}
+
 function main() {
   // Local runs read the repo .env (CHROME_PATH for the container Chromium), like
   // check-bundle.mjs and playwright.config.ts; shell values win; CI has no .env.
@@ -91,6 +108,7 @@ function main() {
     const env = { ...process.env, LHCI_THEME: theme === 'dark' ? 'dark' : '' };
     const run = spawnSync('npx', ['lhci', 'autorun'], { cwd: root, env, stdio: 'inherit' });
     if (run.status !== 0) failed = true;
+    if (run.status !== 0 && process.env.GITHUB_ACTIONS) annotateFailures(theme);
     let lhrs = [];
     try {
       lhrs = savedLhrs();
