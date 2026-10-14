@@ -800,8 +800,6 @@ phase 8 hand-off (gap 34a).
 
 Engineering risks:
 
-- CI has never run on GitHub (see Verification). The acceptance line "pass
-  in CI" stays open until one run is green.
 - `notFound()` from a page serves Next 16.4's error shell: no `lang`, no
   `dir`, no body in the server HTML. Phase 4 must decide unknown slugs in
   the proxy before its dynamic pages ship.
@@ -850,9 +848,6 @@ Phase 4 (core pages) can start. It needs:
   `/خدمات/no-such-service` has `lang="fa"` and the branded H1.
 - Meta description copy (gap 41): in-house drafts in phase 4, approved by
   the client, seeded into `seo-defaults`. Home SEO then reaches 1.
-- A green CI run on GitHub. Probable fix: set `MEDIA_DIR` in a step
-  (`echo "MEDIA_DIR=$RUNNER_TEMP/media" >> "$GITHUB_ENV"`) instead of the
-  job `env`.
 - Two documents still say "static or ISR": `docs/conversion.md` lines 254
   to 255 and `docs/experience/storyboard.md` line 248. They contradict
   `docs/architecture.md` section 3.
