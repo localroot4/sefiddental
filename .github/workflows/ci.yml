@@ -90,7 +90,8 @@ jobs:
       ALLOW_INDEXING: 'false'
       TRUST_PROXY_HEADERS: 'false'
       QA_ROUTES: '1'
-      MEDIA_DIR: ${{ runner.temp }}/media
+      # Job-level env cannot read the runner context; /tmp is outside the checkout on ubuntu runners.
+      MEDIA_DIR: /tmp/sefid-media
       DB_PUSH: 'false'
       INT_DATABASE_URL: postgres://postgres:postgres@localhost:5432/sefid_int
       E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/sefid_e2e
