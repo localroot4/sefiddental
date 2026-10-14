@@ -328,6 +328,12 @@ Routing and rendering:
   empty body); the branded view appears only after hydration. Only the
   global 404 renders the full document on the server. `notFound()` from
   pages still has the shell (open, phase 4).
+- A page that throws during render gets the same shell with status 500
+  (measured on `/qa/error`: 15 of 15 responses); the branded 500 view
+  appears after hydration. A `Suspense` boundary around the page would keep
+  the layout in the server HTML but would send status 200 before the error,
+  so the shell stays. The accessibility scan waits for `lang` on `<html>`
+  before it runs (CI caught one scan that ran before hydration).
 - `export const dynamic = 'force-dynamic'` on `src/app/(site)/layout.tsx`
   and `src/app/sitemap.xml/route.ts`. The first build prerendered home,
   opened Payload and ran `prodMigrations` against the development database;

@@ -35,6 +35,9 @@ for (const template of TEMPLATES) {
     const response = await page.goto(template.url);
     expect(response?.status()).toBe(template.status);
     await page.waitForLoadState('load');
+    // A page that throws gets Next's bare error shell (no lang) from the server, and the branded
+    // error view only after hydration; scan what the visitor gets, not the race before it.
+    await expect(page.locator('html')).toHaveAttribute('lang', 'fa');
     await expectNoA11yViolations(page);
   });
 }
