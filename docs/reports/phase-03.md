@@ -519,7 +519,7 @@ Utilities:
 | What | How | Result |
 |---|---|---|
 | Acceptance: lint, typecheck, test, build and e2e pass locally | Final run | Exit 0. Lint 0 problems; format, typecheck, knip and check-bidi clean; 98 test files, 953 tests (896 at `b1f72a2`); test:tz 77 of 77 in UTC, Asia/Tehran and America/Los_Angeles; build; e2e 228 passed, 20 skipped, 0 failed (227 at `b1f72a2`; the skips are the experience spec, which runs in desktop-light only); check:bundle and lhci pass. Pass |
-| Acceptance: the same gates pass in CI | GitHub Actions on every push (`gh run list`) | Pushes `14357cf` to `08ff9b0` failed at workflow validation with 0 jobs: `${{ runner.temp }}` in a job `env`, where the `runner` context is not available (fixed in `36fb4c4`). Later runs passed lint, types, unit and SQLite integration every time, then failed in turn at the e2e seed (the Payload CLI stall, `scripts/payload.mjs`), at the 500-page axe scan (T-A11Y, now after hydration), at TBT on a slower runner (CPU slowdown now calibrated) and at the dark-theme LCP median (2815 ms, now measured over HTTP/2). Result for the HTTP/2 run: see "CI after the LCP fix" below |
+| Acceptance: the same gates pass in CI | GitHub Actions on every push (`gh run list`) | Pushes `14357cf` to `08ff9b0` failed at workflow validation with 0 jobs: `${{ runner.temp }}` in a job `env`, where the `runner` context is not available (fixed in `36fb4c4`). Later runs passed lint, types, unit and SQLite integration every time, then failed in turn at the e2e seed (the Payload CLI stall, `scripts/payload.mjs`), at the 500-page axe scan (T-A11Y, now after hydration), at TBT on a slower runner (CPU slowdown now calibrated) and at the dark-theme LCP median (2815 ms, now measured over HTTP/2). Run 38650140681 on `24aee53` passed both jobs. Pass |
 | Acceptance: the admin loads in Persian RTL | e2e T-AD1; browser probe | `<html lang="fa" dir="RTL">` on `/admin/login` and the dashboard. Pass |
 | Acceptance: MFA enrollment works | e2e T-AD1 (admin) and T-AD2 (editor), codes from `otpauth` | The first sign-in is forced to `/admin/setup-totp`; a code completes it; the next sign-in asks `/admin/verify-totp`. Pass |
 | Acceptance: the editor cannot reach globals, users, redirects or system views | e2e T-AD2b to T-AD5; an independent browser probe; Local API checks on PostgreSQL | 15 admin URLs answer 404 «موردی یافت نشد», including the 5 globals, users, redirects, audit-log, events-daily, payload-jobs and `/admin/system-status`. REST answers 403 on the globals, redirects, audit-log, events-daily and payload-jobs; `/api/users` returns only the editor. No admin-only nav link. 34 of 34 Local API access checks. Pass |
@@ -560,10 +560,13 @@ in both themes (Budgets). The new tests SP5b and BR1 were proved red with a
 wrong symbol id. The header logo was checked in a browser in both themes
 and on the admin login, with no CSP report.
 
-CI after the LCP fix: pending at the time of writing.
+CI after the LCP fix: run 38650140681 on `24aee53` passed both jobs, the
+first fully green run. Host benchmarkIndex 2562, CPU 4x. 404 LCP median
+1676 ms light (1663 to 2372) and 1816 ms dark (1368 to 1967), 0 of 10 runs
+over 2500 ms; performance 0.98 and 0.97; e2e 228 passed, 20 skipped. Home
+warns only: performance 0.84 to 0.86, script transfer 434.5 KiB.
 
-Not verified: CI on GitHub (above); the CI Chromium and Lighthouse on a
-GitHub runner; S3 storage mode (no bucket); the 25 MiB upload through the
+Not verified: S3 storage mode (no bucket); the 25 MiB upload through the
 running app; real phone videos (only synthetic MP4 boxes); a stopped
 PostgreSQL for the health check (simulated in tests); the hardware-GPU tier
 path (SwiftShader only); the GA4 hosts in the CSP; the first admin visit in
@@ -627,10 +630,10 @@ transfer fell about 4.5 KiB with no code change. LCP values are medians of
 | CSS | 50 KB | 50 KiB (error) | 5.7 KiB content, 6.2 KiB home | 5.5 to 5.9 KiB |
 | HTML document, content (Lighthouse transfer) | - | - | 8.7 KiB | 15.8 KiB |
 | Fonts | 120 KB | 120 KiB (error) | 90.1 KiB (Lighthouse transfer 89.7 KiB) | 90.1 KiB |
-| LCP content, light | 2.5 s | 2500 ms (error) | 1365 ms; min 1362, max 1668, spread 306 ms; 0 of 5 over | 2122 ms (1810 to 2764, 1 over); 2273 ms (1 over); 2126 ms; GitHub 2134 ms (2126 to 2850) |
-| LCP content, dark | 2.5 s | 2500 ms (error) | 1660 ms; min 1359, max 2121, spread 762 ms; 0 over | 2122 ms (1979 to 2325); 2265 ms (2 over); 2272 ms; GitHub 2815 ms (2267 to 2911, 3 over): failed |
-| LCP home `?tier=1`, light | 2.5 s | 2500 ms (warn) | 1366 ms; min 1361, max 1663; 0 over | 2265 ms; 1968 ms; 2435 ms (2 of 5 over) |
-| LCP home `?tier=1`, dark | 2.5 s | 2500 ms (warn) | 1373 ms; min 1362, max 1958; 0 over | 2417 ms (2 of 5 over); 2265 ms; 1828 ms; GitHub 2571 ms |
+| LCP content, light | 2.5 s | 2500 ms (error) | 1365 ms; min 1362, max 1668, spread 306 ms; 0 of 5 over. GitHub `24aee53`: 1676 ms (1663 to 2372) | 2122 ms (1810 to 2764, 1 over); 2273 ms (1 over); 2126 ms; GitHub 2134 ms (2126 to 2850) |
+| LCP content, dark | 2.5 s | 2500 ms (error) | 1660 ms; min 1359, max 2121, spread 762 ms; 0 over. GitHub `24aee53`: 1816 ms (1368 to 1967) | 2122 ms (1979 to 2325); 2265 ms (2 over); 2272 ms; GitHub 2815 ms (2267 to 2911, 3 over): failed |
+| LCP home `?tier=1`, light | 2.5 s | 2500 ms (warn) | 1366 ms; min 1361, max 1663; 0 over. GitHub: 1914 ms | 2265 ms; 1968 ms; 2435 ms (2 of 5 over) |
+| LCP home `?tier=1`, dark | 2.5 s | 2500 ms (warn) | 1373 ms; min 1362, max 1958; 0 over. GitHub: 1968 ms | 2417 ms (2 of 5 over); 2265 ms; 1828 ms; GitHub 2571 ms |
 | CLS | 0.05 | 0.05 (error) | 0 in every run, both URLs, both themes | 0 |
 | TBT, content (stands in for INP) | INP 200 ms | TBT 200 ms (error) | 126 ms light (max 213), 105 ms dark (max 147) | 52 ms light (max 135), 66 ms dark (max 166); 62 and 58 ms |
 | TBT, home `?tier=1` | INP 200 ms | none in phase 3 | 508 ms light (max 548), 534 ms dark (max 622) | 434 and 418 ms; 563 and 588 ms (max 755) |
@@ -722,6 +725,20 @@ e2e guard for the loopback bind (CSP-1) and no e2e test of the status view
 after an error (SEC-S2, unit RB4 covers it). An anonymous multipart POST to
 a collection without uploads answers 403 but leaves its temp file in
 `<cwd>/tmp`: Payload unlinks temp files only for upload collections.
+
+### Review of the LCP fix
+
+A separate review of `8a3a4e0` to `24aee53` approved the change with two
+should-fix findings and three nits. Fixed: the TLS front reached the app at
+`127.0.0.1` only, so an app bound to `localhost` on `::1` would answer 502
+(it now asks for `localhost`); a body cut upstream left the browser's
+stream open until Lighthouse's timeout, and a cancelled stream kept its
+upstream socket (both reproduced with a dummy upstream, curl exit 28, then
+fixed: exit 92 at once, upstream closed); the temporary key stayed in
+`/tmp` when `openssl` failed (now removed in all cases); "measured" now
+says "simulated" for the HTTP/1.1 estimate. Left as is: during `next dev`,
+a changed `BRAND_LOCKUP` serves the old sprite until the dev server
+restarts (`prebuild` regenerates it for every build).
 
 ### Earlier independent checks
 
