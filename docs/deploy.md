@@ -140,6 +140,7 @@ a low-credit alert is mandatory.
 | P3 base image pull | The same deploy with the Iran build location. | Build succeeds; else retry the Germany build location |
 | P4 memory | Staging under a scripted admin and image load. | RSS below 85% of the plan's RAM |
 | P5 price | Live prices saved to the phase report. | The client approves the total in writing |
+| P5b HTTP/2 | `curl -sI --http2 https://<staging host>/ \| head -1` (2.5 item 7). | `HTTP/2 200`; else the Lighthouse numbers do not hold in production |
 | P6 Googlebot (phase 10) | Search Console URL Inspection, live test. | Page fetched |
 
 If P1 fails, Liara is out. Run P1 on ArvanCloud next.
@@ -417,7 +418,20 @@ Node must also set the static set.
    limit_req zone=media burst=5;
    ```
 
-Where the platform router sets headers itself (Liara), check items 1 to 6 on
+7. Serve HTTP/2 to browsers over TLS (nginx 1.25.1 and later:
+   `http2 on;` in the `server` block). The Lighthouse gates measure the
+   pages over HTTPS and HTTP/2 (`scripts/lhci.mjs`). Over HTTP/1.1, LCP on
+   a mobile connection is 300 to 470 ms slower on the 404 template, because
+   the browser opens up to six new connections for the fonts, styles and
+   scripts. Check:
+
+   ```bash
+   curl -sI --http2 https://sefiddental.ir/ | head -1
+   ```
+
+   Expected: `HTTP/2 200`.
+
+Where the platform router sets headers itself (Liara), check items 1 to 7 on
 staging and record what the platform allows in section 3.
 
 ### 2.6 Health check

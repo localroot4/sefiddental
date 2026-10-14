@@ -13,5 +13,6 @@
     "scripts/**/*.{mjs,ts}",
     "*.{ts,mts,cjs,mjs}"
   ],
+  "ignoreBinaries": ["openssl"],
   "ignoreExportsUsedInFile": true
 }

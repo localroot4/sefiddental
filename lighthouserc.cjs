@@ -11,6 +11,10 @@ const KiB = 1024;
 const dark = process.env.LHCI_THEME === 'dark';
 const port = Number(process.env.E2E_PORT ?? '3000');
 const origin = `http://localhost:${port}`;
+// scripts/lhci.mjs puts HTTPS and HTTP/2 in front of the server (scripts/tls-front.mjs), as
+// production does; LCP over plain HTTP/1.1 measured 300-470 ms slower on the 404 template.
+const tlsPin = process.env.LHCI_TLS_PIN;
+const pageOrigin = tlsPin ? `https://localhost:${process.env.LHCI_TLS_PORT}` : origin;
 
 // The artifact that deploys, on the migrated e2e database. ALLOW_INDEXING=true measures the page
 // as production serves it (no X-Robots-Tag noindex, which would fail the SEO category); the
@@ -50,9 +54,11 @@ module.exports = {
       startServerCommand,
       startServerReadyPattern: 'Ready in',
       startServerReadyTimeout: 60000,
-      url: [`${origin}/qa/not-found`, `${origin}/?tier=1`],
-      // Median of 5: simulated LCP on the 404 template spreads about 1 s between runs on the
-      // container (1824-2817 ms); scripts/lhci.mjs prints min, median and max per URL.
+      url: [`${pageOrigin}/qa/not-found`, `${pageOrigin}/?tier=1`],
+      // Median of 5: simulated LCP on the 404 template spreads up to 0.8 s between runs on the
+      // container (1359-2121 ms). Lighthouse counts every script that ran before the first
+      // paint of the unthrottled load, and that order changes from run to run.
+      // scripts/lhci.mjs prints min, median and max per URL.
       numberOfRuns: 5,
       // chromePath comes from CHROME_PATH: the container Chromium locally, the Playwright
       // Chromium in CI. --no-sandbox because the container runs Chrome as root.
@@ -65,6 +71,8 @@ module.exports = {
           '--no-sandbox',
           '--disable-dev-shm-usage',
           ...(dark ? ['--blink-settings=preferredColorScheme=0'] : []),
+          // Trusts the one throwaway certificate of scripts/lhci.mjs, nothing else.
+          ...(tlsPin ? [`--ignore-certificate-errors-spki-list=${tlsPin}`] : []),
         ].join(' '),
       },
     },

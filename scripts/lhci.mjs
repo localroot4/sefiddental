@@ -1,11 +1,24 @@
 // Lighthouse CI in both themes (light, then LHCI_THEME=dark; docs/brief.md asks for both) and
 // the LCP spread of every URL. The gate stays in lighthouserc.cjs: the median of 5 runs against
-// the 2500 ms target. Simulated LCP on the 404 template varied 1824-2817 ms on the container, so
-// every run prints min, median and max beside the limit instead of loosening it.
-//   node scripts/lhci.mjs        (after `npm run build` and `npm run db:e2e`; CHROME_PATH set)
-import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+// the 2500 ms target. Simulated LCP on the 404 template varies between runs (1359-2121 ms on the
+// container), so every run prints min, median and max beside the limit instead of loosening it.
+// Lighthouse loads the pages over HTTPS and HTTP/2 through scripts/tls-front.mjs, as browsers
+// reach production; the certificate is a throwaway one that only this Chrome trusts.
+//   node scripts/lhci.mjs        (after `npm run build` and `npm run db:e2e`; CHROME_PATH set;
+//                                 needs the openssl CLI)
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
+import { createHash, X509Certificate } from 'node:crypto';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { createRequire } from 'node:module';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -99,6 +112,52 @@ function measureHost() {
   return index;
 }
 
+/**
+ * A one-day self-signed certificate for localhost and its SPKI pin: Chrome trusts exactly this key
+ * through --ignore-certificate-errors-spki-list (lighthouserc.cjs), so the page counts as secure.
+ */
+function localCertificate() {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'lhci-tls-'));
+  const key = path.join(dir, 'key.pem');
+  const cert = path.join(dir, 'cert.pem');
+  const args =
+    'req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 1 -subj /CN=localhost';
+  try {
+    execFileSync(
+      'openssl',
+      [...args.split(' '), '-addext', 'subjectAltName=DNS:localhost', '-keyout', key, '-out', cert],
+      { stdio: ['ignore', 'ignore', 'inherit'] },
+    );
+  } catch (error) {
+    throw new Error(
+      `lhci: could not create the local TLS certificate with the openssl CLI (${error.message}). Install OpenSSL 1.1.1 or later and run again.`,
+    );
+  }
+  const spki = new X509Certificate(readFileSync(cert)).publicKey.export({
+    type: 'spki',
+    format: 'der',
+  });
+  return { dir, key, cert, pin: createHash('sha256').update(spki).digest('base64') };
+}
+
+/** Starts scripts/tls-front.mjs and resolves once it listens. */
+function startTlsFront(tls, listenPort, upstreamPort) {
+  const front = spawn(
+    process.execPath,
+    [path.join(root, 'scripts', 'tls-front.mjs'), tls.key, tls.cert, listenPort, upstreamPort],
+    { cwd: root, stdio: ['ignore', 'pipe', 'inherit'] },
+  );
+  return new Promise((resolve, reject) => {
+    front.once('error', reject);
+    front.once('exit', (code) => reject(new Error(`tls-front exited with code ${code}`)));
+    front.stdout.once('data', (line) => {
+      process.stdout.write(line);
+      front.stdout.resume();
+      resolve(front);
+    });
+  });
+}
+
 function savedLhrs() {
   return readdirSync(lhciDir)
     .filter((name) => /^lhr-\d+\.json$/.test(name))
@@ -122,11 +181,24 @@ function annotateFailures(theme) {
   }
 }
 
-function main() {
+async function main() {
   // Local runs read the repo .env (CHROME_PATH for the container Chromium), like
   // check-bundle.mjs and playwright.config.ts; shell values win; CI has no .env.
   const envFile = path.join(root, '.env');
   if (existsSync(envFile)) process.loadEnvFile(envFile);
+  const tls = localCertificate();
+  process.env.LHCI_TLS_PORT ??= '3443';
+  process.env.LHCI_TLS_PIN = tls.pin;
+  const front = await startTlsFront(tls, process.env.LHCI_TLS_PORT, process.env.E2E_PORT ?? '3000');
+  try {
+    run();
+  } finally {
+    front.kill();
+    rmSync(tls.dir, { recursive: true, force: true });
+  }
+}
+
+function run() {
   // The assertions do not depend on the theme (only the Chrome flags and the report folder do).
   const { assertMatrix } = createRequire(import.meta.url)('../lighthouserc.cjs').ci.assert;
   // A multiplier set in the shell wins (to reproduce a run); otherwise calibrate on this host.
@@ -166,5 +238,5 @@ function main() {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
-  main();
+  await main();
 }
