@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { lcpSpread, spreadTable } from './lhci.mjs';
+import { cpuMultiplierFor, lcpSpread, spreadTable } from './lhci.mjs';
 
 const matrix = [
   {
@@ -65,5 +65,16 @@ describe('lcpSpread (scripts/lhci.mjs)', () => {
       '| /qa/not-found | 1 | 2000 | 2000 | 2000 | 0 | 0 | 2500 (error) | pass |',
     );
     expect(table).toContain('| /?tier=1 | 1 | 1900 |');
+  });
+});
+
+describe('cpuMultiplierFor (lighthouse/docs/throttling.md, mid-tier mobile target)', () => {
+  it('uses 4x on a high-end desktop host and above it', () => {
+    expect(cpuMultiplierFor(1500)).toBe(4);
+    expect(cpuMultiplierFor(2300)).toBe(4);
+  });
+  it('uses 2x on a slower host', () => {
+    expect(cpuMultiplierFor(1499)).toBe(2);
+    expect(cpuMultiplierFor(900)).toBe(2);
   });
 });

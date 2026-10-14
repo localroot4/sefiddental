@@ -57,6 +57,9 @@ module.exports = {
       // chromePath comes from CHROME_PATH: the container Chromium locally, the Playwright
       // Chromium in CI. --no-sandbox because the container runs Chrome as root.
       settings: {
+        // scripts/lhci.mjs measures the host and picks Lighthouse's documented multiplier for a
+        // mid-tier mobile target (4x on a fast desktop, 2x on a slower one); 4x is the default.
+        throttling: { cpuSlowdownMultiplier: Number(process.env.LHCI_CPU_MULTIPLIER ?? '4') },
         chromeFlags: [
           '--headless=new',
           '--no-sandbox',

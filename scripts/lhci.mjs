@@ -4,7 +4,7 @@
 // every run prints min, median and max beside the limit instead of loosening it.
 //   node scripts/lhci.mjs        (after `npm run build` and `npm run db:e2e`; CHROME_PATH set)
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -72,6 +72,33 @@ export function spreadTable(theme, rows) {
   return lines.join('\n');
 }
 
+/**
+ * Lighthouse's suggested CPU slowdown for a mid-tier mobile target, by host class (table in
+ * lighthouse/docs/throttling.md): a high-end desktop (benchmarkIndex 1500 and up) 4x, a slower
+ * host 2x. The same budgets then mean the same phone on a fast laptop and on a CI runner.
+ */
+export function cpuMultiplierFor(benchmarkIndex) {
+  return benchmarkIndex >= 1500 ? 4 : 2;
+}
+
+/** Median benchmarkIndex of one short collect run on this host (NaN if it could not run). */
+function measureHost() {
+  rmSync(lhciDir, { recursive: true, force: true });
+  spawnSync('npx', ['lhci', 'collect', '--numberOfRuns=1'], { cwd: root, stdio: 'inherit' });
+  let index = Number.NaN;
+  try {
+    const values = savedLhrs()
+      .map((lhr) => lhr.environment?.benchmarkIndex)
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b);
+    if (values.length) index = median(values);
+  } catch {
+    // collect failed before writing a report; the default multiplier applies
+  }
+  rmSync(lhciDir, { recursive: true, force: true });
+  return index;
+}
+
 function savedLhrs() {
   return readdirSync(lhciDir)
     .filter((name) => /^lhr-\d+\.json$/.test(name))
@@ -102,10 +129,21 @@ function main() {
   if (existsSync(envFile)) process.loadEnvFile(envFile);
   // The assertions do not depend on the theme (only the Chrome flags and the report folder do).
   const { assertMatrix } = createRequire(import.meta.url)('../lighthouserc.cjs').ci.assert;
-  const sections = [];
+  // A multiplier set in the shell wins (to reproduce a run); otherwise calibrate on this host.
+  const index = process.env.LHCI_CPU_MULTIPLIER ? Number.NaN : measureHost();
+  const multiplier =
+    process.env.LHCI_CPU_MULTIPLIER ?? String(Number.isFinite(index) ? cpuMultiplierFor(index) : 4);
+  const host = `Host benchmarkIndex ${Number.isFinite(index) ? Math.round(index) : 'not measured'}; CPU slowdown ${multiplier}x.`;
+  console.log(`lhci: ${host}`);
+  if (process.env.GITHUB_ACTIONS) console.log(`::notice title=lhci host::${host}`);
+  const sections = [host, ''];
   let failed = false;
   for (const theme of ['light', 'dark']) {
-    const env = { ...process.env, LHCI_THEME: theme === 'dark' ? 'dark' : '' };
+    const env = {
+      ...process.env,
+      LHCI_THEME: theme === 'dark' ? 'dark' : '',
+      LHCI_CPU_MULTIPLIER: multiplier,
+    };
     const run = spawnSync('npx', ['lhci', 'autorun'], { cwd: root, env, stdio: 'inherit' });
     if (run.status !== 0) failed = true;
     if (run.status !== 0 && process.env.GITHUB_ACTIONS) annotateFailures(theme);
