@@ -1,11 +1,11 @@
 // System pages (deliverable 7, freeze 6 and amendment A6): the branded 404 for unknown paths,
 // the QA renders of the 404 template (200), the 500 boundary and the 410 document. QA routes
-// exist only because the e2e server runs with QA_ROUTES=1.
+// exist only because the e2e server runs with QA_ROUTES=1. The axe scans of these templates are
+// in a11y.spec.ts.
 import { expect, test, type Page } from '@playwright/test';
 
 import { t } from '@/i18n/fa';
 
-import { expectNoA11yViolations } from '../helpers/axe';
 import { watchConsoleErrors } from '../helpers/console';
 
 async function expectPersianDocument(page: Page): Promise<void> {
@@ -37,7 +37,6 @@ test('T-SP1 an unknown path gets the branded 404: status, language, noindex, ico
   await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute('content', /noindex/);
   expect(await page.locator('link[rel~="icon"]').count()).toBeGreaterThan(0);
   await expectSurfaceBackground(page);
-  await expectNoA11yViolations(page);
   expect(consoleErrors()).toEqual([]);
 });
 
@@ -65,7 +64,6 @@ test('T-SP3 /qa/not-found renders the 404 template with status 200 (Lighthouse t
   await expectPersianDocument(page);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(t('notFound.heading'));
   await expectSurfaceBackground(page);
-  await expectNoA11yViolations(page);
   expect(consoleErrors()).toEqual([]);
 });
 
@@ -75,7 +73,6 @@ test('T-SP4 /qa/error renders the branded 500 with a retry action', async ({ pag
   await expectPersianDocument(page);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(t('error.heading'));
   await expect(page.getByRole('button', { name: t('error.retry') })).toBeVisible();
-  await expectNoA11yViolations(page);
 });
 
 test('T-SP5 /qa/gone serves the static 410 document, noindex', async ({ page }) => {
@@ -85,16 +82,14 @@ test('T-SP5 /qa/gone serves the static 410 document, noindex', async ({ page }) 
   expect(response?.headers()['x-robots-tag']).toMatch(/noindex/);
   await expectPersianDocument(page);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expectNoA11yViolations(page);
   expect(consoleErrors()).toEqual([]);
 });
 
-test('T-SP6 the static maintenance page the host serves while Node is down is Persian and accessible', async ({
+test('T-SP6 the static maintenance page the host serves while Node is down is Persian', async ({
   page,
 }) => {
   const response = await page.goto('/maintenance.html');
   expect(response?.status()).toBe(200);
   await expectPersianDocument(page);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-  await expectNoA11yViolations(page);
 });

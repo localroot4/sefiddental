@@ -6,6 +6,7 @@ import {
   isFirstUserPath,
   maintenanceBypass,
   needsFormSession,
+  routeRewrite,
 } from '@/lib/http/proxyRules';
 
 describe('isFirstUserPath (decision 41, freeze A1)', () => {
@@ -79,5 +80,30 @@ describe('needsFormSession', () => {
     expect(needsFormSession('HEAD', '/اورژانس')).toBe(true);
     expect(needsFormSession('POST', '/اورژانس')).toBe(false);
     expect(needsFormSession('GET', '/')).toBe(false);
+  });
+});
+
+describe('routeRewrite (Persian dynamic routes)', () => {
+  it('R1 a Persian service path renders from the ASCII folder, in any spelling', () => {
+    const encoded =
+      '/r/services/%D9%84%D9%85%DB%8C%D9%86%D8%AA-%D8%B3%D8%B1%D8%A7%D9%85%DB%8C%DA%A9%DB%8C';
+    expect(routeRewrite(normalizePath('/خدمات/لمینت-سرامیکی'))).toBe(encoded);
+    expect(routeRewrite(normalizePath(encodeURI('/خدمات/لمینت-سرامیکی')))).toBe(encoded);
+    // NFD spelling and Arabic yeh/kaf normalize to the same slug.
+    expect(routeRewrite(normalizePath('/خدمات/لمینت-سرامیكي'.normalize('NFD')))).toBe(encoded);
+    expect(routeRewrite('/خدمات/a?b')).toBe('/r/services/a%3Fb');
+  });
+
+  it('R2 hubs, deeper paths and other pages render as they are', () => {
+    expect(routeRewrite('/خدمات')).toBeNull();
+    expect(routeRewrite('/خدمات/a/b')).toBeNull();
+    expect(routeRewrite('/')).toBeNull();
+    expect(routeRewrite('/rss')).toBeNull();
+    expect(routeRewrite('/r')).toBeNull();
+  });
+
+  it('R3 a direct request into the ASCII folders gets the 404 document', () => {
+    expect(routeRewrite('/r/services/x')).toBe('/r');
+    expect(routeRewrite(normalizePath('/R/Services/x'))).toBe('/r');
   });
 });

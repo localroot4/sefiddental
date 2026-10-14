@@ -17,7 +17,6 @@ export function getClinic(): Promise<DataFromGlobalSlug<'clinic'>> {
   return readGlobal('clinic', 1);
 }
 
-/** @public Frozen signature; consumed in wave 2. */
 export function getSeoDefaults(): Promise<DataFromGlobalSlug<'seo-defaults'>> {
   return readGlobal('seo-defaults', 1);
 }

@@ -26,7 +26,7 @@
     "test:tz": "for tz in UTC Asia/Tehran America/Los_Angeles; do TZ=$tz vitest run --project unit src/lib/jalali.test.ts src/lib/hoursState.test.ts || exit 1; done",
     "test:e2e": "playwright test",
     "check:bundle": "node scripts/check-bundle.mjs",
-    "lhci": "lhci autorun && LHCI_THEME=dark lhci autorun",
+    "lhci": "node scripts/lhci.mjs",
     "ci:local": "npm run lint && npm run format:check && npm run typecheck && npm run knip && node scripts/check-bidi.mjs && npm test && npm run test:tz && npm run build && node scripts/check-no-prerender.mjs && npm run db:e2e && npm run test:e2e && npm run check:bundle && npm run lhci",
     "payload": "payload",
     "generate:types": "payload generate:types",

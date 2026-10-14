@@ -3,7 +3,7 @@
 //
 // Content budgets run on /qa/not-found: the 404 template rendered with HTTP 200, because
 // Lighthouse aborts on a 404 document (freeze decision 3). The route exists only while the
-// server runs with QA_ROUTES=1. `npm run lhci` runs this file twice: light, then
+// server runs with QA_ROUTES=1. scripts/lhci.mjs runs this file twice: light, then
 // LHCI_THEME=dark. Reports stay on disk (.lighthouseci/reports/<theme>), never on a public link.
 const limits = require('./tests/budgets/limits.json');
 
@@ -51,7 +51,9 @@ module.exports = {
       startServerReadyPattern: 'Ready in',
       startServerReadyTimeout: 60000,
       url: [`${origin}/qa/not-found`, `${origin}/?tier=1`],
-      numberOfRuns: 3,
+      // Median of 5: simulated LCP on the 404 template spreads about 1 s between runs on the
+      // container (1824-2817 ms); scripts/lhci.mjs prints min, median and max per URL.
+      numberOfRuns: 5,
       // chromePath comes from CHROME_PATH: the container Chromium locally, the Playwright
       // Chromium in CI. --no-sandbox because the container runs Chrome as root.
       settings: {

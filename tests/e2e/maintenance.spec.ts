@@ -2,8 +2,10 @@
 // playwright.config.ts starts on E2E_PORT + 1 with MAINTENANCE_MODE=on.
 import { expect, test } from '@playwright/test';
 
-const port = Number(process.env.E2E_PORT ?? '3000') + 1;
-test.use({ baseURL: `http://localhost:${port}` });
+import { requireRoutes } from '../helpers/pending';
+import { MAINTENANCE_ORIGIN } from '../helpers/servers';
+
+test.use({ baseURL: MAINTENANCE_ORIGIN });
 
 test.describe('maintenance mode', () => {
   test('T-MT1 a public page answers 503 with Retry-After and the static Persian page', async ({
@@ -18,7 +20,7 @@ test.describe('maintenance mode', () => {
   });
 
   test('T-MT2 API calls get JSON 503; health and the admin stay reachable', async ({ request }) => {
-    test.fixme(true, 'PENDING wave 2: /api/health (Lane P) does not exist yet.');
+    requireRoutes('health');
     const api = await request.get('/api/form-session');
     expect(api.status()).toBe(503);
     expect(await api.json()).toEqual({ status: 'maintenance' });

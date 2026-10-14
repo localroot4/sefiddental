@@ -167,6 +167,11 @@ jobs:
         run: npm run check:bundle
       - name: Lighthouse CI, light and dark
         run: npm run lhci
+      - name: LCP spread and initial JS tables in the job summary
+        if: always()
+        run: |
+          if [ -f .lighthouseci/lcp-spread.md ]; then cat .lighthouseci/lcp-spread.md >> "$GITHUB_STEP_SUMMARY"; fi
+          if [ -f test-results/budgets/initial-js.md ]; then cat test-results/budgets/initial-js.md >> "$GITHUB_STEP_SUMMARY"; fi
 
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -146,8 +146,11 @@ describe('buildCsp admin (spec 7.3, decision 2)', () => {
     expect(d.get('worker-src')).toEqual(["'self'", 'blob:']);
   });
 
-  it('CSA2 report-only by default (CSP_ADMIN_MODE)', () => {
-    expect(admin(testEnv()).header).toBe('Content-Security-Policy-Report-Only');
+  it('CSA2 enforced by default; CSP_ADMIN_MODE=report-only switches to the report header', () => {
+    expect(admin(testEnv()).header).toBe('Content-Security-Policy');
+    expect(admin(testEnv({ CSP_ADMIN_MODE: 'report-only' })).header).toBe(
+      'Content-Security-Policy-Report-Only',
+    );
   });
 });
 

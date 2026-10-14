@@ -144,7 +144,8 @@ const rawSchema = z.object({
   MAINTENANCE_MODE: flag(false),
   MAINTENANCE_RETRY_AFTER: integer(900, 1),
   CSP_MODE: oneOf(['enforce', 'report-only'] as const, 'enforce'),
-  CSP_ADMIN_MODE: oneOf(['enforce', 'report-only'] as const, 'report-only'),
+  // Enforced since the admin flows ran with zero violations under report-only (integration B).
+  CSP_ADMIN_MODE: oneOf(['enforce', 'report-only'] as const, 'enforce'),
   QA_ROUTES: flag(false),
   MEDIA_DIR: text(),
   MEDIA_PUBLIC_ORIGIN: origin('MEDIA_PUBLIC_ORIGIN'),

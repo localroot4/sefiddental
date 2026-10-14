@@ -4,10 +4,23 @@ import { readEnv } from '@/lib/env';
 import { canonicalRedirect, requestProtocol } from '@/lib/http/canonical';
 import { classifyPath } from '@/lib/http/classify';
 import { clientIpFrom, rateLimitKey } from '@/lib/http/clientIp';
+import {
+  FORM_COOKIE,
+  FORM_COOKIE_OPTIONS,
+  FORM_SID_HEADER,
+  isWellFormedSid,
+  newSid,
+} from '@/lib/formTokens';
 import { buildCsp, newNonce } from '@/lib/http/csp';
 import { normalizePath } from '@/lib/paths';
 import { destination, getProxyConfig, recordRedirectHit } from '@/lib/http/proxyConfig';
-import { isAuthLimitedPath, isFirstUserPath, maintenanceBypass } from '@/lib/http/proxyRules';
+import {
+  isAuthLimitedPath,
+  isFirstUserPath,
+  maintenanceBypass,
+  needsFormSession,
+  routeRewrite,
+} from '@/lib/http/proxyRules';
 import { createRateLimiter } from '@/lib/http/rateLimit';
 import { requestIdFrom, sanitizeRequestHeaders } from '@/lib/http/requestId';
 import { securityHeaders } from '@/lib/http/securityHeaders';
@@ -114,10 +127,22 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     headers.set('x-nonce', nonce);
     headers.set('content-security-policy', csp.value);
   }
-  // 7a (phase 5): needsFormSession(method, path) -> form cookie and x-sefid-form-sid (Lane U).
+  // 7a: booking and emergency pages render form tokens without JavaScript, so they need the form
+  // cookie; the sid reaches the render in a request header (client copies were dropped in 2).
+  let newFormSid: string | null = null;
+  if (kind === 'page' && needsFormSession(method, path)) {
+    const cookieSid = request.cookies.get(FORM_COOKIE)?.value;
+    const sid = isWellFormedSid(cookieSid) ? cookieSid : (newFormSid = newSid());
+    headers.set(FORM_SID_HEADER, sid);
+  }
 
-  // 8: pass through with the route-dependent headers.
-  const res = NextResponse.next({ request: { headers } });
+  // 8: pass through with the route-dependent headers; Persian dynamic routes render from their
+  // ASCII folder (proxyRules routeRewrite).
+  const rewrite = kind === 'page' ? routeRewrite(path) : null;
+  const res = rewrite
+    ? NextResponse.rewrite(new URL(rewrite + url.search, request.url), { request: { headers } })
+    : NextResponse.next({ request: { headers } });
+  if (newFormSid) res.cookies.set(FORM_COOKIE, newFormSid, FORM_COOKIE_OPTIONS);
   const https = requestProtocol(request.headers, trust) === 'https' || url.protocol === 'https:';
   for (const [name, value] of securityHeaders({ kind, csp, env, https, reqId, pathname, draft })) {
     res.headers.set(name, value);

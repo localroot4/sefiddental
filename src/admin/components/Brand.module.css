@@ -1,0 +1,13 @@
+/* Login logo and nav icon: sizes of Payload's own graphics, the wordmark follows the admin theme. */
+.logo {
+  display: block;
+  inline-size: min(15rem, 70vw);
+  block-size: auto;
+  color: var(--theme-text);
+}
+
+.icon {
+  display: block;
+  inline-size: auto;
+  block-size: 1.75rem;
+}

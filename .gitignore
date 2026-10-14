@@ -28,6 +28,7 @@ public/brand/
 public/fonts/
 public/detect-gpu/
 public/maintenance.html
+public/favicon.ico
 
 # Local media and databases
 /media/

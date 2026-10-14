@@ -9,7 +9,7 @@ import { JsonLd } from '@/components/seo/JsonLd';
 import { t } from '@/i18n/fa';
 import { dentistNode, jsonLdGraph, websiteNode } from '@/lib/seo/jsonld';
 import { SITE_ICONS } from '@/lib/seo/metadata';
-import { CLINIC, SEO } from '@/lib/seo/siteInputs';
+import { getSiteInputs, SEO } from '@/lib/seo/siteInputs';
 import { TrackListener } from '@/lib/track/TrackListener';
 
 // 404 for every URL no route matches (experimental.globalNotFound): a full document rendered per
@@ -26,6 +26,8 @@ export const viewport: Viewport = {
   ],
 };
 
+// Static metadata: a generateMetadata that reads the globals runs during `next build` and opens
+// the build's database. The suffix comes from the clinic.yaml fallback.
 export const metadata: Metadata = {
   title: `${t('notFound.title')}${SEO.titleSuffix}`,
   description: t('notFound.lead'),
@@ -35,12 +37,13 @@ export const metadata: Metadata = {
 
 export default async function GlobalNotFound() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
+  const { seo, clinic } = await getSiteInputs();
   return (
     <SiteShell
       nonce={nonce}
       extras={
         <>
-          <JsonLd data={jsonLdGraph(dentistNode(CLINIC), websiteNode({ name: SEO.siteName }))} />
+          <JsonLd data={jsonLdGraph(dentistNode(clinic), websiteNode({ name: seo.siteName }))} />
           <TrackListener />
         </>
       }

@@ -42,6 +42,21 @@ export default buildConfig({
     },
     // Component paths in the config are relative to src/, e.g. '/admin/views/SystemStatus#X'.
     importMap: { baseDir: srcDir },
+    components: {
+      graphics: {
+        Logo: '/admin/components/Logo#Logo',
+        Icon: '/admin/components/Icon#Icon',
+      },
+      afterNavLinks: ['/admin/components/SystemStatusNavLink#SystemStatusNavLink'],
+      views: {
+        systemStatus: {
+          Component: '/admin/views/SystemStatus#SystemStatusView',
+          path: '/system-status',
+          exact: true,
+          meta: { title: 'وضعیت سیستم' },
+        },
+      },
+    },
     timezones: {
       supportedTimezones: [{ label: 'تهران', value: 'Asia/Tehran' }],
       defaultTimezone: 'Asia/Tehran',

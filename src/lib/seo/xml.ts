@@ -55,7 +55,7 @@ export function sitemapIndexXml(entries: readonly SitemapEntry[]): string {
   return `${XML_DECL}<sitemapindex xmlns="${SITEMAP_NS}">${items}</sitemapindex>\n`;
 }
 
-/** @public Consumed by the wave-2 sitemap routes. */
+/** Response headers of every sitemap file (spec 9.4). */
 export const SITEMAP_HEADERS: Readonly<Record<string, string>> = {
   'Content-Type': 'application/xml; charset=utf-8',
   'Cache-Control': 'public, max-age=3600',
@@ -101,7 +101,7 @@ export function rssXml(channel: RssChannel, items: readonly RssItem[]): string {
   );
 }
 
-/** @public Consumed by the wave-2 RSS route. */
+/** Response headers of the RSS feed (spec 9.6). */
 export const RSS_HEADERS: Readonly<Record<string, string>> = {
   'Content-Type': 'application/rss+xml; charset=utf-8',
   'Cache-Control': 'public, max-age=3600',

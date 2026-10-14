@@ -15,9 +15,13 @@ import { ParagraphFeatureClient as ParagraphFeatureClient_e70f5e05f09f93e00b997e
 import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { TOTPField as TOTPField_4eaf6cb33cfb75be01716613e3c9a512 } from 'payload-totp/rsc'
+import { Icon as Icon_fde206bfba86c5e4225a034862628d02 } from '../../../admin/components/Icon'
+import { Logo as Logo_ee23b055e36af2f792f5acea4d3aaff6 } from '../../../admin/components/Logo'
+import { SystemStatusNavLink as SystemStatusNavLink_dd8bfba03c06c6f8262cfd078c88a126 } from '../../../admin/components/SystemStatusNavLink'
 import { TOTPProvider as TOTPProvider_4eaf6cb33cfb75be01716613e3c9a512 } from 'payload-totp/rsc'
 import { TOTPSetup as TOTPSetup_4eaf6cb33cfb75be01716613e3c9a512 } from 'payload-totp/rsc'
 import { TOTPVerify as TOTPVerify_4eaf6cb33cfb75be01716613e3c9a512 } from 'payload-totp/rsc'
+import { SystemStatusView as SystemStatusView_5e37a55f93bc7f5ef834be8d43c90fca } from '../../../admin/views/SystemStatus'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 import { S3ClientUploadHandler as S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24 } from '@payloadcms/storage-s3/client'
 
@@ -40,9 +44,13 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#BoldFeatureClient": BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "payload-totp/rsc#TOTPField": TOTPField_4eaf6cb33cfb75be01716613e3c9a512,
+  "/admin/components/Icon#Icon": Icon_fde206bfba86c5e4225a034862628d02,
+  "/admin/components/Logo#Logo": Logo_ee23b055e36af2f792f5acea4d3aaff6,
+  "/admin/components/SystemStatusNavLink#SystemStatusNavLink": SystemStatusNavLink_dd8bfba03c06c6f8262cfd078c88a126,
   "payload-totp/rsc#TOTPProvider": TOTPProvider_4eaf6cb33cfb75be01716613e3c9a512,
   "payload-totp/rsc#TOTPSetup": TOTPSetup_4eaf6cb33cfb75be01716613e3c9a512,
   "payload-totp/rsc#TOTPVerify": TOTPVerify_4eaf6cb33cfb75be01716613e3c9a512,
+  "/admin/views/SystemStatus#SystemStatusView": SystemStatusView_5e37a55f93bc7f5ef834be8d43c90fca,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1,
   "@payloadcms/storage-s3/client#S3ClientUploadHandler": S3ClientUploadHandler_f97aa6c64367fa259c5bc0567239ef24
 }

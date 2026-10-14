@@ -7,7 +7,7 @@ import { SiteShell } from '@/components/layout/SiteShell';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { dentistNode, jsonLdGraph, websiteNode } from '@/lib/seo/jsonld';
 import { buildSiteMetadata } from '@/lib/seo/metadata';
-import { CLINIC, SEO } from '@/lib/seo/siteInputs';
+import { getSiteInputs } from '@/lib/seo/siteInputs';
 import { TrackListener } from '@/lib/track/TrackListener';
 
 // Every public page renders per request (freeze decision 1). Explicit, so `next build` never
@@ -26,18 +26,19 @@ export const viewport: Viewport = {
   ],
 };
 
-export function generateMetadata(): Metadata {
-  return buildSiteMetadata(SEO);
+export async function generateMetadata(): Promise<Metadata> {
+  return buildSiteMetadata((await getSiteInputs()).seo);
 }
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
+  const { seo, clinic } = await getSiteInputs();
   return (
     <SiteShell
       nonce={nonce}
       extras={
         <>
-          <JsonLd data={jsonLdGraph(dentistNode(CLINIC), websiteNode({ name: SEO.siteName }))} />
+          <JsonLd data={jsonLdGraph(dentistNode(clinic), websiteNode({ name: seo.siteName }))} />
           <TrackListener />
         </>
       }

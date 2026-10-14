@@ -5,7 +5,15 @@
 //                                             reads Vazirmatn-wght.woff2: no brackets in its URL)
 //   src/lib/system-pages/staticPage.ts     -> public/maintenance.html (platform serves it when Node is down)
 //   node_modules/detect-gpu/dist/benchmarks -> public/detect-gpu/benchmarks/ (no third-party CDN)
-import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  copyFileSync,
+  cpSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -39,6 +47,20 @@ for (const [src, dest] of copies) {
   copyFileSync(src, dest);
 }
 
+// /favicon.ico for clients that ask for it without reading the icon links (feed readers, some
+// browsers on non-HTML responses): the 32 px PNG in an ICO container (PNG entries are valid ICO).
+const png = readFileSync(from('design', 'brand', 'favicon-32.png'));
+const ico = Buffer.alloc(22);
+ico.writeUInt16LE(1, 2); // type: icon
+ico.writeUInt16LE(1, 4); // one image
+ico.writeUInt8(32, 6); // width
+ico.writeUInt8(32, 7); // height
+ico.writeUInt16LE(1, 10); // color planes
+ico.writeUInt16LE(32, 12); // bits per pixel
+ico.writeUInt32LE(png.length, 14);
+ico.writeUInt32LE(ico.length, 18); // image offset
+writeFileSync(path.join(pub, 'favicon.ico'), Buffer.concat([ico, png]));
+
 const benchmarks = from('node_modules', 'detect-gpu', 'dist', 'benchmarks');
 if (!existsSync(benchmarks)) {
   console.error('sync-public-assets: detect-gpu benchmarks missing. Run `npm ci` first.');
@@ -58,5 +80,5 @@ if (existsSync(staticPage)) {
 }
 
 console.log(
-  `sync-public-assets: ${copies.length} brand and font files, detect-gpu benchmarks; maintenance.html ${maintenance}`,
+  `sync-public-assets: ${copies.length} brand and font files, favicon.ico, detect-gpu benchmarks; maintenance.html ${maintenance}`,
 );

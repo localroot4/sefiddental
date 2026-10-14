@@ -191,4 +191,56 @@ describe('proxy', () => {
     const gone = await proxy(new NextRequest('http://localhost/old-page'), ev);
     expect(gone.status).toBe(410);
   });
+  it('PX10 booking and emergency pages get the form cookie and the sid header once', async () => {
+    const { proxy } = await loadProxy();
+    const fresh = await proxy(
+      new NextRequest(`http://localhost${encodeURI('/رزرو-نوبت')}`, {
+        headers: { 'x-sefid-form-sid': 'forged' },
+      }),
+      ev,
+    );
+    const sid = fresh.headers.get('x-middleware-request-x-sefid-form-sid') ?? '';
+    expect(sid).toMatch(/^[A-Za-z0-9_-]{43}$/);
+    const cookie = fresh.headers.get('set-cookie') ?? '';
+    expect(cookie).toContain(`__Host-sefid-form=${sid}`);
+    expect(cookie.toLowerCase()).toContain('httponly');
+    expect(cookie.toLowerCase()).toContain('secure');
+
+    const known = 'k'.repeat(43);
+    const again = await proxy(
+      new NextRequest(`http://localhost${encodeURI('/اورژانس')}`, {
+        headers: { cookie: `__Host-sefid-form=${known}` },
+      }),
+      ev,
+    );
+    expect(again.headers.get('x-middleware-request-x-sefid-form-sid')).toBe(known);
+    expect(again.headers.get('set-cookie')).toBeNull();
+
+    const home = await proxy(
+      new NextRequest('http://localhost/', { headers: { 'x-sefid-form-sid': 'forged' } }),
+      ev,
+    );
+    expect(home.headers.get('x-middleware-request-x-sefid-form-sid')).toBeNull();
+    expect(home.headers.get('set-cookie')).toBeNull();
+  });
+
+  it('PX11 Persian dynamic routes render from the ASCII folder, which is closed directly', async () => {
+    const { proxy } = await loadProxy({ SITE_URL: 'http://localhost' });
+    const service = await proxy(
+      new NextRequest(`http://localhost${encodeURI('/خدمات/ترمیم-دندان')}?utm_source=x`),
+      ev,
+    );
+    const target = new URL(service.headers.get('x-middleware-rewrite') ?? 'http://x/');
+    expect(decodeURIComponent(target.pathname)).toBe('/r/services/ترمیم-دندان');
+    expect(target.search).toBe('?utm_source=x');
+    expect(service.headers.get('x-middleware-request-x-nonce')).toBeTruthy();
+    expect(service.headers.get('content-security-policy')).toContain("'strict-dynamic'");
+
+    const direct = await proxy(new NextRequest('http://localhost/r/services/x'), ev);
+    expect(new URL(direct.headers.get('x-middleware-rewrite') ?? 'http://x/').pathname).toBe('/r');
+
+    const hub = await proxy(new NextRequest(`http://localhost${encodeURI('/خدمات')}`), ev);
+    expect(hub.headers.get('x-middleware-rewrite')).toBeNull();
+    expect(hub.headers.get('x-middleware-next')).toBe('1');
+  });
 });

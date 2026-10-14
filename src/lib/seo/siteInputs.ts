@@ -1,9 +1,14 @@
-import type { ClinicJsonLdInput } from '@/lib/seo/jsonld';
-import type { SeoDefaults } from '@/lib/seo/metadata';
+import type { Clinic, Media, SeoDefault } from '@/payload-types';
 
-// Static inputs until wave 2: Lane P maps getSeoDefaults() and getClinic() to these shapes.
-// Values from docs/content/clinic.yaml. One module, because the (site) layout and the global 404
-// document both render the metadata and the Dentist and WebSite JSON-LD from them.
+import { getClinic, getSeoDefaults } from '@/lib/data/globals';
+import { mediaPath } from '@/lib/data/mediaPath';
+import { log } from '@/lib/log/logger';
+import type { ClinicJsonLdInput } from '@/lib/seo/jsonld';
+import type { OgImage, SeoDefaults } from '@/lib/seo/metadata';
+
+// Fallback inputs, from docs/content/clinic.yaml: used when the globals cannot be read, so the
+// site shell, the 404 document and their JSON-LD still render. One module, because the (site)
+// layout and the global 404 document both render the metadata and the Dentist and WebSite JSON-LD.
 export const SEO: SeoDefaults = {
   siteName: 'کلینیک دندانپزشکی سفید',
   titleSuffix: ' | کلینیک دندانپزشکی سفید',
@@ -24,3 +29,74 @@ export const CLINIC: ClinicJsonLdInput = {
     { days: ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'], open: '10:00', close: '20:00' },
   ],
 };
+
+function ogImageFrom(media: SeoDefault['defaultOgImage']): OgImage | null {
+  if (typeof media !== 'object' || media === null) return null;
+  const { url, width, height, alt } = media as Media;
+  const path = mediaPath(url);
+  return path && width && height ? { url: path, width, height, alt } : null;
+}
+
+/** The seo-defaults global as the metadata helpers read it. */
+export function seoDefaultsFrom(seo: SeoDefault): SeoDefaults {
+  return {
+    siteName: seo.siteName,
+    titleSuffix: seo.titleSuffix,
+    shortTitleSuffix: seo.shortTitleSuffix,
+    defaultDescription: seo.defaultDescription ?? null,
+    defaultOgImage: ogImageFrom(seo.defaultOgImage),
+    gscVerification: seo.gscVerification ?? null,
+  };
+}
+
+const SOCIAL_URLS = {
+  instagram: (handle: string) => `https://www.instagram.com/${handle}`,
+  telegramChannel: (handle: string) => `https://t.me/${handle}`,
+  aparat: (handle: string) => `https://www.aparat.com/${handle}`,
+} as const;
+
+/** The clinic global as the Dentist JSON-LD builder reads it (spec 9.7). */
+export function clinicJsonLdFrom(clinic: Clinic): ClinicJsonLdInput {
+  const { address, maps, social } = clinic;
+  const cityPrefix = `${address.city}،`;
+  const sameAs = (Object.keys(SOCIAL_URLS) as (keyof typeof SOCIAL_URLS)[]).flatMap((key) => {
+    const handle = social?.[key];
+    return handle ? [SOCIAL_URLS[key](encodeURIComponent(handle))] : [];
+  });
+  return {
+    name: clinic.nameFa,
+    alternateNames: [clinic.nameShortFa, clinic.nameEn].filter((n): n is string => Boolean(n)),
+    telephone: clinic.phones.landline,
+    address: {
+      // The street line repeats no city: «تهران، خانی‌آباد نو…» becomes «خانی‌آباد نو…».
+      street: address.fullFa.startsWith(cityPrefix)
+        ? address.fullFa.slice(cityPrefix.length).trimStart()
+        : address.fullFa,
+      locality: address.city,
+      region: CLINIC.address.region,
+      country: CLINIC.address.country,
+      postalCode: address.postalCode ?? null,
+    },
+    geo:
+      typeof address.lat === 'number' && typeof address.lng === 'number'
+        ? { lat: address.lat, lng: address.lng }
+        : null,
+    weekly: clinic.hours.weekly.map(({ days, open, close }) => ({ days, open, close })),
+    sameAs,
+    hasMap: maps?.googleMapsUrl || maps?.neshanUrl || maps?.baladUrl || null,
+  };
+}
+
+/**
+ * Inputs of the site shell from the seo-defaults and clinic globals (tagged, cached reads). When
+ * the database cannot answer, the shell still renders from the clinic.yaml fallback above.
+ */
+export async function getSiteInputs(): Promise<{ seo: SeoDefaults; clinic: ClinicJsonLdInput }> {
+  try {
+    const [seo, clinic] = await Promise.all([getSeoDefaults(), getClinic()]);
+    return { seo: seoDefaultsFrom(seo), clinic: clinicJsonLdFrom(clinic) };
+  } catch (err) {
+    log.error({ msg: 'site_inputs_unavailable', err });
+    return { seo: SEO, clinic: CLINIC };
+  }
+}

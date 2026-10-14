@@ -28,3 +28,13 @@ export async function readTextCapped(request: Request, maxBytes: number): Promis
   }
   return new TextDecoder().decode(all);
 }
+
+/** JSON.parse that answers `undefined` for a missing or malformed body (the schema then rejects). */
+export function parseJson(text: string | null): unknown {
+  if (text === null) return undefined;
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return undefined;
+  }
+}

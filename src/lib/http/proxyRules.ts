@@ -55,3 +55,30 @@ export function needsFormSession(method: string, pathname: string): boolean {
   const m = method.toUpperCase();
   return (m === 'GET' || m === 'HEAD') && FORM_SESSION_PAGES.has(pathname);
 }
+
+/*
+ * Persian dynamic routes. Next 16.4 matches dynamic routes against the percent-encoded request
+ * path with a regex built from the raw folder name (router-utils/filesystem.js
+ * buildFilesystemDynamicRoute, resolve-routes.js checkTrue), so `[slug]` under a Persian folder
+ * never matches in a production build. Static Persian folders work (getItem decodes the path).
+ * Each Persian dynamic route therefore renders from an ASCII folder under `/r`, and the proxy
+ * rewrites the public path to it. Phase 4 adds one row per dynamic route.
+ */
+const INTERNAL_ROUTES = '/r';
+const PERSIAN_DYNAMIC_ROUTES: ReadonlyArray<readonly [publicPrefix: string, folder: string]> = [
+  ['/خدمات/', '/r/services/'],
+];
+
+/**
+ * The path Next renders instead of `pathname` (normalizePath() output): the ASCII folder of a
+ * Persian dynamic route, or `/r` for a direct request into those folders (no page there, so the
+ * 404 document answers). Null when the path renders as it is.
+ */
+export function routeRewrite(pathname: string): string | null {
+  if (pathname.startsWith(`${INTERNAL_ROUTES}/`)) return INTERNAL_ROUTES;
+  for (const [prefix, folder] of PERSIAN_DYNAMIC_ROUTES) {
+    const slug = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : '';
+    if (slug !== '' && !slug.includes('/')) return folder + encodeURIComponent(slug);
+  }
+  return null;
+}

@@ -7,7 +7,7 @@
 // Shared JS = scripts on every measured page; route JS = initial minus shared.
 //   node scripts/check-bundle.mjs        (after `npm run build` and `npm run db:e2e`)
 import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -178,6 +178,10 @@ async function measurePage(browser, origin, url) {
 }
 
 async function main() {
+  // Same as playwright.config.ts: the repo .env names the container Chromium
+  // (PW_CHROMIUM_EXECUTABLE) locally; shell values win; CI has no .env.
+  const envFile = path.join(root, '.env');
+  if (existsSync(envFile)) process.loadEnvFile(envFile);
   const limits = JSON.parse(readFileSync(path.join(root, 'tests/budgets/limits.json'), 'utf8'));
   const port = Number(process.env.E2E_PORT ?? '3000');
   const origin = `http://localhost:${port}`;

@@ -30,7 +30,7 @@ describe('env', () => {
     expect(env.gitSha).toBe('dev');
     expect(env.cronSecret.length).toBeGreaterThanOrEqual(43);
     expect(env.allowFirstUser).toBe(false);
-    expect(env.cspAdminMode).toBe('report-only');
+    expect(env.cspAdminMode).toBe('enforce');
     expect(env.internalOrigin).toBe('http://127.0.0.1:3000');
     expect(env.s3).toBeNull();
     expect(env.smtp).toBeNull();
