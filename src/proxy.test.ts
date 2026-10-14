@@ -243,4 +243,16 @@ describe('proxy', () => {
     expect(hub.headers.get('x-middleware-rewrite')).toBeNull();
     expect(hub.headers.get('x-middleware-next')).toBe('1');
   });
+
+  it('PX12 QA routes answer the 404 document unless QA_ROUTES=1', async () => {
+    const off = await (
+      await loadProxy({ SITE_URL: 'http://localhost' })
+    ).proxy(new NextRequest('http://localhost/qa/not-found'), ev);
+    expect(new URL(off.headers.get('x-middleware-rewrite') ?? 'http://x/').pathname).toBe('/r');
+
+    const on = await (
+      await loadProxy({ SITE_URL: 'http://localhost', QA_ROUTES: '1' })
+    ).proxy(new NextRequest('http://localhost/qa/not-found'), ev);
+    expect(on.headers.get('x-middleware-rewrite')).toBeNull();
+  });
 });

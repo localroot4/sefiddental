@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { normalizePath } from '@/lib/paths';
+import { buildPath, normalizePath, PAGE_PATHS, type PathCollection } from '@/lib/paths';
 import {
   isAuthLimitedPath,
   isFirstUserPath,
@@ -105,5 +105,41 @@ describe('routeRewrite (Persian dynamic routes)', () => {
   it('R3 a direct request into the ASCII folders gets the 404 document', () => {
     expect(routeRewrite('/r/services/x')).toBe('/r');
     expect(routeRewrite(normalizePath('/R/Services/x'))).toBe('/r');
+    for (const folder of ['doctors', 'articles', 'article-categories', 'tags', 'guides']) {
+      expect(routeRewrite(`/r/${folder}/x`), folder).toBe('/r');
+    }
+    expect(routeRewrite(normalizePath('/%72/services/x'))).toBe('/r');
+  });
+
+  it('R4 every phase 4 dynamic route has a row, at the path src/lib/paths.ts builds', () => {
+    const rows: Array<[PathCollection, string]> = [
+      ['services', '/r/services/'],
+      ['service-categories', '/r/services/'],
+      ['doctors', '/r/doctors/'],
+      ['articles', '/r/articles/'],
+      ['article-categories', '/r/article-categories/'],
+      ['tags', '/r/tags/'],
+    ];
+    for (const [collection, folder] of rows) {
+      const path = buildPath(collection, { slug: 'نمونه-اسلاگ' }) ?? '';
+      expect(routeRewrite(normalizePath(path)), collection).toBe(
+        folder + encodeURIComponent('نمونه-اسلاگ'),
+      );
+    }
+    const guide = buildPath('pages', { key: 'guide-first-visit', slug: 'اولین-مراجعه' }) ?? '';
+    expect(routeRewrite(guide)).toBe(`/r/guides/${encodeURIComponent('اولین-مراجعه')}`);
+    // Hubs and static pages render from their own Persian folders.
+    for (const path of Object.values(PAGE_PATHS)) {
+      if (!path.startsWith('/راهنمای-بیمار/')) expect(routeRewrite(path), path).toBeNull();
+    }
+    expect(routeRewrite('/مقالات/دسته/a/b')).toBeNull();
+  });
+
+  it('R5 QA routes answer the 404 document unless QA_ROUTES is on', () => {
+    for (const path of ['/qa/not-found', '/qa/error', '/qa/gone']) {
+      expect(routeRewrite(path), path).toBe('/r');
+      expect(routeRewrite(path, true), path).toBeNull();
+    }
+    expect(routeRewrite('/qa')).toBeNull();
   });
 });

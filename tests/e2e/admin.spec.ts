@@ -199,13 +199,19 @@ test('T-AD9 admin login and dashboard screenshots at three widths, light and dar
       });
       const page = await context.newPage();
       await page.goto('/admin/login');
+      // Payload renders the theme from Sec-CH-Prefers-Color-Scheme. Headless Chromium sends the
+      // emulated value only after it has seen Accept-CH once (its Critical-CH retry carried none),
+      // so the first render here is light even in dark: load the page once more.
+      await page.reload();
       await expect(page.locator('#field-email')).toBeVisible();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       await captureTemplate(page, testInfo, 'admin-login', theme);
 
       await restoreSession(page, 'admin');
       await page.goto('/admin');
       await expect(page).toHaveURL(/\/admin\/?$/);
       await expect(page.locator('a[href="/admin/collections/tags"]').first()).toBeAttached();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       await captureTemplate(page, testInfo, 'admin-dashboard', theme);
       await context.close();
     }

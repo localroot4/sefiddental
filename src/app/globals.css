@@ -142,6 +142,15 @@
     outline: none;
     box-shadow: var(--focus-ring);
   }
+  /* No one-word last line under a wrapped heading or paragraph. */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
   [dir='ltr'],
   .ltr {
     unicode-bidi: isolate;

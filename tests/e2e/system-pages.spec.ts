@@ -93,3 +93,25 @@ test('T-SP6 the static maintenance page the host serves while Node is down is Pe
   await expectPersianDocument(page);
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 });
+
+test('T-SP7 the font families are the names design/tokens.css asks for, and both load', async ({
+  page,
+}) => {
+  // next/font/local names a family after its exported constant (src/lib/fonts.ts); the build-time
+  // transform is out of Vitest's reach, so the check runs on the built page.
+  await page.goto('/qa/not-found');
+  await page.evaluate(() => document.fonts.ready);
+  const families = await page.evaluate(() =>
+    [...document.fonts].map((face) => face.family.replace(/^["']|["']$/g, '')),
+  );
+  expect(families).toEqual(expect.arrayContaining(['Vazirmatn', 'Estedad']));
+  // Each family resolves to a face that loads (an empty list means the name matched nothing).
+  const loaded = await page.evaluate(() =>
+    Promise.all(
+      ['400 1rem Vazirmatn', '700 1rem Estedad'].map(async (font) =>
+        (await document.fonts.load(font, 'سفید')).map((face) => face.status),
+      ),
+    ),
+  );
+  expect(loaded).toEqual([['loaded'], ['loaded']]);
+});

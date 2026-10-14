@@ -18,7 +18,7 @@
     "format": "prettier . --write",
     "format:check": "prettier . --check",
     "typecheck": "next typegen && tsc --noEmit",
-    "knip": "knip",
+    "knip": "node --env-file-if-exists=.env node_modules/knip/bin/knip.js",
     "test": "vitest run",
     "test:unit": "vitest run --project unit --project dom",
     "test:int": "vitest run --project int",

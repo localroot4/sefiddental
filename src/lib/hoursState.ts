@@ -82,7 +82,8 @@ const COPY = {
   later: (day: string, time: string) => `پذیرش ${day} از ساعت ${time} با شما تماس می\u200Cگیرد.`,
   holidayPrefix: 'امروز تعطیل رسمی است. ',
   noWorkingDay: 'پذیرش در اولین روز کاری با شما تماس می\u200Cگیرد.',
-  closedSheet: (summary: string) => `کلینیک الان بسته است. ساعات کاری: ${summary}`,
+  closedSheet: (summary: string | null) =>
+    summary ? `کلینیک الان بسته است. ساعات کاری: ${summary}` : 'کلینیک الان بسته است.',
   emergencyToday: (time: string) =>
     `پذیرش امروز از ساعت ${time}، پیش از بقیهٔ درخواست\u200Cها، با شما تماس می\u200Cگیرد.`,
   emergencyLater: (day: string, time: string) =>
@@ -201,7 +202,9 @@ export function hoursState(now: Date, hours: ClinicHours, options: HoursOptions 
   }
 
   const callsAllowed = state === 'open' || state === 'closing-soon';
-  const closedSheet = callsAllowed ? null : COPY.closedSheet(hoursSummary(hours) ?? hours.noteFa);
+  // An empty note (the Clinic global's default) never leaves a bare "ساعات کاری:".
+  const summary = hoursSummary(hours) ?? (hours.noteFa.trim() || null);
+  const closedSheet = callsAllowed ? null : COPY.closedSheet(summary);
 
   let callbackLine: string;
   let emergencyClosedLine: string | null = null;

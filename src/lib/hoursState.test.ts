@@ -360,6 +360,14 @@ describe('hoursState details', () => {
     expect(r.copy.closedSheet).toBe(`کلینیک الان بسته است. ساعات کاری: ${NOTE}`);
   });
 
+  it('H-NOTE-EMPTY split hours and an empty note: the closed sheet ends after the first sentence', () => {
+    for (const noteFa of ['', '  ']) {
+      const r = run('2026-10-14T17:30:00Z', { ...SPLIT, noteFa });
+      expect(r.callsAllowed).toBe(false);
+      expect(r.copy.closedSheet).toBe('کلینیک الان بسته است.');
+    }
+  });
+
   it('H-HORIZON horizonDays limits the search for the next working day', () => {
     // Thu 14:30 in SPLIT: Saturday is two days ahead.
     expect(run('2026-10-15T11:00:00Z', SPLIT, { horizonDays: 1 }).nextOpen).toBeNull();

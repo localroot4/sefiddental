@@ -1,7 +1,9 @@
 // Security headers on every response kind (acceptance: "Security headers on every response; CSP
 // has no unsafe-inline or unsafe-eval"; spec-platform 7.1). The static set comes from
 // next.config `headers()` on every path, so build assets and media files (outside the proxy
-// matcher) carry it too; the proxy adds the route-dependent headers.
+// matcher) carry it too; the proxy adds the route-dependent headers. One exception: Next's own 308
+// for a path with '//' or '\' runs before headers() and carries none (canonical.spec.ts T-CN2b);
+// docs/deploy.md has the reverse proxy set the static set on every response.
 import { expect, test, type APIResponse } from '@playwright/test';
 
 import { requireRoutes } from '../../helpers/pending';

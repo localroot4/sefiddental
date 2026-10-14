@@ -62,7 +62,8 @@ function canonicalPath(pathname: string, kind: PathKind): string {
  * a trusted X-Forwarded-Proto (never a loop behind a proxy that hides the scheme). Paths of kinds
  * page, admin and feed take the normalizePath form (trailing slash, '//', Arabic letters, ASCII
  * case); API paths are untouched. The query is kept as is; percent-encoding case alone never
- * redirects.
+ * redirects. A path with '//' or '\' never reaches here: Next 16.4 answers it first with its own
+ * 308 (base-server handleRequestImpl, e2e T-CN2b), so '//' plus capitals takes two hops.
  */
 export function canonicalRedirect(input: {
   url: URL;

@@ -4,7 +4,7 @@
 // every run prints min, median and max beside the limit instead of loosening it.
 //   node scripts/lhci.mjs        (after `npm run build` and `npm run db:e2e`; CHROME_PATH set)
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -79,6 +79,10 @@ function savedLhrs() {
 }
 
 function main() {
+  // Local runs read the repo .env (CHROME_PATH for the container Chromium), like
+  // check-bundle.mjs and playwright.config.ts; shell values win; CI has no .env.
+  const envFile = path.join(root, '.env');
+  if (existsSync(envFile)) process.loadEnvFile(envFile);
   // The assertions do not depend on the theme (only the Chrome flags and the report folder do).
   const { assertMatrix } = createRequire(import.meta.url)('../lighthouserc.cjs').ci.assert;
   const sections = [];

@@ -32,6 +32,10 @@ test('T-CN2b a doubled slash never reaches the proxy: Next answers 308 to the co
   const response = await request.get('/qa//not-found', { maxRedirects: 0 });
   expect(response.status()).toBe(308);
   expect(response.headers().location).toBe('/qa/not-found');
+  // The one exception to "security headers on every response": next.config headers() never runs
+  // for this 308, so the reverse proxy adds the static set (docs/deploy.md). Tripwire: when Next
+  // adds them, drop the exception from docs/deploy.md and tests/e2e/http/headers.spec.ts.
+  expect(response.headers()['x-content-type-options']).toBeUndefined();
 });
 
 test('T-CN3 Arabic ي and ك in a path redirect to the Persian letters', async ({ request }) => {

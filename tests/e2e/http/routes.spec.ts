@@ -3,6 +3,8 @@
 // (tests/helpers/pending.ts) and then run without an edit.
 import { expect, test } from '@playwright/test';
 
+import { t } from '@/i18n/fa';
+
 import { requireRoutes } from '../../helpers/pending';
 import { APP_ORIGIN, INDEXING_ORIGIN } from '../../helpers/servers';
 import { findAll, parseXml, textOf } from '../../helpers/xml';
@@ -215,4 +217,27 @@ test.describe('robots.txt switches with ALLOW_INDEXING at run time (decision 39)
     expect(text).not.toMatch(/^Disallow: \/$/m);
     expect(text).toMatch(new RegExp(`^Sitemap: ${INDEXING_ORIGIN}/sitemap\\.xml$`, 'im'));
   });
+});
+
+test('T-RT14 a Persian dynamic path renders from its ASCII folder; the folder itself is the 404', async ({
+  page,
+}) => {
+  requireRoutes('serviceProbe');
+  // Next 16.4 never matches [slug] under a Persian folder, so the proxy rewrites
+  // /خدمات/<slug> to /r/services/<slug> (src/lib/http/proxyRules.ts routeRewrite).
+  const slug = 'ترمیم-دندان';
+  const service = await page.goto(encodeURI(`/خدمات/${slug}`));
+  expect(service?.status()).toBe(200);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^ترمیم دندان در سه سطح/);
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
+    'href',
+    `${APP_ORIGIN}${encodeURI(`/خدمات/${slug}`)}`,
+  );
+
+  // No duplicate content: the internal path answers the branded 404, noindex.
+  const direct = await page.goto(`/r/services/${encodeURIComponent(slug)}`);
+  expect(direct?.status()).toBe(404);
+  await expect(page.locator('html')).toHaveAttribute('lang', 'fa');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(t('notFound.heading'));
+  await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute('content', /noindex/);
 });

@@ -138,7 +138,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 
   // 8: pass through with the route-dependent headers; Persian dynamic routes render from their
   // ASCII folder (proxyRules routeRewrite).
-  const rewrite = kind === 'page' ? routeRewrite(path) : null;
+  const rewrite = kind === 'page' ? routeRewrite(path, env.qaRoutes) : null;
   const res = rewrite
     ? NextResponse.rewrite(new URL(rewrite + url.search, request.url), { request: { headers } })
     : NextResponse.next({ request: { headers } });
