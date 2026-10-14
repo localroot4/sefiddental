@@ -8,6 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { CLINIC_FALLBACK } from '@/i18n/fa';
 import {
   BRAND_LOCKUP,
+  LOCKUP_SPRITE,
   renderStaticSystemPage,
   STATIC_PAGE_COPY,
   STATIC_PAGE_CSP,
@@ -69,6 +70,16 @@ describe('static system pages (spec 7.4, 14.3, 14.4)', () => {
     expect(svg).toContain(`viewBox="${BRAND_LOCKUP.viewBox}"`);
     expect(svg).toContain(`fill="#0A243F" fill-rule="evenodd" d="${BRAND_LOCKUP.wordmarkPath}"`);
     expect(svg).toContain(`fill="#00827A" fill-rule="evenodd" d="${BRAND_LOCKUP.markPath}"`);
+  });
+
+  it('SP5b the logo sprite is the same drawing, under the symbol BrandLogo uses', () => {
+    expect(LOCKUP_SPRITE).toContain(`<symbol id="lockup" viewBox="${BRAND_LOCKUP.viewBox}">`);
+    expect(LOCKUP_SPRITE).toContain(
+      `fill="currentColor" fill-rule="evenodd" d="${BRAND_LOCKUP.wordmarkPath}"`,
+    );
+    expect(LOCKUP_SPRITE).toContain(
+      `fill="#00827A" fill-rule="evenodd" d="${BRAND_LOCKUP.markPath}"`,
+    );
   });
 
   it('SP6 one copy of the clinic facts: static page and i18n agree', () => {

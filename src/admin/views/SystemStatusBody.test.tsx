@@ -188,7 +188,9 @@ describe('admin nav link and graphics', () => {
     const d = /d="([^"]+)"/.exec(icon)?.[1] ?? '';
     expect(mark).toContain(`d="${d}"`);
     expect(icon).toContain('aria-hidden="true"');
-    expect(renderToStaticMarkup(<Logo />)).toContain('aria-label="کلینیک دندانپزشکی سفید"');
+    const logo = renderToStaticMarkup(<Logo />);
+    expect(logo).toContain('aria-label="کلینیک دندانپزشکی سفید"');
+    expect(logo).toMatch(/<use href="\/brand\/lockup\.svg\?v=[0-9a-f]{8}#lockup">/);
   });
 
   it('LG1 log lines keep time, level and event only', () => {

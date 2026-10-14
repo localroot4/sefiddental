@@ -4,6 +4,7 @@
 //   design/fonts/*                         -> public/fonts/  (static 503 and 410 pages; next/font
 //                                             reads Vazirmatn-wght.woff2: no brackets in its URL)
 //   src/lib/system-pages/staticPage.ts     -> public/maintenance.html (platform serves it when Node is down)
+//                                             and public/brand/lockup.svg (the header logo sprite)
 //   node_modules/detect-gpu/dist/benchmarks -> public/detect-gpu/benchmarks/ (no third-party CDN)
 import {
   copyFileSync,
@@ -74,11 +75,12 @@ cpSync(benchmarks, benchmarksOut, { recursive: true });
 const staticPage = from('src', 'lib', 'system-pages', 'staticPage.ts');
 let maintenance = 'skipped (src/lib/system-pages/staticPage.ts not present yet)';
 if (existsSync(staticPage)) {
-  const { renderStaticSystemPage } = await import(pathToFileURL(staticPage).href);
+  const { renderStaticSystemPage, LOCKUP_SPRITE } = await import(pathToFileURL(staticPage).href);
   writeFileSync(path.join(pub, 'maintenance.html'), renderStaticSystemPage('maintenance'));
+  writeFileSync(path.join(pub, 'brand', 'lockup.svg'), LOCKUP_SPRITE);
   maintenance = 'written';
 }
 
 console.log(
-  `sync-public-assets: ${copies.length} brand and font files, favicon.ico, detect-gpu benchmarks; maintenance.html ${maintenance}`,
+  `sync-public-assets: ${copies.length} brand and font files, favicon.ico, detect-gpu benchmarks; maintenance.html and brand/lockup.svg ${maintenance}`,
 );
