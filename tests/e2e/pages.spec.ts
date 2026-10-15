@@ -19,6 +19,8 @@ const ALL = [DENTISTS, DENTIST, ABOUT, ADDRESS, GUIDES, GUIDE];
 // hoursBadgeLabels() (src/i18n/fa-ui.ts): today's state, never in the server HTML (CC-6).
 // hoursSummary() (src/lib/hoursState.ts): the hours line with the holiday exception (freeze F14).
 const HOURS_LINE = 'هر روز ۱۰ تا ۲۰، به\u200Cجز تعطیلات رسمی.';
+// Under the hours table only the caveat: the rows already say «هر روز» and «۱۰ تا ۲۰».
+const HOURS_CAVEAT = 'به\u200Cجز تعطیلات رسمی.';
 
 const HOURS_STATES =
   /^(الان باز است|کمی بعد بسته می‌شود|هنوز باز نشده است|الان بسته است|امروز تعطیل رسمی است)$/;
@@ -72,8 +74,11 @@ test('T-PG1 dentists hub: H1, the fixture dentist card, no empty state, ItemList
     .getByRole('link', { name: 'دکتر نمونهٔ آزمایشی' });
   await expect(card).toHaveAttribute('href', DENTIST);
   await expect(page.getByText(/معرفی دندانپزشکان کلینیک هنوز منتشر نشده است/)).toHaveCount(0);
-  // The booking block (J) gives the hours with their holiday exception next to the form.
-  await expect(page.locator('[data-section="booking"]').getByText(HOURS_LINE)).toBeVisible();
+  // The booking block (J) gives the hours table with its holiday exception next to the form,
+  // without repeating the rows in a sentence.
+  const booking = page.locator('[data-section="booking"]');
+  await expect(booking.getByText(HOURS_CAVEAT, { exact: true })).toBeVisible();
+  await expect(booking.getByText(HOURS_LINE)).toHaveCount(0);
   await expectCanonical(page, DENTISTS);
   expect(await crumbNames(page)).toEqual(['خانه', 'پزشکان']);
   const [list] = ofType(await jsonLd(page), 'ItemList');
@@ -90,7 +95,8 @@ test('T-PG2 dentist profile: portrait split, council number LTR, filled sections
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('دکتر نمونهٔ آزمایشی');
   // The fixture has a degree, a bio, two services and a case; articles arrive in phase 6.
   expect(await sections(page)).toEqual(['facts', 'bio', 'services', 'cases', 'booking']);
-  const council = page.locator('main header bdi', { hasText: '0000000' });
+  // Stored as 0000000; shown in Persian digits inside the LTR island.
+  const council = page.locator('main header bdi', { hasText: '۰۰۰۰۰۰۰' });
   await expect(council).toHaveAttribute('dir', 'ltr');
   const book = page.locator('main header').getByRole('link', { name: 'رزرو نوبت' });
   await expect(book).toHaveAttribute('data-booking-cta', '');
@@ -160,7 +166,10 @@ test('T-PG4 address: NAP with phones as LTR islands, hours table, WhatsApp hidde
   await expect(page.locator('main a[href^="https://wa.me/"]')).toHaveCount(0);
   await expect(page.locator('[data-section="booking"]')).toHaveAttribute('data-family', 'J-form');
   await expect(page.locator('[data-section="booking"]').getByText(/جای عکس/)).toHaveCount(0);
-  await expect(page.locator('[data-section="booking"]').getByText(HOURS_LINE)).toBeVisible();
+  await expect(
+    page.locator('[data-section="booking"]').getByText(HOURS_CAVEAT, { exact: true }),
+  ).toBeVisible();
+  await expect(page.locator('[data-section="booking"]').getByText(HOURS_LINE)).toHaveCount(0);
   await expectCanonical(page, ADDRESS);
 });
 
