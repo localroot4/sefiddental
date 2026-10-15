@@ -173,7 +173,14 @@ jobs:
       # TBT follows the runner's real speed, which benchmarkIndex misses (one runner at 1980 blocked
       # twice as long as one at 2539): log the load and the busiest processes for a red TBT gate.
       - name: Runner load before Lighthouse
+        # Lighthouse simulates TBT from the task times it observes. On the 2 shared cores, load
+        # left by the e2e step inflates them (run 38790379668 started at load 2.67), so wait up to
+        # 3 minutes for the 1-minute load average to fall under 1, then log what is running.
         run: |
+          for _ in $(seq 36); do
+            awk '{ exit !($1 < 1) }' /proc/loadavg && break
+            sleep 5
+          done
           cat /proc/loadavg
           nproc
           ps -eo pcpu,pmem,etimes,comm --sort=-pcpu | head -8
