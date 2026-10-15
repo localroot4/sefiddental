@@ -93,34 +93,48 @@ export function needsFormSession(method: string, pathname: string): boolean {
  * Each Persian dynamic route therefore renders from `src/app/(site)/r/<folder>/[slug]/page.tsx`,
  * and the proxy rewrites the public path to it. One row per dynamic route of docs/ia.md (prefixes
  * as src/lib/paths.ts builds them; a test ties the two). A public path with one segment after a
- * prefix always rewrites, so no static Persian folder may sit beside these `[slug]` routes.
- * shortcut: an unknown slug still reaches its page, whose notFound() gets Next 16.4's
- * `__next_error__` shell (404 and noindex, but no lang, dir or body until hydration); phase 4 lets
- * the proxy rewrite slugs outside the published set (from proxy-config) to `/r`. A failed or
- * stale config must then fall through to the page, never 404 every slug or a just-published one.
+ * prefix always rewrites, so no static Persian folder may sit beside these `[slug]` routes. A slug
+ * outside the published set of its row (from proxy-config) rewrites to `/r` instead, because a
+ * page's notFound() gets Next 16.4's `__next_error__` shell (no lang, dir or body until hydration).
  */
 const INTERNAL_ROUTES = '/r';
-const PERSIAN_DYNAMIC_ROUTES: ReadonlyArray<readonly [publicPrefix: string, folder: string]> = [
-  ['/خدمات/', '/r/services/'], // services and service categories
-  ['/پزشکان/', '/r/doctors/'],
-  ['/مقالات/دسته/', '/r/article-categories/'],
-  ['/مقالات/برچسب/', '/r/tags/'],
-  ['/مقالات/', '/r/articles/'],
-  ['/راهنمای-بیمار/', '/r/guides/'],
-];
+const PERSIAN_DYNAMIC_ROUTES = [
+  ['/خدمات/', 'services'], // services and service categories
+  ['/پزشکان/', 'doctors'],
+  ['/مقالات/دسته/', 'article-categories'],
+  ['/مقالات/برچسب/', 'tags'],
+  ['/مقالات/', 'articles'],
+  ['/راهنمای-بیمار/', 'guides'],
+] as const;
+
+/** A row of the table: the folder name under `/r/`, also the key of its slug set in proxy-config. */
+export type DynamicRouteKey = (typeof PERSIAN_DYNAMIC_ROUTES)[number][1];
+
+/** The row and slug of a public path with exactly one segment after a table prefix, else null. */
+export function dynamicRoute(pathname: string): { key: DynamicRouteKey; slug: string } | null {
+  for (const [prefix, key] of PERSIAN_DYNAMIC_ROUTES) {
+    const slug = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : '';
+    if (slug !== '' && !slug.includes('/')) return { key, slug };
+  }
+  return null;
+}
 
 /**
  * The path Next renders instead of `pathname` (normalizePath() output): the ASCII folder of a
- * Persian dynamic route, or `/r` for a direct request into those folders and for `/qa/*` while
- * QA_ROUTES is off (no page there, so global-not-found answers with full server HTML; a page's own
- * notFound() gets Next 16.4's `__next_error__` shell). Null when the path renders as it is.
+ * Persian dynamic route, or `/r` for an unknown slug (`unknownSlug`, decided by the proxy), for a
+ * direct request into those folders and for `/qa/*` while QA_ROUTES is off (no page there, so
+ * global-not-found answers with full server HTML). Null when the path renders as it is.
  */
-export function routeRewrite(pathname: string, qaRoutes = false): string | null {
+export function routeRewrite(
+  pathname: string,
+  qaRoutes = false,
+  unknownSlug = false,
+): string | null {
   if (pathname.startsWith(`${INTERNAL_ROUTES}/`)) return INTERNAL_ROUTES;
   if (!qaRoutes && pathname.startsWith('/qa/')) return INTERNAL_ROUTES;
-  for (const [prefix, folder] of PERSIAN_DYNAMIC_ROUTES) {
-    const slug = pathname.startsWith(prefix) ? pathname.slice(prefix.length) : '';
-    if (slug !== '' && !slug.includes('/')) return folder + encodeURIComponent(slug);
-  }
-  return null;
+  const route = dynamicRoute(pathname);
+  if (route === null) return null;
+  return unknownSlug
+    ? INTERNAL_ROUTES
+    : `${INTERNAL_ROUTES}/${route.key}/${encodeURIComponent(route.slug)}`;
 }

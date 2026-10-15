@@ -1,10 +1,11 @@
 import type { Clinic, Media, SeoDefault } from '@/payload-types';
 
+import { socialLinks } from '@/lib/data/footer';
 import { getClinic, getSeoDefaults } from '@/lib/data/globals';
 import { mediaPath } from '@/lib/data/mediaPath';
 import { log } from '@/lib/log/logger';
 import type { ClinicJsonLdInput } from '@/lib/seo/jsonld';
-import type { OgImage, SeoDefaults } from '@/lib/seo/metadata';
+import type { OgImage, PageSeoInput, SeoDefaults } from '@/lib/seo/metadata';
 
 // Fallback inputs, from docs/content/clinic.yaml: used when the globals cannot be read, so the
 // site shell, the 404 document and their JSON-LD still render. One module, because the (site)
@@ -37,6 +38,23 @@ function ogImageFrom(media: SeoDefault['defaultOgImage']): OgImage | null {
   return path && width && height ? { url: path, width, height, alt } : null;
 }
 
+/** A document's `seo` group (seoGroup fields) as buildMetadata reads it; the image as an OG image. */
+export function pageSeoFrom(
+  seo:
+    | {
+        title?: string | null;
+        description?: string | null;
+        image?: SeoDefault['defaultOgImage'];
+        noindex?: boolean | null;
+      }
+    | null
+    | undefined,
+): PageSeoInput['seo'] {
+  if (!seo) return null;
+  const { title, description, image, noindex } = seo;
+  return { title, description, noindex, image: ogImageFrom(image) };
+}
+
 /** The seo-defaults global as the metadata helpers read it. */
 export function seoDefaultsFrom(seo: SeoDefault): SeoDefaults {
   return {
@@ -49,20 +67,11 @@ export function seoDefaultsFrom(seo: SeoDefault): SeoDefaults {
   };
 }
 
-const SOCIAL_URLS = {
-  instagram: (handle: string) => `https://www.instagram.com/${handle}`,
-  telegramChannel: (handle: string) => `https://t.me/${handle}`,
-  aparat: (handle: string) => `https://www.aparat.com/${handle}`,
-} as const;
-
 /** The clinic global as the Dentist JSON-LD builder reads it (spec 9.7). */
 export function clinicJsonLdFrom(clinic: Clinic): ClinicJsonLdInput {
   const { address, maps, social } = clinic;
   const cityPrefix = `${address.city}،`;
-  const sameAs = (Object.keys(SOCIAL_URLS) as (keyof typeof SOCIAL_URLS)[]).flatMap((key) => {
-    const handle = social?.[key];
-    return handle ? [SOCIAL_URLS[key](encodeURIComponent(handle))] : [];
-  });
+  const sameAs = socialLinks(social).map((link) => link.url);
   return {
     name: clinic.nameFa,
     alternateNames: [clinic.nameShortFa, clinic.nameEn].filter((n): n is string => Boolean(n)),

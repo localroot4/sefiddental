@@ -293,6 +293,46 @@ describe('proxy', () => {
     expect(hub.headers.get('x-middleware-next')).toBe('1');
   });
 
+  it('PX16 an unpublished slug renders the 404 document; published slugs and other rows pass', async () => {
+    const { proxy } = await loadProxy({ SITE_URL: 'http://localhost' });
+    const body = {
+      v: 1,
+      generatedAt: '2026-10-15T00:00:00.000Z',
+      redirects: [['/خدمات/نام-قدیمی', '/خدمات/ترمیم-دندان', 301]],
+      ga4MeasurementId: null,
+      slugs: { services: ['ترمیم-دندان'], doctors: [] },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Response.json(body)),
+    );
+    const rewrite = async (path: string, method = 'GET') => {
+      const res = await proxy(
+        new NextRequest(`http://localhost${encodeURI(path)}`, { method }),
+        ev,
+      );
+      return decodeURIComponent(
+        new URL(res.headers.get('x-middleware-rewrite') ?? 'http://x/').pathname,
+      );
+    };
+    expect(await rewrite('/خدمات/no-such-service')).toBe('/r');
+    expect(await rewrite('/خدمات/ترمیم-دندان')).toBe('/r/services/ترمیم-دندان');
+    // A HEAD, and a second miss inside the 2 s refresh floor, reach the page (its own 404).
+    expect(await rewrite('/خدمات/no-such-service', 'HEAD')).toBe('/r/services/no-such-service');
+    expect(await rewrite('/خدمات/دیگری')).toBe('/r/services/دیگری');
+    // An empty set (no published dentist) never refuses a slug.
+    expect(await rewrite('/پزشکان/دکتر-الف')).toBe('/r/doctors/دکتر-الف');
+    // The redirects table answers first: a renamed slug still 301s to its new path.
+    const moved = await proxy(
+      new NextRequest(`http://localhost${encodeURI('/خدمات/نام-قدیمی')}`),
+      ev,
+    );
+    expect(moved.status).toBe(301);
+    expect(decodeURIComponent(moved.headers.get('location') ?? '')).toBe(
+      'http://localhost/خدمات/ترمیم-دندان',
+    );
+  });
+
   it('PX12 QA routes answer the 404 document unless QA_ROUTES=1', async () => {
     const off = await (
       await loadProxy({ SITE_URL: 'http://localhost' })

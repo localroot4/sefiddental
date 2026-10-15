@@ -5,6 +5,7 @@ import {
   isAuthLimitedPath,
   isClosedPayloadPath,
   isFirstUserPath,
+  dynamicRoute,
   maintenanceBypass,
   needsFormSession,
   routeRewrite,
@@ -174,5 +175,31 @@ describe('routeRewrite (Persian dynamic routes)', () => {
       expect(routeRewrite(path, true), path).toBeNull();
     }
     expect(routeRewrite('/qa')).toBeNull();
+  });
+
+  it('R6 dynamicRoute names the row and the slug of exactly one segment after a prefix', () => {
+    expect(dynamicRoute('/خدمات/لمینت-سرامیکی')).toEqual({
+      key: 'services',
+      slug: 'لمینت-سرامیکی',
+    });
+    expect(dynamicRoute('/مقالات/دسته/ایمپلنت')).toEqual({
+      key: 'article-categories',
+      slug: 'ایمپلنت',
+    });
+    expect(dynamicRoute('/مقالات/برچسب/درد')).toEqual({ key: 'tags', slug: 'درد' });
+    expect(dynamicRoute('/مقالات/دسته')).toEqual({ key: 'articles', slug: 'دسته' });
+    expect(dynamicRoute('/راهنمای-بیمار/اولین-مراجعه')?.key).toBe('guides');
+    for (const path of ['/خدمات', '/خدمات/', '/خدمات/a/b', '/r/services/x', '/']) {
+      expect(dynamicRoute(path), path).toBeNull();
+    }
+  });
+
+  it('R7 an unknown slug answers the 404 document; the flag changes no other path', () => {
+    expect(routeRewrite('/پزشکان/دکتر-ناشناس', false, true)).toBe('/r');
+    expect(routeRewrite('/پزشکان/دکتر-ناشناس', false, false)).toBe(
+      `/r/doctors/${encodeURIComponent('دکتر-ناشناس')}`,
+    );
+    expect(routeRewrite('/خدمات', false, true)).toBeNull();
+    expect(routeRewrite('/qa/not-found', true, true)).toBeNull();
   });
 });

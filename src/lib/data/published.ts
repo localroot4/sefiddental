@@ -1,4 +1,4 @@
-import type { CollectionSlug, DataFromCollectionSlug, Where } from 'payload';
+import type { CollectionSlug, DataFromCollectionSlug, JoinQuery, Where } from 'payload';
 
 import { cachedRead } from './cache';
 import { getPayloadClient } from './payload';
@@ -48,11 +48,19 @@ export function populatedCollections(
 /**
  * Published documents through the Local API (access overridden: the public site never uses
  * REST). Drafts-enabled collections get the `_status = published` filter (spec-data P4).
- * Without a `limit` every match is returned. Depth defaults to 0.
+ * Without a `limit` every match is returned. Depth defaults to 0. `joins: false` skips join
+ * fields: Payload fills them without the `_status` filter, so a template reads those lists
+ * through their own published read instead.
  */
 export async function getPublished<S extends CollectionSlug>(
   collection: S,
-  query: { where?: Where; sort?: string | string[]; limit?: number; depth?: number } = {},
+  query: {
+    where?: Where;
+    sort?: string | string[];
+    limit?: number;
+    depth?: number;
+    joins?: false;
+  } = {},
 ): Promise<DataFromCollectionSlug<S>[]> {
   const payload = await getPayloadClient();
   const config = payload.collections[collection].config;
@@ -74,6 +82,7 @@ export async function getPublished<S extends CollectionSlug>(
       where,
       sort: query.sort,
       depth,
+      joins: query.joins as JoinQuery<S> | undefined,
       ...(query.limit === undefined ? { pagination: false } : { limit: query.limit }),
     });
     return result.docs as DataFromCollectionSlug<S>[];

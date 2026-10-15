@@ -105,6 +105,25 @@ describe('site inputs from the globals', () => {
     expect(seoDefaultsFrom(noSize).defaultOgImage).toBeNull();
   });
 
+  it('SI5 a page seo group maps for buildMetadata: fields kept, the image as an OG image', async () => {
+    const { pageSeoFrom } = await import('./siteInputs');
+    expect(pageSeoFrom(null)).toBeNull();
+    expect(
+      pageSeoFrom({
+        title: 'دندانپزشکی دیجیتال جنوب تهران',
+        description: 'توضیح',
+        noindex: false,
+        image: seoGlobal.defaultOgImage,
+      }),
+    ).toEqual({
+      title: 'دندانپزشکی دیجیتال جنوب تهران',
+      description: 'توضیح',
+      noindex: false,
+      image: { url: '/api/media/file/og-1.webp', width: 1200, height: 630, alt: 'نمای کلینیک' },
+    });
+    expect(pageSeoFrom({ title: 'الف', image: 3 })?.image).toBeNull();
+  });
+
   it('SI4 the globals cannot be read: the fallback renders and one error line is logged', async () => {
     const writes: string[] = [];
     vi.spyOn(process.stdout, 'write').mockImplementation((chunk: string | Uint8Array) => {

@@ -5,7 +5,8 @@
     "scripts/*.mjs",
     "src/seed/index.ts",
     "scripts/reset-admin.ts",
-    "tests/setup/e2eUsers.ts"
+    "tests/setup/e2eUsers.ts",
+    "tests/fixtures/qa-seed.ts"
   ],
   "project": [
     "src/**/*.{ts,tsx,css}",

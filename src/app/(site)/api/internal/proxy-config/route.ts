@@ -1,5 +1,6 @@
 import { getFeatures } from '@/lib/data/globals';
 import { getRedirectsSnapshot } from '@/lib/data/redirects';
+import { getPublishedSlugs } from '@/lib/data/slugs';
 import { readEnv } from '@/lib/env';
 import { isInternalCaller } from '@/lib/http/auth';
 
@@ -11,13 +12,18 @@ export async function GET(request: Request): Promise<Response> {
   if (!isInternalCaller(request.headers, readEnv().internalApiToken)) {
     return new Response('Not Found', { status: 404, headers });
   }
-  const [snapshot, features] = await Promise.all([getRedirectsSnapshot(), getFeatures()]);
+  const [snapshot, features, slugs] = await Promise.all([
+    getRedirectsSnapshot(),
+    getFeatures(),
+    getPublishedSlugs(),
+  ]);
   return Response.json(
     {
       v: 1,
       generatedAt: snapshot.generatedAt,
       redirects: snapshot.rows,
       ga4MeasurementId: (features.ga4Enabled && features.ga4MeasurementId) || null,
+      slugs,
     },
     { headers },
   );

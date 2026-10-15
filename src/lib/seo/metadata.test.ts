@@ -89,6 +89,18 @@ describe('buildMetadata (spec 9.2)', () => {
     });
   });
 
+  it('MD8 home with a seo topic keeps the brand first (C7); its OG and Twitter titles match', async () => {
+    const { buildMetadata, HOME_TITLE } = await load(true);
+    const m = buildMetadata(
+      { path: '/', title: 'کلینیک', kind: 'home', seo: { title: 'دندانپزشکی دیجیتال جنوب تهران' } },
+      SEO,
+    );
+    expect(m.title).toEqual({ absolute: HOME_TITLE });
+    expect(m.openGraph).toMatchObject({ title: HOME_TITLE, url: 'https://sefiddental.ir/' });
+    expect(m.twitter).toMatchObject({ title: HOME_TITLE });
+    expect(m.alternates?.canonical).toBe('https://sefiddental.ir/');
+  });
+
   it('MD5 seo fields win; noindex honored; staging forces noindex', async () => {
     const meta = await load(true);
     const m = meta.buildMetadata(

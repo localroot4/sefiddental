@@ -144,6 +144,9 @@ jobs:
             echo "::error::The seeder printed no summary line: the e2e database is not seeded."
             exit 1
           fi
+          # e2e-only fixture (dentist, guide, case, testimonial); it refuses any non-e2e database.
+          DATABASE_URL="$E2E_DATABASE_URL" node scripts/payload.mjs run tests/fixtures/qa-seed.ts | tee "$RUNNER_TEMP/qa-fixture.log"
+          grep -q 'qa-fixture: dentist' "$RUNNER_TEMP/qa-fixture.log" || { echo "::error::The QA fixture printed no summary line."; exit 1; }
 
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

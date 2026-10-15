@@ -115,7 +115,8 @@ export function buildMetadata(input: PageSeoInput, seo: SeoDefaults): Metadata {
   let title: Metadata['title'];
   let fullTitle: string;
   if (input.kind === 'home') {
-    fullTitle = input.seo?.title || HOME_TITLE;
+    // Brand first on home (keyword map); `seo.title` is a topic, as V-TITLE checks it (C7).
+    fullTitle = input.seo?.title ? `${seo.siteName} | ${input.seo.title}` : HOME_TITLE;
     title = { absolute: fullTitle };
   } else if (input.kind === 'dentist') {
     fullTitle = `${topic}${seo.shortTitleSuffix}`;

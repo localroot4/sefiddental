@@ -14,6 +14,8 @@ vi.mock('@/lib/data/redirects', () => ({
   }),
   recordRedirectHit: mocks.recordRedirectHit,
 }));
+const SLUGS = { services: ['ترمیم-دندان'], doctors: [], guides: [], articles: [] };
+vi.mock('@/lib/data/slugs', () => ({ getPublishedSlugs: async () => SLUGS }));
 
 const TOKEN = 'i'.repeat(48); // testEnv's INTERNAL_API_TOKEN
 const get = (token?: string) =>
@@ -44,7 +46,7 @@ describe('/api/internal/* (spec 10.2, 10.3)', () => {
     }
   });
 
-  it('IN2 proxy-config answers v1 rows the proxy schema accepts; GA4 id only when enabled', async () => {
+  it('IN2 proxy-config answers v1 rows and slug sets the proxy schema accepts; GA4 id only when enabled', async () => {
     const { GET } = await import('./route');
     const res = await GET(get(TOKEN));
     expect(res.status).toBe(200);
@@ -54,11 +56,28 @@ describe('/api/internal/* (spec 10.2, 10.3)', () => {
       generatedAt: '2026-10-13T08:30:00.000Z',
       redirects: [['/vip', '/خدمات/ترمیم-دندان#سطح-ترمیم', 301]],
       ga4MeasurementId: null,
+      slugs: SLUGS,
     });
     mocks.features.ga4Enabled = true;
     expect((await (await GET(get(TOKEN))).json()) as { ga4MeasurementId: string }).toMatchObject({
       ga4MeasurementId: 'G-ABC123',
     });
+  });
+
+  it('IN4 the proxy parses the answer: redirect rows and slug sets reach its view', async () => {
+    const { GET } = await import('./route');
+    const answer = await GET(get(TOKEN));
+    const { getProxyConfig } = await import('@/lib/http/proxyConfig');
+    const { testEnv } = await import('@/lib/http/testEnv');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => answer),
+    );
+    const view = await getProxyConfig(testEnv(), 0);
+    vi.unstubAllGlobals();
+    expect(view.redirects.get('/vip')?.status).toBe(301);
+    expect(view.slugs?.get('services')).toEqual(new Set(['ترمیم-دندان']));
+    expect(view.slugs?.get('doctors')?.size).toBe(0);
   });
 
   it('IN3 redirect-hit: 404 without the token, 400 for a bad body, 204 counts one hit', async () => {

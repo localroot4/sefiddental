@@ -13,8 +13,15 @@ import {
 } from '@/lib/formTokens';
 import { buildCsp, newNonce } from '@/lib/http/csp';
 import { normalizePath } from '@/lib/paths';
-import { destination, getProxyConfig, recordRedirectHit } from '@/lib/http/proxyConfig';
 import {
+  destination,
+  getProxyConfig,
+  isUnknownSlug,
+  recordRedirectHit,
+  type ProxyConfigView,
+} from '@/lib/http/proxyConfig';
+import {
+  dynamicRoute,
   isAuthLimitedPath,
   isClosedPayloadPath,
   isFirstUserPath,
@@ -98,8 +105,10 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 
   // 5: redirects table (pages, GET and HEAD), before the canonical check: one hop.
   let ga4MeasurementId: string | null = null;
+  let config: ProxyConfigView | null = null;
+  const now = Date.now();
   if (kind === 'page' && (method === 'GET' || method === 'HEAD')) {
-    const config = await getProxyConfig(env);
+    config = await getProxyConfig(env, now);
     ga4MeasurementId = config.ga4MeasurementId;
     const hit = config.redirects.get(path);
     if (hit) {
@@ -141,8 +150,13 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   }
 
   // 8: pass through with the route-dependent headers; Persian dynamic routes render from their
-  // ASCII folder (proxyRules routeRewrite).
-  const rewrite = kind === 'page' ? routeRewrite(path, env.qaRoutes) : null;
+  // ASCII folder (proxyRules routeRewrite), an unpublished slug from the 404 document (F10). After
+  // the redirects table, so a slug change's 301 still answers for the old slug. GET only: a HEAD
+  // has no body to brand, and its page answers the same 404 status without spending a refresh.
+  const route = config && method === 'GET' ? dynamicRoute(path) : null;
+  const unknownSlug =
+    config !== null && route !== null && (await isUnknownSlug(env, config, route, now));
+  const rewrite = kind === 'page' ? routeRewrite(path, env.qaRoutes, unknownSlug) : null;
   const res = rewrite
     ? NextResponse.rewrite(new URL(rewrite + url.search, request.url), { request: { headers } })
     : NextResponse.next({ request: { headers } });

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   destination,
   getProxyConfig,
+  isUnknownSlug,
   recordRedirectHit,
   resetProxyConfigMemo,
 } from '@/lib/http/proxyConfig';
@@ -12,13 +13,18 @@ const VIP_TO = '/خدمات/ترمیم-دندان#سطح-ترمیم';
 const VIP_LOCATION =
   'https://sefiddental.ir/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA/%D8%AA%D8%B1%D9%85%DB%8C%D9%85-%D8%AF%D9%86%D8%AF%D8%A7%D9%86#%D8%B3%D8%B7%D8%AD-%D8%AA%D8%B1%D9%85%DB%8C%D9%85';
 
-const body = (redirects: unknown[] = [['/vip', VIP_TO, 301]], ga: string | null = null) =>
+const body = (
+  redirects: unknown[] = [['/vip', VIP_TO, 301]],
+  ga: string | null = null,
+  slugs?: Record<string, string[]>,
+) =>
   new Response(
     JSON.stringify({
       v: 1,
       generatedAt: '2026-10-13T08:30:00.000Z',
       redirects,
       ga4MeasurementId: ga,
+      ...(slugs ? { slugs } : {}),
     }),
     {
       headers: { 'content-type': 'application/json' },
@@ -165,6 +171,117 @@ describe('getProxyConfig (spec 6.4, X15)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
     await getProxyConfig(env, 5_000);
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('published slugs and the unknown-slug check (decision F10)', () => {
+  const SLUGS = { services: ['ترمیم-دندان', 'زیبایی'], doctors: [], guides: ['اولین-مراجعه'] };
+  const service = (slug: string) => ({ key: 'services' as const, slug });
+
+  beforeEach(() => {
+    resetProxyConfigMemo();
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('PC6 slug sets per row with the fetch time; a body without slugs leaves them unknown', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => body(undefined, null, SLUGS)),
+    );
+    const view = await getProxyConfig(testEnv(), 7);
+    expect(view.slugs?.get('services')).toEqual(new Set(['ترمیم-دندان', 'زیبایی']));
+    expect(view.slugs?.get('doctors')?.size).toBe(0);
+    expect(view.fetchedAt).toBe(7);
+
+    resetProxyConfigMemo();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => body()),
+    );
+    expect((await getProxyConfig(testEnv(), 0)).slugs).toBeNull();
+  });
+
+  it('PC7 a failed refetch keeps the stale redirects but forgets the slugs until a fetch succeeds', async () => {
+    const env = testEnv({ PROXY_CONFIG_TTL_MS: '30000' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => body(undefined, null, SLUGS)),
+    );
+    await getProxyConfig(env, 0);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => Promise.reject(new Error('connect ECONNREFUSED'))),
+    );
+    const stale = await getProxyConfig(env, 30_000);
+    expect(stale.redirects.get('/vip')?.to).toBe(VIP_TO);
+    expect(stale.slugs).toBeNull();
+    expect((await getProxyConfig(env, 31_000)).slugs).toBeNull(); // memo of the failure, 5 s
+    expect(await isUnknownSlug(env, stale, service('نیست'), 31_000)).toBe(false);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => body(undefined, null, SLUGS)),
+    );
+    expect((await getProxyConfig(env, 35_000)).slugs?.get('guides')).toEqual(
+      new Set(['اولین-مراجعه']),
+    );
+  });
+
+  it('PC8 a view fetched for this request refuses an unknown slug; unknown, missing or empty sets never do', async () => {
+    const fetchMock = vi.fn(async () => body(undefined, null, SLUGS));
+    vi.stubGlobal('fetch', fetchMock);
+    const env = testEnv({ PROXY_CONFIG_TTL_MS: '30000' });
+    const view = await getProxyConfig(env, 1_000);
+    expect(await isUnknownSlug(env, view, service('نیست'), 1_000)).toBe(true);
+    expect(await isUnknownSlug(env, view, service('ترمیم-دندان'), 1_000)).toBe(false);
+    expect(await isUnknownSlug(env, view, { key: 'doctors', slug: 'دکتر-الف' }, 1_000)).toBe(false);
+    expect(await isUnknownSlug(env, view, { key: 'tags', slug: 'الف' }, 1_000)).toBe(false);
+    expect(await isUnknownSlug(env, { ...view, slugs: null }, service('نیست'), 1_000)).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('PC9 an older view is confirmed by a fetch of its own: a slug published since then passes', async () => {
+    const env = testEnv({ PROXY_CONFIG_TTL_MS: '30000' });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => body(undefined, null, SLUGS)),
+    );
+    const old = await getProxyConfig(env, 0);
+    const published = vi.fn(async () =>
+      body(undefined, null, { ...SLUGS, services: [...SLUGS.services, 'تازه'] }),
+    );
+    vi.stubGlobal('fetch', published);
+    expect(await isUnknownSlug(env, old, service('تازه'), 10_000)).toBe(false);
+    expect(published).toHaveBeenCalledTimes(1);
+    // The confirmation refreshed the memo for every later request.
+    expect((await getProxyConfig(env, 10_001)).slugs?.get('services')?.has('تازه')).toBe(true);
+    expect(await isUnknownSlug(env, old, service('نیست'), 12_000)).toBe(true);
+    expect(published).toHaveBeenCalledTimes(2);
+  });
+
+  it('PC10 misses inside the 2 s refresh floor fall through without a fetch; a failed check falls through', async () => {
+    const env = testEnv({ PROXY_CONFIG_TTL_MS: '30000' });
+    const fetchMock = vi.fn(async () => body(undefined, null, SLUGS));
+    vi.stubGlobal('fetch', fetchMock);
+    const view = await getProxyConfig(env, 0);
+    expect(await isUnknownSlug(env, view, service('نیست'), 1_999)).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(await isUnknownSlug(env, view, service('نیست'), 2_000)).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('nope', { status: 500 })),
+    );
+    expect(await isUnknownSlug(env, view, service('نیست'), 9_000)).toBe(false);
+    // TTL 0 (e2e): no floor, every older view is confirmed.
+    const eager = testEnv({ PROXY_CONFIG_TTL_MS: '0' });
+    vi.stubGlobal('fetch', fetchMock);
+    expect(await isUnknownSlug(eager, view, service('نیست'), 9_001)).toBe(true);
   });
 });
 
