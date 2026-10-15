@@ -17,15 +17,27 @@ async function recordLayerMount(page: Page): Promise<void> {
   });
 }
 
-/** URLs of script responses whose body contains three.js's renderer (the WebGL chunk). */
-function watchWebglScripts(page: Page): Set<string> {
+/** URLs of script responses whose body contains `needle` (WebGLRenderer: the WebGL chunk). */
+function watchScripts(page: Page, needle = 'WebGLRenderer'): Set<string> {
   const urls = new Set<string>();
   page.on('response', async (response) => {
     if (response.request().resourceType() !== 'script') return;
     const body = await response.text().catch(() => '');
-    if (body.includes('WebGLRenderer')) urls.add(response.url());
+    if (body.includes(needle)) urls.add(response.url());
   });
   return urls;
+}
+
+/** Start times of the given resource URLs in the page's resource timing. */
+async function startTimes(page: Page, urls: Set<string>): Promise<number[]> {
+  return page.evaluate(
+    (list) =>
+      performance
+        .getEntriesByType('resource')
+        .filter((entry) => list.includes(entry.name))
+        .map((entry) => entry.startTime),
+    [...urls],
+  );
 }
 
 /** Milliseconds the `load` event is held back after hydration (see holdLoad). */
@@ -76,7 +88,7 @@ test('T-EX1 P1 the canvas host mounts only after load, and three.js loads only a
 }) => {
   await holdLoad(page);
   await recordLayerMount(page);
-  const webgl = watchWebglScripts(page);
+  const webgl = watchScripts(page);
   await page.goto('/?tier=2');
   await page.waitForLoadState('load');
   const layer = page.locator('[data-experience-layer]');
@@ -92,15 +104,22 @@ test('T-EX1 P1 the canvas host mounts only after load, and three.js loads only a
   expect(mountedAt).toBeGreaterThan(loadStart);
 
   expect(webgl.size, 'the WebGL chunk was fetched for tier 2').toBeGreaterThan(0);
-  const starts = await page.evaluate(
-    (urls) =>
-      performance
-        .getEntriesByType('resource')
-        .filter((entry) => urls.includes(entry.name))
-        .map((entry) => entry.startTime),
-    [...webgl],
-  );
-  for (const start of starts) expect(start).toBeGreaterThanOrEqual(loadStart);
+  for (const start of await startTimes(page, webgl))
+    expect(start).toBeGreaterThanOrEqual(loadStart);
+});
+
+test('T-EX5 the scroll engine (GSAP, ScrollTrigger, Lenis) loads only after load, even at tier 0', async ({
+  page,
+}) => {
+  await holdLoad(page);
+  const engine = watchScripts(page, 'ScrollTrigger');
+  await page.goto('/?tier=0');
+  await page.waitForLoadState('load');
+  await expect.poll(() => engine.size, { timeout: 15_000 }).toBeGreaterThan(0);
+  const loadStart = await loadEventStart(page);
+  expect(loadStart).toBeGreaterThan(HOLD_LOAD_MS);
+  for (const start of await startTimes(page, engine))
+    expect(start).toBeGreaterThanOrEqual(loadStart);
 });
 
 test('T-EX2 ?tier=N fixes the tier; ?tier=0 never mounts a canvas or fetches three.js', async ({
@@ -111,7 +130,7 @@ test('T-EX2 ?tier=N fixes the tier; ?tier=0 never mounts a canvas or fetches thr
   await expect(html).toHaveAttribute('data-tier', '1');
   await expect(html).toHaveAttribute('data-tier-reason', 'query-override');
 
-  const webgl = watchWebglScripts(page);
+  const webgl = watchScripts(page);
   await page.goto('/?tier=0');
   await expect(html).toHaveAttribute('data-tier', '0');
   await expect(html).toHaveAttribute('data-tier-reason', 'query-override');
@@ -149,7 +168,7 @@ test.describe('reduced motion', () => {
   test('T-EX4 P2 reduced motion wins over ?tier=3: tier 0, no canvas, no three.js', async ({
     page,
   }) => {
-    const webgl = watchWebglScripts(page);
+    const webgl = watchScripts(page);
     await page.goto('/?tier=3');
     const html = page.locator('html');
     await expect(html).toHaveAttribute('data-tier', '0');
