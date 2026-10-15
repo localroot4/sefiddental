@@ -1,49 +1,61 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
-import { getPublished } from '@/lib/data/published';
-import { normalizePath } from '@/lib/paths';
+import { CategoryTemplate } from '@/components/services/CategoryTemplate';
+import { resolveServicePath } from '@/components/services/data';
+import { ServiceTemplate } from '@/components/services/ServiceTemplate';
+import { buildPath } from '@/lib/paths';
 import { buildMetadata } from '@/lib/seo/metadata';
-import { getSiteInputs } from '@/lib/seo/siteInputs';
+import { getSiteInputs, pageSeoFrom } from '@/lib/seo/siteInputs';
 
-// Route probe (freeze decision 48) for the public path /خدمات/<slug>: the proxy rewrites it to this
-// ASCII folder, because Next 16.4 never matches a dynamic segment under a Persian folder in a
-// production build (proxyRules routeRewrite). Proves the rewrite, NFC decoding of the slug and tag
-// revalidation (col:services). Phase 4 replaces the body with the service template.
+// /خدمات/<slug>: the proxy rewrites it to this ASCII folder (Next 16.4 never matches a dynamic
+// segment under a Persian folder in a production build; proxyRules routeRewrite). Services and
+// categories share the slug namespace: a service first, else a category with its own page.
 type Props = { params: Promise<{ slug: string }> };
 
-async function serviceFor(params: Props['params']) {
-  // Same decoding and letter normalization as the redirects table and the canonical redirect.
-  const slug = normalizePath(`/${(await params).slug}`).slice(1);
-  const [service] = await getPublished('services', { where: { slug: { equals: slug } }, limit: 1 });
-  return service ?? null;
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const service = await serviceFor(params);
-  if (!service) return {};
-  const { seo } = await getSiteInputs();
+  const [doc, { seo }] = await Promise.all([
+    resolveServicePath((await params).slug),
+    getSiteInputs(),
+  ]);
+  if (!doc) return {};
+  if (doc.kind === 'service') {
+    return buildMetadata(
+      {
+        path: buildPath('services', doc.service) as string,
+        title: doc.service.h1,
+        // templates 1.4: the SEO image, else the hero photo, else the default.
+        seo: pageSeoFrom({
+          ...doc.service.seo,
+          image: doc.service.seo?.image ?? doc.service.heroMedia,
+        }),
+        kind: 'page',
+      },
+      seo,
+    );
+  }
   return buildMetadata(
     {
-      path: `/خدمات/${service.slug}`,
-      title: service.h1,
-      seo: {
-        title: service.seo?.title,
-        description: service.seo?.description,
-        noindex: service.seo?.noindex,
-      },
+      path: buildPath('service-categories', doc.category) as string,
+      title: doc.category.h1 || doc.category.title,
+      seo: pageSeoFrom({
+        ...doc.category.seo,
+        image: doc.category.seo?.image ?? doc.category.heroMedia,
+      }),
       kind: 'page',
     },
     seo,
   );
 }
 
-export default async function ServiceProbe({ params }: Props) {
-  const service = await serviceFor(params);
-  if (!service) notFound();
-  return (
-    <section className="mx-auto w-full max-w-content px-gutter py-section">
-      <h1 className="font-display text-display-2 text-ink">{service.h1}</h1>
-    </section>
+export default async function ServiceOrCategoryPage({ params }: Props) {
+  const doc = await resolveServicePath((await params).slug);
+  // Last resort only: the proxy answers an unknown slug with the branded 404 (freeze F10), so this
+  // runs just for a slug unpublished within the proxy's memo window.
+  if (!doc) notFound();
+  return doc.kind === 'service' ? (
+    <ServiceTemplate service={doc.service} />
+  ) : (
+    <CategoryTemplate category={doc.category} />
   );
 }

@@ -1,2 +1,56 @@
-/** Persian UI strings owned by the phase 4 services work; merged into MESSAGES in src/i18n/fa.ts. */
-export const SERVICES_MESSAGES = {} as const;
+/**
+ * Persian UI strings owned by the phase 4 services work; merged into MESSAGES in src/i18n/fa.ts.
+ * Section headings shared by every service, category and hub page live here; page copy (H1,
+ * summary, intro, body, steps, FAQ, facts) is Payload data. `{name}` is the service's navLabel.
+ */
+export const SERVICES_MESSAGES = {
+  'services.crumb.home': 'خانه',
+  'services.crumb.hub': 'خدمات',
+  'services.book': 'رزرو نوبت',
+  'services.whatsapp': 'پیام در واتساپ',
+  'services.whatsappText':
+    'سلام، از صفحهٔ {name} در سایت کلینیک سفید پیام می‌دهم. می‌خواهم دربارهٔ {name} بیشتر بدانم.',
+  'services.whatsappGeneric': 'سلام، از سایت کلینیک سفید پیام می‌دهم. سؤالی دربارهٔ نوبت دارم.',
+  'services.facts.label': 'خلاصهٔ درمان',
+  'services.fact.sessions': 'تعداد جلسه',
+  'services.fact.duration': 'مدت',
+  'services.fact.anesthesia': 'بی‌حسی',
+  'services.fact.recovery': 'بهبود',
+  'services.fact.price': 'هزینه',
+  'services.priceFrom': 'از',
+  'services.toman': 'تومان',
+  'services.tiers.heading': 'مقایسهٔ سطح‌ها',
+  // The scrollers' own region names: the section heading already names the section (landmark-unique).
+  'services.tiers.rail': 'فهرست سطح‌ها',
+  'services.tiers.materials': 'مواد',
+  'services.tiers.highlights': 'ویژگی‌ها',
+  'services.tiers.price': 'هزینه',
+  'services.steps.heading': 'مراحل درمان',
+  'services.cases.heading': 'نمونه‌های قبل و بعد',
+  'services.cases.all': 'همهٔ نمونه‌ها',
+  'services.dentists.heading': 'پزشکان این خدمت',
+  'services.dentists.rail': 'فهرست پزشکان این خدمت',
+  'services.dentists.all': 'همهٔ پزشکان',
+  'services.dentists.title': 'دکتر',
+  'services.voice.heading': 'تجربهٔ بیماران',
+  'services.voice.consent': 'با رضایت کتبی بیمار منتشر شده است.',
+  'services.faq.heading': 'پرسش‌های پرتکرار',
+  'services.faq.aside': 'سؤال دیگری دارید؟',
+  'services.related.heading': 'خدمات مرتبط',
+  'services.pricing': 'هزینه و شرایط {name}',
+  'services.allServices': 'همهٔ خدمات',
+  'services.category.list': 'خدمات این گروه',
+  'services.category.intro': 'پیش از انتخاب درمان',
+  'services.category.pricing': 'هزینه و پرداخت',
+  'services.category.guide': 'راهنمای اولین مراجعه',
+  'services.hub.groups': 'گروه‌های خدمات',
+  'services.hub.list': 'فهرست همهٔ خدمات',
+  'services.hub.unit': 'خدمت',
+  'services.photo.service':
+    'عکس واقعی همین درمان در کلینیک، افقی ۳:۲ برای دسکتاپ و برش ۴:۵ برای موبایل',
+  'services.photo.category':
+    'عکس واقعی اتاق درمان کلینیک، افقی ۳:۲ برای دسکتاپ و برش ۴:۵ برای موبایل',
+  'services.photo.hub': 'عکس واقعی پذیرش یا اتاق درمان کلینیک، افقی ۳:۲ و برش ۴:۵',
+  'services.photo.tile': 'عکس ۴:۳ از نتیجهٔ یک درمان زیبایی، با رضایت کتبی بیمار',
+  'services.photo.map': 'تصویر ثابت نقشهٔ محل کلینیک، ۴:۳، با نشانی ورودی',
+} as const;
