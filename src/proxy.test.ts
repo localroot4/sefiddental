@@ -273,7 +273,7 @@ describe('proxy', () => {
     expect(home.headers.get('set-cookie')).toBeNull();
   });
 
-  it('PX11 Persian dynamic routes render from the ASCII folder, which is closed directly', async () => {
+  it('PX11 Persian pages and dynamic routes render from ASCII folders, which are closed directly', async () => {
     const { proxy } = await loadProxy({ SITE_URL: 'http://localhost' });
     const service = await proxy(
       new NextRequest(`http://localhost${encodeURI('/خدمات/ترمیم-دندان')}?utm_source=x`),
@@ -288,9 +288,18 @@ describe('proxy', () => {
     const direct = await proxy(new NextRequest('http://localhost/r/services/x'), ev);
     expect(new URL(direct.headers.get('x-middleware-rewrite') ?? 'http://x/').pathname).toBe('/r');
 
-    const hub = await proxy(new NextRequest(`http://localhost${encodeURI('/خدمات')}`), ev);
-    expect(hub.headers.get('x-middleware-rewrite')).toBeNull();
-    expect(hub.headers.get('x-middleware-next')).toBe('1');
+    const rewrite = async (path: string) =>
+      new URL(
+        (await proxy(new NextRequest(`http://localhost${path}`), ev)).headers.get(
+          'x-middleware-rewrite',
+        ) ?? 'http://x/',
+      ).pathname;
+    expect(await rewrite(encodeURI('/خدمات'))).toBe('/r/services');
+    expect(await rewrite(encodeURI('/درباره-ما') + '?a=1')).toBe('/r/about');
+    expect(await rewrite('/r/services')).toBe('/r');
+    const home = await proxy(new NextRequest('http://localhost/'), ev);
+    expect(home.headers.get('x-middleware-rewrite')).toBeNull();
+    expect(home.headers.get('x-middleware-next')).toBe('1');
   });
 
   it('PX16 an unpublished slug renders the 404 document; published slugs and other rows pass', async () => {
@@ -317,11 +326,12 @@ describe('proxy', () => {
     };
     expect(await rewrite('/خدمات/no-such-service')).toBe('/r');
     expect(await rewrite('/خدمات/ترمیم-دندان')).toBe('/r/services/ترمیم-دندان');
-    // A HEAD, and a second miss inside the 2 s refresh floor, reach the page (its own 404).
+    // A HEAD reaches the page (its own 404); a second miss inside the 2 s refresh floor gets the
+    // 404 document from the latest fetch, never the page's error shell.
     expect(await rewrite('/خدمات/no-such-service', 'HEAD')).toBe('/r/services/no-such-service');
-    expect(await rewrite('/خدمات/دیگری')).toBe('/r/services/دیگری');
-    // An empty set (no published dentist) never refuses a slug.
-    expect(await rewrite('/پزشکان/دکتر-الف')).toBe('/r/doctors/دکتر-الف');
+    expect(await rewrite('/خدمات/دیگری')).toBe('/r');
+    // An empty set (no published dentist) refuses every slug: the page would 404 with the shell.
+    expect(await rewrite('/پزشکان/دکتر-الف')).toBe('/r');
     // The redirects table answers first: a renamed slug still 301s to its new path.
     const moved = await proxy(
       new NextRequest(`http://localhost${encodeURI('/خدمات/نام-قدیمی')}`),

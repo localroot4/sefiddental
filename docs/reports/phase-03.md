@@ -335,6 +335,12 @@ Routing and rendering:
   sitemaps and redirects stay Persian. The probe page moved to
   `src/app/(site)/r/services/[slug]/page.tsx`. Tests R1 to R5, PX11, PX12,
   e2e T-RT14.
+  Correction (phase 4): "Static Persian folders work" was wrong. Next 16.4
+  finds a static Persian folder by its decoded path but looks its route
+  definition up by the percent-encoded path, so the page answers 404 in a
+  production build. Phase 4 moved every static Persian page to
+  `src/app/(site)/r/<folder>/page.tsx` behind an exact-path table
+  (`PERSIAN_STATIC_ROUTES`; docs/architecture.md section 3).
 - The header logo is an SVG sprite, `/brand/lockup.svg`, written from
   `BRAND_LOCKUP` by `scripts/sync-public-assets.mjs` and drawn with
   `<use>`. Inline, its path data rode in every page twice, in the HTML and

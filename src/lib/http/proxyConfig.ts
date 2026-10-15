@@ -20,7 +20,10 @@ const FETCH_TIMEOUT_MS = 1500;
 const WARN_EVERY_MS = 60_000;
 /** After a failed fetch, requests use the stale (or empty) view for this long before retrying. */
 const RETRY_AFTER_FAILURE_MS = 5_000;
-/** At most one refresh per this window confirms an unknown slug; misses inside it fall through. */
+/**
+ * At most one refresh per this window confirms an unknown slug; a miss inside it is decided by the
+ * fetch that started last, so at most this long before the request.
+ */
 const MISS_REFRESH_MS = 2_000;
 
 const bodySchema = z.object({
@@ -61,6 +64,8 @@ interface MemoState {
   lastWarnAt: number;
   /** Start of the latest fetch, shared or not: the floor of the unknown-slug refresh. */
   lastStartAt: number;
+  /** The fetch started last: it decides misses inside the refresh floor. */
+  latest: Promise<ProxyConfigView>;
 }
 
 const state: MemoState = {
@@ -69,6 +74,7 @@ const state: MemoState = {
   inflight: null,
   lastWarnAt: -Infinity,
   lastStartAt: -Infinity,
+  latest: Promise.resolve(empty()),
 };
 
 /** Test hook: forget the memo between cases. */
@@ -78,6 +84,7 @@ export function resetProxyConfigMemo(): void {
   state.inflight = null;
   state.lastWarnAt = -Infinity;
   state.lastStartAt = -Infinity;
+  state.latest = Promise.resolve(empty());
 }
 
 async function fetchView(env: ServerEnv, nowMs: number): Promise<ProxyConfigView> {
@@ -93,7 +100,7 @@ async function fetchView(env: ServerEnv, nowMs: number): Promise<ProxyConfigView
 /** One fetch into the memo. A failure keeps the stale redirects but forgets the slugs. */
 function startFetch(env: ServerEnv, nowMs: number): Promise<ProxyConfigView> {
   state.lastStartAt = Math.max(state.lastStartAt, nowMs);
-  return fetchView(env, nowMs)
+  const flight = fetchView(env, nowMs)
     .then((view) => {
       // A slower, older fetch never replaces a newer view.
       if (view.fetchedAt >= (state.value?.fetchedAt ?? -Infinity)) {
@@ -116,6 +123,8 @@ function startFetch(env: ServerEnv, nowMs: number): Promise<ProxyConfigView> {
       }
       return state.value ?? empty();
     });
+  state.latest = flight;
+  return flight;
 }
 
 /**
@@ -141,16 +150,19 @@ export function getProxyConfig(
 
 const misses = (view: ProxyConfigView, route: { key: DynamicRouteKey; slug: string }): boolean => {
   const published = view.slugs?.get(route.key);
-  return published !== undefined && published.size > 0 && !published.has(route.slug);
+  return published !== undefined && !published.has(route.slug);
 };
 
 /**
  * True when `route.slug` is not published under its row, so the proxy answers the 404 document
- * (decision F10). `view` is what getProxyConfig gave this request at `nowMs`. Only a view fetched
- * for this request may refuse a slug: an older one is first refreshed by a fetch of this request's
- * own (at most one per MISS_REFRESH_MS, or per TTL when shorter), so a slug published since the
- * last fetch reaches its page. Unknown or empty sets, a failed refresh and misses inside the floor
- * fall through to the page, never a 404 for every slug.
+ * (decision F10). `view` is what getProxyConfig gave this request at `nowMs`. A view fetched for
+ * this request refuses a slug at once. An older one is first refreshed by a fetch of this
+ * request's own, at most one per MISS_REFRESH_MS (or per TTL when shorter). Inside that floor the
+ * fetch that started last decides: a slug published in the floor before the request can answer
+ * the 404 document until the next refresh, a bounded trade for never sending a miss to the page,
+ * whose notFound() is Next's error shell. An unknown set (a row missing from the body, a failed
+ * fetch) falls through to the page, never a 404 for every slug. An empty set is authoritative: a
+ * database error fails the internal route instead, so empty means nothing is published yet.
  */
 export async function isUnknownSlug(
   env: ServerEnv,
@@ -160,7 +172,9 @@ export async function isUnknownSlug(
 ): Promise<boolean> {
   if (!misses(view, route)) return false;
   if (view.fetchedAt >= nowMs) return true;
-  if (nowMs - state.lastStartAt < Math.min(MISS_REFRESH_MS, env.proxyConfigTtlMs)) return false;
+  if (nowMs - state.lastStartAt < Math.min(MISS_REFRESH_MS, env.proxyConfigTtlMs)) {
+    return misses(await state.latest, route);
+  }
   // Not the shared flight: one that started before this request may predate the publish.
   return misses(await startFetch(env, nowMs), route);
 }

@@ -251,17 +251,19 @@ and `prebuild`), `next-env.d.ts`, `.next/`, `.data/`, `media/`.
 
 ## Persian routes
 
-Next.js 16.4 never matches a dynamic segment such as `[slug]` under a Persian folder name in a
-production build. Static Persian folders work. So every public Persian dynamic path rewrites to
-an ASCII folder under `/r`.
+Next.js 16.4 matches no route under a Persian folder name in a production build, static pages and
+dynamic segments such as `[slug]` alike. So every public Persian path rewrites to an ASCII folder
+under `/r`.
 
-- Put the page in `src/app/(site)/r/<folder>/[slug]/page.tsx`.
+- Put a static page in `src/app/(site)/r/<folder>/page.tsx` and its `PAGE_PATHS` key in
+  `PERSIAN_STATIC_ROUTES` (exact paths; the type requires every key but home and the guides).
+- Put a dynamic page in `src/app/(site)/r/<folder>/[slug]/page.tsx`.
 - Add one row to `PERSIAN_DYNAMIC_ROUTES` in `src/lib/http/proxyRules.ts` for every new dynamic
   route, for example `['/پزشکان/', '/r/doctors/']`. The proxy rewrites the public path through
   this table.
 - Build the public prefix in `src/lib/paths.ts`. Unit test R4 ties each table row to `buildPath`.
-- Never create a `[slug]` folder under a Persian name, and never put a static Persian folder
-  beside a prefix of the table: one segment after a prefix always rewrites.
+- Never create a folder with a Persian name under `src/app/(site)/` (unit test R9). One segment
+  after a prefix of the dynamic table always rewrites to its `[slug]` folder.
 - Canonical URLs, sitemaps and redirects use the Persian path. A direct request under `/r/`
   answers the branded 404.
 

@@ -231,14 +231,15 @@ describe('published slugs and the unknown-slug check (decision F10)', () => {
     );
   });
 
-  it('PC8 a view fetched for this request refuses an unknown slug; unknown, missing or empty sets never do', async () => {
+  it('PC8 a view fetched for this request refuses an unknown slug, also from an empty set; unknown or missing sets never do', async () => {
     const fetchMock = vi.fn(async () => body(undefined, null, SLUGS));
     vi.stubGlobal('fetch', fetchMock);
     const env = testEnv({ PROXY_CONFIG_TTL_MS: '30000' });
     const view = await getProxyConfig(env, 1_000);
     expect(await isUnknownSlug(env, view, service('نیست'), 1_000)).toBe(true);
     expect(await isUnknownSlug(env, view, service('ترمیم-دندان'), 1_000)).toBe(false);
-    expect(await isUnknownSlug(env, view, { key: 'doctors', slug: 'دکتر-الف' }, 1_000)).toBe(false);
+    // No published dentist yet: the empty set is the answer, not an unknown one.
+    expect(await isUnknownSlug(env, view, { key: 'doctors', slug: 'دکتر-الف' }, 1_000)).toBe(true);
     expect(await isUnknownSlug(env, view, { key: 'tags', slug: 'الف' }, 1_000)).toBe(false);
     expect(await isUnknownSlug(env, { ...view, slugs: null }, service('نیست'), 1_000)).toBe(false);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -252,32 +253,47 @@ describe('published slugs and the unknown-slug check (decision F10)', () => {
     );
     const old = await getProxyConfig(env, 0);
     const published = vi.fn(async () =>
-      body(undefined, null, { ...SLUGS, services: [...SLUGS.services, 'تازه'] }),
+      body(undefined, null, {
+        ...SLUGS,
+        services: [...SLUGS.services, 'تازه'],
+        doctors: ['دکتر-تازه'],
+      }),
     );
     vi.stubGlobal('fetch', published);
     expect(await isUnknownSlug(env, old, service('تازه'), 10_000)).toBe(false);
     expect(published).toHaveBeenCalledTimes(1);
+    // The first dentist published into an empty set passes too.
+    const doctor = { key: 'doctors' as const, slug: 'دکتر-تازه' };
+    expect(await isUnknownSlug(env, old, doctor, 10_000)).toBe(false);
     // The confirmation refreshed the memo for every later request.
     expect((await getProxyConfig(env, 10_001)).slugs?.get('services')?.has('تازه')).toBe(true);
     expect(await isUnknownSlug(env, old, service('نیست'), 12_000)).toBe(true);
     expect(published).toHaveBeenCalledTimes(2);
   });
 
-  it('PC10 misses inside the 2 s refresh floor fall through without a fetch; a failed check falls through', async () => {
+  it('PC10 inside the 2 s refresh floor the latest fetch decides without another; a failed one falls through', async () => {
     const env = testEnv({ PROXY_CONFIG_TTL_MS: '30000' });
     const fetchMock = vi.fn(async () => body(undefined, null, SLUGS));
     vi.stubGlobal('fetch', fetchMock);
     const view = await getProxyConfig(env, 0);
-    expect(await isUnknownSlug(env, view, service('نیست'), 1_999)).toBe(false);
+    expect(await isUnknownSlug(env, view, service('نیست'), 1_999)).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    const published = vi.fn(async () =>
+      body(undefined, null, { ...SLUGS, services: [...SLUGS.services, 'تازه'] }),
+    );
+    vi.stubGlobal('fetch', published);
     expect(await isUnknownSlug(env, view, service('نیست'), 2_000)).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // The request's own view is stale; the fetch that started last (at 2 s) has the new slug.
+    expect(await isUnknownSlug(env, view, service('تازه'), 3_999)).toBe(false);
+    expect(await isUnknownSlug(env, view, service('نیست'), 3_999)).toBe(true);
+    expect(published).toHaveBeenCalledTimes(1);
 
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response('nope', { status: 500 })),
     );
     expect(await isUnknownSlug(env, view, service('نیست'), 9_000)).toBe(false);
+    expect(await isUnknownSlug(env, view, service('نیست'), 9_500)).toBe(false); // failed latest
     // TTL 0 (e2e): no floor, every older view is confirmed.
     const eager = testEnv({ PROXY_CONFIG_TTL_MS: '0' });
     vi.stubGlobal('fetch', fetchMock);

@@ -127,9 +127,19 @@ run on release; the previous release is kept for one-command rollback.
   `/مقالات/<slug>` from `r/articles`, `/راهنمای-بیمار/<slug>` from
   `r/guides`. Only one segment after the prefix rewrites. A direct request
   under `/r/` gets the 404, so the internal paths never duplicate content.
-  Canonical URLs, sitemaps and redirects keep the Persian path. Static
-  Persian folders work as they are; never put a `[slug]` folder under a
-  Persian folder name.
+  Canonical URLs, sitemaps and redirects keep the Persian path.
+- Persian static pages (phase 4 change): static Persian folders are 404 in
+  a production build too. Next finds the folder by its decoded path, but
+  looks its route definition up by the percent-encoded path, so the render
+  step matches nothing. Every page of `PAGE_PATHS` except home and the
+  guides therefore renders from `src/app/(site)/r/<folder>/page.tsx`
+  through a second, exact-path table (`PERSIAN_STATIC_ROUTES` in
+  `src/lib/http/proxyRules.ts`): `/خدمات` from `r/services`, `/پزشکان`
+  from `r/doctors`, `/راهنمای-بیمار` from `r/guides` (each hub beside its
+  `[slug]` folder), `/درباره-ما` from `r/about`, `/آدرس` from `r/address`;
+  later phases add `r/cases`, `r/pricing`, `r/emergency`, `r/booking`,
+  `r/booking/success`, `r/privacy` and `r/articles`. No folder under
+  `src/app/(site)/` has a Persian name (unit test R9).
 - Canonical without trailing slash; `www` to apex; HTTP to HTTPS; query
   strings canonicalize to the base URL (gallery filters, booking params).
 - Rendering (phase 3 change, replaces "static or ISR"): every public HTML

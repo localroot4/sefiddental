@@ -1,6 +1,16 @@
+import { existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
-import { buildPath, normalizePath, PAGE_PATHS, type PathCollection } from '@/lib/paths';
+import {
+  buildPath,
+  isGuideKey,
+  normalizePath,
+  PAGE_KEYS,
+  PAGE_PATHS,
+  type PathCollection,
+} from '@/lib/paths';
 import {
   isAuthLimitedPath,
   isClosedPayloadPath,
@@ -117,7 +127,7 @@ describe('needsFormSession', () => {
   });
 });
 
-describe('routeRewrite (Persian dynamic routes)', () => {
+describe('routeRewrite (Persian routes)', () => {
   it('R1 a Persian service path renders from the ASCII folder, in any spelling', () => {
     const encoded =
       '/r/services/%D9%84%D9%85%DB%8C%D9%86%D8%AA-%D8%B3%D8%B1%D8%A7%D9%85%DB%8C%DA%A9%DB%8C';
@@ -128,8 +138,7 @@ describe('routeRewrite (Persian dynamic routes)', () => {
     expect(routeRewrite('/خدمات/a?b')).toBe('/r/services/a%3Fb');
   });
 
-  it('R2 hubs, deeper paths and other pages render as they are', () => {
-    expect(routeRewrite('/خدمات')).toBeNull();
+  it('R2 deeper paths and ASCII pages render as they are', () => {
     expect(routeRewrite('/خدمات/a/b')).toBeNull();
     expect(routeRewrite('/')).toBeNull();
     expect(routeRewrite('/rss')).toBeNull();
@@ -141,6 +150,10 @@ describe('routeRewrite (Persian dynamic routes)', () => {
     expect(routeRewrite(normalizePath('/R/Services/x'))).toBe('/r');
     for (const folder of ['doctors', 'articles', 'article-categories', 'tags', 'guides']) {
       expect(routeRewrite(`/r/${folder}/x`), folder).toBe('/r');
+    }
+    // The static pages' folders too, hubs included.
+    for (const folder of ['services', 'about', 'address', 'booking/success']) {
+      expect(routeRewrite(`/r/${folder}`), folder).toBe('/r');
     }
     expect(routeRewrite(normalizePath('/%72/services/x'))).toBe('/r');
   });
@@ -162,10 +175,6 @@ describe('routeRewrite (Persian dynamic routes)', () => {
     }
     const guide = buildPath('pages', { key: 'guide-first-visit', slug: 'اولین-مراجعه' }) ?? '';
     expect(routeRewrite(guide)).toBe(`/r/guides/${encodeURIComponent('اولین-مراجعه')}`);
-    // Hubs and static pages render from their own Persian folders.
-    for (const path of Object.values(PAGE_PATHS)) {
-      if (!path.startsWith('/راهنمای-بیمار/')) expect(routeRewrite(path), path).toBeNull();
-    }
     expect(routeRewrite('/مقالات/دسته/a/b')).toBeNull();
   });
 
@@ -199,7 +208,37 @@ describe('routeRewrite (Persian dynamic routes)', () => {
     expect(routeRewrite('/پزشکان/دکتر-ناشناس', false, false)).toBe(
       `/r/doctors/${encodeURIComponent('دکتر-ناشناس')}`,
     );
-    expect(routeRewrite('/خدمات', false, true)).toBeNull();
+    expect(routeRewrite('/خدمات', false, true)).toBe('/r/services');
     expect(routeRewrite('/qa/not-found', true, true)).toBeNull();
+  });
+
+  it('R8 every PAGE_PATHS key renders from an ASCII folder: static pages by exact path', () => {
+    for (const key of PAGE_KEYS) {
+      const page = PAGE_PATHS[key];
+      const rewrite = routeRewrite(normalizePath(encodeURI(page)));
+      if (key === 'home') expect(rewrite, key).toBeNull();
+      else if (isGuideKey(key)) expect(rewrite, key).toMatch(/^\/r\/guides\/%/);
+      else expect(rewrite, key).toMatch(/^\/r\/[a-z]+(\/[a-z]+)?$/);
+    }
+    expect(routeRewrite(PAGE_PATHS['services-hub'])).toBe('/r/services');
+    expect(routeRewrite(PAGE_PATHS['dentists-hub'])).toBe('/r/doctors');
+    expect(routeRewrite(PAGE_PATHS['guide-hub'])).toBe('/r/guides');
+    expect(routeRewrite(PAGE_PATHS.about)).toBe('/r/about');
+    expect(routeRewrite(PAGE_PATHS.address)).toBe('/r/address');
+    // Exact paths only: a deeper path is not the page.
+    expect(routeRewrite(`${PAGE_PATHS.about}/x`)).toBeNull();
+  });
+
+  it('R9 route tree: no folder under (site) has a Persian name; phase 4 pages are in r/', () => {
+    const site = join(process.cwd(), 'src', 'app', '(site)');
+    const folders = (dir: string): string[] =>
+      readdirSync(dir, { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .flatMap((entry) => [entry.name, ...folders(join(dir, entry.name))]);
+    expect(folders(site).filter((name) => /[^\x20-\x7e]/.test(name))).toEqual([]);
+    for (const key of ['services-hub', 'dentists-hub', 'guide-hub', 'about', 'address'] as const) {
+      const file = join(site, `${routeRewrite(PAGE_PATHS[key])}/page.tsx`);
+      expect(existsSync(file), key).toBe(true);
+    }
   });
 });
