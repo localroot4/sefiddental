@@ -210,7 +210,7 @@ Date, commit range, versions used
 | 01 | `01-discovery.md` | done: strategy, IA, keyword map, conversion plan, GBP guide, shot list |
 | 02 | `02-design-system.md` | done: DESIGN.md, tokens, styleguide, experience storyboard, intro and scene prototypes, hero directions (the client chose B on 2026-10-13, brief decision 19; the logo trace and 3D mark approvals stay pending, gaps 1 and 34) |
 | 03 | `03-foundation.md` | done: Next.js + Payload skeleton on environment-driven configuration, CI green on GitHub, seeders, quality-tier scaffold. The deploy pipeline, the staging target and the chosen-path steps of `docs/deploy.md` wait until the client confirms the hosting path (gap 32, brief decision 21). On 2026-10-15 the client asked the studio to run the remaining phases while the host is prepared; only the host approval waits for them |
-| 04 | `04-core-pages.md` | content pages, navigation, footer, light motion |
+| 04 | `04-core-pages.md` | done: component library, site chrome, home with hero B and the booking form markup, services, dentists, about, address and guide templates, draft copy, labeled photo placeholders; axe clean; home tier 0 passes the Lighthouse gate with its median over the LCP target (`docs/reports/phase-04.md`) |
 | 05 | `05-conversion.md` | booking, emergency, pricing and financing, tiers page, notifications, measurement |
 | 06 | `06-content-seo.md` | articles engine, editorial system, schema, OG, service copy, seed articles, redirects, admin polish |
 | 07 | `07-scroll-experience.md` | home scroll engine: 11 scenes in DOM and 2D, direction changes, intro, footer playground, tier scaffold wired |

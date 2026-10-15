@@ -348,6 +348,11 @@ Routing and rendering:
   compressed. A first visit draws the logo when the sprite arrives; later
   pages use the cached copy (one week; the query string changes with the
   drawing). Tests SP5b, BR1.
+  Correction (phase 4): the sprite version drew the logo cropped. The
+  outer `<svg>` repeated the symbol's offset viewBox, so the top 30 percent
+  and the start edge fell outside the drawing in the header, the footer
+  and the admin. The phase 3 screenshot inspection missed it. Fixed in
+  `a9654c2`; test BL1.
 - Persian page responses carry `x-middleware-rewrite` with the internal
   `/r/...` path. Accepted; `docs/deploy.md` 2.5 tells the reverse proxy to
   drop it.
