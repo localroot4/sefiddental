@@ -26,7 +26,7 @@ export function getLocale(): Locale {
 const MESSAGES = {
   'skip.toMain': 'پرش به محتوای اصلی',
   'brand.homeLink': 'کلینیک دندانپزشکی سفید، صفحهٔ اصلی',
-  'theme.toggle': 'تغییر پوسته',
+  'theme.toggle': 'پوستهٔ تیره',
   'urgent.label': 'درد شدید دارید؟',
   'notFound.title': 'صفحه پیدا نشد',
   'notFound.heading': 'این صفحه پیدا نشد',

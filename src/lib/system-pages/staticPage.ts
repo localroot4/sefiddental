@@ -85,7 +85,7 @@ const STYLE = [
   'li a:hover{color:var(--brand)}',
   '.urgent{display:inline-flex;align-items:center;min-height:44px;margin-block-start:1.5rem;color:var(--warning);font-weight:700}',
   '[dir=ltr]{unicode-bidi:isolate}',
-  'a:focus-visible{outline:none;border-radius:4px;box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--focus)}',
+  'a:focus-visible{outline:2px solid var(--focus);outline-offset:2px;border-radius:4px}',
   '@media (min-width:744px){main{padding:4rem 1.5rem}}',
   '@media (prefers-reduced-motion:reduce){.btn{transition:none}}',
 ].join('');

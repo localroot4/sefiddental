@@ -53,13 +53,13 @@ describe('breadcrumbs and pagination (DESIGN.md 3.26, 3.27)', () => {
   it('UN7 more than five items: phones swap the numbers for «صفحهٔ ۵ از ۱۲» (fits 358 px)', () => {
     const { container } = render(<Pagination current={5} total={12} href={(n) => `?page=${n}`} />);
     const status = screen.getByText('صفحهٔ ۵ از ۱۲');
-    expect(status.className).toContain('sm:hidden');
+    expect(status.className).toContain('md:hidden');
     const numbered = [...container.querySelectorAll('li')].filter((li) => li !== status);
     // Seven numbers and gaps hide on phones; the two arrows stay.
-    expect(numbered.filter((li) => li.className.includes('max-sm:hidden'))).toHaveLength(7);
-    expect(numbered.filter((li) => !li.className.includes('max-sm:hidden'))).toHaveLength(2);
+    expect(numbered.filter((li) => li.className.includes('max-md:hidden'))).toHaveLength(7);
+    expect(numbered.filter((li) => !li.className.includes('max-md:hidden'))).toHaveLength(2);
     const short = render(<Pagination current={2} total={5} href={(n) => `?page=${n}`} />);
-    expect(short.container.innerHTML).not.toContain('max-sm:hidden');
+    expect(short.container.innerHTML).not.toContain('max-md:hidden');
     expect(within(short.container).queryByText(/ از /)).toBeNull();
   });
 

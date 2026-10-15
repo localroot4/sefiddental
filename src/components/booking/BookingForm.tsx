@@ -140,7 +140,7 @@ export async function BookingForm(props: BookingFormProps) {
         <>
           <div className="mt-4 grid gap-2">
             <h3 className="text-body leading-[1.5] font-semibold">{t('booking.bringHeading')}</h3>
-            <ul className="grid list-disc gap-1 ps-5 text-small text-ink-muted">
+            <ul className="grid list-disc gap-1 ps-6 text-small text-ink-muted">
               {(['id', 'insurance', 'xray', 'meds'] as const).map((item) => (
                 <li key={item}>{t(`booking.bring.${item}`)}</li>
               ))}

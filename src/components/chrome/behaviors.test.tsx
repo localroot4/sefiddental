@@ -4,6 +4,7 @@ import { bookingRoute, inView, setupBookingRoute } from './bookingRoute';
 import { setupClosedSheet } from './closedSheet';
 import { closeModals, setupDialogs } from './dialogs';
 import { getFormSession } from './formSession';
+import { setupSkipLink } from './skipLink';
 import { isTextField, setupStickyBar } from './stickyBar';
 
 // jsdom has no <dialog> methods, no IntersectionObserver and no layout: minimal stand-ins.
@@ -238,6 +239,32 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     expect(asked()).toBe(2);
     expect(click(document.getElementById('call')!).defaultPrevented).toBe(false);
     expect(sheet.hasAttribute('open')).toBe(false);
+    stop();
+  });
+
+  it('CB8 the skip link focuses main, which is focusable only until it loses focus', () => {
+    document.body.innerHTML = `<a class="skip-link" href="#main">skip</a><main id="main"><a href="/x">x</a></main>`;
+    const stop = setupSkipLink(document);
+    const main = document.getElementById('main')!;
+    expect(main.hasAttribute('tabindex')).toBe(false);
+    click(document.querySelector('.skip-link')!);
+    expect(document.activeElement).toBe(main);
+    (document.querySelector('a[href="/x"]') as HTMLElement).focus();
+    expect(main.hasAttribute('tabindex')).toBe(false);
+    stop();
+  });
+
+  it('CB9 a dialog whose opener is hidden returns focus to the header home link', () => {
+    document.body.innerHTML = `
+      <header><a href="/">home</a><button id="open" command="show-modal" commandfor="d">o</button></header>
+      <dialog id="d"><button id="close" command="close" commandfor="d">c</button></dialog>`;
+    const stop = setupDialogs(document);
+    const open = document.getElementById('open')!;
+    click(open);
+    // From 1024 px the menu button is display:none when the drawer closes.
+    open.checkVisibility = () => false;
+    click(document.getElementById('close')!);
+    expect(document.activeElement?.getAttribute('href')).toBe('/');
     stop();
   });
 });

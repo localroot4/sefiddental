@@ -34,7 +34,7 @@ describe('ThemeToggle (spec 5.5)', () => {
   it('TT1 follows the system preference until the visitor chooses', () => {
     mockSystemDark(true);
     render(<ThemeButton location="header" />);
-    const button = screen.getByRole('button', { name: 'تغییر پوسته' });
+    const button = screen.getByRole('button', { name: 'پوستهٔ تیره' });
     expect(button.getAttribute('aria-pressed')).toBe('true');
     expect(document.documentElement.dataset.theme).toBeUndefined();
   });
@@ -42,7 +42,7 @@ describe('ThemeToggle (spec 5.5)', () => {
   it('TT2 click flips the theme, stores it, flips aria-pressed and sends theme_toggle', async () => {
     mockSystemDark(false);
     render(<ThemeButton location="drawer" />);
-    const button = screen.getByRole('button', { name: 'تغییر پوسته' });
+    const button = screen.getByRole('button', { name: 'پوستهٔ تیره' });
     expect(button.getAttribute('aria-pressed')).toBe('false');
     act(() => button.click());
     expect(document.documentElement.dataset.theme).toBe('dark');

@@ -55,7 +55,10 @@ export function setupDialogs(doc: Document): () => void {
     controllers(doc, dialog).forEach((el) => el.setAttribute('aria-expanded', 'false'));
     const back = opener.get(dialog);
     opener.delete(dialog);
-    if (back?.isConnected) back.focus();
+    if (!back?.isConnected) return;
+    // The menu button hides from 1024 px, where a widening viewport closes the drawer.
+    if (back.checkVisibility?.() ?? true) back.focus();
+    else doc.querySelector<HTMLElement>('header a[href="/"]')?.focus();
   };
   const onKey = (event: KeyboardEvent) => {
     if (event.key !== 'Tab' || !(event.target instanceof Element)) return;

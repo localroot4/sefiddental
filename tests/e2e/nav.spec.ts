@@ -417,3 +417,58 @@ test('T-NV9 «رزرو نوبت» focuses the hero phone field in view, else goe
     await expect(block.getByRole('heading')).toBeFocused();
   }
 });
+
+test('T-NV10 pagination keeps one row: under 744 px a long list shows «صفحهٔ ۵ از ۱۲»', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-light', 'viewport rows run in desktop-light');
+  // The gallery's second specimen: page 5 of 12 (a class test cannot see a missing breakpoint).
+  const long = page.getByRole('navigation', { name: 'صفحه‌بندی' }).nth(1);
+  // One row: every visible item shares one vertical center (the row centers items of mixed height).
+  const rows = () =>
+    long.locator('li').evaluateAll(
+      (items) =>
+        new Set(
+          items
+            .filter((li) => li.checkVisibility())
+            .map((li) => {
+              const box = li.getBoundingClientRect();
+              return Math.round(box.top + box.height / 2);
+            }),
+        ).size,
+    );
+  for (const width of [320, 390, 743]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/qa/components');
+    await expect(long.getByText('صفحهٔ ۵ از ۱۲'), `${width}`).toBeVisible();
+    await expect(long.getByRole('link', { name: 'صفحهٔ ۴' }), `${width}`).toBeHidden();
+    expect(await rows(), `${width}`).toBe(1);
+  }
+  for (const width of [744, 1440]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto('/qa/components');
+    await expect(long.getByText('صفحهٔ ۵ از ۱۲'), `${width}`).toBeHidden();
+    await expect(long.getByRole('link', { name: 'صفحهٔ ۴' }), `${width}`).toBeVisible();
+    expect(await rows(), `${width}`).toBe(1);
+  }
+});
+
+test('T-NV11 a hover-opened menu stays open while keyboard focus is inside it', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'desktop-light', 'fine-pointer rows run in desktop-light');
+  await page.goto(PAGE);
+  const button = page.getByRole('button', { name: t('nav.services') });
+  const panel = page.locator('#mega-menu');
+  await button.hover();
+  await expect(panel).toBeVisible();
+  await button.focus();
+  await page.keyboard.press('Tab');
+  const inside = page.locator('#mega-menu a').first();
+  await expect(inside).toBeFocused();
+  await page.mouse.move(10, 800);
+  // Longer than the 300 ms close delay: focus inside keeps it open and in place.
+  await page.waitForTimeout(600);
+  await expect(panel).toBeVisible();
+  await expect(inside).toBeFocused();
+});

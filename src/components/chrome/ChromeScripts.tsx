@@ -8,6 +8,7 @@ import { setupClosedSheet } from './closedSheet';
 import { closeModals, setupDialogs } from './dialogs';
 import { setupDrawer } from './drawer';
 import { setupMegaMenu } from './megaMenu';
+import { setupSkipLink } from './skipLink';
 import { setupStickyBar } from './stickyBar';
 
 /**
@@ -26,9 +27,10 @@ export function ChromeScripts(): null {
       setupClosedSheet(document),
       setupStickyBar(document),
       setupBookingRoute(document),
+      setupSkipLink(document),
     ];
     return () => {
-      // A client navigation closes what the old page had open (the logo is a next/link).
+      // A client navigation closes what the old page had open (the header logo is a next/link).
       closeModals(document);
       cleanups.forEach((cleanup) => cleanup());
     };

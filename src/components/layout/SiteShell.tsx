@@ -55,9 +55,7 @@ export async function SiteShell(props: {
         </a>
         <div className="site flex min-h-[100dvh] flex-col">
           <SiteHeader nav={nav} contact={contact} />
-          <main id="main" tabIndex={-1}>
-            {props.children}
-          </main>
+          <main id="main">{props.children}</main>
           <SiteFooter contact={contact} />
           <StickyBarGate hiddenOn={NO_STICKY_BAR}>
             <StickyBar phone={contact.phones.landline} whatsapp={contact.whatsapp} />

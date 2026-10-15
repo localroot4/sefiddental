@@ -44,7 +44,11 @@ export function setupMegaMenu(doc: Document, win: Window = window): () => void {
   };
   const onLeave = (event: PointerEvent) => {
     if (event.pointerType !== 'mouse') return;
-    later(() => hoverOpened && isOpen() && panel.hidePopover(), CLOSE_DELAY_MS);
+    // Never while focus is in the panel: a keyboard user who tabbed in would lose their place.
+    later(
+      () => hoverOpened && isOpen() && !panel.matches(':focus-within') && panel.hidePopover(),
+      CLOSE_DELAY_MS,
+    );
   };
   const onClick = (event: MouseEvent) => {
     win.clearTimeout(timer);

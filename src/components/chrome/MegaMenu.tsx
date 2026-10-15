@@ -7,14 +7,17 @@ import type { NavTree } from '@/lib/data/catalog';
 
 import { MEGA_ID } from './ids';
 import { pageLink } from './links';
-import { SectionButton } from './NavLink';
+import { NavLink, SectionButton } from './NavLink';
 
-/** Desktop nav item: 44 px pill, the active bar under it (aria-current, DESIGN.md 3.5). */
+/** Desktop nav item: 44 px pill, the active bar under it (aria-current, DESIGN.md 3.5); a border,
+ * so forced colors keep it. */
 export const NAV_ITEM =
-  "relative inline-flex min-h-target items-center gap-1 whitespace-nowrap rounded-pill px-3 text-small font-medium text-ink transition-colors hover:bg-brand-soft [&[aria-current]]:after:absolute [&[aria-current]]:after:inset-x-3 [&[aria-current]]:after:bottom-[2px] [&[aria-current]]:after:h-[2px] [&[aria-current]]:after:bg-brand [&[aria-current]]:after:content-['']";
+  "relative inline-flex min-h-target items-center gap-1 whitespace-nowrap rounded-pill px-3 text-small font-medium text-ink transition-colors hover:bg-brand-soft [&[aria-current]]:after:absolute [&[aria-current]]:after:inset-x-3 [&[aria-current]]:after:bottom-[2px] [&[aria-current]]:after:border-b-2 [&[aria-current]]:after:border-brand [&[aria-current]]:after:content-['']";
 
 const ROW = 'inline-flex min-h-target items-center rounded-input px-2 -mx-2 transition-colors';
-const LINK = `${ROW} text-small text-ink hover:bg-brand-soft hover:text-brand-strong`;
+// The current page reads in weight and color, not only to screen readers (aria-current).
+const CURRENT = '[&[aria-current]]:font-semibold [&[aria-current]]:text-brand-strong';
+const LINK = `${ROW} ${CURRENT} text-small text-ink hover:bg-brand-soft hover:text-brand-strong`;
 
 function Column(props: {
   id: string;
@@ -29,9 +32,9 @@ function Column(props: {
       <ul aria-labelledby={props.id} className="mt-1 grid">
         {props.links.map((link) => (
           <li key={link.href}>
-            <a href={link.href} className={LINK}>
+            <NavLink href={link.href} className={LINK}>
               {link.label}
-            </a>
+            </NavLink>
           </li>
         ))}
       </ul>
@@ -95,9 +98,9 @@ export function MegaMenu(props: { nav: NavTree }) {
         <ul className="flex flex-wrap items-center gap-x-6 border-t border-line px-gutter py-2">
           {row.map((link) => (
             <li key={link.href}>
-              <a href={link.href} className={LINK}>
+              <NavLink href={link.href} className={LINK}>
                 {link.label}
-              </a>
+              </NavLink>
             </li>
           ))}
           <li>

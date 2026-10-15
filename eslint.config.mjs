@@ -24,6 +24,16 @@ const bannedSyntax = [
     selector: 'TemplateElement[value.raw=/(^|\\s)h-screen(\\s|$)/]',
     message: 'Use min-h-[100dvh], not "h-screen" (00-master.md section 4).',
   },
+  // src/app/globals.css resets the breakpoints and defines md (744), lg, xl and 2xl only: Tailwind
+  // generates no CSS for an sm variant, so the class would silently do nothing.
+  {
+    selector: 'Literal[value=/(^|[\\s:])(max-)?sm:/]',
+    message: 'No sm breakpoint exists (globals.css defines md, lg, xl, 2xl); use md or max-md.',
+  },
+  {
+    selector: 'TemplateElement[value.raw=/(^|[\\s:])(max-)?sm:/]',
+    message: 'No sm breakpoint exists (globals.css defines md, lg, xl, 2xl); use md or max-md.',
+  },
   {
     selector: 'Literal[value=/fonts\\.(googleapis|gstatic)\\.com/]',
     message: 'No Google Fonts: self-host through next/font/local (brief.md decision 13).',

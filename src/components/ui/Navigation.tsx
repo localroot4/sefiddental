@@ -99,10 +99,10 @@ export function Pagination(props: {
   const items = pageItems(props.current, props.total);
   if (items.length < 2) return null;
   const page = clampPage(props.current, props.total);
-  // Seven 44 px items fit a 358 px phone row; with more, phones show «صفحهٔ ۵ از ۱۲» between
+  // Seven 44 px items fit a 358 px phone row; with more, under 744 px «صفحهٔ ۵ از ۱۲» sits between
   // the arrows instead of the numbers.
   const compact = items.length > 5;
-  const wide = compact ? 'max-sm:hidden' : undefined;
+  const wide = compact ? 'max-md:hidden' : undefined;
   const step = (to: number, label: string, icon: 'caret-back' | 'caret-forward', rel: string) =>
     to >= 1 && to <= props.total ? (
       <a
@@ -147,7 +147,7 @@ export function Pagination(props: {
           ),
         )}
         {compact ? (
-          <li aria-current="page" className="px-2 text-small font-medium text-ink sm:hidden">
+          <li aria-current="page" className="px-2 text-small font-medium text-ink md:hidden">
             {`${t('ui.pagination.page')} ${toPersianDigits(String(page))} ${t('ui.pagination.of')} ${toPersianDigits(String(props.total))}`}
           </li>
         ) : null}
