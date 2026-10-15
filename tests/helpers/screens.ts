@@ -1,9 +1,11 @@
 // The three QA viewports (00-master.md section 5) and the screenshot writer shared by the
 // screenshot specs. Screenshots are not pixel-compared: font rasterization differs between the
 // container's Chromium and CI's.
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import { devices, type Page, type TestInfo } from '@playwright/test';
+import sharp from 'sharp';
 
 import type { Theme } from './theme';
 
@@ -74,10 +76,13 @@ export async function captureTemplate(
   const width = page.viewportSize()?.width ?? 0;
   const file = `${template}-${width}-${theme}.png`;
   const dir = qaScreenshotDir();
-  const body = await page.screenshot({
-    fullPage: true,
-    animations: 'disabled',
-    ...(dir ? { path: path.join(dir, file) } : {}),
-  });
+  const body = await page.screenshot({ fullPage: true, animations: 'disabled' });
+  // Lossless recompression halves the committed files (a 390 px page is 1170 px wide at 3x).
+  if (dir) {
+    await mkdir(dir, { recursive: true });
+    await sharp(body)
+      .png({ compressionLevel: 9, adaptiveFiltering: true, effort: 10 })
+      .toFile(path.join(dir, file));
+  }
   await testInfo.attach(file, { body, contentType: 'image/png' });
 }
