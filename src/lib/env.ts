@@ -55,6 +55,7 @@ export interface ServerEnv {
   } | null;
   logLevel: LogLevel;
   proxyConfigTtlMs: number;
+  formSessionRateLimit: number;
 }
 
 type Source = Record<string, string | undefined>;
@@ -165,6 +166,7 @@ const rawSchema = z.object({
   ),
   LOG_LEVEL: oneOf(['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const, 'info'),
   PROXY_CONFIG_TTL_MS: integer(30_000, 0),
+  FORM_SESSION_RATE_LIMIT: integer(60, 1),
   PORT: integer(3000, 1),
   HOSTNAME: text(),
 });
@@ -338,6 +340,7 @@ export function parseEnv(source: Source): ServerEnv {
     smtp,
     logLevel: raw.LOG_LEVEL,
     proxyConfigTtlMs: raw.PROXY_CONFIG_TTL_MS,
+    formSessionRateLimit: raw.FORM_SESSION_RATE_LIMIT,
   };
 
   if (problems.length > 0) {

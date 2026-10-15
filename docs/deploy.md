@@ -312,7 +312,7 @@ Backup job (held with deliverable 9; 2.10):
 | `BACKUP_S3_ACCESS_KEY_ID` | for the backup job | yes | Access key of the backup bucket only. |
 | `BACKUP_S3_SECRET_ACCESS_KEY` | for the backup job | yes | Secret key of the backup bucket only. |
 
-Never in production: `PROXY_CONFIG_TTL_MS`, `INT_DATABASE_URL`,
+Never in production: `PROXY_CONFIG_TTL_MS`, `FORM_SESSION_RATE_LIMIT`, `INT_DATABASE_URL`,
 `E2E_DATABASE_URL`, `E2E_PORT`, `PW_CHROMIUM_EXECUTABLE`, `CHROME_PATH`,
 `QA_SCREENSHOTS`, `LHCI_THEME`, `CI`, `PAYLOAD_FORCE_DRIZZLE_PUSH`. Set by Next.js and Payload, never by us:
 `NEXT_PHASE`, `NEXT_RUNTIME`, `VITEST_POOL_ID`, `PAYLOAD_MIGRATING`.

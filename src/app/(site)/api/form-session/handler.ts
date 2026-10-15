@@ -33,7 +33,7 @@ interface FormSessionDeps {
   now: () => number;
 }
 
-/** 60 requests per minute per client key (decision D-K6). */
+/** 60 requests per minute per client key (decision D-K6); FORM_SESSION_RATE_LIMIT overrides the 60. */
 export const FORM_SESSION_RATE = { limit: 60, windowMs: 60_000 } as const;
 
 // The old time token sent back after a 419; anything else is ignored (a fresh token follows).

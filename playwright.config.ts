@@ -88,7 +88,9 @@ export default defineConfig({
   webServer: [
     // PROXY_CONFIG_TTL_MS=0: the proxy reads the redirects table on every page request, so a
     // redirect saved in the admin applies to the next request (no 30 s memo to wait out).
-    standaloneServer(PORT, 'app', { PROXY_CONFIG_TTL_MS: '0' }),
+    // FORM_SESSION_RATE_LIMIT: every page fetches /api/form-session, and all tests share one
+    // localhost client; production keeps 60 a minute.
+    standaloneServer(PORT, 'app', { PROXY_CONFIG_TTL_MS: '0', FORM_SESSION_RATE_LIMIT: '100000' }),
     // The maintenance suite (503 page) talks to a second server with the switch on.
     standaloneServer(MAINTENANCE_PORT, 'maintenance', { MAINTENANCE_MODE: 'on' }),
     // The same artifact with ALLOW_INDEXING=true: robots.txt and sitemaps switch at run time

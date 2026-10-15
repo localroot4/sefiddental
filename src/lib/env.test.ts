@@ -35,6 +35,11 @@ describe('env', () => {
     expect(env.internalOrigin).toBe('http://127.0.0.1:3000');
     expect(env.s3).toBeNull();
     expect(env.smtp).toBeNull();
+    expect(env.formSessionRateLimit).toBe(60);
+    expect(parseEnv({ ...BASE, FORM_SESSION_RATE_LIMIT: '500' }).formSessionRateLimit).toBe(500);
+    expect(() => parseEnv({ ...BASE, FORM_SESSION_RATE_LIMIT: '0' })).toThrow(
+      /FORM_SESSION_RATE_LIMIT/,
+    );
   });
 
   it('E3 production names every missing value and never prints one', () => {
