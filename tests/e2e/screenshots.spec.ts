@@ -16,6 +16,7 @@ const TEMPLATES = [
   // The proxy's 503 answer from the server that runs with MAINTENANCE_MODE=on.
   { name: '503', url: `${MAINTENANCE_ORIGIN}/` },
   { name: 'home', url: '/' },
+  { name: 'qa-components', url: '/qa/components' },
 ] as const;
 
 for (const template of TEMPLATES) {

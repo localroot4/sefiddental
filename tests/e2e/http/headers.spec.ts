@@ -88,7 +88,7 @@ test('T-HD3 public pages load without a single CSP violation', async ({ page }) 
       report(`${e.violatedDirective} ${e.blockedURI} ${e.sourceFile}:${e.lineNumber}`);
     });
   });
-  for (const path of ['/', '/qa/not-found', '/?debug=1&tier=1']) {
+  for (const path of ['/', '/qa/not-found', '/?debug=1&tier=1', '/qa/components']) {
     await page.goto(path);
     await page.waitForLoadState('load');
     // The canvas chunk and the overlay load after `load`; give them time to run.

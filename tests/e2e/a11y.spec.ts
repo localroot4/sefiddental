@@ -20,6 +20,12 @@ const TEMPLATES: ReadonlyArray<{
   { name: '410', url: '/qa/gone', status: 410 },
   { name: '503 (maintenance server)', url: `${MAINTENANCE_ORIGIN}/`, status: 503 },
   { name: 'maintenance.html (host fallback)', url: '/maintenance.html', status: 200 },
+  { name: 'component gallery', url: '/qa/components', status: 200 },
+  {
+    name: '404 for an unknown service slug',
+    url: encodeURI('/خدمات/no-such-service'),
+    status: 404,
+  },
   {
     name: 'service route probe',
     url: encodeURI('/خدمات/ترمیم-دندان'),
