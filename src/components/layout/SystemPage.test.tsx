@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import SiteError from '@/app/(site)/error';
+import { BrandLogo } from '@/components/layout/BrandLogo';
 import { CallBlock } from '@/components/layout/CallBlock';
 import { NotFoundView } from '@/components/layout/NotFoundView';
 import { SiteFooter } from '@/components/layout/SiteFooter';
@@ -144,5 +145,13 @@ describe('system page components (spec 14, D-P6)', () => {
     }
     expect(system.CLINIC_FALLBACK).toEqual(CLINIC_FALLBACK);
     expect(system.SYSTEM_LINKS).toEqual(SYSTEM_LINKS);
+  });
+});
+
+describe('brand logo', () => {
+  it('BL1 the outer viewBox starts at 0 0: <use> draws the symbol there, an offset crops it', () => {
+    const html = renderToStaticMarkup(<BrandLogo label="کلینیک" />);
+    expect(html).toContain('viewBox="0 0 1052.6 280.0"');
+    expect(html).toMatch(/<use href="\/brand\/lockup\.svg\?v=[0-9a-f]{8}#lockup"/);
   });
 });

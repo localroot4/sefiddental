@@ -6,6 +6,9 @@ import { BRAND_LOCKUP, LOCKUP_SPRITE } from '@/lib/system-pages/staticPage';
 // page twice, in the HTML and in the hydration payload. /brand/* is cached for a week, so the
 // query changes with the drawing.
 const href = `/brand/lockup.svg?v=${createHash('sha256').update(LOCKUP_SPRITE).digest('hex').slice(0, 8)}#lockup`;
+// The symbol maps its own viewBox onto the box `<use>` gives it, which starts at 0 0: the outer
+// viewBox keeps the size only, or its offset crops the top and the start of the drawing.
+const [, , width, height] = BRAND_LOCKUP.viewBox.split(' ');
 
 /**
  * Brand lockup without the Latin line. The wordmark follows the theme ink (currentColor reaches
@@ -14,7 +17,7 @@ const href = `/brand/lockup.svg?v=${createHash('sha256').update(LOCKUP_SPRITE).d
 export function BrandLogo(props: { className?: string; label: string }) {
   return (
     <svg
-      viewBox={BRAND_LOCKUP.viewBox}
+      viewBox={`0 0 ${width} ${height}`}
       role="img"
       aria-label={props.label}
       className={props.className}
