@@ -62,6 +62,9 @@ test('T-TH3 the toggle switches the theme and the choice survives a reload witho
   const system = projectTheme(testInfo);
   const firstFrame = await recordFirstFrame(page);
   await page.goto('/qa/not-found');
+  // Below 1024 px the toggle lives in the drawer.
+  if ((page.viewportSize()?.width ?? 0) < 1024)
+    await page.getByRole('button', { name: t('nav.menuOpen') }).click();
   const toggle = page.getByRole('button', { name: t('theme.toggle') });
   await expect(toggle).toHaveAttribute('aria-pressed', String(system === 'dark'));
   await toggle.click();

@@ -1,39 +1,24 @@
-import Link from 'next/link';
 import type { ReactNode } from 'react';
 
-import { CallBlock } from '@/components/layout/CallBlock';
-import { EMERGENCY_PATH, SYSTEM_LINKS, t } from '@/i18n/fa';
-
-/** Chevron toward the reading end (left in RTL). */
-function Chevron() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-      className="size-6 shrink-0 text-ink-faint"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.75"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <path d="m14.5 6-6 6 6 6" />
-    </svg>
-  );
-}
+import { SYSTEM_LINKS } from '@/i18n/fa-system';
 
 /**
- * Template T-system (ia.md 6, DESIGN.md): one H1, a lead, optional actions, the call block,
+ * Template T-system (ia.md 6, DESIGN.md 3.33): one H1, a lead, optional actions, the call block,
  * links to the service hubs and, on the 404, «درد شدید دارید؟». Presentational only, so the 404
  * (server) and the 500 boundary (client) share it; it reads no data and works with the database
- * down.
+ * down. Labels and glyphs are props: the boundary loads on every page and must not pull in
+ * src/i18n/fa.ts or icon code (F1, F2). Plain links: a prefetch would render a dynamic page on
+ * the server.
  */
 export function SystemPage(props: {
   heading: string;
   lead: string;
+  /** The CallBlock; on the 404 it leads with «رزرو نوبت» (C8). */
+  call: ReactNode;
+  linksHeading: string;
+  linkIcon?: ReactNode;
   children?: ReactNode;
-  showLinks?: boolean;
-  showUrgent?: boolean;
+  urgent?: ReactNode;
 }) {
   return (
     <section
@@ -48,39 +33,26 @@ export function SystemPage(props: {
         {props.children ? (
           <div className="mt-8 flex flex-col items-start gap-3">{props.children}</div>
         ) : null}
-        <div className="mt-8">
-          <CallBlock />
-        </div>
-        {props.showLinks ? (
-          <nav aria-labelledby="system-links" className="mt-12">
-            <h2 id="system-links" className="text-small text-ink-muted">
-              {t('links.heading')}
-            </h2>
-            <ul className="mt-2 border-t border-line">
-              {SYSTEM_LINKS.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    prefetch={false}
-                    className="flex min-h-12 items-center justify-between gap-4 border-b border-line text-ink transition-colors duration-200 hover:text-brand motion-reduce:transition-none"
-                  >
-                    {link.label}
-                    <Chevron />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </nav>
-        ) : null}
-        {props.showUrgent ? (
-          <Link
-            href={EMERGENCY_PATH}
-            prefetch={false}
-            className="mt-6 inline-flex min-h-target items-center font-bold text-warning hover:underline"
-          >
-            {t('urgent.label')}
-          </Link>
-        ) : null}
+        <div className="mt-8">{props.call}</div>
+        <nav aria-labelledby="system-links" className="mt-12">
+          <h2 id="system-links" className="text-small text-ink-muted">
+            {props.linksHeading}
+          </h2>
+          <ul className="mt-2 border-t border-line">
+            {SYSTEM_LINKS.map((link) => (
+              <li key={link.href}>
+                <a
+                  href={link.href}
+                  className="flex min-h-12 items-center justify-between gap-4 border-b border-line text-ink transition-colors hover:text-brand-strong"
+                >
+                  {link.label}
+                  {props.linkIcon}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        {props.urgent}
       </div>
     </section>
   );

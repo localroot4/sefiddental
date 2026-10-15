@@ -1,2 +1,36 @@
 /** Persian UI strings owned by the phase 4 nav work; merged into MESSAGES in src/i18n/fa.ts. */
-export const NAV_MESSAGES = {} as const;
+export const NAV_MESSAGES = {
+  'nav.primary': 'ناوبری اصلی',
+  'nav.services': 'خدمات',
+  'nav.dentists': 'پزشکان',
+  'nav.cases': 'قبل و بعد',
+  'nav.pricing': 'هزینه و پرداخت',
+  'nav.address': 'آدرس و ساعات',
+  'nav.otherServices': 'سایر خدمات',
+  'nav.allServices': 'همهٔ خدمات',
+  'nav.guideHub': 'راهنمای بیمار',
+  'nav.firstVisit': 'اولین مراجعه',
+  'nav.articles': 'مقالات',
+  'nav.about': 'درباره ما',
+  'nav.privacy': 'حریم خصوصی',
+  'nav.book': 'رزرو نوبت',
+  'nav.menuOpen': 'باز کردن منو',
+  'nav.menuClose': 'بستن منو',
+  'nav.drawer': 'منوی سایت',
+  // The sticky bar is the only place the short forms «تماس» and «واتساپ» may appear (conversion 2).
+  'nav.quick': 'دسترسی سریع',
+  'nav.quickCall': 'تماس',
+  'nav.quickWhatsapp': 'واتساپ',
+  'nav.whatsapp': 'پیام در واتساپ',
+  // Generic WhatsApp prefill (conversion 8): no personal data.
+  'nav.whatsappText': 'سلام، از سایت کلینیک سفید پیام می‌دهم. سؤالی دربارهٔ نوبت دارم.',
+  'nav.instagram': 'اینستاگرام',
+  'nav.telegram': 'تلگرام',
+  'nav.aparat': 'آپارات',
+  'nav.sheetClose': 'بستن',
+  'nav.footerPopular': 'خدمات پرطرفدار',
+  'nav.footerClinic': 'کلینیک',
+  'nav.footerGuide': 'راهنما',
+  'nav.footerLicense': 'شمارهٔ پروانه:',
+  'nav.footerSupervisor': 'مسئول فنی:',
+} as const;
