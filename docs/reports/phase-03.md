@@ -571,7 +571,15 @@ first fully green run. Host benchmarkIndex 2562, CPU 4x. 404 LCP median
 over 2500 ms; performance 0.98 and 0.97; e2e 228 passed, 20 skipped. Home
 warns only: performance 0.84 to 0.86, script transfer 434.5 KiB.
 
-CI after the TBT decision: pending at the time of writing.
+CI after the TBT decision: run 38660622387 on `e2b3cfa`. The Lighthouse
+job passed on a runner with benchmarkIndex 2539: 404 TBT median 218 ms
+light (single runs 82 to 384) and 127 ms dark (72 to 199), so even a fast
+runner spreads around the 200 ms target; LCP 1667 and 1825 ms; performance
+0.96 and 0.98. The unit job failed on test K2 in
+`src/lib/http/clientIp.test.ts`, flaky by design: it checked that a random
+per-process hex key did not contain `203`, which happens by chance in
+about 0.7% of runs. It now checks the dotted address prefix; 30 repeated
+runs pass. Final head: pending at the time of writing.
 
 Not verified: S3 storage mode (no bucket); the 25 MiB upload through the
 running app; real phone videos (only synthetic MP4 boxes); a stopped
