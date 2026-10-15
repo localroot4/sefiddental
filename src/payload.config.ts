@@ -13,6 +13,7 @@ import { globals } from './globals';
 import { readEnv } from './lib/env';
 import { log } from './lib/log/logger';
 import { limitedSharp } from './lib/media/limitedSharp';
+import { notifyTask } from './lib/notify/task';
 import { databaseAdapter, logPoolErrors } from './payload/db';
 
 const srcDir = path.dirname(fileURLToPath(import.meta.url));
@@ -67,8 +68,9 @@ export default buildConfig({
   globals,
   editor: richTextEditor,
   // Payload's own /api/payload-jobs/run: the cron bearer or a TOTP-verified admin (the site's
-  // scheduler is /api/cron/tick). The schedulePublish task comes from the collections' drafts.
-  jobs: { access: { run: canRunJobs } },
+  // scheduler is /api/cron/tick). The schedulePublish task comes from the collections' drafts;
+  // `notify` delivers the Notifier's messages (src/lib/notify, freeze G11).
+  jobs: { access: { run: canRunJobs }, tasks: [notifyTask] },
   db: databaseAdapter(srcDir),
   onInit: (payload) => logPoolErrors(payload.db, (line) => log.warn(line)),
   // One image encode at a time: 23 sizes in parallel peaked at 1.1 GB per upload (UP-6).

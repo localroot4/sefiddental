@@ -12,6 +12,13 @@ import {
   newSid,
 } from '@/lib/formTokens';
 import { buildCsp, newNonce } from '@/lib/http/csp';
+import {
+  FLASH_COOKIE,
+  FLASH_COOKIE_OPTIONS,
+  FLASH_HEADER,
+  flashHeaderValue,
+  openFlash,
+} from '@/lib/http/flash';
 import { normalizePath } from '@/lib/paths';
 import {
   destination,
@@ -22,6 +29,7 @@ import {
 } from '@/lib/http/proxyConfig';
 import {
   dynamicRoute,
+  formPostTarget,
   isAuthLimitedPath,
   isClosedPayloadPath,
   isFirstUserPath,
@@ -103,6 +111,28 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     }
   }
 
+  // 4c: a form post to its page path (the no-JS action) reaches the form's route handler; the
+  // rewrite keeps the method and the body (freeze G2). Maintenance (4) already closed it.
+  const formApi = kind === 'page' ? formPostTarget(method, path) : null;
+  if (formApi) {
+    const res = NextResponse.rewrite(new URL(formApi + url.search, request.url), {
+      request: { headers },
+    });
+    const https = requestProtocol(request.headers, trust) === 'https' || url.protocol === 'https:';
+    for (const [name, value] of securityHeaders({
+      kind: 'api',
+      csp: null,
+      env,
+      https,
+      reqId,
+      pathname,
+      draft: false,
+    })) {
+      res.headers.set(name, value);
+    }
+    return res;
+  }
+
   // 5: redirects table (pages, GET and HEAD), before the canonical check: one hop.
   let ga4MeasurementId: string | null = null;
   let config: ProxyConfigView | null = null;
@@ -148,6 +178,15 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     const sid = isWellFormedSid(cookieSid) ? cookieSid : (newFormSid = newSid());
     headers.set(FORM_SID_HEADER, sid);
   }
+  // 7b: the one-time flash of a no-JS form post (freeze G3): opened on the GET of its target
+  // page, handed to the render in a request header, then deleted; an unreadable one is deleted.
+  let dropFlash = false;
+  const flashValue = request.cookies.get(FLASH_COOKIE)?.value;
+  if (kind === 'page' && method === 'GET' && flashValue) {
+    const flash = openFlash(env.formTokenSecrets, flashValue, now);
+    dropFlash = flash === null || flash.to === path;
+    if (flash !== null && flash.to === path) headers.set(FLASH_HEADER, flashHeaderValue(flash));
+  }
 
   // 8: pass through with the route-dependent headers; Persian dynamic routes render from their
   // ASCII folder (proxyRules routeRewrite), an unpublished slug from the 404 document (F10). After
@@ -161,6 +200,7 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     ? NextResponse.rewrite(new URL(rewrite + url.search, request.url), { request: { headers } })
     : NextResponse.next({ request: { headers } });
   if (newFormSid) res.cookies.set(FORM_COOKIE, newFormSid, FORM_COOKIE_OPTIONS);
+  if (dropFlash) res.cookies.set(FLASH_COOKIE, '', { ...FLASH_COOKIE_OPTIONS, maxAge: 0 });
   const https = requestProtocol(request.headers, trust) === 'https' || url.protocol === 'https:';
   for (const [name, value] of securityHeaders({ kind, csp, env, https, reqId, pathname, draft })) {
     res.headers.set(name, value);

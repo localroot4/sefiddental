@@ -343,3 +343,17 @@ export const clinicHoursSchema: z.ZodType<ClinicHours> = z
       seenDates.add(h.date);
     });
   });
+
+/** QA-CLOCK (freeze G18): request header that moves the hours clock, never tokens or limits. */
+export const QA_CLOCK_HEADER = 'x-qa-hours-at';
+const ISO_INSTANT = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2}(?:\.\d{1,3})?)?(?:Z|[+-]\d{2}:\d{2})$/;
+
+/**
+ * The instant every hours reader evaluates `hoursState` at: the QA clock header (an ISO instant)
+ * when QA routes are on (QA_ROUTES=1, never production), else `nowMs`.
+ */
+export function hoursClock(headers: Headers, qaRoutes: boolean, nowMs: number): Date {
+  const value = qaRoutes ? headers.get(QA_CLOCK_HEADER) : null;
+  const at = value !== null && ISO_INSTANT.test(value) ? Date.parse(value) : NaN;
+  return new Date(Number.isFinite(at) ? at : nowMs);
+}

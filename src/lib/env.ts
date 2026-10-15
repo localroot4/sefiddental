@@ -53,6 +53,9 @@ export interface ServerEnv {
     pass: string | undefined;
     from: string;
   } | null;
+  /** Notifier drivers behind the notifier global switches (admin-notify.md 9.5). */
+  telegram: { botToken: string } | null;
+  farapayamak: { username: string; password: string } | null;
   logLevel: LogLevel;
   proxyConfigTtlMs: number;
   formSessionRateLimit: number;
@@ -164,6 +167,9 @@ const rawSchema = z.object({
     blankToUndefined,
     z.email('SMTP_FROM must be an e-mail address').optional(),
   ),
+  TELEGRAM_BOT_TOKEN: text(),
+  FARAPAYAMAK_USERNAME: text(),
+  FARAPAYAMAK_PASSWORD: text(),
   LOG_LEVEL: oneOf(['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const, 'info'),
   PROXY_CONFIG_TTL_MS: integer(30_000, 0),
   FORM_SESSION_RATE_LIMIT: integer(60, 1),
@@ -309,6 +315,18 @@ export function parseEnv(source: Source): ServerEnv {
     };
   }
 
+  let farapayamak: ServerEnv['farapayamak'] = null;
+  if (raw.FARAPAYAMAK_USERNAME || raw.FARAPAYAMAK_PASSWORD) {
+    if (!raw.FARAPAYAMAK_USERNAME)
+      missing('FARAPAYAMAK_USERNAME', 'required with FARAPAYAMAK_PASSWORD');
+    if (!raw.FARAPAYAMAK_PASSWORD)
+      missing('FARAPAYAMAK_PASSWORD', 'required with FARAPAYAMAK_USERNAME');
+    farapayamak = {
+      username: raw.FARAPAYAMAK_USERNAME ?? '',
+      password: raw.FARAPAYAMAK_PASSWORD ?? '',
+    };
+  }
+
   const env: ServerEnv = {
     nodeEnv: raw.NODE_ENV,
     siteUrl: raw.SITE_URL ?? 'http://localhost:3000',
@@ -338,6 +356,8 @@ export function parseEnv(source: Source): ServerEnv {
     mediaPublicOrigin: raw.MEDIA_PUBLIC_ORIGIN ?? null,
     s3,
     smtp,
+    telegram: raw.TELEGRAM_BOT_TOKEN ? { botToken: raw.TELEGRAM_BOT_TOKEN } : null,
+    farapayamak,
     logLevel: raw.LOG_LEVEL,
     proxyConfigTtlMs: raw.PROXY_CONFIG_TTL_MS,
     formSessionRateLimit: raw.FORM_SESSION_RATE_LIMIT,

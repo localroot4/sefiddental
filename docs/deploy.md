@@ -177,7 +177,9 @@ This section holds on every path: Liara, ArvanCloud, a VPS or C1.
   for tests and local work only: two releases overlap during a zero-downtime
   switch.
 - Outbound connections at run time: the database, S3 (when set) and SMTP (when
-  set). Payload telemetry is off.
+  set); `api.telegram.org` only when the Telegram notifier is switched on and
+  `TELEGRAM_BOT_TOKEN` is set (usually filtered from servers in Iran), and the
+  Farapayamak API once its driver is written. Payload telemetry is off.
 - TLS ends at the platform router or at a reverse proxy (2.5).
 
 ### 2.2 Build and start
@@ -256,8 +258,8 @@ Internal calls and forms:
 | `CRON_SECRET` | yes | yes | Bearer token of `GET /api/cron/tick` and Payload's job runner (2.8). |
 | `INTERNAL_API_TOKEN` | yes | yes | Header `x-internal-token` on the proxy's calls to `/api/internal/*`. |
 | `INTERNAL_ORIGIN` | no (default `http://127.0.0.1:$PORT`) | no | Origin the proxy uses to reach the same process. Set it only when the server does not listen on loopback. Never the public origin. |
-| `IP_HASH_SECRET` | yes | yes | HMAC key for stored client IP hashes (audit log, bookings). A change makes old hashes unmatchable. |
-| `FORM_TOKEN_SECRET` | yes | yes | Signs form session and time tokens. |
+| `IP_HASH_SECRET` | yes | yes | HMAC key for stored client IP hashes (audit log, bookings) and for the SMS cap's destination hashes (`sms-throttle`). A change makes old hashes unmatchable and resets the SMS cap. |
+| `FORM_TOKEN_SECRET` | yes | yes | Signs form session and time tokens, and keys the encrypted one-time flash cookie of the no-JS forms (`__Host-sefid-flash`). Rotating it drops flashes younger than 10 minutes unless the old value stays in `FORM_TOKEN_SECRET_PREVIOUS`. |
 | `FORM_TOKEN_SECRET_PREVIOUS` | no | yes | The old `FORM_TOKEN_SECRET` during a rotation: verify only. Remove it after `FORM_TOKEN_TTL_SECONDS`. |
 | `FORM_TOKEN_TTL_SECONDS` | no (default `7200`) | no | Lifetime of a form time token. |
 
@@ -272,7 +274,7 @@ Request handling:
 | `MAINTENANCE_RETRY_AFTER` | no (default `900`) | no | `Retry-After` seconds on the maintenance response. |
 | `CSP_MODE` | no (default `enforce`) | no | CSP of public pages. Keep `enforce`. |
 | `CSP_ADMIN_MODE` | no (default `enforce`) | no | CSP of `/admin`. Keep `enforce`; `report-only` is a debugging switch. |
-| `QA_ROUTES` | never set | no | `1` enables `/qa/*` (CI and local QA only). |
+| `QA_ROUTES` | never set | no | `1` enables `/qa/*` (CI and local QA only). It also lets any client move the server's opening-hours clock with the `x-qa-hours-at` request header, which changes the callback line and the stored `callbackDueAt` of real bookings. Never set it in production. |
 | `LOG_LEVEL` | no (default `info`) | no | `fatal`, `error`, `warn`, `info`, `debug` or `trace`. Production: `info`. |
 
 Media and e-mail:
@@ -292,6 +294,15 @@ Media and e-mail:
 | `SMTP_USER` | no | no | SMTP user. |
 | `SMTP_PASS` | no | yes | SMTP password. |
 | `SMTP_FROM` | with `SMTP_HOST` | no | Sender address. |
+
+Notifier credentials (the `notifier` global holds only the switches and recipients; a channel
+sends only when its switch is on and its values below are set):
+
+| Name | Required in production | Secret | Purpose |
+|---|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | no | yes | Bot token of the Telegram notifier (`<digits>:<key>`). Never logged; outbound to `api.telegram.org`. |
+| `FARAPAYAMAK_USERNAME` | with `FARAPAYAMAK_PASSWORD` | no | Farapayamak panel user for SMS (the driver is a scaffold until the clinic approves SMS). |
+| `FARAPAYAMAK_PASSWORD` | with `FARAPAYAMAK_USERNAME` | yes | Farapayamak panel password. |
 
 Process (set by the host or the image):
 

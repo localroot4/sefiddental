@@ -10,13 +10,15 @@ export function isWellFormedRequestId(value: string | null | undefined): value i
 
 /**
  * Headers only the proxy may put on the request that reaches the render: a client copy would
- * forge the CSP nonce, the form session id, the admin path seen by payload-totp or the id.
+ * forge the CSP nonce, the form session id, a form flash, the admin path seen by payload-totp or
+ * the id.
  */
 const PROXY_OWNED = [
   'x-nonce',
   'content-security-policy',
   'content-security-policy-report-only',
   'x-sefid-form-sid',
+  'x-sefid-flash',
   'x-pathname',
   'x-request-id',
 ];

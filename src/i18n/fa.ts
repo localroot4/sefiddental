@@ -8,6 +8,7 @@
 import { CONTENT_MESSAGES } from '@/i18n/fa-content';
 import { HOME_MESSAGES } from '@/i18n/fa-home';
 import { NAV_MESSAGES } from '@/i18n/fa-nav';
+import { NOTIFY_MESSAGES } from '@/i18n/fa-notify';
 import { PAGES_MESSAGES } from '@/i18n/fa-pages';
 import { SERVICES_MESSAGES } from '@/i18n/fa-services';
 import { CLINIC_FALLBACK, SYSTEM_LINKS, SYSTEM_MESSAGES } from '@/i18n/fa-system';
@@ -39,6 +40,7 @@ const MESSAGES = {
   ...HOME_MESSAGES,
   ...SERVICES_MESSAGES,
   ...PAGES_MESSAGES,
+  ...NOTIFY_MESSAGES,
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

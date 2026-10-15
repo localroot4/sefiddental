@@ -10,7 +10,7 @@ import {
   newSid,
   renewTimeToken,
 } from '@/lib/formTokens';
-import { hoursState, type ClinicHours, type HoursOptions } from '@/lib/hoursState';
+import { hoursClock, hoursState, type ClinicHours, type HoursOptions } from '@/lib/hoursState';
 
 /**
  * GET /api/form-session (spec 7.5): the CSRF token, the signed time token and the hours state
@@ -25,7 +25,7 @@ export interface FormSessionLimiter {
 }
 
 interface FormSessionDeps {
-  env: () => Pick<ServerEnv, 'formTokenSecrets' | 'formTokenTtlSeconds'>;
+  env: () => Pick<ServerEnv, 'formTokenSecrets' | 'formTokenTtlSeconds' | 'qaRoutes'>;
   loadHours: () => Promise<{ hours: ClinicHours; options: HoursOptions }>;
   limiter: FormSessionLimiter;
   /** Rate-limit bucket key of the caller (never the raw address). */
@@ -60,7 +60,8 @@ export function createFormSessionHandler(deps: FormSessionDeps) {
     if (!current) throw new Error('form-session: FORM_TOKEN_SECRET is not configured');
 
     const { hours, options } = await deps.loadHours();
-    const state = hoursState(new Date(nowMs), hours, options);
+    // QA-CLOCK (freeze G18): the e2e suite sets the hours clock; honored only with QA_ROUTES.
+    const state = hoursState(hoursClock(request.headers, env.qaRoutes, nowMs), hours, options);
 
     // Reuse a well-formed form cookie (refreshing its Max-Age); otherwise start a new one.
     const cookieSid = request.cookies.get(FORM_COOKIE)?.value;

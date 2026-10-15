@@ -36,6 +36,7 @@ export interface Config {
     cases: Case;
     redirects: Redirect;
     'events-daily': EventsDaily;
+    'sms-throttle': SmsThrottle;
     'audit-log': AuditLog;
     users: User;
     'totp-attempts': TotpAttempt;
@@ -76,6 +77,7 @@ export interface Config {
     cases: CasesSelect<false> | CasesSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'events-daily': EventsDailySelect<false> | EventsDailySelect<true>;
+    'sms-throttle': SmsThrottleSelect<false> | SmsThrottleSelect<true>;
     'audit-log': AuditLogSelect<false> | AuditLogSelect<true>;
     users: UsersSelect<false> | UsersSelect<true>;
     'totp-attempts': TotpAttemptsSelect<false> | TotpAttemptsSelect<true>;
@@ -110,6 +112,7 @@ export interface Config {
   user: User;
   jobs: {
     tasks: {
+      notify: TaskNotify;
       schedulePublish: TaskSchedulePublish;
       inline: {
         input: unknown;
@@ -208,7 +211,14 @@ export interface Booking {
    */
   flags?:
     | (
-        'honeypot' | 'too_fast' | 'ip_rate' | 'emergency_ip_rate' | 'restored' | 'emergency_priority_removed' | 'manual'
+        | 'honeypot'
+        | 'too_fast'
+        | 'bad_token'
+        | 'ip_rate'
+        | 'emergency_ip_rate'
+        | 'restored'
+        | 'emergency_priority_removed'
+        | 'manual'
       )[]
     | null;
   /**
@@ -254,6 +264,8 @@ export interface Booking {
         serviceKey?: string | null;
         preferredTime?: string | null;
         sourceUrl?: string | null;
+        triage?: ('severe_pain' | 'swelling' | 'broken' | 'avulsion' | 'bleeding')[] | null;
+        ipHash?: string | null;
         id?: string | null;
       }[]
     | null;
@@ -1522,7 +1534,7 @@ export interface Insurance {
    */
   logo?: (number | null) | Media;
   /**
-   * جزو پنج بیمهٔ اصلی است. بقیه زیر «سایر بیمه‌ها» می‌آیند.
+   * جزو پنج بیمهٔ اصلی است و با نامش در سایت می‌آید. بیمه‌های دیگر در سایت نمایش داده نمی‌شوند.
    */
   featured?: boolean | null;
   /**
@@ -1578,7 +1590,7 @@ export interface FinancingOption {
   approvedOn?: string | null;
   approvedOn_tz?: SupportedTimezones;
   /**
-   * نمایش در سایت. فقط وقتی روشن کنید که شریک و شرایط قطعی است.
+   * نمایش در سایت. فقط وقتی روشن کنید که شریک و شرایط قطعی است. پس از روشن کردن، عنوان سئوی صفحهٔ هزینه‌ها را به «هزینه دندانپزشکی، بیمه و وام» تغییر دهید.
    */
   enabled?: boolean | null;
   /**
@@ -1722,6 +1734,23 @@ export interface EventsDaily {
    * تعداد.
    */
   count: number;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sms-throttle".
+ */
+export interface SmsThrottle {
+  id: number;
+  /**
+   * اثر یک‌طرفهٔ شمارهٔ گیرنده. خود شماره ذخیره نمی‌شود.
+   */
+  destinationHash: string;
+  /**
+   * زمان آخرین پیامک به این گیرنده.
+   */
+  lastSentAt: string;
   updatedAt: string;
   createdAt: string;
 }
@@ -1876,7 +1905,7 @@ export interface PayloadJob {
     | {
         executedAt: string;
         completedAt: string;
-        taskSlug: 'inline' | 'schedulePublish';
+        taskSlug: 'inline' | 'notify' | 'schedulePublish';
         taskID: string;
         input?:
           | {
@@ -1909,7 +1938,7 @@ export interface PayloadJob {
         id?: string | null;
       }[]
     | null;
-  taskSlug?: ('inline' | 'schedulePublish') | null;
+  taskSlug?: ('inline' | 'notify' | 'schedulePublish') | null;
   queue?: string | null;
   waitUntil?: string | null;
   processing?: boolean | null;
@@ -2073,6 +2102,8 @@ export interface BookingsSelect<T extends boolean = true> {
         serviceKey?: T;
         preferredTime?: T;
         sourceUrl?: T;
+        triage?: T;
+        ipHash?: T;
         id?: T;
       };
   sourceUrl?: T;
@@ -2853,6 +2884,16 @@ export interface EventsDailySelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "sms-throttle_select".
+ */
+export interface SmsThrottleSelect<T extends boolean = true> {
+  destinationHash?: T;
+  lastSentAt?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "audit-log_select".
  */
 export interface AuditLogSelect<T extends boolean = true> {
@@ -3572,6 +3613,26 @@ export interface CollectionsWidget {
     [k: string]: unknown;
   };
   width: 'full';
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "TaskNotify".
+ */
+export interface TaskNotify {
+  input: {
+    event:
+      | {
+          [k: string]: unknown;
+        }
+      | unknown[]
+      | string
+      | number
+      | boolean
+      | null;
+    channel: 'mail' | 'telegram' | 'sms_admin' | 'sms_patient';
+    recipientHash?: string | null;
+  };
+  output?: unknown;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema

@@ -158,6 +158,32 @@ describe('env', () => {
     });
   });
 
+  it('E10 notifier credentials: optional, Farapayamak needs both values, values never printed', () => {
+    const none = parseEnv(BASE);
+    expect([none.telegram, none.farapayamak]).toEqual([null, null]);
+    const env = parseEnv({
+      ...BASE,
+      TELEGRAM_BOT_TOKEN: '123:token-value',
+      FARAPAYAMAK_USERNAME: 'clinic',
+      FARAPAYAMAK_PASSWORD: 'pass-value',
+    });
+    expect(env.telegram).toEqual({ botToken: '123:token-value' });
+    expect(env.farapayamak).toEqual({ username: 'clinic', password: 'pass-value' });
+    expect(() => parseEnv({ ...BASE, FARAPAYAMAK_USERNAME: 'clinic' })).toThrow(
+      /FARAPAYAMAK_PASSWORD missing/,
+    );
+    const message = (() => {
+      try {
+        parseEnv({ ...BASE, FARAPAYAMAK_PASSWORD: 'pass-value' });
+        return '';
+      } catch (error) {
+        return String(error);
+      }
+    })();
+    expect(message).toMatch(/FARAPAYAMAK_USERNAME missing/);
+    expect(message).not.toContain('pass-value');
+  });
+
   it('E9 MEDIA_DIR must be absolute', () => {
     expect(() => parseEnv({ ...BASE, MEDIA_DIR: 'media' })).toThrow(
       /MEDIA_DIR must be an absolute/,

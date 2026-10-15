@@ -9,7 +9,7 @@ import { ValidationError } from 'payload';
 
 import { hasRole } from '@/access/roles';
 import { toClinicHours, hoursOptionsFrom } from '@/lib/data/clinicHours';
-import { hoursState } from '@/lib/hoursState';
+import { hoursState, type ClinicHours, type HoursOptions } from '@/lib/hoursState';
 import { normalizeLetters, normalizePersian } from '@/lib/persianText';
 import { maskPhone, parseIranPhone, PHONE_ERRORS, phoneSearchFragment } from '@/lib/phone';
 
@@ -89,18 +89,22 @@ export const normalizeBooking: CollectionBeforeValidateHook = ({ data }) => {
   return out;
 };
 
+/** When reception should call back: now plus the callback minutes, or after the next opening. */
+export function callbackDueAt(now: Date, hours: ClinicHours, options: HoursOptions): string | null {
+  const state = hoursState(now, hours, options);
+  const minutes = (options.callbackMinutes ?? 10) * 60_000;
+  const base = state.callsAllowed
+    ? now.getTime()
+    : state.nextOpen
+      ? Date.parse(state.nextOpen.at)
+      : NaN;
+  return Number.isFinite(base) ? new Date(base + minutes).toISOString() : null;
+}
+
 async function callbackDue(req: PayloadRequest, now: Date): Promise<string | null> {
   try {
     const clinic = await req.payload.findGlobal({ slug: 'clinic', depth: 0, req });
-    const options = hoursOptionsFrom(clinic);
-    const state = hoursState(now, toClinicHours(clinic), options);
-    const minutes = (options.callbackMinutes ?? 10) * 60_000;
-    const base = state.callsAllowed
-      ? now.getTime()
-      : state.nextOpen
-        ? Date.parse(state.nextOpen.at)
-        : NaN;
-    return Number.isFinite(base) ? new Date(base + minutes).toISOString() : null;
+    return callbackDueAt(now, toClinicHours(clinic), hoursOptionsFrom(clinic));
   } catch {
     return null;
   }

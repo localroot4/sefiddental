@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   clinicHoursSchema,
+  hoursClock,
   hoursNote,
   hoursState,
   hoursTableNote,
   hoursSummary,
+  QA_CLOCK_HEADER,
   type ClinicHours,
   type HoursOptions,
   type HoursOverride,
@@ -475,5 +477,31 @@ describe('clinicHoursSchema', () => {
       'holidays.0.close',
     ]);
     expect(issues({ ...CLINIC, timezone: 'UTC' })).toEqual(['timezone']);
+  });
+});
+
+describe('hoursClock (QA-CLOCK, freeze G18)', () => {
+  const NOW = Date.parse('2026-10-13T08:00:00Z');
+  const at = (value: string) => new Headers({ [QA_CLOCK_HEADER]: value });
+
+  it('H-QA1 the header sets the hours clock only when QA routes are on', () => {
+    expect(hoursClock(at('2026-10-13T18:00:00Z'), true, NOW).toISOString()).toBe(
+      '2026-10-13T18:00:00.000Z',
+    );
+    expect(hoursClock(at('2026-10-13T21:30:00+03:30'), true, NOW).toISOString()).toBe(
+      '2026-10-13T18:00:00.000Z',
+    );
+  });
+
+  it('H-QA2 ignored without QA_ROUTES, when absent, and when not an ISO instant', () => {
+    for (const [headers, qa] of [
+      [at('2026-10-13T18:00:00Z'), false],
+      [new Headers(), true],
+      [at('tomorrow'), true],
+      [at('1760378400000'), true],
+      [at('2026-13-45T99:00:00Z'), true],
+    ] as const) {
+      expect(hoursClock(headers, qa, NOW).getTime()).toBe(NOW);
+    }
   });
 });

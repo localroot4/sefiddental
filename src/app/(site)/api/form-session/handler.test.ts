@@ -25,7 +25,11 @@ function setup(over: { limiter?: FormSessionLimiter; secrets?: string[]; now?: n
   const clientKey = vi.fn((_headers: Headers) => 'client-key');
   const loadHours = vi.fn(async () => ({ hours: HOURS, options: { callbackMinutes: 10 } }));
   const handler = createFormSessionHandler({
-    env: () => ({ formTokenSecrets: over.secrets ?? [K], formTokenTtlSeconds: TTL_SECONDS }),
+    env: () => ({
+      formTokenSecrets: over.secrets ?? [K],
+      formTokenTtlSeconds: TTL_SECONDS,
+      qaRoutes: false,
+    }),
     loadHours,
     limiter: over.limiter ?? ALLOW,
     clientKey,
@@ -155,7 +159,7 @@ describe('GET /api/form-session handler', () => {
 
   it('FS7 a failing hours read fails loud (500 from Next), never a guessed state', async () => {
     const handler = createFormSessionHandler({
-      env: () => ({ formTokenSecrets: [K], formTokenTtlSeconds: TTL_SECONDS }),
+      env: () => ({ formTokenSecrets: [K], formTokenTtlSeconds: TTL_SECONDS, qaRoutes: false }),
       loadHours: async () => {
         throw new Error('database unavailable');
       },

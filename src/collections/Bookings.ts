@@ -12,7 +12,21 @@ import {
 import { contentHooks } from '@/hooks/compose';
 
 const readOnlyField = { readOnly: true } as const;
+
+export const PREFERRED_TIME_OPTIONS = [
+  { label: 'صبح', value: 'morning' },
+  { label: 'عصر', value: 'evening' },
+  { label: 'فرقی ندارد', value: 'any' },
+];
 const never = () => false;
+
+const TRIAGE_OPTIONS = [
+  { label: 'درد شدیدی که با مسکن آرام نمی‌شود', value: 'severe_pain' },
+  { label: 'ورم لثه یا صورت', value: 'swelling' },
+  { label: 'دندان شکسته یا ضربه به دندان', value: 'broken' },
+  { label: 'دندانی که کامل از جا درآمده است', value: 'avulsion' },
+  { label: 'خونریزی کم بعد از کشیدن دندان که هنوز ادامه دارد', value: 'bleeding' },
+];
 
 /**
  * spec-data 2.14. Operational data: no versions (they would copy phone numbers); the audit log
@@ -154,11 +168,7 @@ export const Bookings: CollectionConfig = {
       name: 'preferredTime',
       type: 'select',
       label: 'زمان دلخواه',
-      options: [
-        { label: 'صبح', value: 'morning' },
-        { label: 'عصر', value: 'evening' },
-        { label: 'فرقی ندارد', value: 'any' },
-      ],
+      options: PREFERRED_TIME_OPTIONS,
       admin: { description: 'زمان دلخواه بیمار.' },
     },
     {
@@ -173,13 +183,7 @@ export const Bookings: CollectionConfig = {
       type: 'select',
       hasMany: true,
       label: 'نشانه‌ها',
-      options: [
-        { label: 'درد شدیدی که با مسکن آرام نمی‌شود', value: 'severe_pain' },
-        { label: 'ورم لثه یا صورت', value: 'swelling' },
-        { label: 'دندان شکسته یا ضربه به دندان', value: 'broken' },
-        { label: 'دندانی که کامل از جا درآمده است', value: 'avulsion' },
-        { label: 'خونریزی کم بعد از کشیدن دندان که هنوز ادامه دارد', value: 'bleeding' },
-      ],
+      options: TRIAGE_OPTIONS,
       validate: withRules(select, (value, { data }) =>
         data.kind === 'emergency' && (!Array.isArray(value) || value.length === 0)
           ? 'برای درخواست فوری، دست‌کم یک نشانه لازم است.'
@@ -220,6 +224,7 @@ export const Bookings: CollectionConfig = {
       options: [
         { label: 'تله', value: 'honeypot' },
         { label: 'ارسال خیلی سریع', value: 'too_fast' },
+        { label: 'توکن نامعتبر', value: 'bad_token' },
         { label: 'محدودیت IP', value: 'ip_rate' },
         { label: 'محدودیت فوری IP', value: 'emergency_ip_rate' },
         { label: 'بازگردانده‌شده', value: 'restored' },
@@ -331,6 +336,10 @@ export const Bookings: CollectionConfig = {
         { name: 'serviceKey', type: 'text' },
         { name: 'preferredTime', type: 'text' },
         { name: 'sourceUrl', type: 'text' },
+        // Labels as on the row; staff read the boxes, not codes.
+        { name: 'triage', type: 'select', hasMany: true, options: TRIAGE_OPTIONS },
+        // The per-IP rule counts appended requests too (they add no row).
+        { name: 'ipHash', type: 'text', index: true, access: { read: isAdminField } },
       ],
     },
     {

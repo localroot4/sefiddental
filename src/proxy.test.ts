@@ -354,4 +354,111 @@ describe('proxy', () => {
     ).proxy(new NextRequest('http://localhost/qa/not-found'), ev);
     expect(on.headers.get('x-middleware-rewrite')).toBeNull();
   });
+
+  it('PX17 a POST of exactly the booking or emergency page reaches its API route; others pass', async () => {
+    const { proxy } = await loadProxy({ SITE_URL: 'http://localhost' });
+    const target = async (method: string, path: string) => {
+      const res = await proxy(
+        new NextRequest(`http://localhost${path}`, {
+          method,
+          body: method === 'POST' ? 'phone=1' : null,
+        }),
+        ev,
+      );
+      const rewrite = res.headers.get('x-middleware-rewrite');
+      return rewrite === null
+        ? null
+        : decodeURIComponent(new URL(rewrite).pathname + new URL(rewrite).search);
+    };
+    expect(await target('POST', encodeURI('/رزرو-نوبت'))).toBe('/api/booking');
+    expect(await target('POST', `${encodeURI('/رزرو-نوبت')}?service=implant`)).toBe(
+      '/api/booking?service=implant',
+    );
+    expect(await target('POST', encodeURI('/اورژانس'))).toBe('/api/emergency');
+    expect(await target('GET', encodeURI('/رزرو-نوبت'))).toBe('/r/booking');
+    expect(await target('POST', encodeURI('/رزرو-نوبت/ثبت-شد'))).toBe('/r/booking/success');
+    expect(await target('POST', '/')).toBeNull();
+
+    // The answer of the API route keeps API headers: no page CSP nonce, no form cookie.
+    const res = await proxy(
+      new NextRequest(`http://localhost${encodeURI('/رزرو-نوبت')}`, {
+        method: 'POST',
+        body: 'a=1',
+      }),
+      ev,
+    );
+    expect(res.headers.get('content-security-policy')).toContain("default-src 'none'");
+    expect(res.headers.get('x-middleware-request-x-nonce')).toBeNull();
+    expect(res.headers.get('set-cookie')).toBeNull();
+    expect(res.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/);
+  });
+
+  it('PX18 maintenance keeps blocking both form posts and their API routes', async () => {
+    const { proxy } = await loadProxy({ MAINTENANCE_MODE: 'on' });
+    for (const path of [
+      encodeURI('/رزرو-نوبت'),
+      encodeURI('/اورژانس'),
+      '/api/booking',
+      '/api/emergency',
+    ]) {
+      const res = await proxy(
+        new NextRequest(`http://localhost${path}`, {
+          method: 'POST',
+          body: 'phone=1',
+          headers: { cookie: 'payload-token=forged' },
+        }),
+        ev,
+      );
+      expect(res.status, path).toBe(503);
+      expect(res.headers.get('x-middleware-rewrite'), path).toBeNull();
+    }
+  });
+
+  it('PX19 a flash is opened once on the GET of its page, handed over in a header, then deleted', async () => {
+    const secret = 'f'.repeat(48);
+    const { proxy } = await loadProxy({ SITE_URL: 'http://localhost', FORM_TOKEN_SECRET: secret });
+    const { sealFlash, readFlash } = await import('@/lib/http/flash');
+    const flash = {
+      form: 'booking' as const,
+      to: '/رزرو-نوبت/ثبت-شد',
+      outcome: 'success' as const,
+      at: Date.now(),
+      callback: 'پذیرش امروز از ساعت ۱۰ با شما تماس می\u200Cگیرد.',
+      masked: '۰۹۱۲ ••• ۶۷۸۹',
+    };
+    const get = (path: string, cookie: string, headers: Record<string, string> = {}) =>
+      proxy(
+        new NextRequest(`http://localhost${encodeURI(path)}`, {
+          headers: { cookie: `__Host-sefid-flash=${cookie}`, ...headers },
+        }),
+        ev,
+      );
+
+    const hit = await get('/رزرو-نوبت/ثبت-شد', sealFlash(secret, flash));
+    const header = hit.headers.get('x-middleware-request-x-sefid-flash');
+    expect(readFlash(new Headers({ 'x-sefid-flash': header ?? '' }))).toEqual(flash);
+    expect(hit.headers.get('set-cookie')).toMatch(/^__Host-sefid-flash=; Path=\/; .*Max-Age=0/);
+    expect(hit.headers.get('set-cookie')).toMatch(/Secure/);
+
+    // Another page leaves it for its own page; a forged or foreign one is deleted unread.
+    const other = await get('/درباره-ما', sealFlash(secret, flash));
+    expect(other.headers.get('x-middleware-request-x-sefid-flash')).toBeNull();
+    expect(other.headers.get('set-cookie')).toBeNull();
+    const forged = await get('/رزرو-نوبت/ثبت-شد', sealFlash('x'.repeat(48), flash));
+    expect(forged.headers.get('x-middleware-request-x-sefid-flash')).toBeNull();
+    expect(forged.headers.get('set-cookie')).toMatch(/Max-Age=0/);
+    // An old flash is gone; a client's own header never reaches the render.
+    const old = await get(
+      '/رزرو-نوبت/ثبت-شد',
+      sealFlash(secret, { ...flash, at: Date.now() - 11 * 60_000 }),
+    );
+    expect(old.headers.get('x-middleware-request-x-sefid-flash')).toBeNull();
+    const spoof = await proxy(
+      new NextRequest(`http://localhost${encodeURI('/رزرو-نوبت/ثبت-شد')}`, {
+        headers: { 'x-sefid-flash': header ?? 'x' },
+      }),
+      ev,
+    );
+    expect(spoof.headers.get('x-middleware-request-x-sefid-flash')).toBeNull();
+  });
 });

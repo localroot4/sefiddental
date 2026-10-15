@@ -80,6 +80,19 @@ export function isAuthLimitedPath(method: string, pathname: string): boolean {
   return method.toUpperCase() === 'POST' && AUTH_LIMITED_PATHS.has(pathname);
 }
 
+/**
+ * The API route a form post reaches (freeze G2): the forms keep their page path as `action` (the
+ * no-JS post), and a route handler cannot sit beside a page. POST of the exact path only.
+ */
+const FORM_POST_ROUTES = new Map([
+  [PAGE_PATHS.booking, '/api/booking'],
+  [PAGE_PATHS.emergency, '/api/emergency'],
+]);
+
+export function formPostTarget(method: string, pathname: string): string | null {
+  return method.toUpperCase() === 'POST' ? (FORM_POST_ROUTES.get(pathname) ?? null) : null;
+}
+
 /** GET or HEAD of a page that renders a form with server tokens (no-JS path). */
 export function needsFormSession(method: string, pathname: string): boolean {
   const m = method.toUpperCase();

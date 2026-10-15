@@ -12,6 +12,7 @@ import { Redirects } from './Redirects';
 import { ServiceCategories } from './ServiceCategories';
 import { Services } from './Services';
 import { ServiceTiers } from './ServiceTiers';
+import { SmsThrottle } from './SmsThrottle';
 import { AuditLog, EventsDaily } from './System';
 import { ArticleCategories, Tags } from './Taxonomies';
 import { Testimonials } from './Testimonials';
@@ -35,6 +36,7 @@ export const collections: CollectionConfig[] = [
   Cases,
   Redirects,
   EventsDaily,
+  SmsThrottle,
   AuditLog,
   Users,
 ];
