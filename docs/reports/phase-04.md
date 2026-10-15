@@ -244,7 +244,7 @@ per URL and theme. LCP cells: median (min to max).
 | LCP home `?tier=0` | 2.5 s | best of 5 (error) | light 2640 ms (2337 to 2660, 4 over); dark 2561 ms (2199 to 2640, 3 over). The gate passes; the median misses the target |
 | LCP home `?tier=1` | 2.5 s | median (warn) | light 2189 ms (2187 to 2653); dark 2643 ms (2186 to 2719): the warn fails in dark |
 | TBT, content (stands in for INP) | 200 ms | 400 ms interim (error) | 404 86 and 93 ms; service 138 and 66 ms; dentist 88 and 75 ms (light and dark medians) |
-| TBT, home `?tier=0` | 200 ms | 400 ms interim (error) | 218 ms light (198 to 230), 201 ms dark (183 to 215): target missed by 1 to 18 ms |
+| TBT, home `?tier=0` | 200 ms | 400 ms interim (error) | 218 ms light (198 to 230), 201 ms dark (183 to 215) in run `v3`; after `c83d717`: 117 and 95 ms. Target met |
 | TBT, home `?tier=1` | 200 ms | none | 465 ms light, 510 ms dark |
 | Lighthouse performance | 95 content, 90 home | 0.95 (warn) | content 0.97 to 0.99; home `?tier=0` 0.94 in both themes; `?tier=1` 0.85 and 0.84 |
 | CLS | 0.05 | 0.05 (error) | Under 0.05 on every asserted URL (the gate passed); e2e T-HOME7 and T-PG5 assert no shift when data arrives |
@@ -432,9 +432,9 @@ sterilization (49), the home services tile (52), dentist portraits (2).
 Engineering risks:
 
 - Home LCP at tier 0: the best-of-5 gate passes, but the median is 2561 to
-  2640 ms locally, over the 2.5 s target; TBT is 201 to 218 ms against
-  200. The framework (142.2 KiB shared JS) and the booking island are most
-  of it. Phase 7 adds the experience and must not add initial JS; options
+  2640 ms locally, over the 2.5 s target. TBT met its target after
+  `c83d717` (95 to 117 ms locally). The framework (142.3 KiB shared JS) and
+  the booking island are most of the remaining cost. Phase 7 adds the experience and must not add initial JS; options
   are an earlier first paint of the scrim text and a smaller booking
   island.
 - Class names without CSS: two utilities outside the reset scales (`sm:`
@@ -487,6 +487,33 @@ earlier runners), and the same code measures 4 times lower on the 4-core
 local host. Following the phase 3 procedure for a red TBT gate, the first
 step is the runner load: the Lighthouse step now waits up to 3 minutes for
 the 1-minute load average to fall under 1 before it measures (`ci.yml`,
-"Runner load before Lighthouse"). The limits are unchanged. If TBT stays
-red on a quiet runner, the next steps are 7 runs per URL and then a larger
-runner, which costs money and is the client's decision.
+"Runner load before Lighthouse"). The limits are unchanged.
+
+Run 38796456379 on `92664c0` (the runner waited 55 s for the load to fall
+to 0.98; benchmarkIndex 1954) was still red on TBT alone: 404 387 and 341
+ms, service 388 and 405, dentist 440 and 373, home `?tier=0` 612 and 600.
+So load was not the main cause. A trace comparison on the local host
+against an empty Next.js 16.4 page, in interleaved runs, showed that a
+local CPU slowdown of 8x reproduces the CI numbers for the content pages:
+there the framework floor alone blocks about 160 to 210 ms of the 400 ms
+limit. It also found three costs of our own and removed them in
+`c83d717`: a module-scope `Intl.NumberFormat` (about 10 ms in hydration on
+every page that formats numbers), the GPU probe at load when the tier is
+already fixed at 0, and the scroll engine evaluated and measuring the page
+at tier 0, where it builds nothing. Local home `?tier=0` TBT fell from 218
+and 201 ms to 117 and 95 ms.
+
+Run 38814171802 on `c83d717` passed both jobs (benchmarkIndex 2544, load
+0.99 at the start of Lighthouse; e2e 463 passed, 217 skipped):
+
+| URL | TBT median light | TBT median dark | LCP best of 5 light, dark |
+|---|---|---|---|
+| `/qa/not-found` | 252 ms (222 to 283) | 253 ms (223 to 311) | 1813, 1815 ms |
+| `/خدمات/ترمیم-دندان` | 215 ms (199 to 490) | 325 ms (244 to 390) | 2197, 1970 ms |
+| dentist (fixture) | 231 ms (184 to 391) | 209 ms (195 to 223) | 1900, 1905 ms |
+| home `?tier=0` | 215 ms (170 to 321) | 235 ms (156 to 360) | 2268, 2055 ms |
+
+The content pages stay close to the 400 ms limit on slow runners (run 27
+was red on a 1954 runner). If the gate turns red again on TBT alone, the
+options are a TBT gate measured against an empty Next.js page in the same
+job, or a 4-core runner, which costs money and is the client's decision.
