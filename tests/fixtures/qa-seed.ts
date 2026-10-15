@@ -102,11 +102,11 @@ const services = await payload.find({
   depth: 0,
   pagination: false,
 });
-const laminate = services.docs.find((s) => s.key === 'ceramic-laminate');
+const restoration = services.docs.find((s) => s.key === 'restoration');
 const guidePage = await first(
   payload.find({ collection: 'pages', where: { key: { equals: GUIDE_KEY } }, limit: 1, depth: 0 }),
 );
-if (!laminate || !guidePage) {
+if (!restoration || !guidePage) {
   throw new Error(
     'qa-fixture: the seeded services or the first-visit guide page are missing. Run the seeder first (npm run seed), then this fixture.',
   );
@@ -182,9 +182,9 @@ const sample = await upsert(
   'cases',
   { sourceFolder: { equals: FIXTURE_KEY } },
   {
-    title: `${MARK}: لمینت سرامیکی`,
+    title: `${MARK}: ترمیم دندان`,
     sourceFolder: FIXTURE_KEY,
-    service: laminate.id,
+    service: restoration.id,
     doctor: dentist.id,
     before,
     after,
@@ -207,7 +207,7 @@ const voice = await upsert(
   { seedKey: { equals: FIXTURE_KEY } },
   {
     patientLabel: MARK,
-    service: laminate.id,
+    service: restoration.id,
     type: 'video',
     video: clip,
     poster,
