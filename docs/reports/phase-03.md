@@ -579,7 +579,12 @@ runner spreads around the 200 ms target; LCP 1667 and 1825 ms; performance
 `src/lib/http/clientIp.test.ts`, flaky by design: it checked that a random
 per-process hex key did not contain `203`, which happens by chance in
 about 0.7% of runs. It now checks the dotted address prefix; 30 repeated
-runs pass. Final head: pending at the time of writing.
+runs pass. Run 38662019719 on `94d5a69` then passed both jobs. Its runner
+(benchmarkIndex 1980) blocked about twice as long as the 2539 one: 404 TBT
+median 308 ms light (242 to 373) and 372 ms dark (260 to 536), under the
+400 ms interim limit by 28 ms in dark; LCP 1711 and 1986 ms; performance
+0.92 and 0.91 (warning). CI now logs the runner load and the busiest
+processes before Lighthouse.
 
 Not verified: S3 storage mode (no bucket); the 25 MiB upload through the
 running app; real phone videos (only synthetic MP4 boxes); a stopped
@@ -848,12 +853,15 @@ Engineering risks:
   the worst single run is 2121 ms. Lighthouse adds every script that ran
   before the first paint of the unthrottled load, and that order changes
   between runs. Phase 4 content and islands use part of the margin.
-- TBT on content pages misses the 200 ms target on slow CI runners (265 to
-  292 ms on benchmarkIndex 1845); CI gates the interim 400 ms. The
-  framework's start-up task is most of it, and phase 4 islands add to it.
-  A runner about 10% slower than the slowest seen would fail the interim
-  gate in about 15% of runs: watch the TBT column of the spread table, and
-  raise `numberOfRuns` to 7 before raising the limit.
+- TBT on content pages misses the 200 ms target on CI runners: medians
+  127 to 218 ms on a fast runner, 265 to 372 ms on slow ones. CI gates the
+  interim 400 ms; the slowest run so far passed by 28 ms. Runner speed, not
+  benchmarkIndex, decides TBT (a 1980 runner was slower than an 1845 one).
+  The framework's start-up task is most of it, and phase 4 islands add to
+  it. If the gate turns red on TBT alone: read the runner-load step, check
+  the TBT column against earlier runs, raise `numberOfRuns` to 7 before
+  any limit change, and consider a larger runner (a cost, the client's
+  decision).
 - Production must serve HTTP/2 (`docs/deploy.md` 2.5 item 7, probe P5b);
   over HTTP/1.1 the LCP numbers above do not hold.
 - Framework JS floor: 131.8 KiB before any page code, so the 90 KB content

@@ -167,6 +167,13 @@ jobs:
         run: npm run test:e2e
       - name: Initial JS per page class
         run: npm run check:bundle
+      # TBT follows the runner's real speed, which benchmarkIndex misses (one runner at 1980 blocked
+      # twice as long as one at 2539): log the load and the busiest processes for a red TBT gate.
+      - name: Runner load before Lighthouse
+        run: |
+          cat /proc/loadavg
+          nproc
+          ps -eo pcpu,pmem,etimes,comm --sort=-pcpu | head -8
       - name: Lighthouse CI, light and dark
         run: npm run lhci
       - name: LCP spread and initial JS tables in the job summary
