@@ -8,6 +8,7 @@ import { JsonLd } from '@/components/seo/JsonLd';
 import { dentistNode, jsonLdGraph, websiteNode } from '@/lib/seo/jsonld';
 import { buildSiteMetadata } from '@/lib/seo/metadata';
 import { getSiteInputs } from '@/lib/seo/siteInputs';
+import { Analytics } from '@/components/analytics/Analytics';
 import { TrackListener } from '@/lib/track/TrackListener';
 
 // Every public page renders per request (freeze decision 1). Explicit, so `next build` never
@@ -40,6 +41,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         <>
           <JsonLd data={jsonLdGraph(dentistNode(clinic), websiteNode({ name: seo.siteName }))} />
           <TrackListener />
+          <Analytics />
         </>
       }
     >

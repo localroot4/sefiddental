@@ -237,7 +237,7 @@ card inside M and the booking block J), within the limit of two per family.
 | T-dentists-hub | compact hero (A) > dentist grid (F) > how the team works and sterilization standards (K) > booking (J) |
 | T-dentist | portrait split with name, specialty, council number (A) > fact row: degrees, years, memberships (B) > bio (K) > services performed (C) > cases (E) > articles authored or reviewed (K, list) > booking with the dentist noted (J) |
 | T-cases | compact hero with the consent line (A) > filter chips (`?service=`) > grid of compare sliders, each with a secondary-style «رزرو نوبت» link (E) > one primary booking block (J) |
-| T-pricing | compact hero (A) > how pricing works (K) > restoration tiers summary (D, static) > insurers: five featured plus «سایر بیمه‌ها» (B) > financing options when enabled (C) > FAQ (I) > booking (J) |
+| T-pricing | compact hero (A) > how pricing works (K) > restoration tiers summary (D; phase 5 decision G13: a radio per tier, none checked, one «رزرو نوبت» that carries the chosen tier) > insurers: the five featured by name under «همکاری با بیمه‌ها» (B; phase 5 decision G1 and freeze F31: no «سایر بیمه‌ها» or «طرف قرارداد» until gap 51 closes) > financing options when enabled (C) > FAQ (I) > booking (J) |
 | T-guide-hub | compact hero (A) > guide list (C) > booking (J) |
 | T-guide | reading column with TOC, reviewer box, sources (K) > booking (J) |
 | T-emergency | focused task (L) in the order of `docs/conversion.md` section 7.1, ending with address and directions |

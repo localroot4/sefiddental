@@ -65,9 +65,27 @@ export const PAGE_TYPES = [
   'other',
 ] as const;
 
+/*
+ * GA4-only parameter values (docs/analytics.md): the counter never stores them, so they need no
+ * normalization; the lists keep the senders on one vocabulary.
+ */
+/** `open_state` of `call_click` and `emergency_submit`: the hours state, else unknown. */
+export const OPEN_STATES = [
+  'before-open',
+  'open',
+  'closing-soon',
+  'closed',
+  'holiday',
+  'unknown',
+] as const;
+/** `provider` of `directions_click`. */
+export const PROVIDERS = ['google', 'neshan', 'balad', 'waze'] as const;
+
 export type EventName = (typeof EVENT_NAMES)[number];
 export type EventLocation = (typeof EVENT_LOCATIONS)[number];
 export type PageType = (typeof PAGE_TYPES)[number];
+export type OpenState = (typeof OPEN_STATES)[number];
+export type Provider = (typeof PROVIDERS)[number];
 
 export interface EventRow {
   date: string;

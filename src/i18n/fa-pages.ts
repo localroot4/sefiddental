@@ -57,6 +57,43 @@ export const PAGES_MESSAGES = {
   'pages.guide.faq': 'پرسش‌های پرتکرار',
   'pages.guide.reviewedOn': 'در',
 
+  // Pricing and payment (pricing-tiers-measure 1.2). Insurers only by name under «همکاری با
+  // بیمه‌ها» (freeze G1, F31); financing text only for an enabled option, the surcharge first (G14).
+  'pages.pricing.how': 'هزینهٔ درمان به چه بستگی دارد؟',
+  'pages.pricing.fromPrices': 'قیمت شروع خدمات',
+  'pages.pricing.services': 'دربارهٔ این درمان‌ها بخوانید',
+  'pages.pricing.tiers': 'ترمیم دندان در سه سطح',
+  'pages.pricing.insuranceShare':
+    'سهم بیمه به نوع درمان و بیمه‌نامهٔ شما بستگی دارد؛ پیش از نوبت از پذیرش بپرسید.',
+  'pages.pricing.financing': 'گزینه‌های پرداخت',
+  'pages.pricing.surcharge': 'هزینهٔ نهایی:',
+  'pages.pricing.maxAmount': 'سقف مبلغ',
+  'pages.pricing.upTo': 'تا',
+  // An amount in words (tomanInWords): «۲ میلیون و ۵۰۰ هزار تومان».
+  'pages.pricing.billion': 'میلیارد',
+  'pages.pricing.million': 'میلیون',
+  'pages.pricing.thousand': 'هزار',
+  'pages.pricing.and': 'و',
+  'pages.pricing.provider': 'شریک مالی',
+  'pages.pricing.whoApplies': 'چه کسی درخواست می‌دهد',
+  'pages.pricing.terms': 'شرایط',
+  'pages.pricing.finalDetails': 'جزئیات نهایی را پذیرش اعلام می‌کند.',
+  // conversion.md 8: the option's title fills {name}; never personal data.
+  'pages.pricing.financingWhatsappText': 'سلام، دربارهٔ شرایط پرداخت و {name} سؤال دارم.',
+
+  // Privacy (freeze G17): the parts that follow settings; the rest is seeded page text.
+  'pages.privacy.ga4': 'گوگل آنالیتیکس',
+  'pages.privacy.ga4Text':
+    'آمار سایت با گوگل آنالیتیکس هم اندازه‌گیری می‌شود. این سرویس در مرورگر شما کوکی می‌گذارد و اطلاعات بازدید، مثل صفحه‌ها و دکمه‌هایی که می‌زنید، را به گوگل می‌فرستد. شماره، نام یا توضیح شما هرگز برای آن فرستاده نمی‌شود.',
+  'pages.privacy.contact': 'پرسش یا درخواست حذف',
+  'pages.privacy.contactText':
+    'اگر دربارهٔ این صفحه پرسشی دارید یا می‌خواهید درخواست شما حذف شود، با کلینیک تماس بگیرید:',
+
+  // Restoration tiers with the visitor's choice (freeze G13): the radio group's name and the
+  // badge of the checked card. Never «انتخاب این سطح» (conversion.md 2).
+  'pages.tiers.legend': 'سطح ترمیم',
+  'pages.tiers.chosen': 'انتخاب شما',
+
   // Photo placeholders (freeze F3; gaps 45, 46, 47, 49 and the shot list numbers).
   'pages.photo.dentistsHub': 'عکس گروهی تیم در فضای کلینیک، افقی ۳:۲ و برش ۴:۵',
   'pages.photo.dentist': 'پرترهٔ ۴:۵ پزشک با روپوش، پس‌زمینهٔ ساده و روشن',

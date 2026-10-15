@@ -40,17 +40,20 @@ function pageTypeOfDocument(): string | undefined {
 /**
  * Sends one measurement event (spec 11.2): the first-party beacon with the four stored
  * dimensions (`location`, `pageType`, `serviceKey`; the server maps unknown values to
- * `other`/`none`), and the GA4 event with every param when GA4 is loaded. No cookies are sent;
+ * `other`/`none`), and the GA4 event with every param (`page_type` and `service_key` in snake
+ * case) when GA4 is loaded (docs/analytics.md). No cookies are sent;
  * failures are silent (a lost beacon never breaks the page).
  */
 export function track(event: EventName, params: Params = {}): void {
   if (typeof window === 'undefined' || !isEventName(event)) return;
-  const safe = clean(params);
+  const { pageType, serviceKey, ...rest } = clean(params);
+  const page = asText(pageType) ?? pageTypeOfDocument();
+  const service = asText(serviceKey);
   const body = JSON.stringify({
     event,
-    location: asText(safe.location),
-    pageType: asText(safe.pageType) ?? pageTypeOfDocument(),
-    serviceKey: asText(safe.serviceKey),
+    location: asText(rest.location),
+    pageType: page,
+    serviceKey: service,
   });
   try {
     const sent =
@@ -68,5 +71,12 @@ export function track(event: EventName, params: Params = {}): void {
   } catch {
     // Measurement never breaks the page.
   }
-  if (typeof window.gtag === 'function') window.gtag('event', event, safe);
+  // GA4 custom dimensions are snake_case (conversion.md 9); the beacon keeps the endpoint's keys.
+  if (typeof window.gtag === 'function') {
+    window.gtag('event', event, {
+      ...rest,
+      ...(page ? { page_type: page } : {}),
+      ...(service ? { service_key: service } : {}),
+    });
+  }
 }

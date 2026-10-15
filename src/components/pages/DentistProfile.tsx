@@ -166,7 +166,16 @@ export async function DentistProfile({ doctor }: { doctor: Doctor }) {
                   <ul className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
                     {pairs.map((pair) => (
                       <li key={pair.id}>
-                        <figure className="grid gap-3">
+                        <figure
+                          className="grid gap-3"
+                          data-service-key={
+                            pair.service == null
+                              ? undefined
+                              : catalog.get(
+                                  typeof pair.service === 'object' ? pair.service.id : pair.service,
+                                )?.key
+                          }
+                        >
                           <CompareSlider
                             before={
                               <Picture

@@ -80,7 +80,10 @@ export const FinancingOptions: CollectionConfig = {
       defaultValue: false,
       index: true,
       validate: withRules(checkbox, (_value, { data }) => financeRule(data)),
-      admin: { description: 'نمایش در سایت. فقط وقتی روشن کنید که شریک و شرایط قطعی است.' },
+      admin: {
+        description:
+          'نمایش در سایت. فقط وقتی روشن کنید که شریک و شرایط قطعی است. پس از روشن کردن، عنوان سئوی صفحهٔ هزینه‌ها را به «هزینه دندانپزشکی، بیمه و وام» تغییر دهید.',
+      },
     },
     orderField(),
   ],

@@ -14,7 +14,6 @@ import { Breadcrumbs } from '@/components/ui/Navigation';
 import { Picture } from '@/components/ui/Picture';
 import { TestimonialCard } from '@/components/ui/Testimonial';
 import { TextLink } from '@/components/ui/TextLink';
-import { TierComparison, type TierColumn } from '@/components/ui/Tiers';
 import { EMERGENCY_PATH, t } from '@/i18n/fa';
 import { getServiceTree } from '@/lib/data/catalog';
 import { getCases, getDoctors, getTestimonials } from '@/lib/data/content';
@@ -26,6 +25,9 @@ import { breadcrumbNode, faqPageNode, jsonLdGraph, serviceNode } from '@/lib/seo
 import type { Doctor, Service } from '@/payload-types';
 
 import { ltr } from '@/components/ui/ltr';
+import { HomeBookingPrefill } from '@/components/home/HomeBookingPrefill';
+
+import { RestorationTiers, TIERS_ANCHOR } from './RestorationTiers';
 import { RichBody } from './RichBody';
 import {
   Alternating,
@@ -36,17 +38,7 @@ import {
   ServiceSection,
   type Tone,
 } from './sections';
-import {
-  headingAnchors,
-  priceFromFa,
-  relatedServices,
-  serviceFacts,
-  splitBody,
-  whatsappHref,
-} from './view';
-
-/** The anchor of the restoration tiers; /vip lands on it (freeze F24). */
-export const TIERS_ANCHOR = 'سطح-ترمیم';
+import { headingAnchors, relatedServices, serviceFacts, splitBody, whatsappHref } from './view';
 
 const idOf = (value: number | { id: number } | null | undefined): number | null =>
   typeof value === 'object' && value !== null ? value.id : (value ?? null);
@@ -122,41 +114,8 @@ export async function ServiceTemplate({ service }: { service: Service }) {
             title={t('services.tiers.heading')}
             tone={tone}
           >
-            <TierComparison
-              label={t('services.tiers.rail')}
-              tiers={tiers.map((tier): TierColumn => {
-                const price = priceFromFa(tier.priceFrom);
-                return {
-                  key: tier.key,
-                  name: ltr(tier.name),
-                  summary: ltr(tier.description),
-                  rows: [
-                    ...(tier.materials
-                      ? [{ term: t('services.tiers.materials'), value: ltr(tier.materials) }]
-                      : []),
-                    ...(tier.highlights?.length
-                      ? [
-                          {
-                            term: t('services.tiers.highlights'),
-                            value: ltr(tier.highlights.join('، ')),
-                          },
-                        ]
-                      : []),
-                    ...(price ? [{ term: t('services.tiers.price'), value: price }] : []),
-                  ],
-                };
-              })}
-            />
-            {/* One primary CTA for the section and no preselected tier (freeze F24). */}
-            <ButtonLink
-              size="lg"
-              href={booking}
-              track={{ event: 'booking_open', location: 'tier', serviceKey: service.key }}
-              data-booking-cta=""
-              className="mt-8"
-            >
-              {t('services.book')}
-            </ButtonLink>
+            {/* One primary CTA for the section; it carries the tier the visitor picks (G13). */}
+            <RestorationTiers service={service} tiers={tiers} />
           </ServiceSection>
         )
       : null,
@@ -218,7 +177,7 @@ export async function ServiceTemplate({ service }: { service: Service }) {
             }
           >
             <div className="grid gap-8 md:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] md:items-center lg:gap-16">
-              <figure className="grid gap-3">
+              <figure className="grid gap-3" data-service-key={service.key}>
                 <CompareSlider
                   before={
                     <Picture
@@ -461,6 +420,7 @@ export async function ServiceTemplate({ service }: { service: Service }) {
       ) : null}
       <Alternating sections={sections} />
       <BookingBlock clinic={clinic} service={service.slug} />
+      {tiers.length ? <HomeBookingPrefill /> : null}
       <JsonLd
         data={jsonLdGraph(
           breadcrumbNode(crumbs.map((c) => ({ name: c.label, path: c.href }))),

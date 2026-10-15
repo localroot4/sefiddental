@@ -1,6 +1,7 @@
 // e2e-only fixture (freeze F9): the client has published no dentist, guide, case or testimonial
 // yet, so their templates have no page to screenshot, scan or audit. This adds one of each on top
-// of the real seed, every visible string starting «نمونهٔ آزمایشی». `npm run db:e2e` runs it after
+// of the real seed, and enables one financing option (QA-FIN), every visible string it writes
+// starting «نمونهٔ آزمایشی». `npm run db:e2e` runs it after
 // the seeder; src/seed never does. Safe to repeat: it finds its own documents and updates them.
 // `payload run` passes no flags, so the database comes from DATABASE_URL like the seeder's.
 import { readFileSync } from 'node:fs';
@@ -220,7 +221,35 @@ const voice = await upsert(
   },
 );
 
+// QA-FIN (phase 5 freeze G18): the seed keeps every financing option off, so the pricing page
+// would never show one. Turn the partner loan on with sample partner and terms, which the enable
+// rule (V-FINANCE) requires; the dental credit stays off, so one database state shows both.
+const loan = await first(
+  payload.find({
+    collection: 'financing-options',
+    where: { key: { equals: 'partner-loan' } },
+    limit: 1,
+    depth: 0,
+  }),
+);
+if (!loan) {
+  throw new Error(
+    'qa-fixture: the seeded financing option partner-loan is missing. Run the seeder first (npm run seed), then this fixture.',
+  );
+}
+await payload.update({
+  collection: 'financing-options',
+  id: loan.id,
+  data: {
+    provider: `${MARK}: شریک مالی`,
+    terms: `${MARK}: شرایط و مدارک نمونه برای آزمودن صفحهٔ هزینه و پرداخت.`,
+    enabled: true,
+    _status: 'published',
+  } as never,
+  context,
+});
+
 // The e2e scripts grep this line: `payload run` can exit 0 before the script ran.
 payload.logger.info(
-  `qa-fixture: dentist /پزشکان/${dentist.slug}, guide ${guide.path}, case ${sample.id}, testimonial ${voice.id}`,
+  `qa-fixture: dentist /پزشکان/${dentist.slug}, guide ${guide.path}, case ${sample.id}, testimonial ${voice.id}, financing ${loan.key}`,
 );

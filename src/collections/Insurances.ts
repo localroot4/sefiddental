@@ -36,7 +36,8 @@ export const Insurances: CollectionConfig = {
       'featured',
       'بیمهٔ اصلی',
       5,
-      'جزو پنج بیمهٔ اصلی است. بقیه زیر «سایر بیمه‌ها» می‌آیند.',
+      // No «سایر بیمه‌ها» line until the clinic confirms the other contracts (gap 51, F31).
+      'جزو پنج بیمهٔ اصلی است و با نامش در سایت می‌آید. بیمه‌های دیگر در سایت نمایش داده نمی‌شوند.',
     ),
     orderField(),
   ],

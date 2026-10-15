@@ -233,7 +233,7 @@ export function CasesSection(props: { cases: HomeCase[]; copy: Copy }) {
       }
     >
       <div className="grid gap-8 md:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] md:items-center lg:gap-16">
-        <figure className="grid gap-3">
+        <figure className="grid gap-3" data-service-key={featured.service?.key}>
           <CompareSlider
             before={
               <Picture

@@ -10,6 +10,7 @@ import { t } from '@/i18n/fa';
 import { dentistNode, jsonLdGraph, websiteNode } from '@/lib/seo/jsonld';
 import { SITE_ICONS } from '@/lib/seo/metadata';
 import { getSiteInputs, SEO } from '@/lib/seo/siteInputs';
+import { Analytics } from '@/components/analytics/Analytics';
 import { TrackListener } from '@/lib/track/TrackListener';
 
 // 404 for every URL no route matches (experimental.globalNotFound): a full document rendered per
@@ -45,6 +46,7 @@ export default async function GlobalNotFound() {
         <>
           <JsonLd data={jsonLdGraph(dentistNode(clinic), websiteNode({ name: seo.siteName }))} />
           <TrackListener />
+          <Analytics />
         </>
       }
     >

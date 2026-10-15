@@ -3,6 +3,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 
 import { toPersianDigits } from '@/lib/persianText';
+import { track } from '@/lib/track/track';
 
 import { cx } from './cx';
 
@@ -12,7 +13,8 @@ import { cx } from './cx';
  * gives pointer, touch and arrow keys; it writes `--pos` through CSSOM (no style attribute in the
  * server HTML). Without JavaScript the range moves and the clip stays at 50%. The media and the
  * handle glyphs arrive as server-rendered nodes, the labels as props: no icon code and no message
- * table in the island (F2).
+ * table in the island (F2). The first move of the divider, by pointer or keys, sends one
+ * `case_slider_use` with the `data-service-key` of an ancestor (conversion.md 9).
  */
 export function CompareSlider(props: {
   before: ReactNode;
@@ -23,6 +25,7 @@ export function CompareSlider(props: {
 }) {
   const root = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState(50);
+  const used = useRef(false);
   return (
     <div
       ref={root}
@@ -49,12 +52,16 @@ export function CompareSlider(props: {
         value={value}
         aria-label={props.labels.slider}
         aria-valuetext={`${toPersianDigits(String(value))} ${props.labels.percent}`}
-        data-track="case_slider_use"
-        data-location="section"
         onChange={(event) => {
           const next = Number(event.currentTarget.value);
           root.current?.style.setProperty('--pos', String(next));
           setValue(next);
+          if (used.current) return;
+          used.current = true;
+          const serviceKey = root.current
+            ?.closest('[data-service-key]')
+            ?.getAttribute('data-service-key');
+          track('case_slider_use', { location: 'section', ...(serviceKey ? { serviceKey } : {}) });
         }}
         className="absolute inset-0 z-10 m-0 size-full cursor-ew-resize opacity-0 focus-visible:outline-none"
       />

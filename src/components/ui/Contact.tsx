@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
-import { t } from '@/i18n/fa';
-import type { EventLocation } from '@/lib/events/allowlist';
+import { t, type MessageKey } from '@/i18n/fa';
+import type { EventLocation, Provider } from '@/lib/events/allowlist';
 import { formatPhoneFa, telHref } from '@/lib/phone';
 import type { Clinic } from '@/payload-types';
 
@@ -48,11 +48,11 @@ export function PhoneNumber(props: {
 type Maps = NonNullable<Clinic['maps']>;
 
 const APPS = [
-  ['googleMapsUrl', 'ui.directions.google'],
-  ['neshanUrl', 'ui.directions.neshan'],
-  ['baladUrl', 'ui.directions.balad'],
-  ['wazeUrl', 'ui.directions.waze'],
-] as const;
+  ['googleMapsUrl', 'ui.directions.google', 'google'],
+  ['neshanUrl', 'ui.directions.neshan', 'neshan'],
+  ['baladUrl', 'ui.directions.balad', 'balad'],
+  ['wazeUrl', 'ui.directions.waze', 'waze'],
+] as const satisfies ReadonlyArray<readonly [keyof Maps, MessageKey, Provider]>;
 
 /**
  * «مسیریابی» with the deep links the clinic filled in (brief decision 12: no map script, no
@@ -63,9 +63,9 @@ export function DirectionsLinks(props: {
   location?: EventLocation;
   className?: string;
 }) {
-  const links = APPS.flatMap(([field, key]) => {
+  const links = APPS.flatMap(([field, key, provider]) => {
     const href = props.maps?.[field];
-    return href ? [{ href, label: t(key) }] : [];
+    return href ? [{ href, label: t(key), provider }] : [];
   });
   if (links.length === 0) return null;
   return (
@@ -82,6 +82,7 @@ export function DirectionsLinks(props: {
               rel="noopener"
               data-track="directions_click"
               data-location={props.location ?? 'page'}
+              data-provider={link.provider}
               className="inline-flex min-h-target items-center rounded-pill px-3 text-small font-medium text-brand-strong transition-colors hover:bg-brand-soft"
             >
               {link.label}
