@@ -5,6 +5,7 @@
 //                                             reads Vazirmatn-wght.woff2: no brackets in its URL)
 //   src/lib/system-pages/staticPage.ts     -> public/maintenance.html (platform serves it when Node is down)
 //                                             and public/brand/lockup.svg (the header logo sprite)
+//   src/components/ui/icons.ts             -> public/brand/icons.svg (Phosphor and brand-mark sprite)
 //   node_modules/detect-gpu/dist/benchmarks -> public/detect-gpu/benchmarks/ (no third-party CDN)
 import {
   copyFileSync,
@@ -81,6 +82,27 @@ if (existsSync(staticPage)) {
   maintenance = 'written';
 }
 
+// Icon sprite (freeze F2): only the names in src/components/ui/icons.ts, whose committed hash
+// is the cache-busting query of every <use>; a stale hash fails here instead of in a browser.
+const ui = (name) => pathToFileURL(from('src', 'components', 'ui', name)).href;
+const { ICONS, ICON_SPRITE_HASH } = await import(ui('icons.ts'));
+const { buildIconSprite, iconSourceFile } = await import(ui('iconSprite.ts'));
+// Resolved through the package's exports map, wherever npm placed it.
+const phosphorAssets = path.resolve(
+  fileURLToPath(import.meta.resolve('@phosphor-icons/core/regular/x.svg')),
+  '../..',
+);
+const sprite = buildIconSprite(ICONS, (source) =>
+  readFileSync(path.resolve(root, iconSourceFile(source, phosphorAssets)), 'utf8'),
+);
+if (sprite.hash !== ICON_SPRITE_HASH) {
+  console.error(
+    `sync-public-assets: the icon sprite hashes to ${sprite.hash}, but ICON_SPRITE_HASH in src/components/ui/icons.ts is ${ICON_SPRITE_HASH}. Set it to ${sprite.hash}.`,
+  );
+  process.exit(1);
+}
+writeFileSync(path.join(pub, 'brand', 'icons.svg'), sprite.svg);
+
 console.log(
-  `sync-public-assets: ${copies.length} brand and font files, favicon.ico, detect-gpu benchmarks; maintenance.html and brand/lockup.svg ${maintenance}`,
+  `sync-public-assets: ${copies.length} brand and font files, favicon.ico, detect-gpu benchmarks, brand/icons.svg (${Object.keys(ICONS).length} icons); maintenance.html and brand/lockup.svg ${maintenance}`,
 );

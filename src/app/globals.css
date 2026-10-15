@@ -8,11 +8,32 @@
 /* Banned: h-screen (use min-h-[100dvh]). */
 @source not inline('h-screen');
 
-/* Tokens documented in DESIGN.md but missing from design/tokens.css. */
+/* Tokens documented in DESIGN.md but missing from design/tokens.css. The backdrop behind modal
+   dialogs and sheets is a studio decision (phase 4): navy at 45% in light, near-black at 60% in
+   dark, where a navy veil would not dim the navy page. The danger button hover is the light
+   `danger` red in both themes, like the fill it darkens (white label 5.70:1). */
 :root {
   --leading-caption: 1.6;
   --text-hero: clamp(2rem, 1rem + 3vw, 3.75rem);
   --color-on-danger: #ffffff;
+  --color-danger-strong: #c81e2e;
+  --color-backdrop: rgb(10 36 63 / 0.45);
+}
+[data-theme='dark'] {
+  --color-backdrop: rgb(2 10 18 / 0.6);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-backdrop: rgb(2 10 18 / 0.6);
+  }
+}
+/* Loading indicators are the only loops (DESIGN.md section 9): under reduced motion the skeleton
+   pulse stops and the spinner slows down. Unlayered, so it wins over the theme layer. */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --animate-pulse: none;
+    --animate-spin: spin 1.6s linear infinite;
+  }
 }
 
 /* dark: follows an explicit data-theme and, without one, the system preference. */
@@ -33,6 +54,30 @@
   --breakpoint-lg: 64rem; /* 1024 */
   --breakpoint-xl: 80rem; /* 1280 */
   --breakpoint-2xl: 96rem; /* 1536 */
+
+  /* Not inline: utilities read var(--animate-*), so the reduced-motion rule above can change them.
+     The defaults (bounce, ping) loop forever and are banned. */
+  --animate-*: initial;
+  --animate-spin: spin 0.8s linear infinite;
+  --animate-pulse: pulse 1.4s var(--ease-in-out) infinite;
+  --animate-draw: draw var(--dur-4) var(--ease-out) forwards;
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  @keyframes pulse {
+    50% {
+      opacity: 0.55;
+    }
+  }
+  /* The success check: strokes with pathLength="1" drawn from dashoffset 1 (conversion.md 5.4). */
+  @keyframes draw {
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
 }
 
 @theme inline {
@@ -42,6 +87,17 @@
   --radius-*: initial;
   --shadow-*: initial;
   --spacing: initial;
+  /* Letter-spacing Persian is banned (DESIGN.md section 2); one container scale. */
+  --tracking-*: initial;
+  --container-*: initial;
+
+  /* Motion tokens (DESIGN.md section 9): every duration is 0 under reduced motion (tokens.css),
+     so a bare `transition-colors` follows the tokens without a motion-reduce: variant. */
+  --ease-*: initial;
+  --ease-out: var(--ease-out);
+  --ease-in-out: var(--ease-in-out);
+  --default-transition-duration: var(--dur-2);
+  --default-transition-timing-function: var(--ease-out);
 
   --default-font-family: var(--font-body);
   --font-body: var(--font-body);
@@ -68,6 +124,7 @@
   --color-success-fill: var(--color-success-fill);
   --color-danger: var(--color-danger);
   --color-danger-fill: var(--color-danger-fill);
+  --color-danger-strong: var(--color-danger-strong);
   --color-on-danger: var(--color-on-danger);
   --color-warning: var(--color-warning);
   --color-warning-fill: var(--color-warning-fill);
@@ -80,8 +137,10 @@
   --color-cat-ortho: var(--color-cat-ortho);
   --color-cat-kids: var(--color-cat-kids);
   --color-focus: var(--color-focus);
+  --color-backdrop: var(--color-backdrop);
 
   --text-hero: var(--text-hero);
+  --text-hero--line-height: var(--leading-display);
   --text-display-1: var(--text-display-1);
   --text-display-1--line-height: var(--leading-display);
   --text-display-2: var(--text-display-2);
@@ -106,6 +165,9 @@
   --shadow-raised: var(--shadow-raised);
   --shadow-floating: var(--shadow-floating);
 
+  /* 0 and 1 px exist beside the 4 px scale (inset-0, m-0, translate-y-0, border math). */
+  --spacing-0: 0px;
+  --spacing-px: 1px;
   --spacing-1: var(--space-1);
   --spacing-2: var(--space-2);
   --spacing-3: var(--space-3);
@@ -121,6 +183,7 @@
   --spacing-target: var(--target);
   --spacing-target-lg: var(--target-lg);
   --spacing-nav: var(--nav-h);
+  --spacing-sticky-bar: var(--sticky-bar-h);
 
   --container-content: var(--container);
   --container-wide: var(--container-wide);
@@ -131,6 +194,12 @@
   html {
     background: var(--color-surface);
     color: var(--color-ink);
+    /* No fake bold or italic for Persian (DESIGN.md section 2). */
+    font-synthesis: none;
+    accent-color: var(--color-brand);
+    caret-color: var(--color-brand);
+    /* Anchors such as #سطح-ترمیم land below the sticky header. */
+    scroll-padding-block-start: calc(var(--nav-h) + var(--space-4));
   }
   body {
     background: var(--color-surface);
@@ -138,9 +207,15 @@
     font-size: var(--text-body);
     line-height: var(--leading-body);
   }
+  ::selection {
+    background: var(--color-brand-soft);
+    color: var(--color-ink);
+  }
+  /* An outline, not a box-shadow: it survives forced-colors mode and shadow utilities (F20, D-1).
+     2 px ring, 2 px gap, 3:1 in both themes (DESIGN.md 1.1). */
   :focus-visible {
-    outline: none;
-    box-shadow: var(--focus-ring);
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
   }
   /* No one-word last line under a wrapped heading or paragraph. */
   h1,
@@ -163,7 +238,8 @@
   .skip-link {
     position: absolute;
     inset-inline-start: var(--space-4);
-    inset-block-start: -100px;
+    inset-block-start: var(--space-2);
+    translate: 0 calc(-100% - var(--space-4));
     z-index: 60;
     display: inline-flex;
     align-items: center;
@@ -174,10 +250,10 @@
     color: var(--color-on-brand);
     font-size: var(--text-small);
     text-decoration: none;
-    transition: inset-block-start var(--dur-2) var(--ease-out);
+    transition: translate var(--dur-2) var(--ease-out);
   }
   .skip-link:focus-visible {
-    inset-block-start: var(--space-2);
+    translate: 0;
   }
   main:focus {
     outline: none;
