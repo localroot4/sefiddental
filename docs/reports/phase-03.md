@@ -1,9 +1,9 @@
 # Phase 03 - Project Foundation and Infrastructure
 
-Date: 2026-10-13 to 2026-10-14.
+Date: 2026-10-13 to 2026-10-15.
 
-Commit range: `513f004` to `08ff9b0` on `main`, 14 commits, oldest first.
-This report lands in the commit after `08ff9b0`.
+Commit range: `513f004` to `d69749a` on `main`, 32 commits, oldest first.
+The commit after `d69749a` updates this header.
 
 - `513f004` Write the phase 3 plan and the frozen decisions
 - `c3c90d4` Scaffold the Next.js 16 app with Payload 3 at /admin
@@ -19,10 +19,29 @@ This report lands in the commit after `08ff9b0`.
 - `5eaead1` Write the README and the host-agnostic deploy guide
 - `d355891` Record the phase 3 deviations in the source documents
 - `08ff9b0` Checkpoint the security fixes in progress
+- `36fb4c4` Fix the CI workflow so GitHub accepts it
+- `bf2977b` Link the new gap rows from the content-gap registry
+- `55d79ff` Complete the phase 3 report and align the docs with the fixes
+- `16320f7` Stop the Payload CLI from exiting before the script runs
+- `a4f51c7` Rerun Payload CLI commands whose TypeScript loader stalls
+- `1e85aad` Scan the 500 page after hydration and record why
+- `96b0e5b` Annotate failed Lighthouse assertions in CI
+- `fec689e` Calibrate the Lighthouse CPU slowdown to the host
+- `8a3a4e0` Serve the header logo from one cached sprite
+- `542747c` Measure Lighthouse over HTTPS and HTTP/2
+- `24aee53` Run the CI Postgres health check as the postgres role
+- `3e2a854` Harden the Lighthouse TLS front
+- `317a4b5` Record the first green CI run in the phase 3 report
+- `109c2bd` Drop the CI items the green run closed
+- `e2b3cfa` Gate content-page TBT at an interim limit above the framework floor
+- `70b526e` Stop the rate-limit key test from failing by chance
+- `94d5a69` Record the CI run after the TBT decision
+- `d69749a` Log the runner load before Lighthouse and record the final CI run
 
 Versions used. Runtime: Node 22.22.0 locally (`engines` `>=22.18.0`), npm
 10.9.4, PostgreSQL 16.15 locally and `postgres:16` in CI, Chromium 141
-(Playwright build 1194) locally, Lighthouse 12.6.1 inside `@lhci/cli`,
+(Playwright build 1194) locally and Chrome for Testing 156 (Playwright build
+1248) in CI, Lighthouse 12.6.1 inside `@lhci/cli`,
 drizzle-orm 0.45.2 inside both Payload database adapters. `package.json` pins
 every dependency to an exact version. Each one has one reason:
 
