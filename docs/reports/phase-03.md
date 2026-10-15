@@ -618,8 +618,9 @@ Lighthouse's `docs/variability.md` asks for at least 2 dedicated cores (4
 recommended) and calls free CI environments volatile. A second independent
 check accepted the best of 5 runs for LCP and rejected it for TBT, whose
 best run follows host speed (72 to 262 ms for the same code); its table of
-what each gate still catches is in the review section. CI after this
-change: pending at the time of writing.
+what each gate still catches is in the review section. After this change
+and a type fix in its test, run 38668120125 on `d050844` passed both jobs
+(runner benchmarkIndex 2498; e2e 228 passed, 20 skipped).
 
 Not verified: S3 storage mode (no bucket); the 25 MiB upload through the
 running app; real phone videos (only synthetic MP4 boxes); a stopped
