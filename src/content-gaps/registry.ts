@@ -317,7 +317,7 @@ export const YAML_MARKER_GAPS: Readonly<Record<string, string>> = {
 
 /** Prose fields scanned for inline `[[NEEDS_CLIENT: …]]` markers (drafts included). */
 export const MARKER_FIELDS: Readonly<Partial<Record<CollectionSlug, readonly string[]>>> = {
-  'service-categories': ['title', 'h1', 'navLabel', 'summary'],
+  'service-categories': ['title', 'h1', 'navLabel', 'summary', 'intro'],
   services: [
     'navLabel',
     'h1',
@@ -340,6 +340,7 @@ export const MARKER_FIELDS: Readonly<Partial<Record<CollectionSlug, readonly str
 const GLOBAL_MARKER_FIELDS: Readonly<Record<'clinic' | 'seo-defaults', readonly string[]>> = {
   clinic: [
     'tagline',
+    'footerLine',
     'contactHeadline',
     'address.fullFa',
     'address.accessNotes',

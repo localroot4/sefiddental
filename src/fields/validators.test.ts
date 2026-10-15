@@ -15,9 +15,11 @@ import {
   pairRule,
   readingMinutes,
   reviewerRule,
+  richProseRule,
   slugRule,
   sourcesRule,
   specialtyRule,
+  subtextRule,
   titleRule,
 } from './validators';
 
@@ -84,6 +86,32 @@ describe('editorial validators (spec-data 5.3): one pass, one fail, exact messag
     expect(bannedRule('الف — ب')).toBe(
       'خط تیرهٔ بلند (—) مجاز نیست؛ از ویرگول، دونقطه یا جملهٔ تازه استفاده کنید.',
     );
+  });
+
+  it('V-RICH (F17) markers and banned words inside rich text block publishing', () => {
+    const rich = (...texts: string[]) => body(...texts.map((text) => ({ type: 'text', text })));
+    expect(richProseRule(rich('ترمیم دندان با ', 'کامپوزیت همرنگ'))).toBe(true);
+    expect(richProseRule(null)).toBe(true);
+    expect(richProseRule(rich('پارکینگ: [[NEEDS_CLIENT: پارکینگ]]'))).toBe(
+      'متن هنوز علامت «[[NEEDS_CLIENT]]» دارد. پیش از انتشار، اطلاعات واقعی را جایگزین کنید.',
+    );
+    expect(richProseRule(rich('نتیجهٔ ', 'تضمینی'))).toBe(
+      'واژهٔ «تضمینی» در متن مجاز نیست. یک واقعیت قابل‌بررسی جایش بنویسید.',
+    );
+  });
+
+  it('V-SUBTEXT (F7) counts the free-consultation sentence while the flag is on', () => {
+    const fifteen = Array.from({ length: 15 }, () => 'واژه').join(' ');
+    expect(subtextRule(fifteen, true)).toBe(true);
+    expect(subtextRule(`${fifteen} یک`, true)).toBe(
+      'متن زیر تیتر با جملهٔ «مشاورهٔ اول رایگان است.» ۲۰ واژه است. حداکثر ۱۹ واژه مجاز است.',
+    );
+    expect(subtextRule(`${fifteen} یک دو سه چهار`, false)).toBe(true);
+    expect(subtextRule(`${fifteen} یک دو سه چهار پنج`, false)).toBe(
+      'متن زیر تیتر ۲۰ واژه است. حداکثر ۱۹ واژه مجاز است.',
+    );
+    expect(subtextRule('می‌شوید', true)).toBe(true);
+    expect(subtextRule('', true)).toBe(true);
   });
 
   it('V-REVIEWER and V-SOURCES apply to medical content only', () => {

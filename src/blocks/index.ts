@@ -1,13 +1,23 @@
 import type { Block } from 'payload';
+import { richText } from 'payload/shared';
 
-import { faqsArray, proseText, proseTextarea } from '@/fields/factories';
+import { faqsArray, proseText, proseTextarea, withRules } from '@/fields/factories';
+import { richProseRule } from '@/fields/validators';
 
 /** Page and service body blocks (spec-data 5.5). Slugs are camelCase (spec-data P15). */
 
 export const ContentBlock: Block = {
   slug: 'content',
   labels: { singular: 'متن', plural: 'متن‌ها' },
-  fields: [{ name: 'body', type: 'richText', label: 'متن', required: true }],
+  fields: [
+    {
+      name: 'body',
+      type: 'richText',
+      label: 'متن',
+      required: true,
+      validate: withRules(richText, richProseRule),
+    },
+  ],
 };
 
 export const StepsBlock: Block = {
@@ -72,4 +82,4 @@ export const CalloutBlock: Block = {
 };
 
 export const SERVICE_BLOCKS: Block[] = [ContentBlock, StepsBlock, CalloutBlock];
-export const PAGE_BLOCKS: Block[] = [ContentBlock, FaqBlock, FactsBlock, CalloutBlock];
+export const PAGE_BLOCKS: Block[] = [ContentBlock, StepsBlock, FaqBlock, FactsBlock, CalloutBlock];

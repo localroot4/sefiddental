@@ -290,6 +290,7 @@ export async function runSeed(
   // 2. Services, their tiers and aliases.
   const serviceIds = new Map<string, Id>();
   const position = new Map<string, number>();
+  const newRelated: (typeof services.data.services)[number][] = [];
   for (const service of services.data.services) {
     const categoryId = categoryIds.get(service.category);
     if (categoryId === undefined) {
@@ -299,12 +300,34 @@ export async function runSeed(
     }
     const index = position.get(service.category) ?? 0;
     position.set(service.category, index + 1);
-    const { id } = await upsert(
+    const { id, created } = await upsert(
       'services',
       { key: { equals: service.key } },
       serviceData(service, categoryId, (index + 1) * 10),
     );
     serviceIds.set(service.key, id);
+    if (service.related?.length && (created || mode === 'sync')) newRelated.push(service);
+  }
+
+  // 2b. Related services point at other services, so they are set once all of them exist.
+  for (const service of newRelated) {
+    const related = (service.related ?? []).map((key) => {
+      const id = serviceIds.get(key);
+      if (id === undefined) {
+        throw new SeedDataError(
+          `${SEED_FILES.services}:${services.lineOf(['services', services.data.services.indexOf(service), 'related'])}: unknown service "${key}".`,
+        );
+      }
+      return id;
+    });
+    if (!dry) {
+      await api.update({
+        collection: 'services',
+        id: serviceIds.get(service.key),
+        data: { relatedServices: related },
+        context: SEED_CONTEXT,
+      });
+    }
   }
 
   // 3. Standalone categories point at the service with their key, then publish.

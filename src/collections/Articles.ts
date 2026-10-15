@@ -13,7 +13,13 @@ import {
   sourcesArray,
   withRules,
 } from '@/fields/factories';
-import { authorRule, linksRule, reviewerRule, sourcesRule } from '@/fields/validators';
+import {
+  authorRule,
+  linksRule,
+  reviewerRule,
+  richProseRule,
+  sourcesRule,
+} from '@/fields/validators';
 import { articleComputed } from '@/hooks/computed';
 import { contentHooks } from '@/hooks/compose';
 import { readEnv } from '@/lib/env';
@@ -95,7 +101,7 @@ export const Articles: CollectionConfig = {
       type: 'richText',
       label: 'متن',
       required: true,
-      validate: withRules(richText, (value) => linksRule(value, readEnv().siteUrl)),
+      validate: withRules(richText, richProseRule, (value) => linksRule(value, readEnv().siteUrl)),
       admin: { description: 'متن مقاله. دست‌کم دو پیوند داخلی به صفحه‌های سایت بگذارید.' },
     },
     {

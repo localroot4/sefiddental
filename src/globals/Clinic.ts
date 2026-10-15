@@ -2,7 +2,7 @@ import type { ArrayField, Field, GlobalBeforeChangeHook, GlobalConfig, TextField
 import { array, text } from 'payload/shared';
 
 import { hiddenForEditors, isAdmin } from '@/access/roles';
-import { imageUpload, withRules } from '@/fields/factories';
+import { imageUpload, proseText, withRules } from '@/fields/factories';
 import { globalHooks } from '@/hooks/compose';
 import { clinicHoursSchema, type ClinicHours } from '@/lib/hoursState';
 import { jalaliToDateKey } from '@/lib/jalali';
@@ -256,6 +256,7 @@ export const Clinic: GlobalConfig = {
         'nameShortFa',
         'tagline',
         'contactHeadline',
+        'footerLine',
         'address.fullFa',
         'address.city',
         'address.district',
@@ -318,6 +319,10 @@ export const Clinic: GlobalConfig = {
       maxLength: 60,
       admin: { description: 'تیتر صفحهٔ آدرس و ساعات.' },
     },
+    proseText('footerLine', 'معرفی کوتاه پانویس', {
+      maxLength: 120,
+      description: 'یک جملهٔ کوتاه زیر نام کلینیک در پانویس سایت، فقط با واقعیت‌های تأییدشده.',
+    }),
     {
       name: 'domain',
       type: 'text',
@@ -459,7 +464,7 @@ export const Clinic: GlobalConfig = {
           type: 'text',
           label: 'توضیح',
           maxLength: 80,
-          admin: { description: 'توضیح کوتاه ساعات، مثل «همه‌روزه به‌جز تعطیلات رسمی».' },
+          admin: { description: 'توضیح کوتاه ساعات، مثل «هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی».' },
         },
         weekly,
         holidays,

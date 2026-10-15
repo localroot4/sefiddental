@@ -131,9 +131,8 @@ Research to apply (cite in reports, apply in design):
   the mark as toothpaste squeezed onto a toothbrush head, and the long bar
   of the wordmark as the brush handle. Source: `content/brand/logo-horizontal.png`
   and the traced `content/brand/logo-horizontal.svg`, cleaned into
-  `design/brand/`. The client's approval of the trace was asked at the phase 2
-  gate and is still pending on 2026-10-13. Phase 3 uses the trace as is;
-  launch needs an explicit yes or the original vector (gap 1).
+  `design/brand/`. The client approved the trace on 2026-10-13 (gap 1, done):
+  the trace in `design/brand/` is final.
 - Signage: the sign reads «کلینیک دندانپزشکی سفید» with the logo; this is
   the canonical name everywhere.
 - Palette (`content/brand/palette.pdf`): teal `#00827A` (primary), deep teal
@@ -296,7 +295,7 @@ Placeholders are explicit `[[NEEDS_CLIENT: ...]]` markers and are tracked in
 
 | # | Decision | Rationale |
 |---|---|---|
-| 1 | Stack: Next.js (current stable, App Router, TypeScript), Payload CMS 3 inside the app (admin `/admin`, Persian, RTL), PostgreSQL, Tailwind CSS v4, Motion for UI, GSAP plus Lenis for scroll, three.js with React Three Fiber for WebGL 2, `detect-gpu` plus a frame monitor for quality tiers | The client chose Next.js and a WebGL experience; Payload keeps the CMS in the same codebase and deploy; server components keep content pages light and SEO-first. Replaces the Laravel plan of v1. |
+| 1 | Stack: Next.js (current stable, App Router, TypeScript), Payload CMS 3 inside the app (admin `/admin`, Persian, RTL), PostgreSQL, Tailwind CSS v4, CSS motion and native elements for UI (no Motion library since phase 4), GSAP plus Lenis for scroll, three.js with React Three Fiber for WebGL 2, `detect-gpu` plus a frame monitor for quality tiers | The client chose Next.js and a WebGL experience; Payload keeps the CMS in the same codebase and deploy; server components keep content pages light and SEO-first. Replaces the Laravel plan of v1. Phase 4: the Motion library is not added; the JavaScript headroom (10 KiB on content pages, 19.5 KiB on home) leaves no room for it, so UI motion is CSS on transform and opacity (motion tokens, none under reduced motion) with native `<dialog>`, `<details>` and the Popover API, and client islands only where behaviour needs JavaScript. |
 | 2 | Deploy: GitHub Actions on push to `main` builds, tests and deploys to a Node host (Liara or ArvanCloud PaaS, or the client's VPS); managed PostgreSQL and object storage for media | Next.js with Payload needs Node and a database. Keeps the push-to-deploy habit. The hosting path is confirmed once gap 32 closes, and settled before phase 7 (decision 21). |
 | 3 | Persian slugs, flat services (`/خدمات/لمینت-سرامیکی`), editable in admin; ASCII for system routes and query parameters. Full sitemap in `docs/ia.md` | Better relevance and CTR in Persian SERPs. Google handles UTF-8 slugs. |
 | 4 | Prices: optional «از … تومان» per service, hidden when empty. The tiers page shows relative positioning unless prices are provided | Transparency builds trust; inflation makes fixed prices stale; admin controls it. |

@@ -25,6 +25,92 @@ export class SeedDataError extends Error {}
 
 type Category = ServicesYaml['categories'][number];
 type Service = ServicesYaml['services'][number];
+type Faq = { question: string; answer: string };
+type BlockYaml =
+  NonNullable<Service['body']>[number] | NonNullable<PagesYaml['pages'][number]['blocks']>[number];
+
+const textNode = (text: string) => ({
+  type: 'text',
+  text: fixText(text),
+  format: 0,
+  detail: 0,
+  mode: 'normal',
+  style: '',
+  version: 1,
+});
+type LexicalNode = { type: string; version: number; [key: string]: unknown };
+const element = (type: string, children: LexicalNode[], extra: Record<string, unknown> = {}) => ({
+  type,
+  children,
+  direction: 'rtl' as const,
+  format: '' as const,
+  indent: 0,
+  version: 1,
+  ...extra,
+});
+
+/**
+ * Lexical JSON from the Markdown subset of the seed copy: `## ` to `#### ` headings, `- ` bullet
+ * lists, and paragraphs separated by a blank line (lines of one paragraph are joined).
+ */
+export function lexicalFrom(source: string) {
+  const children: LexicalNode[] = [];
+  let paragraph: string[] = [];
+  let list: string[] = [];
+  const flush = () => {
+    if (paragraph.length > 0)
+      children.push(
+        element('paragraph', [textNode(paragraph.join(' '))], { textFormat: 0, textStyle: '' }),
+      );
+    if (list.length > 0)
+      children.push(
+        element(
+          'list',
+          list.map((item, i) => element('listitem', [textNode(item)], { value: i + 1 })),
+          { listType: 'bullet', start: 1, tag: 'ul' },
+        ),
+      );
+    paragraph = [];
+    list = [];
+  };
+  for (const raw of source.split('\n')) {
+    const line = raw.trim();
+    const heading = /^(#{2,4}) (.+)$/.exec(line);
+    const bullet = line.startsWith('- ');
+    // A blank line, a heading or a switch between list and paragraph ends the open block.
+    if (!line || heading || (bullet && paragraph.length > 0) || (!bullet && list.length > 0))
+      flush();
+    if (heading) {
+      children.push(element('heading', [textNode(heading[2]!)], { tag: `h${heading[1]!.length}` }));
+    } else if (bullet) list.push(line.slice(2));
+    else if (line) paragraph.push(line);
+  }
+  flush();
+  return { root: element('root', children) };
+}
+
+const faqsData = (rows: readonly Faq[] | undefined) =>
+  (rows ?? []).map((row) => ({ question: fixText(row.question), answer: fixText(row.answer) }));
+
+/** One seed block to its Payload block (src/blocks). */
+export function blockData(block: BlockYaml) {
+  switch (block.type) {
+    case 'content':
+      return { blockType: 'content', body: lexicalFrom(block.text) };
+    case 'callout':
+      return { blockType: 'callout', tone: block.tone ?? 'info', text: fixText(block.text) };
+    case 'steps':
+      return {
+        blockType: 'steps',
+        items: block.items.map((item) => ({
+          title: fixText(item.title),
+          text: fixText(item.text),
+        })),
+      };
+    case 'faq':
+      return { blockType: 'faq', items: faqsData(block.items) };
+  }
+}
 
 export function categoryData(category: Category) {
   return {
@@ -34,8 +120,12 @@ export function categoryData(category: Category) {
     slug: category.slug,
     standalone: category.standalone ?? false,
     accent: ACCENT_MAP[category.accent],
+    icon: category.icon ?? null,
     order: category.order,
     summary: opt(category.summary),
+    intro: opt(category.intro),
+    faqs: faqsData(category.faqs),
+    seo: category.seo_title ? { title: fixText(category.seo_title) } : {},
   };
 }
 
@@ -61,12 +151,22 @@ export function serviceData(service: Service, categoryId: number | string, order
     order,
     emergencyLink: service.emergency_link ?? false,
     summary: opt(service.summary),
-    facts: { sessions: opt(service.sessions), duration: opt(service.duration) },
+    facts: {
+      sessions: opt(service.sessions),
+      duration: opt(service.duration),
+      anesthesia: opt(service.anesthesia),
+      recovery: opt(service.recovery),
+    },
     priceFrom: service.price_from,
+    body: (service.body ?? []).map(blockData),
+    faqs: faqsData(service.faqs),
     searchTerms: service.search_terms.map(fixText),
     internalNote: service.scope_to_verify ?? null,
     scopeVerified: !service.scope_to_verify,
-    seo: { title: fixText(service.seo_title) },
+    seo: {
+      title: fixText(service.seo_title),
+      ...(service.seo_description ? { description: fixText(service.seo_description) } : {}),
+    },
   };
 }
 
@@ -130,6 +230,7 @@ export function globalsData(clinic: ClinicYaml) {
       tagline: opt(clinic.tagline_fa),
       taglineApproved: false,
       contactHeadline: opt(clinic.contact_headline_fa),
+      footerLine: opt(clinic.footer_line_fa),
       domain: clinic.domain,
       address: {
         fullFa: fixText(clinic.address.full_fa),
@@ -178,6 +279,7 @@ export function globalsData(clinic: ClinicYaml) {
       siteName: 'کلینیک دندانپزشکی سفید',
       titleSuffix: ' | کلینیک دندانپزشکی سفید',
       shortTitleSuffix: ' | کلینیک سفید',
+      defaultDescription: opt(clinic.seo?.default_description_fa),
       areaServed: clinic.market.target_areas_fa.map(fixText),
       secondaryAreas: clinic.market.secondary_areas_fa.map(fixText),
     },
@@ -233,6 +335,13 @@ export function pageData(page: PagesYaml['pages'][number]) {
     slug: page.slug === '' ? null : page.slug,
     title: fixText(page.title),
     lead: page.lead ? fixText(page.lead) : null,
+    ...(page.subtext ? { hero: { subtext: fixText(page.subtext) } } : {}),
+    sections: (page.sections ?? []).map((row) => ({
+      key: row.key,
+      heading: fixText(row.heading),
+      intro: opt(row.intro),
+    })),
+    blocks: (page.blocks ?? []).map(blockData),
     seo: {
       ...(page.seo_title ? { title: fixText(page.seo_title) } : {}),
       ...(page.noindex ? { noindex: true } : {}),

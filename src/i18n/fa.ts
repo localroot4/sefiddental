@@ -5,6 +5,7 @@
  * without exposing it: /en and /en/* render the 404 page and never appear in a sitemap.
  */
 
+import { CONTENT_MESSAGES } from '@/i18n/fa-content';
 import { HOME_MESSAGES } from '@/i18n/fa-home';
 import { NAV_MESSAGES } from '@/i18n/fa-nav';
 import { PAGES_MESSAGES } from '@/i18n/fa-pages';
@@ -21,13 +22,13 @@ export function getLocale(): Locale {
 
 /**
  * Clinic facts the system pages need when the database is down (spec 14.2), from
- * docs/content/clinic.yaml. Phase 4 replaces the hours line with the closed-hours sheet.
+ * docs/content/clinic.yaml. The hours line is the `hoursSummary()` wording (freeze F14).
  */
 export const CLINIC_FALLBACK = {
   name: 'کلینیک دندانپزشکی سفید',
   phoneE164: '+982155101054',
   phoneDisplay: '۰۲۱ ۵۵۱۰ ۱۰۵۴',
-  hoursLine: 'همه‌روزه ۱۰ تا ۲۰، به‌جز تعطیلات رسمی',
+  hoursLine: 'هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی.',
 } as const;
 
 const MESSAGES = {
@@ -49,6 +50,7 @@ const MESSAGES = {
   'footer.copyright': 'همهٔ حقوق برای کلینیک دندانپزشکی سفید محفوظ است.',
   // One module per area keeps parallel work off a shared file; keys are prefixed by area.
   ...UI_MESSAGES,
+  ...CONTENT_MESSAGES,
   ...NAV_MESSAGES,
   ...HOME_MESSAGES,
   ...SERVICES_MESSAGES,

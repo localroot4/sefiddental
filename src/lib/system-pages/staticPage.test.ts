@@ -6,6 +6,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import { CLINIC_FALLBACK } from '@/i18n/fa';
+import { hoursSummary } from '@/lib/hoursState';
 import {
   BRAND_LOCKUP,
   LOCKUP_SPRITE,
@@ -86,6 +87,18 @@ describe('static system pages (spec 7.4, 14.3, 14.4)', () => {
     expect(STATIC_PAGE_COPY.phoneE164).toBe(CLINIC_FALLBACK.phoneE164);
     expect(STATIC_PAGE_COPY.phoneDisplay).toBe(CLINIC_FALLBACK.phoneDisplay);
     expect(STATIC_PAGE_COPY.hoursLine).toBe(CLINIC_FALLBACK.hoursLine);
+  });
+
+  it('SP6b the fallback hours line is the live hoursSummary wording (freeze F14)', () => {
+    const everyDay = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'] as const;
+    const live = hoursSummary({
+      timezone: 'Asia/Tehran',
+      weekly: [{ days: [...everyDay], open: '10:00', close: '20:00' }],
+      holidays: [],
+      noteFa: '',
+    });
+    expect(CLINIC_FALLBACK.hoursLine).toBe(live);
+    expect(renderStaticSystemPage('maintenance')).toContain(`<p class="hours">${live}</p>`);
   });
 
   it('SP7 Node 22 imports the module directly (scripts/sync-public-assets.mjs)', () => {

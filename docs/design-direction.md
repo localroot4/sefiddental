@@ -157,7 +157,9 @@ label, headline, subtext, two CTAs («رزرو نوبت» primary, secondary per
 headline, the subtext and one secondary CTA «تماس با کلینیک», with no label
 line; the booking card's «ثبت درخواست» is the only primary CTA in the hero.
 Navigation: desktop one line, max 72 px high: خدمات (mega menu), پزشکان,
-قبل و بعد, هزینه و پرداخت, تماس, then theme toggle, phone and «رزرو نوبت».
+قبل و بعد, هزینه و پرداخت, آدرس و ساعات, then theme toggle, phone and «رزرو نوبت».
+(«تماس» is reserved for the phone sticky bar, `docs/conversion.md` section 2;
+`docs/ia.md` section 2 is the source of the nav items.)
 Phones: logo, call icon, menu button, full-screen drawer with grouped
 services and 48 px rows, and a bottom sticky bar: تماس | واتساپ | رزرو نوبت.
 The bar stays visible and hides only when the end-of-page booking block or

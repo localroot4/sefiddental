@@ -4,6 +4,8 @@ import { relationship } from 'payload/shared';
 import { taxonomyAccess } from '@/access/presets';
 import { hiddenForEditors } from '@/access/roles';
 import {
+  faqsArray,
+  imageUpload,
   keyField,
   orderField,
   proseText,
@@ -32,7 +34,9 @@ export const ServiceCategories: CollectionConfig = {
   ...taxonomyAccess(),
   hooks: contentHooks('service-categories', {
     path: 'service-categories',
-    normalize: { prose: ['title', 'h1', 'navLabel', 'summary'] },
+    normalize: {
+      prose: ['title', 'h1', 'navLabel', 'summary', 'intro', 'faqs.*.question', 'faqs.*.answer'],
+    },
     beforeValidate: [sharedServiceSlug('services')],
   }),
   fields: [
@@ -103,6 +107,17 @@ export const ServiceCategories: CollectionConfig = {
       maxLength: 300,
       description: 'یک یا دو جمله دربارهٔ این دسته برای کارت و صفحهٔ دسته.',
     }),
+    imageUpload(
+      'heroMedia',
+      'عکس بالای صفحه',
+      'عکس واقعی بالای صفحهٔ دسته (۳:۲ در دسکتاپ، ۴:۵ در موبایل). نقطهٔ کانونی را در کتابخانهٔ رسانه تنظیم کنید.',
+    ),
+    proseTextarea('intro', 'متن راهنما', {
+      maxLength: 1500,
+      description:
+        'چند بند کوتاه زیر فهرست خدمات: این دسته برای چه کسی است و از کجا شروع کند. بندها را با یک خط خالی جدا کنید.',
+    }),
+    faqsArray('پرسش‌های پرتکرار این دسته (۳ تا ۶ پرسش واقعی).'),
     orderField(),
     {
       name: 'services',

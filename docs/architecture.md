@@ -8,16 +8,16 @@ this file in the same commit.
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Framework | Next.js 16.4.0 with React 19.3.0, App Router, TypeScript 5.9.3 strict, on Node.js 22 (22.18 or later) | Server components by default; client islands for motion and WebGL. TypeScript 5.9.3 is the version verified with Payload 3.90.2 and the lint toolchain |
+| Framework | Next.js 16.4.0 with React 19.3.0, App Router, TypeScript 5.9.3 strict, on Node.js 22 (22.18 or later) | Server components by default; client islands only where behaviour needs JavaScript, and for WebGL. TypeScript 5.9.3 is the version verified with Payload 3.90.2 and the lint toolchain |
 | CMS | Payload CMS 3.90.2 inside the same Next.js app, admin at `/admin`, locale `fa`, RTL | Collections, drafts and versions, scheduled publish, access control, media with sharp, live preview |
 | Database | PostgreSQL (Payload Postgres adapter) on a PaaS or a VPS; Payload's SQLite adapter on cPanel paths (C2) | The data model is identical; the adapter is an environment setting, and the confirmed hosting path (section 2) sets it |
 | Styling | Tailwind CSS 4.3.3 with `@theme` tokens from `design/tokens.css`; CSS modules for complex scenes | one token file, no ad-hoc colors |
-| UI motion | Motion (`motion/react`) for component states and layout animation | client islands only |
+| UI motion | CSS transitions on transform and opacity with the motion tokens of `design/tokens.css`; native `<dialog>`, `<details>` and the Popover API | no motion library (phase 4: the JavaScript headroom, 10 KiB on content pages and 19.5 KiB on home, leaves no room for one); zero motion under `prefers-reduced-motion` |
 | Scroll engine | GSAP 3.15.0 (ScrollTrigger, Flip, MorphSVG, Draggable, InertiaPlugin) plus Lenis 1.3.26 | one master timeline per page; see `docs/experience-direction.md` |
 | WebGL | three.js r186 (0.186.1), `@react-three/fiber` 9.8.1, `@react-three/drei` 10.7.9, `@react-three/postprocessing`; WebGL 2 with WebGL 1 fallback for tier 1 | KTX2 textures, Draco glTF, one `<Canvas>` fixed behind the page |
 | Quality tiers | `detect-gpu` 5.0.70 plus an in-house frame-time monitor (`src/experience/tier/frameMonitor.ts`: under 55 fps for 2 s drops one tier) and a per-tier DPR cap (`TierDpr.tsx`, not drei's `AdaptiveDpr`) | tiers 0-3 per `docs/experience-direction.md` section 3 |
 | Fonts | Vazirmatn and Estedad via `next/font/local`, subsets, swap | preloaded |
-| Icons | Phosphor Icons React | one family |
+| Icons | Phosphor, from the raw SVG package `@phosphor-icons/core` (devDependency) compiled at prebuild into one sprite, `public/brand/icons.svg`, holding only the names in `src/components/ui/icons.ts` | one family; `<Icon>` is a server component (`<svg><use href>`), so no icon JavaScript reaches the client |
 | Dates | `date-fns-jalali` 4.4.0-0 for display; store UTC | Asia/Tehran |
 | Email | Nodemailer (`@payloadcms/email-nodemailer` 3.90.2) through the host's SMTP | admin notifications; without SMTP no reset mail is sent (the log shows only the recipient and subject); recovery is `npm run reset-admin -- <email>` |
 | Tests | Vitest 5.0.4 (unit), Playwright 1.64.0 (e2e, screenshots, frame timing), axe-core (`@axe-core/playwright` 4.13.0), Lighthouse CI 0.15.1 | all in GitHub Actions |
@@ -25,9 +25,9 @@ this file in the same commit.
 
 Phase 3 pins every version exactly in `package.json`. Other pinned runtime
 packages: `payload-totp` 3.0.6 (MFA, section 8), zod 4.6.7 (validation),
-sharp 0.35.5 (media), pino 9.14.0 (logs), yaml 2.9.1 (seeders). Motion,
-Phosphor Icons and `@react-three/postprocessing` are pinned by the phase
-that first uses them.
+sharp 0.35.5 (media), pino 9.14.0 (logs), yaml 2.9.1 (seeders).
+`@phosphor-icons/core` (phase 4) and `@react-three/postprocessing` are
+pinned by the phase that first uses them.
 
 ## 2. Hosting and deployment
 
@@ -242,15 +242,22 @@ with zod; the forms also work as plain HTML posts.
   and are disposed when far out of view.
 - Per-page budgets in `docs/experience-direction.md` section 4, enforced by
   Lighthouse CI assertions and a bundle-size check in CI.
-- Images: `next/image` with AVIF and WebP, responsive sizes, blur
-  placeholders from Payload. The home hero photo is one art-directed
-  `<picture>` (Next.js `getImageProps`): from 744 px the landscape crop is
+- Images: never `next/image`, because the style attribute it writes breaks
+  the CSP (no inline styles in server HTML). `<Picture>` renders a
+  `<picture>` from the Payload media sizes (AVIF with WebP fallback,
+  responsive `srcset`). A missing photo renders `MediaPlaceholder`: the
+  exact aspect ratio, a neutral token fill and a visible caption
+  «جای عکس: …», each with a row in `docs/content/gaps.md`. The home hero
+  photo is one art-directed `<picture>`: from 744 px the landscape crop is
   the LCP element and is preloaded with `fetchpriority="high"` through one
   preload with a media query; under 744 px a scrim text element (the H1 or
   the subtext) is the LCP element, never an image, and the 4:5 band starts
   below the first screen and loads without priority. Both crops come from
-  one shoot.
-  On other pages the LCP image gets `fetchpriority="high"`.
+  one shoot. Until that photo exists (gap 36), the landscape is a neutral
+  raster placeholder that sharp generates at prebuild
+  (`public/placeholders/hero-*.avif` and `.jpg` at the hero widths), so the
+  preload, `fetchpriority` and LCP pipeline is the real one; its caption is
+  DOM text. On other pages the LCP image gets `fetchpriority="high"`.
 - Build assets (`/_next/static`) immutable for one year. Media files
   `public, max-age=604800` (seven days), because crops regenerate under the
   same name when an editor moves the focal point. HTML renders per request

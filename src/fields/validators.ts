@@ -1,3 +1,4 @@
+import { CONTENT_MESSAGES } from '@/i18n/fa-content';
 import { persianSlug } from '@/lib/persianSlug';
 import { normalizePersian, toPersianDigits } from '@/lib/persianText';
 
@@ -83,6 +84,26 @@ export function proseRule(value: unknown): Rule {
     if (banned !== true) return banned;
   }
   return true;
+}
+
+/** F17: V-MARKER and V-BANNED over the plain text of a Lexical tree (rich text bodies). */
+export function richProseRule(value: unknown): Rule {
+  return value ? proseRule(lexicalText(value)) : true;
+}
+
+// The fact line the home hero renders before the stored subtext while `freeConsultation` is on.
+const FREE_CONSULTATION_LINE = CONTENT_MESSAGES['content.freeConsultation'];
+export const SUBTEXT_MAX_WORDS = 19;
+// \s does not match ZWNJ, so a half-spaced word counts once.
+const wordCount = (value: string): number => value.split(/\s+/).filter(Boolean).length;
+
+/** V-SUBTEXT (freeze F7): the rendered subtext, flag sentence included, within 19 words. */
+export function subtextRule(value: unknown, freeConsultation: boolean): Rule {
+  if (typeof value !== 'string' || value.trim() === '') return true;
+  const n = wordCount(value) + (freeConsultation ? wordCount(FREE_CONSULTATION_LINE) : 0);
+  if (n <= SUBTEXT_MAX_WORDS) return true;
+  const withLine = freeConsultation ? ` با جملهٔ «${FREE_CONSULTATION_LINE}»` : '';
+  return `متن زیر تیتر${withLine} ${fa(n)} واژه است. حداکثر ${fa(SUBTEXT_MAX_WORDS)} واژه مجاز است.`;
 }
 
 /** V-REVIEWER */

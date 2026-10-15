@@ -27,7 +27,7 @@ social:
   aparat: null
 
 hours:
-  note_fa: همه‌روزه به‌جز روزهای تعطیل رسمی
+  note_fa: هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی.
   weekly:
     - { days: [sat, sun, mon, tue, wed, thu, fri], open: "10:00", close: "20:00" }
   timezone: Asia/Tehran
@@ -81,3 +81,13 @@ integrations:
   clinic_software: unknown
   analytics: ga4 + search console (client creates)
   maps: static image + deep links (google maps, neshan, balad, waze)
+
+# Phase 4 drafts (in-house, the client approves): the footer line under the
+# clinic name and the site-wide default meta description (gap 41, 120-160
+# characters). Facts on file only.
+footer_line_fa: کلینیک دندانپزشکی دیجیتال در خانی‌آباد نو، جنوب تهران.
+seo:
+  default_description_fa: >-
+    کلینیک دندانپزشکی سفید در خانی‌آباد نو، جنوب تهران: زیبایی، ایمپلنت، ترمیم
+    در سه سطح، ارتودنسی و دندانپزشکی کودکان. شماره‌تان را بگذارید تا پذیرش
+    تماس بگیرد.

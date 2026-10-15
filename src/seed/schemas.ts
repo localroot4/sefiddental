@@ -12,6 +12,31 @@ const todo = z
     v === undefined || v === null || v.trim() === '' || v.trim() === 'TODO' ? null : v,
   );
 const e164 = z.string().regex(/^\+98\d{10}$/);
+const faq = z.object({ question: text, answer: text });
+const faqs = z.array(faq).max(8);
+const steps = z.object({
+  type: z.literal('steps'),
+  items: z
+    .array(z.object({ title: text, text }))
+    .min(1)
+    .max(8),
+});
+const content = z.object({ type: z.literal('content'), text });
+const callout = z.object({
+  type: z.literal('callout'),
+  tone: z.enum(['info', 'warning']).optional(),
+  text,
+});
+/** Body blocks (src/blocks): `content` text is the small Markdown subset of `lexicalFrom`. */
+const serviceBlocks = z.array(z.discriminatedUnion('type', [content, steps, callout]));
+const pageBlocks = z.array(
+  z.discriminatedUnion('type', [
+    content,
+    steps,
+    callout,
+    z.object({ type: z.literal('faq'), items: faqs.min(1) }),
+  ]),
+);
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const weekday = z.enum(['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri']);
 
@@ -25,8 +50,12 @@ export const servicesYaml = z.object({
         slug: z.string().min(1).nullable(),
         standalone: z.boolean().optional(),
         accent: z.enum(['warm', 'brand', 'green', 'sky', 'yellow']),
+        icon: key.optional(),
         order: z.number().int().min(0),
         summary: todo.optional(),
+        intro: todo.optional(),
+        faqs: faqs.optional(),
+        seo_title: text.optional(),
       }),
     )
     .min(1),
@@ -54,6 +83,12 @@ export const servicesYaml = z.object({
         summary: todo.optional(),
         sessions: todo.optional(),
         duration: todo.optional(),
+        anesthesia: todo.optional(),
+        recovery: todo.optional(),
+        seo_description: text.optional(),
+        body: serviceBlocks.optional(),
+        faqs: faqs.optional(),
+        related: z.array(key).max(3).optional(),
         price_from: z.number().int().min(0).nullable(),
         emergency_link: z.boolean().optional(),
         scope_to_verify: z.string().optional(),
@@ -79,6 +114,7 @@ export const clinicYaml = z.object({
   name_en: text.nullish(),
   tagline_fa: text.nullish(),
   contact_headline_fa: text.nullish(),
+  footer_line_fa: text.nullish(),
   domain: z.string().regex(/^([a-z0-9-]+\.)+[a-z]{2,}$/),
   address: z.object({
     full_fa: text,
@@ -130,6 +166,7 @@ export const clinicYaml = z.object({
   emergency: z.object({ offered: z.boolean(), policy_fa: text.nullish() }),
   legal: z.object({ license_number: text.nullish(), technical_supervisor: text.nullish() }),
   market: z.object({ target_areas_fa: z.array(text), secondary_areas_fa: z.array(text) }),
+  seo: z.object({ default_description_fa: text.nullish() }).optional(),
 });
 
 export const insurancesYaml = z.object({
@@ -185,6 +222,11 @@ export const pagesYaml = z.object({
         seo_title: text.optional(),
         lead: text.optional(),
         noindex: z.boolean().optional(),
+        /** Home only: the hero subtext without the flag sentence (freeze F7). */
+        subtext: text.optional(),
+        /** Home only: section headings (Pages `sections`, keys checked by Payload). */
+        sections: z.array(z.object({ key, heading: text, intro: text.optional() })).optional(),
+        blocks: pageBlocks.optional(),
       }),
     )
     .min(1),

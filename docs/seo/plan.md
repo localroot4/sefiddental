@@ -40,7 +40,7 @@ Clusters to expand in phase 1 with volumes where tools are reachable:
 The full sitemap with templates and index rules is `docs/ia.md` section 1.
 Summary: services are flat under `/خدمات/{slug}` (category in the
 breadcrumb, not the URL); category hubs are `/خدمات/زیبایی`,
-`/خدمات/جایگزینی-دندان`, `/خدمات/درمان-دندان`; articles live under
+`/خدمات/جراحی-و-جایگزینی-دندان`, `/خدمات/درمان-دندان`; articles live under
 `/مقالات`; `/vip` is a 301 alias to the restoration tiers.
 
 Rules: one H1 per page carrying the primary term naturally. Title tag 50-60
@@ -56,7 +56,7 @@ page and two articles. Every article links to one service page and one guide.
 |---|---|
 | All pages | `Dentist` with name, address, geo, telephone, openingHoursSpecification, sameAs, logo, image |
 | Service | `Service` (provider = Dentist) plus `FAQPage` plus `BreadcrumbList` |
-| Dentist | `Physician` with medicalSpecialty, memberOf, image, worksFor |
+| Dentist | `Physician` with medicalSpecialty, memberOf (the clinic), image and identifier (council number); never worksFor, which is a `Person` property while schema.org types `Physician` as an organization |
 | Blog post | `Article` with author (Person), reviewedBy, datePublished, dateModified, image; `FAQPage` when FAQs exist |
 | Gallery | `ImageGallery` or `ItemList` |
 | Testimonial sections (home, about, service pages) | `VideoObject` per video with transcript summary |

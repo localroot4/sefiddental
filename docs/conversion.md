@@ -250,10 +250,12 @@ Caching decision (made now because it shapes forms, security and copy): any
 route that renders a form (booking, emergency, address, home with the hero
 card and the booking block, and the inline booking block on content pages)
 gets its CSRF token, signed time token and hours state from a small
-`no-store` endpoint when the form mounts, so the page itself can stay
-static or ISR. Booking and emergency pages are fully dynamic (`no-store`).
-No CDN or application cache ever serves a token. Home stays static or ISR
-and cacheable: it sends one token request after `load`, so the request never
+`no-store` endpoint when the form mounts, so the page HTML never holds
+one. Every public page renders per request for its CSP nonce and only the
+data reads are cached (`docs/architecture.md` section 3, brief decision 19).
+Booking and emergency pages are fully dynamic (`no-store`). No CDN or
+application cache ever serves a token. Home keeps tokens out of its HTML
+too: it sends one token request after `load`, so the request never
 competes with the LCP image, and both home instances share the response. A
 submit before the response arrives keeps the button in its loading state
 until it does. The home HTML never contains a token, a timestamp or an

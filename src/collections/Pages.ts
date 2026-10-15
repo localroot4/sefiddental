@@ -14,9 +14,10 @@ import {
   sourcesArray,
   withRules,
 } from '@/fields/factories';
-import { proseRule, reviewerRule, sourcesRule } from '@/fields/validators';
+import { proseRule, reviewerRule, sourcesRule, subtextRule } from '@/fields/validators';
 import { pagePath } from '@/hooks/computed';
 import { contentHooks } from '@/hooks/compose';
+import { CONTENT_MESSAGES } from '@/i18n/fa-content';
 import { isGuideKey, PAGE_KEYS } from '@/lib/paths';
 
 const PAGE_LABELS: Record<string, string> = {
@@ -39,6 +40,28 @@ const PAGE_LABELS: Record<string, string> = {
 };
 
 const guideOnly = (data: Partial<{ key: string }> | undefined) => isGuideKey(data?.key);
+
+/** Home sections with a heading from Payload (freeze F4, F5); the hero and trust band have none. */
+const SECTION_OPTIONS = [
+  { label: 'خدمات', value: 'services' },
+  { label: 'سه سطح ترمیم', value: 'restoration' },
+  { label: 'قبل و بعد', value: 'compare' },
+  { label: 'پزشکان', value: 'dentists' },
+  { label: 'ویدئوی بیماران', value: 'voices' },
+  { label: 'اولین مراجعه', value: 'journey' },
+  { label: 'پرسش‌های پرتکرار', value: 'faq' },
+  { label: 'درخواست نوبت', value: 'booking' },
+];
+
+/** The free-consultation flag; on any read error the stricter count (flag on) applies. */
+async function freeConsultationOn(req: import('payload').PayloadRequest): Promise<boolean> {
+  try {
+    const features = await req.payload.findGlobal({ slug: 'features', depth: 0, req });
+    return features.freeConsultation !== false;
+  } catch {
+    return true;
+  }
+}
 
 /** Pixel check of an uploaded image at publish time. */
 const imageAtLeast =
@@ -79,7 +102,9 @@ export const Pages: CollectionConfig = {
   ...adminAccess({ scheduled: true }),
   hooks: contentHooks('pages', {
     path: 'pages',
-    normalize: { prose: ['title', 'lead', 'hero.subtext'] },
+    normalize: {
+      prose: ['title', 'lead', 'hero.subtext', 'sections.*.heading', 'sections.*.intro'],
+    },
     beforeChange: [pagePath],
   }),
   fields: [
@@ -160,15 +185,14 @@ export const Pages: CollectionConfig = {
         },
         {
           ...proseTextarea('subtext', 'متن زیر تیتر', {
-            description: 'متن زیر تیتر، حداکثر ۲۰ واژه.',
+            description: `متن زیر تیتر، بدون جملهٔ «${CONTENT_MESSAGES['content.freeConsultation']}»؛ آن جمله وقتی قابلیت مشاورهٔ رایگان روشن است خودکار جلوی این متن می‌آید. هر دو با هم حداکثر ۱۹ واژه.`,
           }),
           validate: withRules(
             textarea,
             (value) => proseRule(value),
-            (value) =>
-              typeof value === 'string' && value.trim().split(/\s+/).length > 20
-                ? 'متن زیر تیتر حداکثر ۲۰ واژه است.'
-                : true,
+            // Every run reads the flag: the admin form state validates with event 'onChange' and
+            // blocks the save on that result, so a typing-time default would reject valid text.
+            async (value, { req }) => subtextRule(value, await freeConsultationOn(req)),
           ),
         },
       ],
@@ -179,6 +203,26 @@ export const Pages: CollectionConfig = {
         condition: (data) => data?.key !== 'home',
         description: 'عکس بالای صفحه (۳:۲ دسکتاپ، ۴:۵ موبایل).',
       },
+    },
+    {
+      name: 'sections',
+      type: 'array',
+      label: 'تیتر بخش‌ها',
+      labels: { singular: 'بخش', plural: 'بخش‌ها' },
+      maxRows: SECTION_OPTIONS.length,
+      validate: withRules(array, (value) => {
+        const keys = Array.isArray(value) ? value.map((row) => (row as { key?: string }).key) : [];
+        return new Set(keys).size === keys.length ? true : 'هر بخش فقط یک بار می‌آید.';
+      }),
+      admin: {
+        condition: (data) => data?.key === 'home',
+        description: 'تیتر و جملهٔ کوتاه زیر تیتر بخش‌های صفحهٔ خانه؛ هر بخش یک بار.',
+      },
+      fields: [
+        { name: 'key', type: 'select', label: 'بخش', required: true, options: SECTION_OPTIONS },
+        proseText('heading', 'تیتر بخش', { required: true, maxLength: 80 }),
+        proseTextarea('intro', 'جملهٔ زیر تیتر', { maxLength: 300 }),
+      ],
     },
     {
       name: 'blocks',

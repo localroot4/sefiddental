@@ -17,7 +17,7 @@ export const STATIC_PAGE_COPY = {
   callLabel: 'تماس با کلینیک',
   phoneE164: '+982155101054',
   phoneDisplay: '۰۲۱ ۵۵۱۰ ۱۰۵۴',
-  hoursLine: 'همه‌روزه ۱۰ تا ۲۰، به‌جز تعطیلات رسمی',
+  hoursLine: 'هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی.',
   urgentLabel: 'درد شدید دارید؟',
   urgentHref: '/اورژانس',
   linksHeading: 'صفحه‌های پرکاربرد',

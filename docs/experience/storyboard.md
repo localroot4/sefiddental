@@ -245,8 +245,9 @@ vertical to horizontal (scene 3), horizontal back to a vertical scrub
   once the hero card is out of view.
 - Success: the full state of `docs/conversion.md` 5.4 in place, the same as
   `/رزرو-نوبت/ثبت-شد`.
-- Home stays static or ISR and cacheable: both forms fetch the CSRF token,
-  the signed time token and the hours state from the no-store endpoint.
+- Home renders per request (the CSP nonce, brief decision 19) and still
+  holds no token in its HTML: both forms fetch the CSRF token, the signed
+  time token and the hours state from the no-store endpoint.
 - Stage: warm; the mark idles beside the form (slow breathing, no
   distraction); static map and hours next to it on desktop, below it on
   phones.

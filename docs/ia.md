@@ -197,6 +197,14 @@ family more than twice; at most two consecutive image-and-text splits.
 | 9 | FAQ: price, pain, insurance, financing, duration, emergency | I | Objections | sticky aside: call, WhatsApp, booking |
 | 10 | Booking block with static map and hours; the full form, the second form instance on home | J | Action | «ثبت درخواست» |
 
+Phase 4 builds these ten sections in the order of `docs/experience-direction.md`
+where the two overlap: hero, trust band, services, restoration tiers,
+before/after, dentists, patient videos, first-visit journey, FAQ, booking.
+The storyboard's digital-workflow scene («از اسکن تا لبخند») is not built:
+its captions are unconfirmed claims (gaps 7 and 48), and phase 7 decides.
+Section headings and intros live in the home page's `sections` field; the
+journey steps and the FAQ are the page's `steps` and `faq` blocks.
+
 Ten sections, ten families (M, B, C, D, E, F, G, H, I, J), no image-text
 split (the hero is full-bleed). The booking form appears twice (the hero
 card inside M and the booking block J), within the limit of two per family.

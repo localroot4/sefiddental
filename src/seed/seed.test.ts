@@ -1,20 +1,35 @@
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 import { afterAll, describe, expect, it } from 'vitest';
 
+import { ICONS } from '@/components/ui/icons';
+import {
+  BANNED_WORDS,
+  DEFAULT_TITLE_SUFFIX,
+  descriptionRule,
+  richProseRule,
+  subtextRule,
+  titleRule,
+} from '@/fields/validators';
+import { t } from '@/i18n/fa';
+
 import { emptyFieldsPatch } from './run';
-import { clinicYaml, doctorsYaml, servicesYaml } from './schemas';
+import { clinicYaml, doctorsYaml, pagesYaml, servicesYaml } from './schemas';
 import { readYaml, SeedSourceError } from './sources';
 import {
   ACCENT_MAP,
   aliasRedirect,
+  blockData,
   categoryData,
   checkedSlug,
   financingData,
+  globalsData,
   isSeedableTestimonial,
   isTemplateDoctor,
+  lexicalFrom,
+  pageData,
   SeedDataError,
   serviceData,
 } from './transforms';
@@ -93,8 +108,7 @@ describe('seed transforms (spec-data 8.3-8.5)', () => {
       30,
     );
     expect(surgery).toMatchObject({
-      summary: null,
-      facts: { sessions: null, duration: null },
+      facts: { sessions: null, duration: null, anesthesia: null, recovery: null },
       scopeVerified: false,
     });
     expect(surgery.internalNote).toContain('gap 27');
@@ -162,5 +176,143 @@ describe('seed transforms (spec-data 8.3-8.5)', () => {
         seed,
       ),
     ).toEqual({});
+  });
+});
+
+describe('phase 4 seed copy (freeze F6, F7, F15, F17, F28)', () => {
+  const services = readYaml(ROOT, 'docs/content/services.yaml', servicesYaml).data;
+  const pages = readYaml(ROOT, 'src/seed/data/pages.yaml', pagesYaml).data.pages;
+  const clinic = readYaml(ROOT, 'docs/content/clinic.yaml', clinicYaml).data;
+  const home = pages.find((p) => p.key === 'home')!;
+
+  it('SC1 home H1 is the F6 fallback; the slogan stays in a yaml comment only', () => {
+    expect(home.title).toBe('کلینیک دندانپزشکی سفید در جنوب تهران');
+    const raw = readFileSync(path.join(ROOT, 'src/seed/data/pages.yaml'), 'utf8');
+    expect(raw).toMatch(/^\s*#.*«اولین کلینیک دندانپزشکی دیجیتال جنوب تهران»/m);
+    expect(JSON.stringify(pages)).not.toContain('اولین کلینیک');
+  });
+
+  it('SC2 home subtext plus the free-consultation sentence is at most 19 words (F7)', () => {
+    expect(home.subtext).toBeTruthy();
+    expect(subtextRule(home.subtext, true)).toBe(true);
+    // The same-session plan and cost claim waits for the client (gaps.md row 50).
+    expect(home.subtext).not.toContain('همان جلسه');
+  });
+
+  /** Every visible string the seed writes from the yaml (keys, slugs and search terms excluded). */
+  function seededCopy(): string[] {
+    const skip = new Set([
+      'key',
+      'slug',
+      'category',
+      'booking_group',
+      'accent',
+      'icon',
+      'alias',
+      'search_terms',
+      'scope_to_verify',
+      'type',
+      'tone',
+      'related',
+    ]);
+    const out: string[] = [];
+    const walk = (value: unknown): void => {
+      if (typeof value === 'string') out.push(value);
+      else if (Array.isArray(value)) value.forEach(walk);
+      else if (value && typeof value === 'object') {
+        for (const [k, v] of Object.entries(value)) if (!skip.has(k)) walk(v);
+      }
+    };
+    walk(services);
+    walk(pages);
+    walk([clinic.footer_line_fa, clinic.seo?.default_description_fa, clinic.hours.note_fa]);
+    return out.filter((text) => text !== 'TODO');
+  }
+
+  const LABELS = [
+    'تماس با ما',
+    'بیشتر بدانید',
+    'کلیک کنید',
+    'همین حالا تماس بگیرید',
+    'انتخاب این سطح',
+  ];
+
+  it.each(seededCopy())('SC3 copy rules: %s', (text) => {
+    for (const word of [...BANNED_WORDS, ...LABELS, 'بدون درد', 'متخصص']) {
+      expect(text).not.toContain(word);
+    }
+    expect(text).not.toContain('اولین کلینیک'); // the ranking claim (gap 28); ordinals are fine
+    expect(text).not.toMatch(/[يكى]/);
+    expect(text).not.toMatch(/[—–]/);
+    expect(text).not.toMatch(/[0-9]/);
+    expect(text).not.toMatch(/\[\[NEEDS_CLIENT/);
+    expect(text).not.toMatch(/(^|[\s«])ن?می [آ-ی]/); // missing ZWNJ after می
+    expect(text).not.toMatch(/ (ها|های|هایی|تر|ترین)([\s.،؟»]|$)/); // missing ZWNJ before a suffix
+  });
+
+  it('SC4 the restoration page fills every section the seed can (p04 acceptance)', () => {
+    const restoration = services.services.find((s) => s.key === 'restoration')!;
+    const data = serviceData(restoration, 3, 10);
+    expect(data.summary).toBeTruthy();
+    expect(Object.values(data.facts).filter(Boolean).length).toBeGreaterThanOrEqual(3);
+    expect(data.body.map((b) => b.blockType)).toEqual(['content', 'callout', 'steps', 'content']);
+    expect(data.faqs.length).toBeGreaterThanOrEqual(5);
+    expect(data.faqs.length).toBeLessThanOrEqual(8);
+    expect(restoration.related).toHaveLength(3);
+    const keys = new Set(services.services.map((s) => s.key));
+    expect(restoration.related!.every((key) => keys.has(key) && key !== 'restoration')).toBe(true);
+    expect(descriptionRule(data.seo.description, true)).toBe(true);
+    for (const block of data.body) {
+      if (block.blockType === 'content') expect(richProseRule(block.body)).toBe(true);
+    }
+  });
+
+  it('SC5 every service has a summary; categories have an icon; category pages have intro, faqs and a title topic', () => {
+    for (const service of services.services) {
+      expect(serviceData(service, 1, 10).summary, service.key).toBeTruthy();
+      expect([...(service.summary ?? '')].length, service.key).toBeLessThanOrEqual(220);
+    }
+    for (const category of services.categories) {
+      // CategoryIcon takes the Phosphor name; the sprite holds it as `duo-<name>`.
+      expect(Object.keys(ICONS), category.key).toContain(`duo-${categoryData(category).icon}`);
+    }
+    for (const category of services.categories.filter((c) => !c.standalone)) {
+      const data = categoryData(category);
+      expect(data.intro?.split('\n\n').length, category.key).toBeGreaterThanOrEqual(2);
+      expect(data.faqs.length, category.key).toBeGreaterThanOrEqual(3);
+      expect(titleRule(data.seo.title, DEFAULT_TITLE_SUFFIX), category.key).toBe(true);
+    }
+  });
+
+  it('SC6 home blocks: four journey steps and the six FAQ topics; sections are unique', () => {
+    const data = pageData(home);
+    const steps = data.blocks.find((b) => b.blockType === 'steps');
+    const faq = data.blocks.find((b) => b.blockType === 'faq');
+    expect(steps && 'items' in steps ? steps.items : []).toHaveLength(4);
+    expect(faq && 'items' in faq ? faq.items : []).toHaveLength(6);
+    const keys = data.sections.map((s) => s.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    // The consent line is fixed UI copy under the compare slider, never an editable intro.
+    expect(data.sections.map((s) => s.intro)).not.toContain(t('ui.compare.consent'));
+    expect(data.hero?.subtext).toBe(home.subtext);
+  });
+
+  it('SC7 the default description (gap 41) and the footer line are seeded; hours wording F14', () => {
+    const globals = globalsData(clinic);
+    expect(descriptionRule(globals['seo-defaults'].defaultDescription, true)).toBe(true);
+    expect(globals.clinic.footerLine).toBeTruthy();
+    expect(globals.clinic.hours.note).toBe('هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی.');
+  });
+});
+
+describe('lexicalFrom (seed Markdown subset to Lexical JSON)', () => {
+  it('LX1 headings, paragraphs joined per blank line, bullet lists', () => {
+    const tree = lexicalFrom('## عنوان\nبند یک\nادامه\n\n- مورد یک\n- مورد دو\nبند دو');
+    const nodes = tree.root.children;
+    expect(nodes.map((n) => n.type)).toEqual(['heading', 'paragraph', 'list', 'paragraph']);
+    expect(nodes[0]).toMatchObject({ tag: 'h2' });
+    expect(nodes[1]?.children).toEqual([expect.objectContaining({ text: 'بند یک ادامه' })]);
+    expect(nodes[2]?.children).toHaveLength(2);
+    expect(blockData({ type: 'content', text: 'متن' })).toMatchObject({ blockType: 'content' });
   });
 });

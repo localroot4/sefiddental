@@ -554,6 +554,30 @@ export interface ServiceCategory {
    */
   summary?: string | null;
   /**
+   * عکس واقعی بالای صفحهٔ دسته (۳:۲ در دسکتاپ، ۴:۵ در موبایل). نقطهٔ کانونی را در کتابخانهٔ رسانه تنظیم کنید.
+   */
+  heroMedia?: (number | null) | Media;
+  /**
+   * چند بند کوتاه زیر فهرست خدمات: این دسته برای چه کسی است و از کجا شروع کند. بندها را با یک خط خالی جدا کنید.
+   */
+  intro?: string | null;
+  /**
+   * پرسش‌های پرتکرار این دسته (۳ تا ۶ پرسش واقعی).
+   */
+  faqs?:
+    | {
+        /**
+         * پرسش، همان‌طور که بیمار می‌پرسد.
+         */
+        question: string;
+        /**
+         * پاسخ کوتاه و دقیق، بدون وعده.
+         */
+        answer: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
    * ترتیب نمایش؛ عدد کوچک‌تر زودتر نمایش داده می‌شود.
    */
   order?: number | null;
@@ -1335,7 +1359,7 @@ export interface Page {
      */
     photoPortrait?: (number | null) | Media;
     /**
-     * متن زیر تیتر، حداکثر ۲۰ واژه.
+     * متن زیر تیتر، بدون جملهٔ «مشاورهٔ اول رایگان است.»؛ آن جمله وقتی قابلیت مشاورهٔ رایگان روشن است خودکار جلوی این متن می‌آید. هر دو با هم حداکثر ۱۹ واژه.
      */
     subtext?: string | null;
   };
@@ -1343,6 +1367,17 @@ export interface Page {
    * عکس بالای صفحه (۳:۲ دسکتاپ، ۴:۵ موبایل).
    */
   heroMedia?: (number | null) | Media;
+  /**
+   * تیتر و جملهٔ کوتاه زیر تیتر بخش‌های صفحهٔ خانه؛ هر بخش یک بار.
+   */
+  sections?:
+    | {
+        key: 'services' | 'restoration' | 'compare' | 'dentists' | 'voices' | 'journey' | 'faq' | 'booking';
+        heading: string;
+        intro?: string | null;
+        id?: string | null;
+      }[]
+    | null;
   /**
    * بخش‌های محتوایی صفحه به ترتیب نمایش.
    */
@@ -1367,6 +1402,18 @@ export interface Page {
             id?: string | null;
             blockName?: string | null;
             blockType: 'content';
+          }
+        | {
+            items?:
+              | {
+                  title: string;
+                  text: string;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'steps';
           }
         | {
             /**
@@ -2062,6 +2109,14 @@ export interface PagesSelect<T extends boolean = true> {
         subtext?: T;
       };
   heroMedia?: T;
+  sections?:
+    | T
+    | {
+        key?: T;
+        heading?: T;
+        intro?: T;
+        id?: T;
+      };
   blocks?:
     | T
     | {
@@ -2069,6 +2124,19 @@ export interface PagesSelect<T extends boolean = true> {
           | T
           | {
               body?: T;
+              id?: T;
+              blockName?: T;
+            };
+        steps?:
+          | T
+          | {
+              items?:
+                | T
+                | {
+                    title?: T;
+                    text?: T;
+                    id?: T;
+                  };
               id?: T;
               blockName?: T;
             };
@@ -2147,6 +2215,15 @@ export interface ServiceCategoriesSelect<T extends boolean = true> {
   accent?: T;
   icon?: T;
   summary?: T;
+  heroMedia?: T;
+  intro?: T;
+  faqs?:
+    | T
+    | {
+        question?: T;
+        answer?: T;
+        id?: T;
+      };
   order?: T;
   services?: T;
   seo?:
@@ -2934,6 +3011,10 @@ export interface Clinic {
    */
   contactHeadline?: string | null;
   /**
+   * یک جملهٔ کوتاه زیر نام کلینیک در پانویس سایت، فقط با واقعیت‌های تأییدشده.
+   */
+  footerLine?: string | null;
+  /**
    * دامنهٔ سایت، بدون https.
    */
   domain: string;
@@ -3005,7 +3086,7 @@ export interface Clinic {
   };
   hours: {
     /**
-     * توضیح کوتاه ساعات، مثل «همه‌روزه به‌جز تعطیلات رسمی».
+     * توضیح کوتاه ساعات، مثل «هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی».
      */
     note?: string | null;
     /**
@@ -3282,6 +3363,7 @@ export interface ClinicSelect<T extends boolean = true> {
   tagline?: T;
   taglineApproved?: T;
   contactHeadline?: T;
+  footerLine?: T;
   domain?: T;
   address?:
     | T

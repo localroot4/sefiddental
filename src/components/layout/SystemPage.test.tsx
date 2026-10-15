@@ -18,7 +18,7 @@ describe('system page components (spec 14, D-P6)', () => {
     expect(html).toContain('href="/اورژانس"');
     expect(html).toContain('href="tel:+982155101054"');
     expect(html).toContain('<span dir="ltr" class="font-bold text-ink">۰۲۱ ۵۵۱۰ ۱۰۵۴</span>');
-    expect(html).toContain('همه‌روزه ۱۰ تا ۲۰، به‌جز تعطیلات رسمی');
+    expect(html).toContain('هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی.');
   });
 
   it('SC2 no style attribute in server HTML (the public CSP blocks it)', () => {
