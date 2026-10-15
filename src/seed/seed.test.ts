@@ -242,6 +242,7 @@ describe('phase 4 seed copy (freeze F6, F7, F15, F17, F28)', () => {
       expect(text).not.toContain(word);
     }
     expect(text).not.toContain('اولین کلینیک'); // the ranking claim (gap 28); ordinals are fine
+    expect(text).not.toMatch(/طرف قرارداد|سایر بیمه/); // unconfirmed insurer claims (F31, gap 51)
     expect(text).not.toMatch(/[يكى]/);
     expect(text).not.toMatch(/[—–]/);
     expect(text).not.toMatch(/[0-9]/);

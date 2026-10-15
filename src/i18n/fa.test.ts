@@ -79,6 +79,7 @@ describe('Persian copy (copy-guidelines.md)', () => {
   it.each(visibleCopy())('CP1 %s', (text) => {
     for (const word of BANNED) expect(text).not.toContain(word);
     expect(text).not.toMatch(/[يكى]/); // Arabic yeh, kaf, alef maksura
+    expect(text).not.toMatch(/طرف قرارداد|سایر بیمه/); // unconfirmed insurer claims (F31, gap 51)
     expect(text).not.toMatch(/[—–]/); // em and en dash
     expect(text).not.toMatch(/[0-9]/); // Persian digits only (phone numbers live in E.164 fields)
     // The common missing-ZWNJ forms (copy-facts CR-31): «می شود», «درمان های».
