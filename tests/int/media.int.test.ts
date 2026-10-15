@@ -14,7 +14,7 @@ import { trashedFileIs404 } from '@/collections/Media';
 import { MEDIA_MESSAGES } from '@/hooks/media';
 import type { LimitedSharp } from '@/lib/media/limitedSharp';
 
-import { getTestPayload, refusal, staffUsers } from './helpers';
+import { getTestPayload, refusal, staffUsers, uniqueSlug } from './helpers';
 
 vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
 
@@ -127,6 +127,17 @@ describe('media pipeline (spec-data 7)', () => {
         file: file(tiny, 'tiny.png', 'image/png'),
       }),
     ).rejects.toMatchObject({ message: 'عکس خیلی کوچک است؛ دست‌کم ۳۲۰ پیکسل.' });
+  });
+
+  it('MI4 a populated media carries its file URL (share images need the original)', async () => {
+    const { doc } = await storedPhoto('لوگوی بیمهٔ آزمون');
+    const insurance = await payload.create({
+      collection: 'insurances',
+      data: { name: uniqueSlug('بیمه-آزمون'), logo: doc.id },
+    });
+    const read = await payload.findByID({ collection: 'insurances', id: insurance.id, depth: 1 });
+    expect((read.logo as { url?: string | null }).url).toBe(doc.url);
+    expect(doc.url).toMatch(/\.jpg$/);
   });
 });
 

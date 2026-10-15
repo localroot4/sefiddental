@@ -64,7 +64,8 @@ export function HoursTable(props: {
 }) {
   return (
     <div className={cx('grid content-start gap-3', props.className)}>
-      {props.status ? <div className="min-h-8">{props.status}</div> : null}
+      {/* A flex box keeps a 32 px badge at 32 px: in a line box the strut's descent grew the row. */}
+      {props.status ? <div className="flex min-h-8 items-center">{props.status}</div> : null}
       <table className="w-full border-collapse text-small">
         <caption className="sr-only">{t('ui.hours.caption')}</caption>
         <thead className="sr-only">

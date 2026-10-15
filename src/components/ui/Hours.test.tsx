@@ -45,7 +45,8 @@ describe('hours views (address page, booking block)', () => {
     expect(screen.getByRole('rowheader', { name: 'شنبه' })).toBeTruthy();
     expect(screen.getByRole('rowheader', { name: 'یک‌شنبه تا جمعه' })).toBeTruthy();
     expect(screen.getByText('تعطیل')).toBeTruthy();
-    expect(container.querySelector('.min-h-8')?.textContent).toBe('وضعیت');
+    // A flex box: a 32 px badge stays 32 px (in a line box the strut's descent grew the row).
+    expect(container.querySelector('.flex.min-h-8.items-center')?.textContent).toBe('وضعیت');
   });
 
   it('UH4 the badge: a skeleton of the same height until the state is known, then its label', () => {

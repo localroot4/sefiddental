@@ -1,4 +1,5 @@
 import { readEnv } from '@/lib/env';
+import { zonedDateKey } from '@/lib/jalali';
 import { log } from '@/lib/log/logger';
 import { absoluteUrl } from '@/lib/seo/url';
 
@@ -298,6 +299,44 @@ export function articleNodes(article: {
     ['headline', 'datePublished', 'author'],
   );
   return page && node ? [page, node] : null;
+}
+
+/**
+ * A patient guide (templates C25, docs/seo/plan.md 4 has no guide row): a MedicalWebPage with the
+ * reviewing dentist and the review date, the WebPage properties the guide has. Not an Article:
+ * guides carry no author or publish date. Omitted, never half-empty, without a name or with a
+ * [[NEEDS_CLIENT marker (the jsonld.ts rule).
+ */
+export function guidePageNode(guide: {
+  path: string;
+  name: string;
+  description?: string | null;
+  reviewer?: { name: string; path?: string | null } | null;
+  lastReviewed?: string | null;
+  dateModified?: string | null;
+}): JsonLdNode | null {
+  if (!guide.name.trim() || JSON.stringify(guide).includes('[[NEEDS_CLIENT')) return null;
+  const url = absoluteUrl(guide.path);
+  return compact({
+    '@type': 'MedicalWebPage',
+    '@id': `${url}#webpage`,
+    url,
+    name: guide.name,
+    description: guide.description,
+    inLanguage: 'fa-IR',
+    isPartOf: { '@id': websiteId() },
+    publisher: { '@id': dentistId() },
+    reviewedBy: guide.reviewer
+      ? {
+          '@type': 'Person',
+          name: guide.reviewer.name,
+          url: guide.reviewer.path ? absoluteUrl(guide.reviewer.path) : undefined,
+        }
+      : undefined,
+    // A schema.org Date: the Tehran calendar day the reviewer picked (stored as UTC).
+    lastReviewed: guide.lastReviewed ? zonedDateKey(new Date(guide.lastReviewed)) : undefined,
+    dateModified: guide.dateModified,
+  });
 }
 
 /** VideoObject of a testimonial; all five core fields or nothing (Google's set is unverified). */

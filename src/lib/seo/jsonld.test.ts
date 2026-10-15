@@ -292,4 +292,38 @@ describe('JSON-LD builders (spec 9.7)', () => {
       'Article',
     ]);
   });
+
+  it('J15 guide: a MedicalWebPage with the reviewing dentist and the Tehran review day; none with a marker', async () => {
+    const { guidePageNode } = await load();
+    const node = guidePageNode({
+      path: '/راهنمای-بیمار/اولین-مراجعه',
+      name: 'اولین مراجعه به کلینیک سفید چگونه است؟',
+      description: null,
+      reviewer: { name: 'دکتر نام', path: '/پزشکان/دکتر-نام' },
+      // 00:30 on 15 October in Tehran is still 14 October in UTC.
+      lastReviewed: '2026-10-14T21:00:00.000Z',
+      dateModified: '2026-10-15T08:00:00.000Z',
+    });
+    const url = new URL(encodeURI('/راهنمای-بیمار/اولین-مراجعه'), 'https://sefiddental.ir').href;
+    expect(node).toEqual({
+      '@type': 'MedicalWebPage',
+      '@id': `${url}#webpage`,
+      url,
+      name: 'اولین مراجعه به کلینیک سفید چگونه است؟',
+      inLanguage: 'fa-IR',
+      isPartOf: { '@id': 'https://sefiddental.ir/#website' },
+      publisher: { '@id': 'https://sefiddental.ir/#dentist' },
+      reviewedBy: {
+        '@type': 'Person',
+        name: 'دکتر نام',
+        url: new URL(encodeURI('/پزشکان/دکتر-نام'), 'https://sefiddental.ir').href,
+      },
+      lastReviewed: '2026-10-15',
+      dateModified: '2026-10-15T08:00:00.000Z',
+    });
+    expect(
+      guidePageNode({ path: '/راهنمای-بیمار/x', name: 'متن [[NEEDS_CLIENT: نام]]' }),
+    ).toBeNull();
+    expect(guidePageNode({ path: '/راهنمای-بیمار/x', name: ' ' })).toBeNull();
+  });
 });

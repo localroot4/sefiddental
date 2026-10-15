@@ -155,6 +155,8 @@ export const Media: CollectionConfig = {
   trash: true,
   defaultPopulate: {
     alt: true,
+    // The computed url reads the filename; without it a populated media has no URL.
+    filename: true,
     url: true,
     width: true,
     height: true,

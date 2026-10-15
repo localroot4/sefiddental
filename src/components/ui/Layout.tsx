@@ -63,16 +63,28 @@ export function SectionHeader(props: {
   );
 }
 
+// DESIGN.md 2: headlines take at most two lines at 1440 px. Display-1 holds about 34 characters
+// there in the hero's text column (measured in phase 4); a longer H1 takes the hero size, which
+// stays a step above the display-2 section H2s.
+const LONG_TITLE = 34;
+
+/** The PageHero `titleSize` for an H1 text: `hero` when display-1 would wrap past two lines. */
+export const heroTitleSize = (title: string): 'display-1' | 'hero' =>
+  [...title].length > LONG_TITLE ? 'hero' : 'display-1';
+
 /**
  * Inner-page hero, family A (DESIGN.md section 6; brief decision 19): text at the start side,
  * media in a plain 24 px frame at the end side, no mark mask. Phones stack text, media, then the
  * CTAs; from 744 px the text and CTAs sit beside the media, centered on it. `compact` (hubs) has
- * no media and a display-2 H1. One H1 per page: this one.
+ * no media and a display-2 H1. The H1 takes the whole text column; the summary keeps the reading
+ * measure. One H1 per page: this one.
  */
 export function PageHero(props: {
   breadcrumbs?: ReactNode;
   label?: ReactNode;
   title: ReactNode;
+  /** Display-1 by default; `hero` for a long H1 (heroTitleSize). Ignored when `compact`. */
+  titleSize?: 'display-1' | 'hero';
   summary?: ReactNode;
   actions?: ReactNode;
   /** Under the CTAs, e.g. the quiet «درد شدید دارید؟» link of the root-canal page. */
@@ -98,19 +110,25 @@ export function PageHero(props: {
             : "[grid-template-areas:'text'_'actions']",
         )}
       >
-        <div className="grid max-w-measure gap-4 [grid-area:text]">
+        <div className="grid gap-4 [grid-area:text]">
           {props.label ? (
             <p className="text-small font-semibold text-brand-strong">{props.label}</p>
           ) : null}
           <h1
             className={cx(
               'font-display font-bold',
-              props.compact ? 'text-display-2' : 'text-display-1',
+              props.compact
+                ? 'text-display-2'
+                : props.titleSize === 'hero'
+                  ? 'text-hero'
+                  : 'text-display-1',
             )}
           >
             {props.title}
           </h1>
-          {props.summary ? <p className="text-body-lg text-ink-muted">{props.summary}</p> : null}
+          {props.summary ? (
+            <p className="max-w-measure text-body-lg text-ink-muted">{props.summary}</p>
+          ) : null}
         </div>
         {split ? (
           <div className="w-full max-w-[30rem] [grid-area:media] md:justify-self-end">

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import {
   clinicHoursSchema,
+  hoursNote,
   hoursState,
   hoursSummary,
   type ClinicHours,
@@ -410,6 +411,16 @@ describe('hoursSummary', () => {
         weekly: [{ days: ['sat', 'sun'], open: '10:00', close: '20:00' }],
       }),
     ).toBeNull();
+  });
+});
+
+describe('hoursNote', () => {
+  it('H-NOTE the every-day sentence (F14), else the trimmed clinic note, else null', () => {
+    expect(hoursNote({ ...CLINIC, noteFa: 'یادداشت' })).toBe(
+      'هر روز ۱۰ تا ۲۰، به\u200Cجز تعطیلات رسمی.',
+    );
+    expect(hoursNote({ ...SPLIT, noteFa: ' یادداشت ' })).toBe('یادداشت');
+    expect(hoursNote({ ...SPLIT, noteFa: '  ' })).toBeNull();
   });
 });
 

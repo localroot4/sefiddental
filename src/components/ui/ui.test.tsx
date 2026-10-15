@@ -16,7 +16,7 @@ import { Fact, FactsRow, FaqList, Quote, Steps } from './Content';
 import { EmptyState, Loading, SkeletonCard, SuccessCheck, Toast } from './Feedback';
 import { hoursBadgeLabels } from './Hours';
 import { HoursBadge } from './HoursBadge';
-import { PageHero, Section, SectionHeader } from './Layout';
+import { heroTitleSize, PageHero, Section, SectionHeader } from './Layout';
 import { MediaFrame, MediaPlaceholder } from './Media';
 import { Picture } from './Picture';
 import { TestimonialCard } from './Testimonial';
@@ -322,6 +322,19 @@ describe('ui components: content, media, cards', () => {
     const compact = renderToStaticMarkup(<PageHero compact title="عنوان" media={<i />} />);
     expect(compact).toContain('text-display-2');
     expect(compact).not.toContain('grid-area:media');
+  });
+
+  it('UK7b page hero: a long H1 takes the hero size over the whole text column; the summary keeps the measure', () => {
+    expect(heroTitleSize('ب'.repeat(34))).toBe('display-1');
+    expect(heroTitleSize('ترمیم دندان در سه سطح: معمولی، VIP و CIP')).toBe('hero');
+    const { container } = render(<PageHero title="عنوان" titleSize="hero" summary="خلاصه" />);
+    const h1 = container.querySelector('h1')!;
+    expect(h1.className).toContain('text-hero');
+    expect(h1.className).not.toContain('text-display');
+    expect(h1.parentElement!.className).not.toContain('max-w-measure');
+    expect(container.querySelector('h1 ~ p')!.className).toContain('max-w-measure');
+    const plain = render(<PageHero title="عنوان" />).container.querySelector('h1')!;
+    expect(plain.className).toContain('text-display-1');
   });
 
   it('UK8 testimonial video: Persian captions on by default, streams only on play', () => {

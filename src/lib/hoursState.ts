@@ -203,8 +203,7 @@ export function hoursState(now: Date, hours: ClinicHours, options: HoursOptions 
 
   const callsAllowed = state === 'open' || state === 'closing-soon';
   // An empty note (the Clinic global's default) never leaves a bare "ساعات کاری:".
-  const summary = hoursSummary(hours) ?? (hours.noteFa.trim() || null);
-  const closedSheet = callsAllowed ? null : COPY.closedSheet(summary);
+  const closedSheet = callsAllowed ? null : COPY.closedSheet(hoursNote(hours));
 
   let callbackLine: string;
   let emergencyClosedLine: string | null = null;
@@ -239,6 +238,11 @@ export function hoursSummary(hours: ClinicHours): string | null {
   if (!rule || rest.length > 0) return null;
   if (!ALL_WEEKDAYS.every((d) => rule.days.includes(d))) return null;
   return COPY.summaryEveryDay(timeLabel(rule.open), timeLabel(rule.close));
+}
+
+/** The line under an hours table: the every-day sentence (F14), else the clinic's own note. */
+export function hoursNote(hours: ClinicHours): string | null {
+  return hoursSummary(hours) ?? (hours.noteFa.trim() || null);
 }
 
 // Admin-facing validation messages for the clinic global.
