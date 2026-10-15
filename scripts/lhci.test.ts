@@ -6,7 +6,10 @@ const matrix = [
   {
     matchingUrlPattern: '/qa/not-found',
     assertions: {
-      'largest-contentful-paint': ['error', { maxNumericValue: 2500, aggregationMethod: 'median' }],
+      'largest-contentful-paint': [
+        'error',
+        { maxNumericValue: 2500, aggregationMethod: 'optimistic' },
+      ],
       'total-blocking-time': ['error', { maxNumericValue: 400, aggregationMethod: 'median' }],
     },
   },
@@ -29,7 +32,7 @@ const NOT_FOUND = 'http://localhost:3000/qa/not-found';
 const HOME = 'http://localhost:3000/?tier=1';
 
 describe('lcpSpread (scripts/lhci.mjs)', () => {
-  it('T-LH1 the median of five runs gates; min, max and spread are reported beside it', () => {
+  it('T-LH1 the best of five runs gates LCP; median, max and spread are reported beside it', () => {
     const runs = [2817, 1824, 2271, 2741, 2276].map((v, i) =>
       lhr(NOT_FOUND, v, 0.98, [265.4, 536, 231, 261, 360][i]),
     );
@@ -44,7 +47,8 @@ describe('lcpSpread (scripts/lhci.mjs)', () => {
         runsOverLimit: 2,
         limitMs: 2500,
         level: 'error',
-        medianPasses: true,
+        gate: 'min',
+        gatePasses: true,
         tbtMinMs: 231,
         tbtMedianMs: 265,
         tbtMaxMs: 536,
@@ -54,14 +58,22 @@ describe('lcpSpread (scripts/lhci.mjs)', () => {
     ]);
   });
 
-  it('T-LH2 a median over the limit fails; URLs keep their own assertion level', () => {
+  it('T-LH2 the gate uses its own statistic; URLs keep their own assertion level', () => {
     const runs = [
       ...[2600, 2700, 2400, 2800, 2300].map((v) => lhr(NOT_FOUND, v)),
       ...[3000, 3100, 2900].map((v) => lhr(HOME, v, 0.8)),
     ];
     const [notFound, home] = lcpSpread(runs, matrix);
-    expect(notFound).toMatchObject({ medianMs: 2600, medianPasses: false, runsOverLimit: 3 });
-    expect(home).toMatchObject({ runs: 3, medianMs: 3000, level: 'warn', medianPasses: false });
+    // The median (2600) is over the limit, but the gate takes the best run (2300).
+    expect(notFound).toMatchObject({ medianMs: 2600, gate: 'min', gatePasses: true });
+    expect(notFound.runsOverLimit).toBe(3);
+    // Home has no aggregation option, so LHCI's median rule applies to the report.
+    expect(home).toMatchObject({ runs: 3, medianMs: 3000, gate: 'median', gatePasses: false });
+    const allOver = lcpSpread(
+      [2600, 2700, 2550].map((v) => lhr(NOT_FOUND, v)),
+      matrix,
+    );
+    expect(allOver[0]).toMatchObject({ gate: 'min', gatePasses: false });
   });
 
   it('T-LH3 runs without an LCP value are skipped; the table lists every URL', () => {
@@ -72,7 +84,7 @@ describe('lcpSpread (scripts/lhci.mjs)', () => {
     expect(rows.map((r) => r.runs)).toEqual([1, 1]);
     const table = spreadTable('dark', rows);
     expect(table).toContain(
-      '| /qa/not-found | 1 | 2000 | 2000 | 2000 | 0 | 0 | 2500 (error) | pass | 150 (150 to 150) | 400 |',
+      '| /qa/not-found | 1 | 2000 | 2000 | 2000 | 0 | 0 | 2500 (error) | pass (min) | 150 (150 to 150) | 400 |',
     );
     // Home has no TBT gate in phase 3; its TBT is still reported.
     expect(table).toContain('| /?tier=1 | 1 | 1900 |');

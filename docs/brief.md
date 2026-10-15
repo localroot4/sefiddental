@@ -255,7 +255,15 @@ regressions of about 250 ms, so every run prints the TBT of each URL beside
 the 200 ms target and the host benchmarkIndex. The Lighthouse performance
 score warns at its target (95 on content pages): TBT, LCP and CLS make up
 80% of it and are errors on their own, so a second error on the score would
-act as a stricter, hidden TBT limit. Until the real home lands in phase 7, home
+act as a stricter, hidden TBT limit. CI gates LCP on the best of 5 runs
+(`aggregationMethod: 'optimistic'`) at the 2.5 s target. The GitHub runner
+has 2 shared cores, below Lighthouse's minimum of 2 dedicated cores.
+Contention there only adds time and often makes Lighthouse count the
+framework scripts in LCP. In 8 theme runs of unchanged code, the best run
+stayed at 1368 to 1752 ms, but one median failed at 2519 ms. This gate
+catches only LCP regressions of about 750 ms or more, so every run prints
+min, median and max. TBT keeps the median gate, because its best run moves
+with host speed (72 to 262 ms for the same code). Until the real home lands in phase 7, home
 asserts performance, LCP and script size as warnings and CLS and
 third-party requests as errors; accessibility, best practices, SEO, TBT,
 stylesheet and font size and console errors are not asserted on home yet.
