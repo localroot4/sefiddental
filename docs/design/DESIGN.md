@@ -51,7 +51,7 @@ carry navy text in both themes; the danger fill carries white. No gradients
 in UI chrome; a two-stop teal gradient may appear inside the intro mark
 only.
 
-### 1.1 Measured contrast (phase 2, `design/tools/contrast.py`)
+### 1.1 Measured contrast (phases 2 and 4, `design/tools/contrast.py`)
 
 | Pair | Role | Light | Dark | Min |
 |---|---|---|---|---|
@@ -80,6 +80,16 @@ only.
 | --color-on-fill on --color-warning-fill | label on warning fill | 5.43 OK | 5.43 OK | 4.5 |
 | --color-line-strong on --color-surface | borders and icons (non-text, 3:1) | 3.09 OK | 3.86 OK | 3.0 |
 | --color-focus on --color-surface | focus ring (non-text, 3:1) | 4.90 OK | 9.50 OK | 3.0 |
+| #FFFFFF on #C81E2E | white on danger-strong (danger button hover, both themes) | 5.70 OK | 5.70 OK | 4.5 |
+| #C81E2E on --color-surface | danger-strong button shape (non-text, 3:1) | 5.36 OK | 3.09 OK | 3.0 |
+| --color-ink on info alert tint (#DAF1FB / #1E4B6A) | alert text | 13.43 OK | 8.10 OK | 4.5 |
+| --color-info on info alert tint (#DAF1FB / #1E4B6A) | alert icon (non-text, 3:1) | 4.79 OK | 5.78 OK | 3.0 |
+| --color-ink on success alert tint (#E1F0DE / #244A4D) | alert text | 13.25 OK | 8.51 OK | 4.5 |
+| --color-success on success alert tint (#E1F0DE / #244A4D) | alert icon (non-text, 3:1) | 4.46 OK | 5.56 OK | 3.0 |
+| --color-ink on warning alert tint (#F8E3D3 / #3B3D42) | alert text | 12.65 OK | 9.52 OK | 4.5 |
+| --color-warning on warning alert tint (#F8E3D3 / #3B3D42) | alert icon (non-text, 3:1) | 4.43 OK | 5.11 OK | 3.0 |
+| --color-ink on danger alert tint (#FAE0E2 / #2A2942) | alert text | 12.58 OK | 12.30 OK | 4.5 |
+| --color-danger on danger alert tint (#FAE0E2 / #2A2942) | alert icon (non-text, 3:1) | 4.57 OK | 6.19 OK | 3.0 |
 | --color-ink on hero scrim (surface 88%) | hero headline | 11.20 OK | 11.00 OK | 4.5 |
 | --color-ink-muted on hero scrim (surface 88%) | hero subtext | 4.90 OK | 6.20 OK | 4.5 |
 | --color-brand-strong on hero scrim (surface 88%) | secondary button label | 4.95 OK | 6.78 OK | 4.5 |
@@ -99,6 +109,15 @@ the lower ratio, so it holds for any photo. Lowering the scrim below 85%
 fails AA in the light theme. The script holds the two alphas as `SCRIM_A`
 and `BAND_A`. A change to either alpha in the hero styles changes these
 two values and this table in the same commit.
+
+Phase 4 adds two groups. The tinted alerts (`src/components/ui/Alert.tsx`)
+mix the tone's fill into `--color-surface-raised` (22%, danger 14%); the
+rows show each mixed tint per theme, with ink text at 4.5:1 and the icon in
+the tone's text color at the 3:1 non-text bar. The script holds the shares
+as `TINTS`; a change in `Alert.tsx` changes them in the same commit. The
+danger button hover is `--color-danger-strong` (`#C81E2E`, the light
+`danger` red in both themes, `src/app/globals.css`): white labels hold
+5.70:1, and the button shape holds 3.09:1 against the dark surface.
 
 The script exits non-zero on any failure and runs in CI from phase 3.
 
@@ -133,10 +152,18 @@ and 240-350 px on phones (320-430). The hero uses
 `clamp(2rem, 1rem + 3vw, 3.75rem)`: 32 px floor, 60 px cap. Measured on
 `design/hero-directions/b.html` with this floor: 2 lines from 1024 to 1920
 and at 430, 3 lines at 820 and from 360 to 414, 4 lines at 320 and at 744.
-The former 2.25rem floor gave 4 lines at 360 and 375. The 4 lines at 744
-stay open for phase 4. 320 px is below the 360 px floor of the phase 4
-headline check, so the hero H1 may take 4 lines there. Every other
-headline uses the scale above.
+The former 2.25rem floor gave 4 lines at 360 and 375. Phase 4 closes the
+4 lines at 744: from 744 to 1023 px the H1 stays at the 2rem floor
+(`md:text-[2rem] lg:text-hero`), which keeps it to 3 lines from 360 to
+1023 and 2 lines from 1024 (e2e T-HOME10). 320 px is below the 360 px floor
+of the phase 4 headline check, so the hero H1 may take 4 lines there.
+
+Long inner-page H1s may use the hero size too. Display-1 holds about 34
+characters in two lines at 1440 in the page hero's text column; a longer H1
+(`heroTitleSize` in `src/components/ui/Layout.tsx`, the `PageHero`
+`titleSize="hero"`) takes `text-hero` so it keeps two lines and still sits
+a step above the display-2 section H2s. Every other headline uses the
+scale above.
 
 Rules: Persian digits in Persian text (the fonts carry them; format with
 `fa-IR`); thousands separator «٬»; phone numbers and Latin in LTR islands

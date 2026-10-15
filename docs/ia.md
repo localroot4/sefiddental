@@ -192,14 +192,17 @@ family more than twice; at most two consecutive image-and-text splits.
 | 4 | Three restoration tiers: معمولی, VIP, CIP morph | D | Signature differentiator | «رزرو نوبت» with the tier |
 | 5 | Before/after: 1 featured compare slider plus 2 thumbnails | E | Proof for cosmetic money services | link «همهٔ نمونه‌ها» |
 | 6 | Dentists: cards with photo, specialty, council number | F | Authority, faces | link «همهٔ پزشکان» |
-| 7 | First-visit journey: four steps from consultation to aftercare (pinned pan on desktop) | G | Remove fear and pressure | link «راهنمای اولین مراجعه» |
-| 8 | Patient videos: three testimonials with posters | H | Social proof | none |
+| 7 | Patient videos: three testimonials with posters | H | Social proof | none |
+| 8 | First-visit journey: four steps from consultation to aftercare (pinned pan on desktop) | G | Remove fear and pressure | link «راهنمای اولین مراجعه» |
 | 9 | FAQ: price, pain, insurance, financing, duration, emergency | I | Objections | sticky aside: call, WhatsApp, booking |
 | 10 | Booking block with static map and hours; the full form, the second form instance on home | J | Action | «ثبت درخواست» |
 
-Phase 4 builds these ten sections in the order of `docs/experience-direction.md`
-where the two overlap: hero, trust band, services, restoration tiers,
-before/after, dentists, patient videos, first-visit journey, FAQ, booking.
+The table is the order as built in phase 4: the order of
+`docs/experience-direction.md` where the two overlap, so the patient videos
+(scene 8) come before the first-visit journey, and the journey and the FAQ
+share scene 9 (`data-scene="first-visit"`). A section without published
+records renders nothing (before/after, dentists and patient videos until
+the client sends them, F9); the order of the rest stays.
 The storyboard's digital-workflow scene («از اسکن تا لبخند») is not built:
 its captions are unconfirmed claims (gaps 7 and 48), and phase 7 decides.
 Section headings and intros live in the home page's `sections` field; the

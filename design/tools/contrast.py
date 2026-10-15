@@ -34,7 +34,10 @@ pairs=[('--color-ink','--color-surface','body text',4.5),('--color-ink','--color
 ('--color-on-warm','--color-warm','label on warm highlight',4.5),('--color-ink','--color-warm-soft','ink on warm soft',4.5),
 ('--color-success','--color-surface','success text',4.5),('--color-danger','--color-surface','error text',4.5),('--color-warning','--color-surface','warning text',4.5),('--color-info','--color-surface','info text',4.5),
 ('#FFFFFF','--color-danger-fill','white on danger fill',4.5),('--color-on-fill','--color-info-fill','label on info fill',4.5),('--color-on-fill','--color-success-fill','label on success fill',4.5),('--color-on-fill','--color-warning-fill','label on warning fill',4.5),
-('--color-line-strong','--color-surface','borders and icons (non-text, 3:1)',3.0),('--color-focus','--color-surface','focus ring (non-text, 3:1)',3.0)]
+('--color-line-strong','--color-surface','borders and icons (non-text, 3:1)',3.0),('--color-focus','--color-surface','focus ring (non-text, 3:1)',3.0),
+('#FFFFFF','#C81E2E','white on danger-strong (danger button hover, both themes)',4.5),('#C81E2E','--color-surface','danger-strong button shape (non-text, 3:1)',3.0)]
+# tinted alerts (src/components/ui/Alert.tsx): the fill mixed into surface-raised at this share; ink text, icon in the tone's text color
+TINTS=[('info',.22),('success',.22),('warning',.22),('danger',.14)]  # copies of the color-mix shares in Alert.tsx: change both together
 # home hero layers over the photo: (text token, layer token, alpha, layer name, role, minimum)
 SCRIM_A,BAND_A=.88,.90  # copies of the color-mix alphas of .scrim and .trust (b.html; the app hero from phase 4) and of DESIGN.md 1.1 and 7: change all of them together
 SCRIM=('--color-surface',SCRIM_A,f'hero scrim (surface {SCRIM_A:.0%})'); BAND=('--color-surface-raised',BAND_A,f'trust band (surface-raised {BAND_A:.0%})')
@@ -52,6 +55,11 @@ for t,s,role,mn in pairs:
     def val(theme):
         a=theme.get(t,t) if t.startswith('--') else t; b=theme.get(s,s) if s.startswith('--') else s; return ratio(a,b)
     row(f'{t} on {s}',role,val(light),val(dark),mn)
+for tone,share in TINTS:
+    tint=lambda theme: over(theme[f'--color-{tone}-fill'],share,theme['--color-surface-raised'])
+    label=f'{tone} alert tint ({tint(light)} / {tint(dark)})'
+    row(f'--color-ink on {label}','alert text',ratio(light['--color-ink'],tint(light)),ratio(dark['--color-ink'],tint(dark)),4.5)
+    row(f'--color-{tone} on {label}','alert icon (non-text, 3:1)',ratio(light[f'--color-{tone}'],tint(light)),ratio(dark[f'--color-{tone}'],tint(dark)),3.0)
 for t,s,alpha,name,role,mn in photo_pairs:
     row(f'{t} on {name}',role,worst_over_photo(light[t],light[s],alpha),worst_over_photo(dark[t],dark[s],alpha),mn)
 def min_alpha(theme):
