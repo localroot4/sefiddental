@@ -1,5 +1,5 @@
 {
-  "$comment": "Initial-JS budgets per page class (freeze decision 4, spec-experience-tooling 4.9). CI gates the interim limits in KiB; reports print the documented targets (docs/brief.md section 7, docs/experience-direction.md section 4) beside the measured values. Read by scripts/check-bundle.mjs and lighthouserc.cjs.",
+  "$comment": "Initial-JS budgets per page class (freeze decision 4, spec-experience-tooling 4.9) and the content-page total blocking time (docs/brief.md section 7). CI gates the interim limits; reports print the documented targets (docs/brief.md section 7, docs/experience-direction.md section 4) beside the measured values. Read by scripts/check-bundle.mjs, lighthouserc.cjs and scripts/lhci.mjs.",
   "classes": {
     "home": {
       "label": "Home (experience)",
@@ -13,7 +13,9 @@
       "pages": ["/qa/not-found"],
       "targetKB": 90,
       "interimKiB": 150,
-      "routeAllowanceKiB": 15
+      "routeAllowanceKiB": 15,
+      "tbtTargetMs": 200,
+      "tbtInterimMs": 400
     },
     "booking": {
       "label": "Booking and emergency",

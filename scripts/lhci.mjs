@@ -31,7 +31,7 @@ const median = (sorted) => {
 };
 
 /**
- * LCP statistics per requested URL (pure, unit-tested).
+ * LCP and total-blocking-time statistics per requested URL (pure, unit-tested).
  * @param {{ requestedUrl: string, audits: Record<string, { numericValue?: number }>, categories: Record<string, { score: number | null }> }[]} lhrs
  * @param {{ matchingUrlPattern: string, assertions: Record<string, unknown> }[]} assertMatrix
  */
@@ -40,16 +40,20 @@ export function lcpSpread(lhrs, assertMatrix) {
   for (const lhr of lhrs) {
     const lcp = lhr.audits['largest-contentful-paint']?.numericValue;
     if (typeof lcp !== 'number') continue;
-    const entry = byUrl.get(lhr.requestedUrl) ?? { lcp: [], performance: [] };
+    const entry = byUrl.get(lhr.requestedUrl) ?? { lcp: [], tbt: [], performance: [] };
     entry.lcp.push(lcp);
+    const tbt = lhr.audits['total-blocking-time']?.numericValue;
+    if (typeof tbt === 'number') entry.tbt.push(tbt);
     entry.performance.push(lhr.categories.performance?.score ?? 0);
     byUrl.set(lhr.requestedUrl, entry);
   }
-  return [...byUrl.entries()].map(([url, { lcp, performance }]) => {
+  return [...byUrl.entries()].map(([url, { lcp, tbt, performance }]) => {
     const sorted = [...lcp].sort((a, b) => a - b);
-    const rule = assertMatrix.find((m) => new RegExp(m.matchingUrlPattern).test(url))?.assertions[
-      'largest-contentful-paint'
-    ];
+    const tbtSorted = [...tbt].sort((a, b) => a - b);
+    const assertions =
+      assertMatrix.find((m) => new RegExp(m.matchingUrlPattern).test(url))?.assertions ?? {};
+    const rule = assertions['largest-contentful-paint'];
+    const tbtRule = assertions['total-blocking-time'];
     const [level, options] = Array.isArray(rule) ? rule : [rule, {}];
     const limitMs = options?.maxNumericValue ?? null;
     const medianMs = median(sorted);
@@ -64,6 +68,10 @@ export function lcpSpread(lhrs, assertMatrix) {
       limitMs,
       level: level ?? 'off',
       medianPasses: limitMs === null || medianMs <= limitMs,
+      tbtMinMs: tbtSorted.length ? Math.round(tbtSorted[0]) : null,
+      tbtMedianMs: tbtSorted.length ? Math.round(median(tbtSorted)) : null,
+      tbtMaxMs: tbtSorted.length ? Math.round(tbtSorted.at(-1)) : null,
+      tbtLimitMs: (Array.isArray(tbtRule) ? tbtRule[1]?.maxNumericValue : null) ?? null,
       performanceMedian: median([...performance].sort((a, b) => a - b)),
     };
   });
@@ -74,11 +82,11 @@ export function spreadTable(theme, rows) {
   const lines = [
     `### LCP spread, ${theme} (median gates; ${rows[0]?.runs ?? 0} runs per URL)`,
     '',
-    '| URL | Runs | Min ms | Median ms | Max ms | Spread ms | Runs over limit | Limit ms (level) | Median | Perf. median |',
-    '|---|---|---|---|---|---|---|---|---|---|',
+    '| URL | Runs | Min ms | Median ms | Max ms | Spread ms | Runs over limit | Limit ms (level) | Median | TBT median ms (min to max) | TBT limit ms | Perf. median |',
+    '|---|---|---|---|---|---|---|---|---|---|---|---|',
     ...rows.map(
       (r) =>
-        `| ${new URL(r.url).pathname}${new URL(r.url).search} | ${r.runs} | ${r.minMs} | ${r.medianMs} | ${r.maxMs} | ${r.spreadMs} | ${r.runsOverLimit} | ${r.limitMs ?? 'none'} (${r.level}) | ${r.medianPasses ? 'pass' : 'FAIL'} | ${r.performanceMedian} |`,
+        `| ${new URL(r.url).pathname}${new URL(r.url).search} | ${r.runs} | ${r.minMs} | ${r.medianMs} | ${r.maxMs} | ${r.spreadMs} | ${r.runsOverLimit} | ${r.limitMs ?? 'none'} (${r.level}) | ${r.medianPasses ? 'pass' : 'FAIL'} | ${r.tbtMedianMs ?? '-'} (${r.tbtMinMs ?? '-'} to ${r.tbtMaxMs ?? '-'}) | ${r.tbtLimitMs ?? 'none'} | ${r.performanceMedian} |`,
     ),
     '',
   ];
@@ -94,10 +102,11 @@ export function cpuMultiplierFor(benchmarkIndex) {
   return benchmarkIndex >= 1500 ? 4 : 2;
 }
 
-/** Median benchmarkIndex of one short collect run on this host (NaN if it could not run). */
+/** Median benchmarkIndex of a short collect run on this host (NaN if it could not run). */
 function measureHost() {
   rmSync(lhciDir, { recursive: true, force: true });
-  spawnSync('npx', ['lhci', 'collect', '--numberOfRuns=1'], { cwd: root, stdio: 'inherit' });
+  // Three runs per URL: one reading of the same host ranged 1514-2264, and 1500 is a step.
+  spawnSync('npx', ['lhci', 'collect', '--numberOfRuns=3'], { cwd: root, stdio: 'inherit' });
   let index = Number.NaN;
   try {
     const values = savedLhrs()
@@ -202,7 +211,9 @@ async function main() {
 
 function run() {
   // The assertions do not depend on the theme (only the Chrome flags and the report folder do).
-  const { assertMatrix } = createRequire(import.meta.url)('../lighthouserc.cjs').ci.assert;
+  const require = createRequire(import.meta.url);
+  const { assertMatrix } = require('../lighthouserc.cjs').ci.assert;
+  const { tbtTargetMs } = require('../tests/budgets/limits.json').classes.content;
   // A multiplier set in the shell wins (to reproduce a run); otherwise calibrate on this host.
   const index = process.env.LHCI_CPU_MULTIPLIER ? Number.NaN : measureHost();
   const multiplier =
@@ -210,7 +221,12 @@ function run() {
   const host = `Host benchmarkIndex ${Number.isFinite(index) ? Math.round(index) : 'not measured'}; CPU slowdown ${multiplier}x.`;
   console.log(`lhci: ${host}`);
   if (process.env.GITHUB_ACTIONS) console.log(`::notice title=lhci host::${host}`);
-  const sections = [host, ''];
+  // The targets stay visible beside the interim TBT limit the gate uses (docs/brief.md section 7).
+  const sections = [
+    host,
+    `Content-page TBT target ${tbtTargetMs} ms; CI gates the TBT limit below.`,
+    '',
+  ];
   let failed = false;
   for (const theme of ['light', 'dark']) {
     const env = {

@@ -7,6 +7,7 @@ const matrix = [
     matchingUrlPattern: '/qa/not-found',
     assertions: {
       'largest-contentful-paint': ['error', { maxNumericValue: 2500, aggregationMethod: 'median' }],
+      'total-blocking-time': ['error', { maxNumericValue: 400, aggregationMethod: 'median' }],
     },
   },
   {
@@ -15,9 +16,12 @@ const matrix = [
   },
 ];
 
-const lhr = (url: string, lcp: number, performance = 0.98) => ({
+const lhr = (url: string, lcp: number, performance = 0.98, tbt = 150) => ({
   requestedUrl: url,
-  audits: { 'largest-contentful-paint': { numericValue: lcp } },
+  audits: {
+    'largest-contentful-paint': { numericValue: lcp },
+    'total-blocking-time': { numericValue: tbt },
+  },
   categories: { performance: { score: performance } },
 });
 
@@ -26,7 +30,9 @@ const HOME = 'http://localhost:3000/?tier=1';
 
 describe('lcpSpread (scripts/lhci.mjs)', () => {
   it('T-LH1 the median of five runs gates; min, max and spread are reported beside it', () => {
-    const runs = [2817, 1824, 2271, 2741, 2276].map((v) => lhr(NOT_FOUND, v));
+    const runs = [2817, 1824, 2271, 2741, 2276].map((v, i) =>
+      lhr(NOT_FOUND, v, 0.98, [265.4, 536, 231, 261, 360][i]),
+    );
     expect(lcpSpread(runs, matrix)).toEqual([
       {
         url: NOT_FOUND,
@@ -39,6 +45,10 @@ describe('lcpSpread (scripts/lhci.mjs)', () => {
         limitMs: 2500,
         level: 'error',
         medianPasses: true,
+        tbtMinMs: 231,
+        tbtMedianMs: 265,
+        tbtMaxMs: 536,
+        tbtLimitMs: 400,
         performanceMedian: 0.98,
       },
     ]);
@@ -62,9 +72,11 @@ describe('lcpSpread (scripts/lhci.mjs)', () => {
     expect(rows.map((r) => r.runs)).toEqual([1, 1]);
     const table = spreadTable('dark', rows);
     expect(table).toContain(
-      '| /qa/not-found | 1 | 2000 | 2000 | 2000 | 0 | 0 | 2500 (error) | pass |',
+      '| /qa/not-found | 1 | 2000 | 2000 | 2000 | 0 | 0 | 2500 (error) | pass | 150 (150 to 150) | 400 |',
     );
+    // Home has no TBT gate in phase 3; its TBT is still reported.
     expect(table).toContain('| /?tier=1 | 1 | 1900 |');
+    expect(table).toMatch(/\| \/\?tier=1 \|.*\| 150 \(150 to 150\) \| none \|/);
   });
 });
 

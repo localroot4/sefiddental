@@ -285,7 +285,7 @@ held by gap 32; deliverables 1 and 10 are built without the chosen-path steps.
 | 1 | Every public HTML response renders per request; data reads are cached and tagged | Every route is dynamic (`ƒ`); `scripts/check-no-prerender.mjs` gates it. Readers in `src/lib/data/` use `unstable_cache` with tags. Saves revalidate tags only, never paths: profile `'max'` for content, `{ expire: 0 }` for globals and redirects. The data cache stays in memory (`experimental.isrFlushToDisk: false`) |
 | 2 | The admin keeps `style-src 'unsafe-inline'` | On the admin only. The admin CSP enforces (`CSP_ADMIN_MODE` default `enforce`; `report-only` stays as a debugging switch) after the admin flows reported zero violations |
 | 3 | Lighthouse on a 200 render of the 404 template | `/qa/not-found` with `QA_ROUTES=1`. Without the switch, every `/qa/*` path rewrites to the branded global 404 . The CPU slowdown is calibrated per host from Lighthouse's `benchmarkIndex` with the table in Lighthouse's `docs/throttling.md` (mid-tier mobile target: 4x on a host of 1500 and up, 2x below); this container measured 1646 (4x). The first GitHub runs used a fixed 4x and failed TBT (median 244-258 ms) and performance (0.93) on a slower runner; the budgets did not change. Lighthouse loads the pages over HTTPS and HTTP/2 through `scripts/tls-front.mjs`, with a throwaway certificate that only the test Chrome trusts, as browsers reach production (`docs/deploy.md` 2.5 item 7). Over plain HTTP/1.1 the same CI run gave a 404 LCP median of 2134 ms light and 2815 ms dark: Lighthouse counts every script that ran before the first paint of the unthrottled load, the order changes between runs, and HTTP/1.1 adds six cold connections. The same traces re-simulated as HTTP/2 were 300 to 470 ms faster |
-| 4 | Interim initial-JS limits | `tests/budgets/limits.json`: home 215 KiB, content 150 KiB, booking 150 KiB, route allowances 85, 15 and 20 KiB. Reports show the 180, 90 and 70 KB targets |
+| 4 | Interim initial-JS limits | `tests/budgets/limits.json`: home 215 KiB, content 150 KiB, booking 150 KiB, route allowances 85, 15 and 20 KiB. Reports show the 180, 90 and 70 KB targets. The content-page TBT gate is an interim 400 ms with the 200 ms target reported in every run, and the performance score warns at 0.95 (`docs/brief.md` section 7): an empty Next.js 16.4 page alone blocks for about 100 ms, and a slow GitHub runner measured 265 to 292 ms on the 404 |
 | 5 | One environment schema, one `.env.example` | `src/lib/env.ts`. The security fixes added production rules: every secret has at least 43 characters, `FORM_TOKEN_SECRET_PREVIOUS` included, and the secrets differ; `HOSTNAME` is never a loopback IP; an invalid environment stops the process |
 | 6 | One cron route every minute | `GET /api/cron/tick` with a bearer `CRON_SECRET`: schedules, then at most 20 jobs; the run is recorded in `system-state`. One run per process at a time. Jobs run inside `asJobRunner()` |
 | 7 | Integration tests on SQLite, PostgreSQL in CI; e2e on a fresh migrated database and the standalone server | As planned. PostgreSQL integration and e2e also ran locally |
@@ -449,6 +449,11 @@ Tooling and CI:
   until phase 7; performance, LCP and script size warn.
 - Lighthouse measures over HTTPS and HTTP/2 (decision 3); `npm run lhci`
   needs the `openssl` CLI for the throwaway certificate.
+- Content-page TBT gates at an interim 400 ms, and the performance score
+  warns at 0.95 instead of failing (decision 4). The LCP spread table now
+  prints the TBT median, minimum, maximum and limit of every URL. The host
+  benchmark uses 3 runs per URL: one host read 1514 to 2264, and the
+  multiplier steps at 1500.
 - The framework JS floor (131.8 KiB for an empty Next 16.4 and React 19.3
   page) is above the 90 KB and 70 KB targets. CI gates the interim limits
   (decision 4).
@@ -519,7 +524,7 @@ Utilities:
 | What | How | Result |
 |---|---|---|
 | Acceptance: lint, typecheck, test, build and e2e pass locally | Final run | Exit 0. Lint 0 problems; format, typecheck, knip and check-bidi clean; 98 test files, 953 tests (896 at `b1f72a2`); test:tz 77 of 77 in UTC, Asia/Tehran and America/Los_Angeles; build; e2e 228 passed, 20 skipped, 0 failed (227 at `b1f72a2`; the skips are the experience spec, which runs in desktop-light only); check:bundle and lhci pass. Pass |
-| Acceptance: the same gates pass in CI | GitHub Actions on every push (`gh run list`) | Pushes `14357cf` to `08ff9b0` failed at workflow validation with 0 jobs: `${{ runner.temp }}` in a job `env`, where the `runner` context is not available (fixed in `36fb4c4`). Later runs passed lint, types, unit and SQLite integration every time, then failed in turn at the e2e seed (the Payload CLI stall, `scripts/payload.mjs`), at the 500-page axe scan (T-A11Y, now after hydration), at TBT on a slower runner (CPU slowdown now calibrated) and at the dark-theme LCP median (2815 ms, now measured over HTTP/2). Run 38650140681 on `24aee53` passed both jobs. Pass |
+| Acceptance: the same gates pass in CI | GitHub Actions on every push (`gh run list`) | Pushes `14357cf` to `08ff9b0` failed at workflow validation with 0 jobs: `${{ runner.temp }}` in a job `env`, where the `runner` context is not available (fixed in `36fb4c4`). Later runs passed lint, types, unit and SQLite integration every time, then failed in turn at the e2e seed (the Payload CLI stall, `scripts/payload.mjs`), at the 500-page axe scan (T-A11Y, now after hydration), at TBT on a slower runner (CPU slowdown now calibrated) and at the dark-theme LCP median (2815 ms, now measured over HTTP/2). Run 38650140681 on `24aee53` passed both jobs (runner benchmarkIndex 2562). Run 38651955320 on `109c2bd` failed content TBT (265 and 292 ms) and performance (0.94 and 0.93) on a runner with benchmarkIndex 1845; the gate is now the interim limit of decision 4. Result on the final head: see "CI after the TBT decision" below |
 | Acceptance: the admin loads in Persian RTL | e2e T-AD1; browser probe | `<html lang="fa" dir="RTL">` on `/admin/login` and the dashboard. Pass |
 | Acceptance: MFA enrollment works | e2e T-AD1 (admin) and T-AD2 (editor), codes from `otpauth` | The first sign-in is forced to `/admin/setup-totp`; a code completes it; the next sign-in asks `/admin/verify-totp`. Pass |
 | Acceptance: the editor cannot reach globals, users, redirects or system views | e2e T-AD2b to T-AD5; an independent browser probe; Local API checks on PostgreSQL | 15 admin URLs answer 404 «موردی یافت نشد», including the 5 globals, users, redirects, audit-log, events-daily, payload-jobs and `/admin/system-status`. REST answers 403 on the globals, redirects, audit-log, events-daily and payload-jobs; `/api/users` returns only the editor. No admin-only nav link. 34 of 34 Local API access checks. Pass |
@@ -529,7 +534,7 @@ Utilities:
 | Acceptance: `qualityTier` is pure and unit-tested; the overlay shows the live tier | Unit tests; code read; browser with `?debug=1&tier=2`; e2e T-EX2 to T-EX4, T-T01 | No imports, no `window`, `navigator` or clock; equal inputs give deep-equal output; inputs are not mutated. The overlay shows tier 2, and its buttons switch to 1 and 0 with `html[data-tier]`. Reduced motion and missing WebGL 2 give tier 0. Pass |
 | Acceptance: security headers on every response | 41 response kinds probed (pages 200, 404, 500 and 410, HEAD, 301, API, internal, feeds, assets, media, admin, 429, 503); e2e T-HD1 to T-HD9, T-HD7b | `X-Content-Type-Options`, `Referrer-Policy`, `Permissions-Policy` and HSTS on every kind except Next's own 308 for `//` paths (recorded exception, tripwire T-CN2b). Pass with that exception |
 | Acceptance: CSP has no `unsafe-inline` or `unsafe-eval` | e2e T-HD1, T-HD2, T-HD3, T-HD8; browser probe | Public HTML: enforced, a fresh nonce per response, `'strict-dynamic'`, hashes, no `unsafe-inline`, `unsafe-eval` or `unsafe-hashes`, zero violation events. Admin: nonce and `'strict-dynamic'` for scripts, no `unsafe-eval`; `style-src 'unsafe-inline'` by decision 2. Static 503 and 410: `default-src 'none'` plus a style hash. Pass on public pages |
-| Acceptance: Lighthouse CI passes the content-page budgets on the 404 page | `npm run lhci` on `/qa/not-found`, 5 runs per theme, over HTTPS and HTTP/2 | Median LCP 1365 ms light, 1660 ms dark (worst run 2121 ms); performance 0.99 in both themes; accessibility, best practices and SEO 1; CLS 0; TBT 126 and 105 ms; script 140.5 KiB under 150 KiB; 0 third-party requests. Pass on the interim JS limit; the 90 KB target is missed (see Budgets). Before the fix (HTTP/1.1, inline logo): median 2122 ms locally, 2815 ms dark on GitHub |
+| Acceptance: Lighthouse CI passes the content-page budgets on the 404 page | `npm run lhci` on `/qa/not-found`, 5 runs per theme, over HTTPS and HTTP/2 | Median LCP 1365 ms light, 1660 ms dark (worst run 2121 ms); performance 0.99 in both themes; accessibility, best practices and SEO 1; CLS 0; TBT 126 and 105 ms; script 140.5 KiB under 150 KiB; 0 third-party requests. Pass on the interim JS limit; the 90 KB target is missed (see Budgets). Before the fix (HTTP/1.1, inline logo): median 2122 ms locally, 2815 ms dark on GitHub. TBT now gates at the interim 400 ms and the score warns at 0.95 (decision 4); on the 1845 GitHub runner the 404 missed the 200 ms TBT target (265 and 292 ms) and the 0.95 score (0.94 and 0.93) |
 | Acceptance: `docs/deploy.md` lets the client deploy without asking a question | Review of the guide | Open, blocked by gap 32: section 3 waits for the approved path |
 | Prompt step 3: a test can fail | `persianSlug` broken on purpose (an NFD-based mark strip) | 6 of 46 failed (S4 returned `ادرس` for `آدرس`; S5, S6, S15, S-SEED, S-ARABIC-HAMZA); restored, 46 of 46 |
 | Integration tests on PostgreSQL | Fresh database, `DB_PUSH=false npm run migrate`, then `INT_DATABASE_URL=… npm run test:int` | After the security fixes: 14 files, 59 tests pass. Earlier: 12 files, 44 tests on two fresh databases (2026-10-14) and 9 files, 33 tests (2026-10-13); rows confirmed in PostgreSQL |
@@ -565,6 +570,8 @@ first fully green run. Host benchmarkIndex 2562, CPU 4x. 404 LCP median
 1676 ms light (1663 to 2372) and 1816 ms dark (1368 to 1967), 0 of 10 runs
 over 2500 ms; performance 0.98 and 0.97; e2e 228 passed, 20 skipped. Home
 warns only: performance 0.84 to 0.86, script transfer 434.5 KiB.
+
+CI after the TBT decision: pending at the time of writing.
 
 Not verified: S3 storage mode (no bucket); the 25 MiB upload through the
 running app; real phone videos (only synthetic MP4 boxes); a stopped
@@ -625,6 +632,7 @@ transfer fell about 4.5 KiB with no code change. LCP values are medians of
 | Initial JS, content (`/qa/not-found`) | 90 KB | 150 KiB, route 15 KiB (error) | 139.9 KiB, route 0. Target missed | 139.9 KiB |
 | Initial JS, booking and emergency | 70 KB | 150 KiB, route 20 KiB | No page before phase 5 | - |
 | Framework floor (empty Next 16.4 and React 19.3 page) | - | - | 131.8 KiB | - |
+| Framework floor TBT (empty Next 16.4 page, same host, 4x, HTTP/2) | - | - | 100 ms median (56 to 108); the 404 page 153 ms in the same 6 interleaved runs | - |
 | Script transfer in Lighthouse, content | - | 150 KiB (error) | 140.5 KiB | 145.0 KiB |
 | Script transfer in Lighthouse, home (includes chunks after `load`) | - | 215 KiB (warn) | 434.6 KiB | 441.8 KiB |
 | CSS | 50 KB | 50 KiB (error) | 5.7 KiB content, 6.2 KiB home | 5.5 to 5.9 KiB |
@@ -635,9 +643,9 @@ transfer fell about 4.5 KiB with no code change. LCP values are medians of
 | LCP home `?tier=1`, light | 2.5 s | 2500 ms (warn) | 1366 ms; min 1361, max 1663; 0 over. GitHub: 1914 ms | 2265 ms; 1968 ms; 2435 ms (2 of 5 over) |
 | LCP home `?tier=1`, dark | 2.5 s | 2500 ms (warn) | 1373 ms; min 1362, max 1958; 0 over. GitHub: 1968 ms | 2417 ms (2 of 5 over); 2265 ms; 1828 ms; GitHub 2571 ms |
 | CLS | 0.05 | 0.05 (error) | 0 in every run, both URLs, both themes | 0 |
-| TBT, content (stands in for INP) | INP 200 ms | TBT 200 ms (error) | 126 ms light (max 213), 105 ms dark (max 147) | 52 ms light (max 135), 66 ms dark (max 166); 62 and 58 ms |
+| TBT, content (stands in for INP) | INP 200 ms | TBT 400 ms interim (error); 200 ms target reported | 126 ms light (max 213), 105 ms dark (max 147). GitHub runner 1845: 265 ms light, 292 ms dark (231 to 536): target missed | 52 ms light (max 135), 66 ms dark (max 166); 62 and 58 ms (HTTP/1.1, where Lighthouse counted less of the hydration task) |
 | TBT, home `?tier=1` | INP 200 ms | none in phase 3 | 508 ms light (max 548), 534 ms dark (max 622) | 434 and 418 ms; 563 and 588 ms (max 755) |
-| Lighthouse performance, content | 95 | 0.95 (error) | 0.99 in both themes (single runs 0.96 to 0.99) | 0.99 and 0.98; 0.98 |
+| Lighthouse performance, content | 95 | 0.95 (warn) | 0.99 in both themes (single runs 0.96 to 0.99). GitHub runner 1845: 0.94 light, 0.93 dark | 0.99 and 0.98; 0.98 |
 | Lighthouse performance, home `?tier=1` | 90 | 0.9 (warn) | 0.87 in both themes (single runs 0.84 to 0.89) | 0.88; 0.83 to 0.85 |
 | Accessibility, best practices, SEO, content | 100 | 1 (error) | 1, 1, 1 in both themes | 1, 1, 1 |
 | SEO, home | 100 | not asserted on home | 0.91: no meta description (gap 41) | 0.91 |
@@ -726,6 +734,26 @@ after an error (SEC-S2, unit RB4 covers it). An anonymous multipart POST to
 a collection without uploads answers 403 but leaves its temp file in
 `<cwd>/tmp`: Payload unlinks temp files only for upload collections.
 
+### Review of the TBT gate
+
+Two independent checks ran before the TBT gate changed. A profile of the
+404 page against an empty Next.js 16.4 page (same host, CDP traces, V8
+samples, Lighthouse what-if runs on saved artifacts) found one task that
+sets TBT on both pages: module instantiation in the Turbopack runtime,
+react-dom and Next start-up, and decoding of the inline server payload,
+about 40 to 45 ms unthrottled. Our code adds 0.5 to 3 ms to it; our client
+components run later in short tasks. A webpack build of the empty page had
+a longer task (45.6 against 39.8 ms). The first navigation task is longer
+on our page mostly because of `Cross-Origin-Opener-Policy: same-origin`;
+it stays, because it protects against cross-window leaks. A second check
+modelled the slow runner's 10 runs: a 350 ms limit fails about 25% of CI
+runs there, 400 ms about 3%. A 0.90 error on the score would act as a
+hidden TBT limit of 330 to 400 ms, so the score warns at its target.
+Rejected: proportional CPU calibration (the runners' speed does not follow
+benchmarkIndex), a gate relative to an empty page (noisier, no data from
+the slow runner), DevTools throttling (keeps the host gap, more noise) and
+the 200 ms limit (fails every run on the slow runner).
+
 ### Review of the LCP fix
 
 A separate review of `8a3a4e0` to `24aee53` approved the change with two
@@ -812,8 +840,12 @@ Engineering risks:
   the worst single run is 2121 ms. Lighthouse adds every script that ran
   before the first paint of the unthrottled load, and that order changes
   between runs. Phase 4 content and islands use part of the margin.
-- TBT margin on the content gate: 74 to 95 ms on the median. The hydration
-  task is most of it; phase 4 islands add to it.
+- TBT on content pages misses the 200 ms target on slow CI runners (265 to
+  292 ms on benchmarkIndex 1845); CI gates the interim 400 ms. The
+  framework's start-up task is most of it, and phase 4 islands add to it.
+  A runner about 10% slower than the slowest seen would fail the interim
+  gate in about 15% of runs: watch the TBT column of the spread table, and
+  raise `numberOfRuns` to 7 before raising the limit.
 - Production must serve HTTP/2 (`docs/deploy.md` 2.5 item 7, probe P5b);
   over HTTP/1.1 the LCP numbers above do not hold.
 - Framework JS floor: 131.8 KiB before any page code, so the 90 KB content

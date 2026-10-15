@@ -239,8 +239,23 @@ The targets in the table stay the documented goal, and every phase report
 shows them next to the measured values. Lighthouse cannot audit an HTTP 404
 document, so the content-page audit runs on a 200 render of the 404
 template (`/qa/not-found`, only when the server runs with `QA_ROUTES=1`).
-INP has no value in a Lighthouse navigation run; CI gates total blocking
-time at 200 ms in its place. Until the real home lands in phase 7, home
+INP has no value in a Lighthouse navigation run; total blocking time (TBT)
+stands in for it, with a 200 ms target. Measured in phase 3, TBT on the
+content template depends more on the CI host than on our code. At the same
+4x CPU slowdown, the median was 105 to 153 ms on the local host
+(benchmarkIndex 1929 to 2156) and 265 to 292 ms on a GitHub runner with a
+benchmarkIndex of 1845. An empty Next.js 16.4 page alone blocks for about
+100 ms (median, local host). Our own code adds 0.5 to 3 ms to the task that
+sets TBT. CI therefore gates an interim TBT limit of 400 ms on content
+pages (median of 5, both themes, `tests/budgets/limits.json`). A model fitted to
+the 10 runs of the slowest observed runner says that runner passes it in
+about 97% of CI runs and fails it when our own main-thread work grows by
+about 100 ms. On faster hosts it catches only
+regressions of about 250 ms, so every run prints the TBT of each URL beside
+the 200 ms target and the host benchmarkIndex. The Lighthouse performance
+score warns at its target (95 on content pages): TBT, LCP and CLS make up
+80% of it and are errors on their own, so a second error on the score would
+act as a stricter, hidden TBT limit. Until the real home lands in phase 7, home
 asserts performance, LCP and script size as warnings and CLS and
 third-party requests as errors; accessibility, best practices, SEO, TBT,
 stylesheet and font size and console errors are not asserted on home yet.
