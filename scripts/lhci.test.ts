@@ -125,13 +125,17 @@ describe('lighthouserc.cjs', () => {
       '/qa/not-found',
       encodeURI('/خدمات/ترمیم-دندان'),
       encodeURI('/پزشکان/دکتر-نمونه-آزمایشی'),
+      encodeURI('/هزینه-و-پرداخت'),
       '/?tier=0',
       '/?tier=1',
     ]);
     for (const url of ci.collect.url) expect(entries(url), url).toHaveLength(1);
-    const [notFound, service, dentist, tier0] = ci.collect.url.map((url) => entries(url)[0]!);
+    const [notFound, service, dentist, pricing, tier0] = ci.collect.url.map(
+      (url) => entries(url)[0]!,
+    );
     expect(service!.assertions).toEqual(notFound!.assertions);
     expect(dentist!.assertions).toEqual(notFound!.assertions);
+    expect(pricing!.assertions).toEqual(notFound!.assertions);
     const { 'resource-summary:script:size': homeScript, ...tier0Rest } = tier0!.assertions;
     const { 'resource-summary:script:size': contentScript, ...contentRest } = notFound!.assertions;
     expect(tier0Rest).toEqual(contentRest);

@@ -90,7 +90,15 @@ export default defineConfig({
     // redirect saved in the admin applies to the next request (no 30 s memo to wait out).
     // FORM_SESSION_RATE_LIMIT: every page fetches /api/form-session, and all tests share one
     // localhost client; production keeps 60 a minute.
-    standaloneServer(PORT, 'app', { PROXY_CONFIG_TTL_MS: '0', FORM_SESSION_RATE_LIMIT: '100000' }),
+    // TRUST_PROXY_HEADERS (phase 5 freeze G18): booking tests send their own X-Forwarded-For from
+    // 2001:db8::/32, so the per-IP rules see one client per test; requests without the header
+    // behave as before.
+    standaloneServer(PORT, 'app', {
+      PROXY_CONFIG_TTL_MS: '0',
+      FORM_SESSION_RATE_LIMIT: '100000',
+      TRUST_PROXY_HEADERS: 'true',
+      TRUSTED_PROXY_HOPS: '1',
+    }),
     // The maintenance suite (503 page) talks to a second server with the switch on.
     standaloneServer(MAINTENANCE_PORT, 'maintenance', { MAINTENANCE_MODE: 'on' }),
     // The same artifact with ALLOW_INDEXING=true: robots.txt and sitemaps switch at run time

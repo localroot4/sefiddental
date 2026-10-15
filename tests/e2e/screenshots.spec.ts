@@ -29,6 +29,9 @@ const TEMPLATES = [
   { name: 'address', url: encodeURI('/آدرس') },
   { name: 'guide-hub', url: encodeURI('/راهنمای-بیمار') },
   { name: 'guide', url: encodeURI('/راهنمای-بیمار/اولین-مراجعه') },
+  // Phase 5: the pricing page shows the QA-FIN financing option of the e2e fixture.
+  { name: 'pricing', url: encodeURI('/هزینه-و-پرداخت') },
+  { name: 'privacy', url: encodeURI('/حریم-خصوصی') },
 ] as const;
 
 for (const template of TEMPLATES) {

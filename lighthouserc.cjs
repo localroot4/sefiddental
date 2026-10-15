@@ -52,6 +52,7 @@ const common = {
 // holds no regex metacharacters). Every URL matches exactly one matrix entry (scripts/lhci.test.ts).
 const SERVICE = encodeURI('/خدمات/ترمیم-دندان');
 const DENTIST = encodeURI('/پزشکان/دکتر-نمونه-آزمایشی');
+const PRICING = encodeURI('/هزینه-و-پرداخت');
 
 const contentAssertions = {
   ...common,
@@ -80,6 +81,7 @@ module.exports = {
         `${pageOrigin}/qa/not-found`,
         `${pageOrigin}${SERVICE}`,
         `${pageOrigin}${DENTIST}`,
+        `${pageOrigin}${PRICING}`,
         `${pageOrigin}/?tier=0`,
         `${pageOrigin}/?tier=1`,
       ],
@@ -109,6 +111,7 @@ module.exports = {
         { matchingUrlPattern: '/qa/not-found', assertions: contentAssertions },
         { matchingUrlPattern: SERVICE, assertions: contentAssertions },
         { matchingUrlPattern: DENTIST, assertions: contentAssertions },
+        { matchingUrlPattern: PRICING, assertions: contentAssertions },
         {
           matchingUrlPattern: '/\\?tier=0',
           assertions: {

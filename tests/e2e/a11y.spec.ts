@@ -37,6 +37,9 @@ const TEMPLATES: ReadonlyArray<{
   { name: 'address', url: encodeURI('/آدرس'), status: 200 },
   { name: 'guide-hub', url: encodeURI('/راهنمای-بیمار'), status: 200 },
   { name: 'guide', url: encodeURI('/راهنمای-بیمار/اولین-مراجعه'), status: 200 },
+  // Phase 5 pages.
+  { name: 'pricing', url: encodeURI('/هزینه-و-پرداخت'), status: 200 },
+  { name: 'privacy', url: encodeURI('/حریم-خصوصی'), status: 200 },
 ];
 
 for (const template of TEMPLATES) {
@@ -52,3 +55,11 @@ for (const template of TEMPLATES) {
     await expectNoA11yViolations(page);
   });
 }
+
+// The chosen state of the restoration tiers (freeze G13): one card warm, its CTA swapped in.
+test('T-A11Y restoration with a tier chosen', async ({ page }) => {
+  await page.goto(encodeURI('/خدمات/ترمیم-دندان'));
+  await page.waitForLoadState('load');
+  await page.locator('[id="سطح-ترمیم"]').getByRole('radio', { name: 'VIP' }).check();
+  await expectNoA11yViolations(page);
+});
