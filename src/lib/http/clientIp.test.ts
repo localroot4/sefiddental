@@ -46,7 +46,8 @@ describe('rateLimitKey and hashIp', () => {
     expect(key).toMatch(/^[0-9a-f]{32}$/);
     expect(key).toBe(rateLimitKey('203.0.113.7'));
     expect(key).not.toBe(rateLimitKey('203.0.113.8'));
-    expect(key).not.toContain('203');
+    // The key is random hex per process, so a bare '203' can occur in it by chance.
+    expect(key).not.toContain('203.0.113');
   });
 
   it('K3 hashIp is HMAC-SHA256 hex with the given secret', () => {
