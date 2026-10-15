@@ -28,8 +28,8 @@ export function Fact(props: FactItem & { number?: boolean; className?: string })
   );
 }
 
-// Exactly as many cells as facts (freeze F8): 2 columns on phones and tablets; from 1024 one row
-// up to four, five and six facts in rows of three.
+// Exactly as many cells as facts (freeze F8): 2 columns on phones and tablets, where an odd last
+// fact takes the whole row; from 1024 one row up to four, five and six facts in rows of three.
 const COLUMNS = [
   '',
   'lg:grid-cols-1',
@@ -55,7 +55,7 @@ export function FactsRow(props: {
       className={cx('grid grid-cols-2 gap-x-6 gap-y-4', COLUMNS[facts.length], props.className)}
     >
       {facts.map((fact, i) => (
-        <li key={i} className="grid">
+        <li key={i} className="grid last:odd:col-span-2 lg:last:odd:col-span-1">
           <Fact {...fact} number={props.number} />
         </li>
       ))}
@@ -72,7 +72,8 @@ export type FaqEntry = { question: ReactNode; answer: ReactNode; open?: boolean 
 export function FaqList(props: { items: FaqEntry[]; className?: string }) {
   if (props.items.length === 0) return null;
   return (
-    <div className={cx('border-b border-line', props.className)}>
+    // self-start: in a grid row beside a taller column the bottom rule stays under the last item.
+    <div className={cx('self-start border-b border-line', props.className)}>
       {props.items.map((item, i) => (
         <details key={i} open={item.open} className="group border-t border-line">
           <summary className="flex min-h-target cursor-pointer list-none items-center justify-between gap-4 py-3 font-semibold transition-colors hover:text-brand-strong [&::-webkit-details-marker]:hidden">

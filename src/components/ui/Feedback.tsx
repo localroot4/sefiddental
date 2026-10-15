@@ -38,7 +38,7 @@ export function Skeleton(props: { className?: string }) {
   return (
     <span
       aria-hidden="true"
-      className={cx('block animate-pulse rounded-badge bg-surface-sunken', props.className)}
+      className={cx('block animate-pulse rounded-badge bg-line', props.className)}
     />
   );
 }
@@ -76,7 +76,7 @@ export function EmptyState(props: { children: ReactNode; action?: ReactNode; cla
         props.className,
       )}
     >
-      <Icon name="mark" size="custom" className="h-[2.75rem] w-[2.25rem] text-brand-soft" />
+      <Icon name="mark" size="custom" className="h-[2.75rem] w-[2.25rem] text-line-strong" />
       <p className="text-small text-ink-muted">{props.children}</p>
       {props.action}
     </div>

@@ -17,7 +17,7 @@ import { TestimonialCard } from '@/components/ui/Testimonial';
 import { TextLink } from '@/components/ui/TextLink';
 import { EMERGENCY_PATH, t } from '@/i18n/fa';
 import type { CatalogCategory } from '@/lib/data/catalog';
-import { hoursNote, type ClinicHours } from '@/lib/hoursState';
+import { hoursTableNote, type ClinicHours } from '@/lib/hoursState';
 import { buildPath, PAGE_PATHS } from '@/lib/paths';
 import { formatNumberFa } from '@/lib/persianText';
 import { telHref } from '@/lib/phone';
@@ -108,7 +108,7 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
             icon={category.icon}
             list={
               category.standalone
-                ? category.summary
+                ? (category.summary ?? category.services[0]?.summary ?? undefined)
                 : category.services.map((s) => s.navLabel).join('، ')
             }
             count={
@@ -514,7 +514,7 @@ export function BookingSection(props: { clinic: Clinic; hours: ClinicHours }) {
               <Icon name="map-pin" size="sm" className="mt-[.2em] text-brand" />
               <span>{props.clinic.address.fullFa}</span>
             </p>
-            <HoursTable hours={props.hours} note={hoursNote(props.hours)} />
+            <HoursTable hours={props.hours} note={hoursTableNote(props.hours)} />
           </div>
         </div>
       </Section>

@@ -120,8 +120,10 @@ describe('chrome markup (nav spec 1, ia.md 3)', () => {
     expect(out).not.toContain('اولین مراجعه');
     expect(out).not.toContain('شمارهٔ پروانه');
     expect(out).toContain('© ۱۴۰۵ کلینیک دندانپزشکی سفید');
-    // The NAP phones dial directly: no closed-hours sheet around them.
+    // The NAP phones dial directly: no closed-hours sheet around them. They share the icon
+    // column of the address and the hours, so the three lines start at one edge.
     expect(out).not.toContain('data-call-sheet');
+    expect(out).toMatch(/#phone"><\/use><\/svg><span><span[^>]*><a href="tel:\+982155101054"/);
     expect(out).toContain('data-sticky-hide=""');
     for (const group of ['خدمات پرطرفدار', 'کلینیک', 'راهنما']) {
       expect(out).toMatch(new RegExp(`<summary[^>]*>${group}`));

@@ -14,7 +14,7 @@ import { t } from '@/i18n/fa';
 import { toClinicHours } from '@/lib/data/clinicHours';
 import { getClinic } from '@/lib/data/globals';
 import { PAGE_PATHS } from '@/lib/paths';
-import { hoursNote, type HoursStateName } from '@/lib/hoursState';
+import { hoursTableNote, type HoursStateName } from '@/lib/hoursState';
 import { telHref } from '@/lib/phone';
 import { breadcrumbNode, jsonLdGraph } from '@/lib/seo/jsonld';
 import type { Page } from '@/payload-types';
@@ -136,7 +136,7 @@ export async function Address({ page }: { page: Page }) {
                 <HoursTable
                   hours={hours}
                   status={<LiveHours badges={hoursBadges()} />}
-                  note={hoursNote(hours)}
+                  note={hoursTableNote(hours)}
                 />
               </dd>
             </div>

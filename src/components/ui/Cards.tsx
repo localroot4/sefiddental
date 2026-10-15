@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { toPersianDigits } from '@/lib/persianText';
+
 import { cx } from './cx';
 import { Icon } from './Icon';
 import type { IconName } from './icons';
@@ -45,7 +47,8 @@ export function CategoryIcon(props: {
     <Icon
       name={glyph}
       size={props.size ?? 'md'}
-      className={cx('text-ink', ACCENT_FILL[props.accent], props.className)}
+      // Dark: the ink outline turns light, so the tint dims to keep the inner strokes readable (S1).
+      className={cx('text-ink dark:[fill-opacity:0.4]', ACCENT_FILL[props.accent], props.className)}
     />
   );
 }
@@ -138,7 +141,7 @@ export function CategoryTile(props: {
       )}
     >
       <CategoryIcon accent={props.accent} icon={props.icon} size="lg" />
-      <Heading className="text-body-lg leading-[1.4] font-semibold">
+      <Heading className="text-heading font-semibold">
         <a href={props.href} className={STRETCHED}>
           {props.title}
         </a>
@@ -205,7 +208,7 @@ export function DentistCard(props: {
         {props.specialty ? <p className="text-small text-ink-muted">{props.specialty}</p> : null}
         {props.councilNumber ? (
           <p className="text-caption text-ink-muted">
-            {props.councilLabel} <bdi dir="ltr">{props.councilNumber}</bdi>
+            {props.councilLabel} <bdi dir="ltr">{toPersianDigits(props.councilNumber)}</bdi>
           </p>
         ) : null}
       </div>
@@ -216,6 +219,7 @@ export function DentistCard(props: {
 /**
  * Family F: a native snap carousel under 1024 px (bleeding into the gutters, the tier scroller
  * values) and a three-column grid from 1024. Focusable with a name so keyboard users can scroll.
+ * A single card shows no peek of a next one: it takes the row up to 24rem.
  */
 export function CardRail(props: { label: string; children: ReactNode; className?: string }) {
   return (
@@ -224,7 +228,7 @@ export function CardRail(props: { label: string; children: ReactNode; className?
       aria-label={props.label}
       tabIndex={0}
       className={cx(
-        '-mx-gutter grid snap-x snap-mandatory auto-cols-[min(84%,20rem)] grid-flow-col gap-3 overflow-x-auto scroll-px-gutter px-gutter pt-1 pb-3 lg:mx-0 lg:grid-flow-row lg:grid-cols-3 lg:overflow-visible lg:px-0 [&>*]:snap-start',
+        '-mx-gutter grid snap-x snap-mandatory auto-cols-[min(84%,20rem)] grid-flow-col gap-3 overflow-x-auto scroll-px-gutter px-gutter pt-1 pb-3 has-[>:only-child]:auto-cols-[min(100%,24rem)] lg:mx-0 lg:grid-flow-row lg:grid-cols-3 lg:overflow-visible lg:px-0 [&>*]:snap-start',
         props.className,
       )}
     >

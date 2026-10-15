@@ -15,6 +15,7 @@ import { getServiceTree } from '@/lib/data/catalog';
 import { getCases, getDoctorBySlug } from '@/lib/data/content';
 import { getClinic } from '@/lib/data/globals';
 import { buildPath, PAGE_PATHS } from '@/lib/paths';
+import { toPersianDigits } from '@/lib/persianText';
 import { telHref } from '@/lib/phone';
 import { breadcrumbNode, jsonLdGraph, physicianNode } from '@/lib/seo/jsonld';
 
@@ -86,7 +87,7 @@ export async function DentistProfile({ doctor }: { doctor: Doctor }) {
         }
         note={
           <p className="text-small text-ink-muted">
-            {t('ui.dentist.council')} <bdi dir="ltr">{doctor.councilNumber}</bdi>
+            {t('ui.dentist.council')} <bdi dir="ltr">{toPersianDigits(doctor.councilNumber)}</bdi>
           </p>
         }
         media={

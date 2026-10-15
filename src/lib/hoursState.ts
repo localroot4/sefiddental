@@ -90,6 +90,7 @@ const COPY = {
     `پذیرش ${day} از ساعت ${time}، پیش از بقیهٔ درخواست\u200Cها، با شما تماس می\u200Cگیرد.`,
   summaryEveryDay: (open: string, close: string) =>
     `هر روز ${open} تا ${close}، به\u200Cجز تعطیلات رسمی.`,
+  holidayCaveat: 'به\u200Cجز تعطیلات رسمی.',
 } as const;
 
 const minutesOf = (hhmm: string): number => {
@@ -240,9 +241,15 @@ export function hoursSummary(hours: ClinicHours): string | null {
   return COPY.summaryEveryDay(timeLabel(rule.open), timeLabel(rule.close));
 }
 
-/** The line under an hours table: the every-day sentence (F14), else the clinic's own note. */
+/** The one-line hours fact: the every-day sentence (F14), else the clinic's own note. */
 export function hoursNote(hours: ClinicHours): string | null {
   return hoursSummary(hours) ?? (hours.noteFa.trim() || null);
+}
+
+/** The line under an hours table, whose rows already say the days and times: the holiday caveat
+ * of the every-day sentence, else the clinic's own note. */
+export function hoursTableNote(hours: ClinicHours): string | null {
+  return hoursSummary(hours) ? COPY.holidayCaveat : hours.noteFa.trim() || null;
 }
 
 // Admin-facing validation messages for the clinic global.

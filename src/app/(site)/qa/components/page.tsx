@@ -204,7 +204,7 @@ export default function QaComponents() {
             <Spinner className="text-brand" />
           </div>
         </Specimen>
-        <Specimen label={t('ui.qa.stateIcons')}>
+        <Specimen label={t('ui.qa.stateIconOnly')}>
           <div className="flex flex-wrap items-center gap-2">
             <IconButton label={t('theme.toggle')} icon={<Icon name="sun" />} />
             <IconButton
@@ -267,7 +267,11 @@ export default function QaComponents() {
             name="phone"
             kind="tel"
             label={t('ui.qa.phoneLabel')}
-            help={t('ui.qa.phoneHelp')}
+            help={
+              <>
+                {t('booking.phoneHelp')} <bdi dir="ltr">{t('booking.phoneSample')}</bdi>
+              </>
+            }
             required
           />
           <TextField
@@ -275,7 +279,11 @@ export default function QaComponents() {
             name="phone-error"
             kind="tel"
             label={t('ui.qa.phoneLabel')}
-            help={t('ui.qa.phoneHelp')}
+            help={
+              <>
+                {t('booking.phoneHelp')} <bdi dir="ltr">{t('booking.phoneSample')}</bdi>
+              </>
+            }
             error={PHONE_ERRORS.invalid}
             defaultValue={toPersianDigits('0912')}
             required

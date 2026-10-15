@@ -20,7 +20,7 @@ export function describedBy(props: FieldText): string | undefined {
 }
 
 const CONTROL =
-  'w-full rounded-input border-[1.5px] border-line-strong bg-surface-raised px-4 py-2 leading-[1.5] text-ink transition-colors hover:not-disabled:not-aria-invalid:border-ink-muted focus-visible:border-brand aria-invalid:border-danger-fill disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:opacity-50';
+  'w-full rounded-input border-[1.5px] border-line-strong bg-surface-raised px-4 py-2 leading-[1.5] text-ink transition-colors hover:not-disabled:not-aria-invalid:border-ink-muted focus-visible:border-brand aria-invalid:border-danger disabled:cursor-not-allowed disabled:bg-surface-sunken disabled:opacity-50';
 
 function FieldShell(
   props: FieldText & { children: ReactNode; footer?: ReactNode; className?: string },

@@ -15,7 +15,7 @@ import { maskNational, parseMobile } from './phoneInput';
 // The TextField control of src/components/ui/Field.tsx: that module imports the icon code, which
 // an island never ships (F2), so the two fields this island owns repeat its classes.
 const CONTROL =
-  'w-full rounded-input border-[1.5px] border-line-strong bg-surface-raised px-4 py-2 leading-[1.5] text-ink transition-colors hover:not-aria-invalid:border-ink-muted focus-visible:border-brand aria-invalid:border-danger-fill';
+  'w-full rounded-input border-[1.5px] border-line-strong bg-surface-raised px-4 py-2 leading-[1.5] text-ink transition-colors hover:not-aria-invalid:border-ink-muted focus-visible:border-brand aria-invalid:border-danger';
 
 export interface BookingLabels {
   phone: string;

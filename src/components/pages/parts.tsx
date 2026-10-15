@@ -10,7 +10,7 @@ import { MediaFrame, MediaPlaceholder } from '@/components/ui/Media';
 import { Picture } from '@/components/ui/Picture';
 import { t } from '@/i18n/fa';
 import { toClinicHours } from '@/lib/data/clinicHours';
-import { hoursNote } from '@/lib/hoursState';
+import { hoursTableNote } from '@/lib/hoursState';
 import type { Clinic, Media } from '@/payload-types';
 
 import { mediaOf } from './view';
@@ -121,7 +121,7 @@ export function PageBooking(props: { clinic: Clinic; map?: boolean; dentist?: st
               <Icon name="map-pin" size="sm" className="mt-[.2em] text-brand" />
               <span>{props.clinic.address.fullFa}</span>
             </p>
-            <HoursTable hours={hours} note={hoursNote(hours)} />
+            <HoursTable hours={hours} note={hoursTableNote(hours)} />
           </div>
         </div>
       </Section>

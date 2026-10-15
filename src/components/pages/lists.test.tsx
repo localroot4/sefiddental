@@ -35,7 +35,7 @@ describe('pages lists', () => {
     );
     const link = screen.getByRole('link', { name: 'دکتر نام خانوادگی' });
     expect(link.getAttribute('href')).toBe('/پزشکان/دکتر-نام-خانوادگی');
-    const council = screen.getByText('123456');
+    const council = screen.getByText('۱۲۳۴۵۶');
     expect(council.tagName).toBe('BDI');
     expect(council.getAttribute('dir')).toBe('ltr');
     expect(screen.queryByText(/هنوز منتشر نشده است/)).toBeNull();

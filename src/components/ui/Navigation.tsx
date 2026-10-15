@@ -99,6 +99,10 @@ export function Pagination(props: {
   const items = pageItems(props.current, props.total);
   if (items.length < 2) return null;
   const page = clampPage(props.current, props.total);
+  // Seven 44 px items fit a 358 px phone row; with more, phones show «صفحهٔ ۵ از ۱۲» between
+  // the arrows instead of the numbers.
+  const compact = items.length > 5;
+  const wide = compact ? 'max-sm:hidden' : undefined;
   const step = (to: number, label: string, icon: 'caret-back' | 'caret-forward', rel: string) =>
     to >= 1 && to <= props.total ? (
       <a
@@ -120,11 +124,11 @@ export function Pagination(props: {
         <li>{step(page - 1, t('ui.pagination.prev'), 'caret-back', 'prev')}</li>
         {items.map((item, i) =>
           item === 'gap' ? (
-            <li key={`gap-${i}`} aria-hidden="true" className={cx(ITEM, 'text-ink-muted')}>
+            <li key={`gap-${i}`} aria-hidden="true" className={cx(ITEM, 'text-ink-muted', wide)}>
               …
             </li>
           ) : (
-            <li key={item}>
+            <li key={item} className={wide}>
               <a
                 href={props.href(item)}
                 aria-label={`${t('ui.pagination.page')} ${toPersianDigits(String(item))}`}
@@ -142,6 +146,11 @@ export function Pagination(props: {
             </li>
           ),
         )}
+        {compact ? (
+          <li aria-current="page" className="px-2 text-small font-medium text-ink sm:hidden">
+            {`${t('ui.pagination.page')} ${toPersianDigits(String(page))} ${t('ui.pagination.of')} ${toPersianDigits(String(props.total))}`}
+          </li>
+        ) : null}
         <li>{step(page + 1, t('ui.pagination.next'), 'caret-forward', 'next')}</li>
       </ul>
     </nav>

@@ -50,6 +50,19 @@ describe('breadcrumbs and pagination (DESIGN.md 3.26, 3.27)', () => {
     expect(next.getAttribute('class')).toContain('rtl:-scale-x-100');
   });
 
+  it('UN7 more than five items: phones swap the numbers for «صفحهٔ ۵ از ۱۲» (fits 358 px)', () => {
+    const { container } = render(<Pagination current={5} total={12} href={(n) => `?page=${n}`} />);
+    const status = screen.getByText('صفحهٔ ۵ از ۱۲');
+    expect(status.className).toContain('sm:hidden');
+    const numbered = [...container.querySelectorAll('li')].filter((li) => li !== status);
+    // Seven numbers and gaps hide on phones; the two arrows stay.
+    expect(numbered.filter((li) => li.className.includes('max-sm:hidden'))).toHaveLength(7);
+    expect(numbered.filter((li) => !li.className.includes('max-sm:hidden'))).toHaveLength(2);
+    const short = render(<Pagination current={2} total={5} href={(n) => `?page=${n}`} />);
+    expect(short.container.innerHTML).not.toContain('max-sm:hidden');
+    expect(within(short.container).queryByText(/ از /)).toBeNull();
+  });
+
   it('UN6 a broken current page (NaN, a fraction) is clamped the same way in every link', () => {
     const nan = render(<Pagination current={Number('abc')} total={3} href={(n) => `?page=${n}`} />);
     expect(nan.getByRole('link', { name: 'صفحهٔ ۱' }).getAttribute('aria-current')).toBe('page');

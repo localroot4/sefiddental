@@ -35,18 +35,14 @@ export async function GuideHub({ page }: { page: Page }) {
         summary={page.lead ?? undefined}
         media={<HeroMedia media={page.heroMedia} caption={t('pages.photo.guideHub')} />}
       />
-      <Band
-        id="guides"
-        family="C"
-        title={t('pages.guides.list')}
-        action={
+      <Band id="guides" family="C" title={t('pages.guides.list')} tone="sunken">
+        <GuideList guides={items} />
+        {/* After the list, not as the band's action: that slot reads as «all guides». */}
+        <p className="mt-6">
           <TextLink standalone href={PAGE_PATHS['services-hub']} className="-ms-2">
             {t('pages.allServices')}
           </TextLink>
-        }
-        tone="sunken"
-      >
-        <GuideList guides={items} />
+        </p>
       </Band>
       <PageBooking clinic={clinic} />
       <JsonLd

@@ -4,6 +4,7 @@ import {
   clinicHoursSchema,
   hoursNote,
   hoursState,
+  hoursTableNote,
   hoursSummary,
   type ClinicHours,
   type HoursOptions,
@@ -421,6 +422,12 @@ describe('hoursNote', () => {
     );
     expect(hoursNote({ ...SPLIT, noteFa: ' یادداشت ' })).toBe('یادداشت');
     expect(hoursNote({ ...SPLIT, noteFa: '  ' })).toBeNull();
+  });
+
+  it('H-NOTE2 under a table only the holiday caveat repeats nothing the rows say', () => {
+    expect(hoursTableNote({ ...CLINIC, noteFa: 'یادداشت' })).toBe('به\u200Cجز تعطیلات رسمی.');
+    expect(hoursTableNote({ ...SPLIT, noteFa: ' یادداشت ' })).toBe('یادداشت');
+    expect(hoursTableNote({ ...SPLIT, noteFa: '  ' })).toBeNull();
   });
 });
 

@@ -69,7 +69,7 @@ function Group(props: { title: string; links: (ChromeLink & { urgent?: boolean }
   );
 }
 
-function Line(props: { icon: 'map-pin' | 'clock'; children: ReactNode }) {
+function Line(props: { icon: 'map-pin' | 'phone' | 'clock'; children: ReactNode }) {
   return (
     <p className="flex items-start gap-2 text-small text-ink">
       <Icon name={props.icon} size="sm" className="mt-[.2rem] text-brand" />
@@ -101,20 +101,24 @@ export function SiteFooter(props: { contact: FooterData; now?: Date }) {
           />
           {contact.line ? <p className="text-small text-ink-muted">{contact.line}</p> : null}
           {contact.address ? <Line icon="map-pin">{contact.address}</Line> : null}
-          <div className="flex flex-wrap gap-x-4">
-            {[contact.phones.landline, contact.phones.mobile].map((phone) =>
-              phone ? (
-                <PhoneNumber
-                  key={phone}
-                  e164={phone}
-                  link
-                  standalone
-                  track={{ event: 'call_click', location: 'footer' }}
-                  className="-mx-2 text-small"
-                />
-              ) : null,
-            )}
-          </div>
+          {contact.phones.landline || contact.phones.mobile ? (
+            <Line icon="phone">
+              <span className="flex flex-wrap gap-x-4">
+                {[contact.phones.landline, contact.phones.mobile].map((phone) =>
+                  phone ? (
+                    <PhoneNumber
+                      key={phone}
+                      e164={phone}
+                      link
+                      standalone
+                      track={{ event: 'call_click', location: 'footer' }}
+                      className="-mx-2 text-small"
+                    />
+                  ) : null,
+                )}
+              </span>
+            </Line>
+          ) : null}
           {hours ? <Line icon="clock">{hours}</Line> : null}
           <DirectionsLinks maps={maps} location="footer" />
         </div>
