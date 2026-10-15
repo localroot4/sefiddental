@@ -5,6 +5,12 @@
  * without exposing it: /en and /en/* render the 404 page and never appear in a sitemap.
  */
 
+import { HOME_MESSAGES } from '@/i18n/fa-home';
+import { NAV_MESSAGES } from '@/i18n/fa-nav';
+import { PAGES_MESSAGES } from '@/i18n/fa-pages';
+import { SERVICES_MESSAGES } from '@/i18n/fa-services';
+import { UI_MESSAGES } from '@/i18n/fa-ui';
+
 export type Locale = { lang: 'fa'; dir: 'rtl' };
 
 const LOCALE: Locale = { lang: 'fa', dir: 'rtl' };
@@ -41,6 +47,12 @@ const MESSAGES = {
   'error.retry': 'تلاش دوباره',
   'error.code': 'کد خطا:',
   'footer.copyright': 'همهٔ حقوق برای کلینیک دندانپزشکی سفید محفوظ است.',
+  // One module per area keeps parallel work off a shared file; keys are prefixed by area.
+  ...UI_MESSAGES,
+  ...NAV_MESSAGES,
+  ...HOME_MESSAGES,
+  ...SERVICES_MESSAGES,
+  ...PAGES_MESSAGES,
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;
