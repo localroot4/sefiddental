@@ -286,6 +286,25 @@ describe('tier store: live changes and controls', () => {
     expect(state().tier).toBe(3);
   });
 
+  it('TS21 no GPU probe while the tier is fixed at 0; it runs once that can change', async () => {
+    const reduced = started({ reducedMotion: true });
+    await reduced.fake.load();
+    expect(reduced.fake.benchmarkCalls).toHaveLength(0);
+    expect(reduced.state()).toMatchObject({ tier: 0, status: 'pending' });
+    reduced.fake.reducedMotion.set(false);
+    expect(reduced.fake.benchmarkCalls).toHaveLength(1);
+
+    const pinned = started({ search: '?tier=0' });
+    await pinned.fake.load();
+    expect(pinned.fake.benchmarkCalls).toHaveLength(0);
+    pinned.store.getSnapshot().setPageOverride('auto');
+    expect(pinned.fake.benchmarkCalls).toHaveLength(1);
+
+    const capped = started({}, 0);
+    await capped.fake.load();
+    expect(capped.fake.benchmarkCalls).toHaveLength(0);
+  });
+
   it('TS16 crossing 1024 px relatches the pins at once', async () => {
     const { fake, state } = started(cachedRtx);
     await fake.load();

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import {
   collapseSpaces,
@@ -143,5 +143,16 @@ describe('persianText rules', () => {
   it('T-NAN formatNumberFa fails loud on a non-finite value', () => {
     expect(() => formatNumberFa(Number.NaN)).toThrow(RangeError);
     expect(() => formatNumberFa(Number.POSITIVE_INFINITY)).toThrow(RangeError);
+  });
+
+  it('T-LAZY importing the module builds no Intl.NumberFormat; the first format does, once', async () => {
+    vi.resetModules();
+    const spy = vi.spyOn(Intl, 'NumberFormat');
+    const fresh = await import('./persianText');
+    expect(spy).not.toHaveBeenCalled();
+    fresh.formatNumberFa(1);
+    fresh.formatNumberFa(2);
+    expect(spy).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
   });
 });

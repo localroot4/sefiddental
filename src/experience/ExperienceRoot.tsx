@@ -46,11 +46,14 @@ function ExperienceHost(props: { children: React.ReactNode }): React.JSX.Element
 
   const loaded = useDocumentLoaded();
 
-  // The engine module (GSAP, ScrollTrigger, Lenis) downloads at `load`, like the canvas: the
-  // tier-0 page is complete server HTML, so neither the first paint nor hydration waits for it.
+  // The engine module (GSAP, ScrollTrigger, Lenis) downloads at `load`, like the canvas, and only
+  // once the latched layout is tier 1 or more: at tier 0 it would build no Lenis, no timeline and
+  // no pins, yet its evaluation and first measure cost a long task. The tier-0 page is complete
+  // server HTML.
+  const engineWanted = tier.layout.latchedAtTier >= 1;
   const [engineModule, setEngineModule] = useState<EngineModule | null>(null);
   useEffect(() => {
-    if (!loaded || engineModule !== null) return;
+    if (!loaded || !engineWanted || engineModule !== null) return;
     let cancelled = false;
     import('./engine/scrollEngine').then(
       (mod) => {
@@ -62,7 +65,7 @@ function ExperienceHost(props: { children: React.ReactNode }): React.JSX.Element
     return () => {
       cancelled = true;
     };
-  }, [loaded, engineModule]);
+  }, [loaded, engineWanted, engineModule]);
 
   // One engine per latched layout; destroy() reverts everything it created (its matchMedia
   // context) on relatch and unmount.

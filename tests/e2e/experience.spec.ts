@@ -108,17 +108,23 @@ test('T-EX1 P1 the canvas host mounts only after load, and three.js loads only a
     expect(start).toBeGreaterThanOrEqual(loadStart);
 });
 
-test('T-EX5 the scroll engine (GSAP, ScrollTrigger, Lenis) loads only after load, even at tier 0', async ({
+test('T-EX5 the scroll engine (GSAP, ScrollTrigger, Lenis) never loads at tier 0, and at tier 1 only after load', async ({
   page,
 }) => {
-  await holdLoad(page);
-  const engine = watchScripts(page, 'ScrollTrigger');
+  const atZero = watchScripts(page, 'ScrollTrigger');
   await page.goto('/?tier=0');
   await page.waitForLoadState('load');
-  await expect.poll(() => engine.size, { timeout: 15_000 }).toBeGreaterThan(0);
+  await page.waitForTimeout(2000);
+  expect([...atZero]).toEqual([]);
+
+  await holdLoad(page);
+  const atOne = watchScripts(page, 'ScrollTrigger');
+  await page.goto('/?tier=1');
+  await page.waitForLoadState('load');
+  await expect.poll(() => atOne.size, { timeout: 15_000 }).toBeGreaterThan(0);
   const loadStart = await loadEventStart(page);
   expect(loadStart).toBeGreaterThan(HOLD_LOAD_MS);
-  for (const start of await startTimes(page, engine))
+  for (const start of await startTimes(page, atOne))
     expect(start).toBeGreaterThanOrEqual(loadStart);
 });
 

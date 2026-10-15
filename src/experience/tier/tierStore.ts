@@ -150,6 +150,7 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
   let contextLossZero = false;
   let probe: ProbeResult | null = null;
   let probeStarted = false;
+  let loadSeen = false;
   let detectionUsed = false;
   let lastStep: TierState['lastStep'] = null;
   let scrollProbe: ScrollProbe | null = null;
@@ -277,6 +278,7 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
 
   /** Recomputes, applies the latch rule for `reason`, and notifies. */
   function update(reason: RelatchReason | null): void {
+    runProbe(); // an input that pinned tier 0 may have changed since `load`
     const { desired } = derive();
     if (reason !== null && !sameLayout(desired, layout)) {
       if (desired.pinnedScenes === layout.pinnedScenes) {
@@ -327,8 +329,13 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
     update('monitor');
   }
 
-  const runProbe = (): void => {
-    if (probeStarted) return;
+  // The probe only feeds the tier. While reduced motion, a tier pinned at 0 or a site cap of 0 fix
+  // the tier at 0, it would build a WebGL context for nothing (about 15 ms of main thread at load).
+  const probeCanChangeTier = (): boolean =>
+    !signals.reducedMotion && page.tier !== 0 && savedOverride !== 0 && opts.siteCap !== 0;
+
+  function runProbe(): void {
+    if (probeStarted || !loadSeen || !probeCanChangeTier()) return;
     probeStarted = true;
     const explicit = () => page.tier !== null || savedOverride !== 'auto';
     env
@@ -347,6 +354,11 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
         probe = result;
         update('detection');
       });
+  }
+
+  const onLoad = (): void => {
+    loadSeen = true;
+    runProbe();
   };
 
   const start = (): (() => void) => {
@@ -360,7 +372,7 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
       env.reducedMotion.subscribe(onMedia('reduced-motion')),
       env.finePointer.subscribe(onMedia('resize')),
       env.wide.subscribe(onMedia('resize')),
-      env.onLoad(runProbe),
+      env.onLoad(onLoad),
     ];
     // A media change between creation (hydration) and this subscription.
     const fresh = readSignals();

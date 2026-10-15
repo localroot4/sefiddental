@@ -132,12 +132,15 @@ export function normalizePersian(input: string, options: NormalizePersianOptions
   return spacing === 'typography' ? fixPersianSpacing(text) : collapseSpaces(text);
 }
 
-const NUMBER_FA = new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 0 });
+// Built on first use: constructing it takes about 10 ms, and at module scope that ran during
+// hydration on every page whose client code imports this module.
+let numberFa: Intl.NumberFormat | null = null;
 
 /** Integer with Persian digits and the separator U+066C. */
 export function formatNumberFa(value: number): string {
   if (!Number.isFinite(value)) {
     throw new RangeError('formatNumberFa: the value is not a finite number');
   }
-  return NUMBER_FA.format(value);
+  numberFa ??= new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 0 });
+  return numberFa.format(value);
 }
