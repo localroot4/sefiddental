@@ -65,8 +65,12 @@ describe('lcpSpread (scripts/lhci.mjs)', () => {
     ];
     const [notFound, home] = lcpSpread(runs, matrix);
     // The median (2600) is over the limit, but the gate takes the best run (2300).
-    expect(notFound).toMatchObject({ medianMs: 2600, gate: 'min', gatePasses: true });
-    expect(notFound.runsOverLimit).toBe(3);
+    expect(notFound).toMatchObject({
+      medianMs: 2600,
+      gate: 'min',
+      gatePasses: true,
+      runsOverLimit: 3,
+    });
     // Home has no aggregation option, so LHCI's median rule applies to the report.
     expect(home).toMatchObject({ runs: 3, medianMs: 3000, gate: 'median', gatePasses: false });
     const allOver = lcpSpread(
