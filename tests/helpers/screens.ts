@@ -55,6 +55,22 @@ export async function captureTemplate(
   theme: Theme,
 ): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
+  // A full-page capture never scrolls, so lazy images below the fold would show as empty frames:
+  // load them as a reader who scrolls down would see them.
+  await page.evaluate(async () => {
+    const images = [...document.images];
+    for (const image of images) image.loading = 'eager';
+    await Promise.all(
+      images.map((image) =>
+        image.complete
+          ? null
+          : new Promise((done) => {
+              image.addEventListener('load', done, { once: true });
+              image.addEventListener('error', done, { once: true });
+            }),
+      ),
+    );
+  });
   const width = page.viewportSize()?.width ?? 0;
   const file = `${template}-${width}-${theme}.png`;
   const dir = qaScreenshotDir();
