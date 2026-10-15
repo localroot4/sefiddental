@@ -103,6 +103,40 @@ if (sprite.hash !== ICON_SPRITE_HASH) {
 }
 writeFileSync(path.join(pub, 'brand', 'icons.svg'), sprite.svg);
 
+// Home hero placeholders (freeze F3): neutral grain rasters at the hero widths, so the preload,
+// fetchpriority and LCP pipeline is real before the client's photo exists (gap 36). Files that
+// exist are kept: the encode takes seconds and every `dev` start runs this script.
+const { heroPlaceholderFiles } = await import(
+  pathToFileURL(from('src', 'components', 'home', 'heroPlaceholder.ts')).href
+);
+const { default: sharp } = await import('sharp');
+let placeholders = 0;
+for (const file of heroPlaceholderFiles()) {
+  const out = path.join(pub, file.url);
+  if (existsSync(out)) continue;
+  mkdirSync(path.dirname(out), { recursive: true });
+  // Soft grain around a light neutral grey (noise at a quarter size, scaled up): about 0.15 bits
+  // per pixel, three times the low-entropy LCP cut, a quarter of the storyboard byte caps.
+  const seed = await sharp({
+    create: {
+      width: Math.round(file.width / 4),
+      height: Math.round(file.height / 4),
+      channels: 3,
+      noise: { type: 'gaussian', mean: 128, sigma: 40 },
+    },
+  })
+    .linear(0.12, 200 - 0.12 * 128)
+    .png()
+    .toBuffer();
+  const grain = sharp(seed).resize(file.width, file.height, { kernel: 'cubic' });
+  await (
+    file.url.endsWith('.avif')
+      ? grain.avif({ quality: 40, effort: 2 })
+      : grain.jpeg({ quality: 50, mozjpeg: true })
+  ).toFile(out);
+  placeholders++;
+}
+
 console.log(
-  `sync-public-assets: ${copies.length} brand and font files, favicon.ico, detect-gpu benchmarks, brand/icons.svg (${Object.keys(ICONS).length} icons); maintenance.html and brand/lockup.svg ${maintenance}`,
+  `sync-public-assets: ${copies.length} brand and font files, favicon.ico, detect-gpu benchmarks, brand/icons.svg (${Object.keys(ICONS).length} icons), ${placeholders} hero placeholders written; maintenance.html and brand/lockup.svg ${maintenance}`,
 );
