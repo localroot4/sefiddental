@@ -209,7 +209,7 @@ Date, commit range, versions used
 |---|---|---|
 | 01 | `01-discovery.md` | done: strategy, IA, keyword map, conversion plan, GBP guide, shot list |
 | 02 | `02-design-system.md` | done: DESIGN.md, tokens, styleguide, experience storyboard, intro and scene prototypes, hero directions (the client chose B on 2026-10-13, brief decision 19; the logo trace and 3D mark approvals stay pending, gaps 1 and 34) |
-| 03 | `03-foundation.md` | Next.js + Payload skeleton on environment-driven configuration, CI, seeders, quality-tier scaffold; the deploy pipeline, the staging target and the chosen-path steps of `docs/deploy.md` wait until the client confirms the hosting path (gap 32, brief decision 21) |
+| 03 | `03-foundation.md` | done: Next.js + Payload skeleton on environment-driven configuration, CI green on GitHub, seeders, quality-tier scaffold. The deploy pipeline, the staging target and the chosen-path steps of `docs/deploy.md` wait until the client confirms the hosting path (gap 32, brief decision 21). On 2026-10-15 the client asked the studio to run the remaining phases while the host is prepared; only the host approval waits for them |
 | 04 | `04-core-pages.md` | content pages, navigation, footer, light motion |
 | 05 | `05-conversion.md` | booking, emergency, pricing and financing, tiers page, notifications, measurement |
 | 06 | `06-content-seo.md` | articles engine, editorial system, schema, OG, service copy, seed articles, redirects, admin polish |
