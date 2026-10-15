@@ -1,3 +1,5 @@
+import { createRequire } from 'node:module';
+
 import { describe, expect, it } from 'vitest';
 
 import { cpuMultiplierFor, lcpSpread, spreadTable } from './lhci.mjs';
@@ -104,5 +106,36 @@ describe('cpuMultiplierFor (lighthouse/docs/throttling.md, mid-tier mobile targe
   it('uses 2x on a slower host', () => {
     expect(cpuMultiplierFor(1499)).toBe(2);
     expect(cpuMultiplierFor(900)).toBe(2);
+  });
+});
+
+describe('lighthouserc.cjs', () => {
+  it('T-LH4 every collected URL matches exactly one assertion entry; content pages share the gates', () => {
+    const { ci } = createRequire(import.meta.url)('../lighthouserc.cjs') as {
+      ci: {
+        collect: { url: string[] };
+        assert: {
+          assertMatrix: Array<{ matchingUrlPattern: string; assertions: Record<string, unknown> }>;
+        };
+      };
+    };
+    const entries = (url: string) =>
+      ci.assert.assertMatrix.filter((m) => new RegExp(m.matchingUrlPattern).test(url));
+    expect(ci.collect.url.map((url) => new URL(url).pathname + new URL(url).search)).toEqual([
+      '/qa/not-found',
+      encodeURI('/خدمات/ترمیم-دندان'),
+      encodeURI('/پزشکان/دکتر-نمونه-آزمایشی'),
+      '/?tier=0',
+      '/?tier=1',
+    ]);
+    for (const url of ci.collect.url) expect(entries(url), url).toHaveLength(1);
+    const [notFound, service, dentist, tier0] = ci.collect.url.map((url) => entries(url)[0]!);
+    expect(service!.assertions).toEqual(notFound!.assertions);
+    expect(dentist!.assertions).toEqual(notFound!.assertions);
+    const { 'resource-summary:script:size': homeScript, ...tier0Rest } = tier0!.assertions;
+    const { 'resource-summary:script:size': contentScript, ...contentRest } = notFound!.assertions;
+    expect(tier0Rest).toEqual(contentRest);
+    expect(homeScript).toEqual(['error', { maxNumericValue: 215 * 1024 }]);
+    expect(contentScript).toEqual(['error', { maxNumericValue: 150 * 1024 }]);
   });
 });

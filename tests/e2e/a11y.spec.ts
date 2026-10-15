@@ -14,7 +14,7 @@ const TEMPLATES: ReadonlyArray<{
   needs?: PendingRoute;
 }> = [
   { name: 'home', url: '/', status: 200 },
-  { name: '404', url: '/a11y-missing-page', status: 404 },
+  { name: '404-unmatched', url: '/no-such-page', status: 404 },
   { name: '404 template (200)', url: '/qa/not-found', status: 200 },
   { name: '500', url: '/qa/error', status: 500 },
   { name: '410', url: '/qa/gone', status: 410 },
@@ -26,12 +26,17 @@ const TEMPLATES: ReadonlyArray<{
     url: encodeURI('/خدمات/no-such-service'),
     status: 404,
   },
-  {
-    name: 'service route probe',
-    url: encodeURI('/خدمات/ترمیم-دندان'),
-    status: 200,
-    needs: 'serviceProbe',
-  },
+  // Phase 4 templates at their public Persian URLs; the dentist and the guide are the e2e fixture.
+  { name: 'services-hub', url: encodeURI('/خدمات'), status: 200 },
+  { name: 'category', url: encodeURI('/خدمات/زیبایی'), status: 200 },
+  { name: 'restoration', url: encodeURI('/خدمات/ترمیم-دندان'), status: 200 },
+  { name: 'service', url: encodeURI('/خدمات/لمینت-سرامیکی'), status: 200 },
+  { name: 'dentists-hub', url: encodeURI('/پزشکان'), status: 200 },
+  { name: 'dentist', url: encodeURI('/پزشکان/دکتر-نمونه-آزمایشی'), status: 200 },
+  { name: 'about', url: encodeURI('/درباره-ما'), status: 200 },
+  { name: 'address', url: encodeURI('/آدرس'), status: 200 },
+  { name: 'guide-hub', url: encodeURI('/راهنمای-بیمار'), status: 200 },
+  { name: 'guide', url: encodeURI('/راهنمای-بیمار/اولین-مراجعه'), status: 200 },
 ];
 
 for (const template of TEMPLATES) {

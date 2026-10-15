@@ -1,9 +1,10 @@
 // Lighthouse CI 0.15.1 (Lighthouse 12.6.1), mobile preset with simulated throttling (Lighthouse's
 // default: a mid-range Android phone over 4G, docs/brief.md section 7).
 //
-// Content budgets run on /qa/not-found: the 404 template rendered with HTTP 200, because
-// Lighthouse aborts on a 404 document (freeze decision 3). The route exists only while the
-// server runs with QA_ROUTES=1. scripts/lhci.mjs runs this file twice: light, then
+// Content budgets run on /qa/not-found (the 404 template rendered with HTTP 200, because
+// Lighthouse aborts on a 404 document, freeze decision 3; the route exists only while the server
+// runs with QA_ROUTES=1), the restoration service page, the e2e fixture's dentist profile and home
+// at tier 0 (phase 4 freeze F11). scripts/lhci.mjs runs this file twice: light, then
 // LHCI_THEME=dark. Reports stay on disk (.lighthouseci/reports/<theme>), never on a public link.
 const limits = require('./tests/budgets/limits.json');
 
@@ -47,13 +48,41 @@ const common = {
   'errors-in-console': 'error',
 };
 
+// Persian paths are requested percent-encoded; the patterns match that form (encodeURI output
+// holds no regex metacharacters). Every URL matches exactly one matrix entry (scripts/lhci.test.ts).
+const SERVICE = encodeURI('/خدمات/ترمیم-دندان');
+const DENTIST = encodeURI('/پزشکان/دکتر-نمونه-آزمایشی');
+
+const contentAssertions = {
+  ...common,
+  // INP has no value in a navigation run; total blocking time is the CI proxy. The 200 ms target
+  // sits below what the framework alone blocks on a slow CI host, so CI gates the interim limit
+  // (docs/brief.md section 7). The score warns at its target: TBT, LCP and CLS, 80% of its
+  // weight, are errors on their own.
+  'total-blocking-time': [
+    'error',
+    { maxNumericValue: limits.classes.content.tbtInterimMs, ...median },
+  ],
+  'categories:performance': ['warn', { minScore: 0.95, ...median }],
+  // The best of 5 runs: on a shared 2-core runner, contention only adds time and often makes
+  // Lighthouse count the framework scripts (docs/brief.md section 7).
+  'largest-contentful-paint': ['error', { maxNumericValue: 2500, aggregationMethod: 'optimistic' }],
+  'resource-summary:script:size': ['error', { maxNumericValue: scriptLimit('content') }],
+};
+
 module.exports = {
   ci: {
     collect: {
       startServerCommand,
       startServerReadyPattern: 'Ready in',
       startServerReadyTimeout: 60000,
-      url: [`${pageOrigin}/qa/not-found`, `${pageOrigin}/?tier=1`],
+      url: [
+        `${pageOrigin}/qa/not-found`,
+        `${pageOrigin}${SERVICE}`,
+        `${pageOrigin}${DENTIST}`,
+        `${pageOrigin}/?tier=0`,
+        `${pageOrigin}/?tier=1`,
+      ],
       // 5 runs: simulated LCP on the 404 template spreads up to 0.8 s between runs on the
       // container (1359-2121 ms) and more on a shared CI runner. Lighthouse counts every script
       // that ran before the first paint of the unthrottled load, and that order changes from
@@ -77,26 +106,15 @@ module.exports = {
     },
     assert: {
       assertMatrix: [
+        { matchingUrlPattern: '/qa/not-found', assertions: contentAssertions },
+        { matchingUrlPattern: SERVICE, assertions: contentAssertions },
+        { matchingUrlPattern: DENTIST, assertions: contentAssertions },
         {
-          matchingUrlPattern: '/qa/not-found',
+          matchingUrlPattern: '/\\?tier=0',
           assertions: {
-            ...common,
-            // INP has no value in a navigation run; total blocking time is the CI proxy. The
-            // 200 ms target sits below what the framework alone blocks on a slow CI host, so CI
-            // gates the interim limit (docs/brief.md section 7). The score warns at its target:
-            // TBT, LCP and CLS, 80% of its weight, are errors on their own.
-            'total-blocking-time': [
-              'error',
-              { maxNumericValue: limits.classes.content.tbtInterimMs, ...median },
-            ],
-            'categories:performance': ['warn', { minScore: 0.95, ...median }],
-            // The best of 5 runs: on a shared 2-core runner, contention only adds time and
-            // often makes Lighthouse count the framework scripts (docs/brief.md section 7).
-            'largest-contentful-paint': [
-              'error',
-              { maxNumericValue: 2500, aggregationMethod: 'optimistic' },
-            ],
-            'resource-summary:script:size': ['error', { maxNumericValue: scriptLimit('content') }],
+            ...contentAssertions,
+            // Home ships the experience scaffold and two booking islands: the home interim limit.
+            'resource-summary:script:size': ['error', { maxNumericValue: scriptLimit('home') }],
           },
         },
         {
