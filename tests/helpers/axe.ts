@@ -1,7 +1,7 @@
 // WCAG 2.2 AA scan with axe-core (docs/brief.md: target WCAG 2.2 AA). Every public template runs
 // it in all six viewport and theme projects, because contrast differs per theme.
 import AxeBuilder from '@axe-core/playwright';
-import { expect, type Page } from '@playwright/test';
+import { expect, type Browser, type Page } from '@playwright/test';
 
 export const WCAG22AA: readonly string[] = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
@@ -25,4 +25,26 @@ export async function expectNoA11yViolations(page: Page, options: A11yOptions = 
     (v) => `${v.id} (${v.impact ?? 'n/a'}): ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`,
   );
   expect(summary, `axe WCAG 2.2 AA violations on ${page.url()}`).toEqual([]);
+}
+
+/**
+ * axe runs in the page, so a page with JavaScript off cannot run it (its promise never settles).
+ * This scans that page's server HTML instead, scripts removed, in a fresh page with JavaScript at
+ * the same origin, so the styles and the contrast are the page's own.
+ */
+export async function expectNoA11yViolationsWithoutJs(
+  page: Page,
+  browser: Browser,
+  options: A11yOptions = {},
+): Promise<void> {
+  const html = (await page.content()).replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  const context = await browser.newContext({ viewport: page.viewportSize() });
+  try {
+    const scan = await context.newPage();
+    await scan.goto(new URL('/robots.txt', page.url()).href);
+    await scan.setContent(html, { waitUntil: 'load' });
+    await expectNoA11yViolations(scan, options);
+  } finally {
+    await context.close();
+  }
 }

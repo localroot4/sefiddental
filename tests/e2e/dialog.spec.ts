@@ -118,7 +118,8 @@ test('T-DLG2 touch: a tap focuses the heading; the sticky bar steps aside while 
       return box ? Math.round(box.y + box.height) : 0;
     })
     .toBe(viewport.height);
-  expect((await dialog(page).boundingBox())!.height).toBeLessThanOrEqual(viewport.height);
+  // Sub-pixel layout: 844.00002 is the full screen.
+  expect((await dialog(page).boundingBox())!.height).toBeLessThanOrEqual(viewport.height + 0.5);
   await expectNoA11yViolations(page);
   await dialog(page)
     .getByRole('button', { name: t('booking.close') })

@@ -232,7 +232,10 @@ test('T-SV6 empty sections stay hidden; the emergency link only where the servic
   }
   await expect(page.locator('[data-section="booking"]')).toHaveCount(1);
   expect(ofType(await jsonLd(page), 'FAQPage')).toHaveLength(0);
-  await expect(page.locator(`main a[href="${EMERGENCY_PATH}"]`)).toHaveCount(0);
+  // The booking form's help text links the emergency page everywhere but home (freeze G10).
+  await expect(
+    page.locator(`main a[href="${EMERGENCY_PATH}"]:not([data-booking-form] a)`),
+  ).toHaveCount(0);
   await open(page, '/خدمات/درمان-ریشه');
   await expect(page.locator('main header a', { hasText: 'درد شدید دارید؟' })).toHaveCount(1);
 });

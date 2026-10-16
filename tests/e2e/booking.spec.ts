@@ -10,7 +10,7 @@ import { t } from '@/i18n/fa';
 import { toPersianDigits } from '@/lib/persianText';
 import { PHONE_ERRORS } from '@/lib/phone';
 
-import { expectNoA11yViolations } from '../helpers/axe';
+import { expectNoA11yViolations, expectNoA11yViolationsWithoutJs } from '../helpers/axe';
 import {
   countBookingPosts,
   formsHydrated,
@@ -171,7 +171,7 @@ test('T-BK3 without JavaScript the server validates: landline, then a long note,
   await expect(form(page).locator('#bk-page-note-error')).toHaveText(NOTE_TOO_LONG);
   await expect(form(page).getByLabel(t('booking.note'))).toHaveAttribute('aria-invalid', 'true');
   await expect(form(page).locator('#bk-page-phone-error')).toHaveCount(0);
-  await expectNoA11yViolations(page);
+  await expectNoA11yViolationsWithoutJs(page, browser);
   await context.close();
 });
 
@@ -249,13 +249,13 @@ test('T-BK6 a 419 renews the token, keeps the values and the next press succeeds
   expect(pageTs).toMatch(/^v1\./);
   await form(page).getByLabel(t('booking.phone')).fill(phone);
   await form(page).getByLabel(t('booking.name')).fill('نمونهٔ آزمایشی');
-  const renewal = page.waitForResponse((response) =>
-    response.url().includes('/api/form-session?renew='),
-  );
+  // The clock starts when the renewal answer arrives, not when the test gets to read it.
+  const renewal = page
+    .waitForResponse((response) => response.url().includes('/api/form-session?renew='))
+    .then((response) => ({ response, at: Date.now() }));
   await submitButton(page).click();
   await expect(form(page).getByRole('alert')).toHaveText(t('booking.failed.expired'));
-  const renewed = await renewal;
-  const renewedAt = Date.now();
+  const { response: renewed, at: renewedAt } = await renewal;
   expect(new URL(renewed.url()).searchParams.get('renew')).toBe(pageTs);
   const { ts: newTs } = (await renewed.json()) as { ts: string };
   await expect(form(page).getByLabel(t('booking.phone'))).toHaveValue(phone);
@@ -360,7 +360,7 @@ test('T-BK9 without JavaScript the booking page reaches the one-time success pag
   await expectFullSuccess(page.locator('main'), phone);
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
   await expect(page.locator('[data-sticky-bar]')).toHaveCount(0);
-  await expectNoA11yViolations(page);
+  await expectNoA11yViolationsWithoutJs(page, browser);
   // The flash is read once: a reload, and a fresh visitor, land on the booking page.
   await page.reload();
   expect(path(page)).toBe(BOOKING);
@@ -535,6 +535,7 @@ test('T-BK15 screenshots: the booking page, its error, unsent and neutral states
   await openBooking(page);
   await form(page).getByLabel(t('booking.phone')).fill(phone);
   await submitButton(page).click();
-  await expect(form(page).getByRole('status')).toHaveText(t('booking.neutral'));
+  // The neutral line ends with the clinic number from the Clinic global.
+  await expect(form(page).getByRole('status')).toContainText(t('booking.neutral'));
   await captureTemplate(page, testInfo, 'booking-neutral', theme);
 });

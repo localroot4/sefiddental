@@ -410,7 +410,10 @@ test('T-AD14 bulk «علامت هرزنامه» as an editor: two change, the sc
   await page.goto(listOf(name));
   await expect(page.locator('tbody tr')).toHaveCount(3);
   for (const status of ['new', 'contacted', 'scheduled']) {
-    await row(page, `${name} ${status}`).locator('input[type="checkbox"]').check({ force: true });
+    // Payload's row checkbox stays disabled until the list hydrates.
+    const select = row(page, `${name} ${status}`).locator('input[type="checkbox"]');
+    await expect(select).toBeEnabled();
+    await select.check();
   }
   await expect(page.getByText(adminText('admin.bulk.selected', { n: '۳' }))).toBeVisible();
   await page.locator('#bookings-bulk-spam').click();

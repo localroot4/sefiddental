@@ -36,9 +36,10 @@ test('T-PV1 the privacy page states what the form stores and who sees it', async
   await expect(main).toContainText('تا وقتی «مدیر» آن‌ها را حذف کند');
   // GA4 is off in the seed: no analytics paragraph.
   await expect(main).not.toContainText(t('pages.privacy.ga4Text'));
-  await expect(main.locator('a[href="tel:+982155101054"]')).toBeVisible();
-  // T-legal has no booking form; the sticky bar stays (phones).
-  await expect(main.locator('form')).toHaveCount(0);
+  // The closed booking dialog (freeze G7) holds its own call link and form.
+  await expect(main.locator('a[href="tel:+982155101054"]:not(dialog a)')).toBeVisible();
+  // T-legal has no booking form in the page itself; the sticky bar stays (phones).
+  await expect(main.locator('form:not(dialog form)')).toHaveCount(0);
 });
 
 test('T-PV2 the footer links to the privacy page', async ({ page }, testInfo) => {
