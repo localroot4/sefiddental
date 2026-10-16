@@ -261,6 +261,17 @@ describe('emergency form island (conversion.md 7.3, 5.1-5.4)', () => {
     expect(screen.getByText(PHONE_ERRORS.landline)).toBeTruthy();
   });
 
+  it('EF10c a shown phone message clears as soon as the number is valid, before the blur', () => {
+    render(island());
+    fireEvent.change(phone(), { target: { value: '021 5510 1054' } });
+    fireEvent.blur(phone());
+    expect(screen.getByText(PHONE_ERRORS.landline)).toBeTruthy();
+    fireEvent.change(phone(), { target: { value: '0912' } });
+    expect(screen.getByText(PHONE_ERRORS.landline)).toBeTruthy();
+    fireEvent.change(phone(), { target: { value: '09123456789' } });
+    expect(screen.queryByText(PHONE_ERRORS.landline)).toBeNull();
+  });
+
   it('EF10b no blur message while the submit is pressed; an emptied phone keeps no old message', () => {
     render(island());
     const name = screen.getByLabelText('نام (اختیاری)');

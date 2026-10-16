@@ -198,6 +198,25 @@ describe('booking form island (conversion.md 5.1-5.4)', () => {
     expect(screen.getByText(PHONE_ERRORS.landline)).toBeTruthy();
   });
 
+  it('BF4d a shown error clears as soon as the value is valid, before the blur (no shift under a click)', () => {
+    render(island('full', 'block'));
+    fireEvent.change(phone(), { target: { value: '021 5510 1054' } });
+    fireEvent.blur(phone());
+    expect(screen.getByText(PHONE_ERRORS.landline)).toBeTruthy();
+    // Still invalid while typing: the message stays until the blur says otherwise.
+    fireEvent.change(phone(), { target: { value: '0912' } });
+    expect(screen.getByText(PHONE_ERRORS.landline)).toBeTruthy();
+    fireEvent.change(phone(), { target: { value: '09123456789' } });
+    expect(screen.queryByText(PHONE_ERRORS.landline)).toBeNull();
+    expect(phone().hasAttribute('aria-invalid')).toBe(false);
+    const note = screen.getByLabelText('توضیح (اختیاری)');
+    fireEvent.change(note, { target: { value: 'ا'.repeat(501) } });
+    fireEvent.blur(note);
+    expect(note.getAttribute('aria-invalid')).toBe('true');
+    fireEvent.change(note, { target: { value: 'ا'.repeat(500) } });
+    expect(note.hasAttribute('aria-invalid')).toBe(false);
+  });
+
   it('BF4c the note skips blur validation while the submit is pressed too', () => {
     render(island('full', 'block'));
     const note = screen.getByLabelText('توضیح (اختیاری)');

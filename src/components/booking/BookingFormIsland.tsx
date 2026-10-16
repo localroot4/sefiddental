@@ -397,6 +397,12 @@ export function BookingFormIsland(props: {
                 track('booking_open', { location: 'hero' });
               }
             }}
+            onChange={(event) => {
+              // Reward early: a fixed value drops its message now, not at the blur, where the
+              // layout would move under the pointer of the next click.
+              if (phoneError && !phoneReason(event.currentTarget.value))
+                showErrors({ phone: null });
+            }}
             onBlur={(event) => {
               if (passing(event) || !event.currentTarget.value.trim()) return;
               showErrors({ phone: phoneReason(event.currentTarget.value) });
@@ -440,7 +446,12 @@ export function BookingFormIsland(props: {
                   `${p}-note-counter`,
                   noteError && `${p}-note-error`,
                 )}
-                onChange={(event) => setNoteLength(event.currentTarget.value.length)}
+                onChange={(event) => {
+                  setNoteLength(event.currentTarget.value.length);
+                  if (noteError && !noteTooLong(event.currentTarget.value)) {
+                    showErrors({ note: false });
+                  }
+                }}
                 onBlur={(event) => {
                   if (!passing(event)) showErrors({ note: noteTooLong(event.currentTarget.value) });
                 }}

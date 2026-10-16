@@ -350,6 +350,14 @@ export function EmergencyFormIsland(props: {
             `${p}-phone-help`,
             Boolean(errors.phone) && `${p}-phone-error`,
           )}
+          onChange={(event) => {
+            // Reward early: a fixed number drops its message now, not at the blur, where the
+            // layout would move under the pointer of the next click.
+            const text = event.currentTarget.value;
+            setErrors((prev) =>
+              prev.phone && !phoneMessage(text) ? { ...prev, phone: undefined } : prev,
+            );
+          }}
           onBlur={(event) => {
             // A press on the submit validates on submit; a message here would move the button.
             if (pressingSubmit.current) return;
@@ -426,7 +434,13 @@ export function EmergencyFormIsland(props: {
               `${p}-note-counter`,
               Boolean(errors.note) && `${p}-note-error`,
             )}
-            onChange={(event) => setNoteLength(event.currentTarget.value.length)}
+            onChange={(event) => {
+              const length = event.currentTarget.value.length;
+              setNoteLength(length);
+              setErrors((prev) =>
+                prev.note && length <= NOTE_MAX ? { ...prev, note: undefined } : prev,
+              );
+            }}
             onBlur={(event) => {
               if (pressingSubmit.current) return;
               const long = event.currentTarget.value.length > NOTE_MAX;
