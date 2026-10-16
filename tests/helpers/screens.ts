@@ -58,6 +58,15 @@ export async function captureTemplate(
   opts: { fullPage?: boolean } = {},
 ): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
+  if (opts.fullPage ?? true) {
+    // A full-page capture paints fixed parts where the viewport last was: start at the top, park
+    // the pointer on the header's top edge (no hover tint on a control), and leave out a sticky
+    // bar that is hidden off a viewport the capture stretches.
+    const width = page.viewportSize()?.width ?? 0;
+    await page.mouse.move(Math.round(width / 2), 1);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.addStyleTag({ content: '[data-sticky-bar][data-hidden]{visibility:hidden}' });
+  }
   // A full-page capture never scrolls, so lazy images below the fold would show as empty frames:
   // load them as a reader who scrolls down would see them, and decode them, because Chromium may
   // paint a loaded but undecoded offscreen image as empty.
