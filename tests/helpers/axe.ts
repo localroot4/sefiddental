@@ -30,7 +30,7 @@ export async function expectNoA11yViolations(page: Page, options: A11yOptions = 
 /**
  * axe runs in the page, so a page with JavaScript off cannot run it (its promise never settles).
  * This scans that page's server HTML instead, scripts removed, in a fresh page with JavaScript at
- * the same origin, so the styles and the contrast are the page's own.
+ * the same URL, so the styles and the contrast are the page's own.
  */
 export async function expectNoA11yViolationsWithoutJs(
   page: Page,
@@ -41,7 +41,8 @@ export async function expectNoA11yViolationsWithoutJs(
   const context = await browser.newContext({ viewport: page.viewportSize() });
   try {
     const scan = await context.newPage();
-    await scan.goto(new URL('/robots.txt', page.url()).href);
+    // A page of the site, not a text route: its CSP lets the copy load the site's stylesheets.
+    await scan.goto(page.url());
     await scan.setContent(html, { waitUntil: 'load' });
     await expectNoA11yViolations(scan, options);
   } finally {
