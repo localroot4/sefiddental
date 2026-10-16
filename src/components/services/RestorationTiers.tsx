@@ -16,8 +16,8 @@ export const TIER_INPUT = 'restoration-tier';
 /**
  * The restoration tiers with the visitor's choice (freeze G13): the comparison in choice mode and
  * one primary «رزرو نوبت» under it that carries the chosen tier, `?service=…&tier=…` (none until
- * a choice, F24). Every link is real; with JavaScript, HomeBookingPrefill puts the tier into the
- * page's booking block before the chrome scrolls there. The restoration page shows every row;
+ * a choice, F24). Every link is real; with JavaScript, the chrome's booking route puts the tier
+ * into the page's booking block before it scrolls there. The restoration page shows every row;
  * `summary` (the pricing page) keeps the description and the price only.
  */
 export function RestorationTiers(props: {

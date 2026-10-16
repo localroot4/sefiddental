@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+import { bookingRoute } from '@/components/chrome/bookingRoute';
+import { isPlainClick } from '@/components/chrome/closedSheet';
 import { getFormSession } from '@/components/chrome/formSession';
 import type { OpenState } from '@/lib/events/allowlist';
 import { isEventName, track } from '@/lib/track/track';
@@ -86,6 +88,15 @@ export function TrackListener(): null {
       }
       const name = target.getAttribute('data-track');
       if (!isEventName(name)) return;
+      // Freeze G8: a booking CTA counts booking_open only when it routes in the page (dialog,
+      // scroll, focus); one that navigates leaves the count to the booking page view.
+      if (
+        name === 'booking_open' &&
+        target.closest('a[data-booking-cta]') &&
+        (!isPlainClick(event) || bookingRoute(document, window.innerHeight) === null)
+      ) {
+        return;
+      }
       const params: Record<string, string> = {};
       const location = closestAttr(target, 'data-location');
       const serviceKey = closestAttr(target, 'data-service-key');

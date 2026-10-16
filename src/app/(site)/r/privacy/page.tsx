@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 
+import { BookingDialog } from '@/components/booking/BookingDialog';
 import { getPage, pageMetadata } from '@/components/pages/data';
 import { Privacy } from '@/components/pages/Privacy';
 
@@ -10,5 +11,11 @@ export function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PrivacyPage() {
-  return <Privacy page={await getPage('privacy')} />;
+  // No inline form on this page: «رزرو نوبت» opens the booking dialog (freeze G7).
+  return (
+    <>
+      <Privacy page={await getPage('privacy')} />
+      <BookingDialog />
+    </>
+  );
 }

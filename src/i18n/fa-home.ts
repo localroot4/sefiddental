@@ -42,6 +42,17 @@ export const HOME_MESSAGES = {
     'ارسال انجام نشد. اتصال اینترنت را بررسی کنید و دوباره «ثبت درخواست» را بزنید. اگر باز هم نشد، با',
   'booking.failed.server':
     'مشکلی در سایت پیش آمد و درخواست ثبت نشد. دوباره «ثبت درخواست» را بزنید یا با',
+  // conversion.md 5.2 (419), 5.2 neutral state (the clinic number and «تماس بگیرید.» follow) and
+  // section 6 (a no-JS home post reaches the booking page without a token).
+  'booking.failed.expired':
+    'صفحه مدت زیادی باز مانده بود و درخواست ثبت نشد. دوباره «ثبت درخواست» را بزنید.',
+  'booking.neutral':
+    'درخواست شما قبلاً ثبت شده است. پذیرش در ساعات کاری با شما تماس می‌گیرد. برای کار فوری با',
+  'booking.retry': 'درخواست هنوز ثبت نشده است. یک بار دیگر «ثبت درخواست» را بزنید.',
+  'booking.nameTooLong': 'نام بیشتر از ۸۰ حرف است. آن را کوتاه‌تر کنید.',
+  // The callback line when the server could not read the hours (conversion.md 5.2 wording).
+  'booking.callbackGeneric': 'پذیرش در ساعات کاری با شما تماس می‌گیرد.',
+  'booking.close': 'بستن',
   'booking.done': 'درخواست شما ثبت شد',
   'booking.callerBefore': 'تماس از شمارهٔ',
   'booking.callerAfter': 'خواهد بود. شماره را ذخیره کنید تا تماس را بشناسید.',

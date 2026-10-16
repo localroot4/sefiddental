@@ -15,6 +15,8 @@ import { getFooterData, type FooterData } from '@/lib/data/footer';
 
 // No Payload in a component test: the 404 reads the clinic through this reader only.
 vi.mock('@/lib/data/footer', () => ({ getFooterData: vi.fn() }));
+// An async server component does not render in renderToStaticMarkup; the dialog has its own tests.
+vi.mock('@/components/booking/BookingDialog', () => ({ BookingDialog: () => null }));
 
 const CONTACT: FooterData = {
   name: 'کلینیک دندانپزشکی سفید',

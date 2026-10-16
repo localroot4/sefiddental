@@ -18,6 +18,10 @@ const ROUTES = {
   sitemapIndex: { file: 'src/app/sitemap.xml/route.ts' },
   rss: { file: 'src/app/rss.xml/route.ts' },
   serviceProbe: { file: 'src/app/(site)/r/services/[slug]/page.tsx' },
+  booking: { file: 'src/app/(site)/r/booking/page.tsx' },
+  bookingSuccess: { file: 'src/app/(site)/r/booking/success/page.tsx' },
+  // The dialog specs run on /qa/not-found once the 404 view mounts the booking dialog.
+  bookingDialog: { file: 'src/components/layout/NotFoundView.tsx', contains: '<BookingDialog' },
   statusView: {
     file: 'src/payload.config.ts',
     contains: '/admin/views/SystemStatus#SystemStatusView',

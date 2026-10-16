@@ -63,7 +63,10 @@ async function shiftSince(page: Page, since: number): Promise<number> {
   );
 }
 
-/** Answers the booking POST as phase 5 will (JSON), so the success state can be reached. */
+/**
+ * A stubbed `{ ok: true }` answer: the island's success state without storing a booking (no
+ * callback line, so the generic one shows). The real pipeline runs in home-booking.spec.ts.
+ */
 const acceptBookings = (page: Page) => answerBookings(page, { status: 200, json: { ok: true } });
 
 /** axe with every rule, best practices included (landmark-unique is not a WCAG-tagged rule). */
@@ -75,7 +78,7 @@ async function expectNoAxeViolations(page: Page): Promise<void> {
   expect(summary, `axe violations on ${page.url()}`).toEqual([]);
 }
 
-/** Counts the booking POSTs and answers each with `answer` (phase 5 is not built yet). */
+/** Counts the booking POSTs and answers each with `answer` instead of the real handler. */
 async function answerBookings(
   page: Page,
   answer: { status: number; json?: unknown },

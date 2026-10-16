@@ -61,8 +61,8 @@ stored as is.
   it arrives, or once it passed its change time, `unknown`.
 - Error types (`error_type` of `booking_error`, one per error the form
   shows, `docs/conversion.md` 5.2): phone_empty, phone_invalid,
-  phone_landline, note_too_long, expired (419), network, server. The code
-  list joins `allowlist.ts` with its first sender (the booking form).
+  phone_landline, note_too_long, name_too_long, expired (419), network,
+  server (`ERROR_TYPES` in `allowlist.ts`).
 - Providers (`PROVIDERS`): google, neshan, balad, waze.
 
 ## 4. Adding tracking

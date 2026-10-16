@@ -1,9 +1,9 @@
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
-import { bookingRoute, inView, setupBookingRoute } from './bookingRoute';
+import { bookingRoute, inView, prefill, setupBookingRoute } from './bookingRoute';
 import { setupClosedSheet } from './closedSheet';
 import { closeModals, setupDialogs } from './dialogs';
-import { getFormSession } from './formSession';
+import { getFormSession, renewFormSession } from './formSession';
 import { setupSkipLink } from './skipLink';
 import { isTextField, setupStickyBar } from './stickyBar';
 
@@ -266,5 +266,229 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     click(document.getElementById('close')!);
     expect(document.activeElement?.getAttribute('href')).toBe('/');
     stop();
+  });
+
+  it('CB10 a page without a form routes to its booking dialog; hero and block still come first', () => {
+    document.body.innerHTML = `
+      <form data-booking-form="hero"><input type="tel"></form>
+      <form data-booking-form="block"><input type="tel"></form>
+      <dialog data-booking-dialog><div data-booking-form="dialog"><form><input type="tel"></form></div></dialog>`;
+    const hero = document.querySelector('[data-booking-form="hero"] input')!;
+    place(hero, 300, 44);
+    expect(bookingRoute(document, 844)?.kind).toBe('hero');
+    document.querySelector('[data-booking-form="hero"]')!.remove();
+    expect(bookingRoute(document, 844)?.kind).toBe('block');
+    document.querySelector('[data-booking-form="block"]')!.remove();
+    // The dialog's own form is never a "block" to scroll to.
+    expect(bookingRoute(document, 844)).toEqual({
+      kind: 'dialog',
+      dialog: document.querySelector('dialog'),
+    });
+    document.querySelector('dialog')!.remove();
+    expect(bookingRoute(document, 844)).toBeNull();
+  });
+
+  it('CB11 the dialog opens with the CTA choice, focuses the field, locks scroll and returns focus', () => {
+    vi.stubGlobal('CSS', { escape: (value: string) => value }); // jsdom has no CSS.escape
+    document.body.innerHTML = `
+      <header><a href="/">home</a></header>
+      <a id="cta" href="/رزرو-نوبت?service=ceramic-laminate&tier=vip" data-booking-cta data-booking-group="cosmetic">b</a>
+      <dialog id="booking-dialog" data-booking-dialog>
+        <button id="close" command="close" commandfor="booking-dialog">x</button>
+        <div data-booking-form="dialog"><form>
+          <h2>title</h2><input type="tel" id="phone">
+          <input type="radio" name="service" value="exam"><input type="radio" name="service" value="cosmetic">
+          <input type="hidden" name="service_key" value=""><input type="hidden" name="tier" value="">
+        </form></div>
+      </dialog>`;
+    const stops = [setupDialogs(document), setupBookingRoute(document)];
+    const dialog = document.querySelector('dialog')!;
+    const cta = document.getElementById('cta')!;
+    const html = document.documentElement;
+    expect(click(cta).defaultPrevented).toBe(true);
+    expect(dialog.hasAttribute('open')).toBe(true);
+    expect(document.activeElement?.id).toBe('phone');
+    const form = dialog.querySelector('form')!;
+    expect((form.elements.namedItem('service_key') as HTMLInputElement).value).toBe(
+      'ceramic-laminate',
+    );
+    expect((form.elements.namedItem('tier') as HTMLInputElement).value).toBe('vip');
+    expect(form.querySelector<HTMLInputElement>('[value="cosmetic"]')!.checked).toBe(true);
+    // Scroll lock at every width while open, with the gutter kept (X7).
+    expect(html.classList.contains('overflow-hidden')).toBe(true);
+    expect(html.classList.contains('[scrollbar-gutter:stable]')).toBe(true);
+    click(document.getElementById('close')!);
+    expect(dialog.hasAttribute('open')).toBe(false);
+    expect(html.classList.contains('overflow-hidden')).toBe(false);
+    expect(document.activeElement).toBe(cta);
+    // A modified click keeps the browser's new-tab handling.
+    expect(click(cta, { ctrlKey: true }).defaultPrevented).toBe(false);
+    stops.forEach((stop) => stop());
+  });
+
+  it('CB12 a touch press focuses the dialog heading, so no keyboard covers the lead', () => {
+    document.body.innerHTML = `
+      <a id="cta" href="/رزرو-نوبت" data-booking-cta>b</a>
+      <dialog data-booking-dialog><div data-booking-form="dialog"><form>
+        <h2 id="title">title</h2><input type="tel" id="phone">
+      </form></div></dialog>`;
+    const stop = setupBookingRoute(document);
+    const touch = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    Object.defineProperty(touch, 'pointerType', { value: 'touch' });
+    document.getElementById('cta')!.dispatchEvent(touch);
+    expect(document.activeElement?.id).toBe('title');
+    expect(document.getElementById('title')!.tabIndex).toBe(-1);
+    document.querySelector('dialog')!.close();
+    stop();
+  });
+
+  it('CB13 a CTA without a service leaves the form as the page set it', () => {
+    document.body.innerHTML = `
+      <a id="cta" href="/رزرو-نوبت"></a>
+      <form><input type="hidden" name="service_key" value="implant"><input type="hidden" name="tier" value="x"></form>`;
+    prefill(document.getElementById('cta') as HTMLAnchorElement, document.body);
+    const form = document.querySelector('form')!;
+    expect((form.elements.namedItem('service_key') as HTMLInputElement).value).toBe('implant');
+    expect((form.elements.namedItem('tier') as HTMLInputElement).value).toBe('x');
+  });
+
+  it('CB14 the Tab trap skips what cannot take focus: an inert or invisible success region', () => {
+    // jsdom has no checkVisibility: this one sees `visibility: hidden` only when asked to.
+    Element.prototype.checkVisibility = function (this: Element, options?: CheckVisibilityOptions) {
+      return !(options?.visibilityProperty && this.closest('.invisible'));
+    };
+    onTestFinished(() => void Reflect.deleteProperty(Element.prototype, 'checkVisibility'));
+    document.body.innerHTML = `
+      <dialog id="d" open>
+        <button id="close">x</button><input type="tel" id="phone"><button id="submit">s</button>
+        <div class="invisible"><a href="/hidden">hidden</a></div>
+        <div inert><a href="/done">done</a></div>
+      </dialog>`;
+    const stop = setupDialogs(document);
+    const tab = (id: string, shiftKey = false) => {
+      const event = new KeyboardEvent('keydown', {
+        key: 'Tab',
+        shiftKey,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.getElementById(id)!.dispatchEvent(event);
+      return event.defaultPrevented;
+    };
+    expect(tab('submit')).toBe(true);
+    expect(document.activeElement?.id).toBe('close');
+    expect(tab('close', true)).toBe(true);
+    expect(document.activeElement?.id).toBe('submit');
+    stop();
+  });
+
+  const DIALOG_PAGE = `
+    <a id="cta" href="/رزرو-نوبت" data-booking-cta>b</a>
+    <dialog id="booking-dialog" data-booking-dialog><div data-booking-form="dialog"><form>
+      <h2>title</h2><input type="tel" id="phone">
+    </form></div></dialog>`;
+  const locked = () => document.documentElement.classList.contains('overflow-hidden');
+  const gutter = () => document.documentElement.classList.contains('[scrollbar-gutter:stable]');
+
+  it('CB15 a client navigation that removes the open dialog (no close event) unlocks the page', () => {
+    document.body.innerHTML = DIALOG_PAGE;
+    const stop = setupBookingRoute(document);
+    click(document.getElementById('cta')!);
+    expect(locked()).toBe(true);
+    document.querySelector('dialog')!.remove();
+    stop();
+    expect(locked()).toBe(false);
+    expect(gutter()).toBe(false);
+  });
+
+  it('CB16 a close event that arrives after the dialog reopened leaves the lock and focus', () => {
+    vi.useFakeTimers();
+    // Browsers fire `close` in a later task: closeModals then a reopen in one click sees it late.
+    const close = vi.spyOn(HTMLDialogElement.prototype, 'close').mockImplementation(function (
+      this: HTMLDialogElement,
+    ) {
+      this.removeAttribute('open');
+      setTimeout(() => this.dispatchEvent(new Event('close')));
+    });
+    document.body.innerHTML = DIALOG_PAGE;
+    const stops = [setupDialogs(document), setupBookingRoute(document)];
+    const cta = document.getElementById('cta')!;
+    const dialog = document.querySelector('dialog')!;
+    click(cta);
+    click(cta);
+    vi.runAllTimers();
+    expect(dialog.open).toBe(true);
+    expect(locked()).toBe(true);
+    // The stale event returns no focus either: the reopened dialog keeps its field.
+    expect(document.activeElement?.id).toBe('phone');
+    dialog.close();
+    vi.runAllTimers();
+    expect(locked()).toBe(false);
+    expect(document.activeElement).toBe(cta);
+    close.mockRestore();
+    stops.forEach((stop) => stop());
+  });
+
+  it('CB17 the gutter is kept only where a scrollbar takes room, so no page shifts', () => {
+    document.body.innerHTML = DIALOG_PAGE;
+    const html = document.documentElement;
+    // Overlay scrollbars or a page too short to scroll: the viewport has no scrollbar width.
+    Object.defineProperty(html, 'clientWidth', { configurable: true, value: window.innerWidth });
+    const stop = setupBookingRoute(document);
+    click(document.getElementById('cta')!);
+    expect(locked()).toBe(true);
+    expect(gutter()).toBe(false);
+    document.querySelector('dialog')!.close();
+    delete (html as { clientWidth?: number }).clientWidth;
+    stop();
+  });
+
+  it('CB18 a form in its success state takes the CTA focus on its success heading', () => {
+    document.body.innerHTML = `
+      <a id="cta" href="/رزرو-نوبت" data-booking-cta>b</a>
+      <dialog data-booking-dialog><div data-booking-form="dialog" data-state="success">
+        <form inert><h2>title</h2><input type="tel" id="phone"></form>
+        <div><h2 id="done" tabindex="-1">done</h2><h3>bring</h3></div>
+      </div></dialog>`;
+    const stop = setupBookingRoute(document);
+    const cta = document.getElementById('cta')!;
+    click(cta);
+    expect(document.activeElement?.id).toBe('done');
+    document.querySelector('dialog')!.close();
+    cta.focus();
+    const touch = new MouseEvent('click', { bubbles: true, cancelable: true, button: 0 });
+    Object.defineProperty(touch, 'pointerType', { value: 'touch' });
+    cta.dispatchEvent(touch);
+    expect(document.activeElement?.id).toBe('done');
+    document.querySelector('dialog')!.close();
+    stop();
+  });
+
+  it('FSR1 a renewal skips the shared answer, sends ?renew= and becomes the shared answer', async () => {
+    const answer = (ts: string) => ({
+      csrf: 'c',
+      ts,
+      ttlSeconds: 1800,
+      hours: {
+        state: 'open',
+        callsAllowed: true,
+        showClosedSheet: false,
+        nextChangeAt: new Date(Date.now() + 3_600_000).toISOString(),
+        copy: { callback: '', closedSheet: null, emergencyClosedLine: null },
+      },
+    });
+    const fetch = vi.fn(
+      async (url: string) =>
+        new Response(JSON.stringify(answer(url.includes('renew') ? 'v1.new.sig' : 'v1.old.sig'))),
+    );
+    vi.stubGlobal('fetch', fetch);
+    expect((await getFormSession())?.ts).toBe('v1.old.sig');
+    const renewed = await renewFormSession('v1.old.sig');
+    expect(fetch.mock.calls.at(-1)?.[0]).toBe('/api/form-session?renew=v1.old.sig');
+    expect(renewed?.ts).toBe('v1.new.sig');
+    expect(typeof renewed?.receivedAt).toBe('number');
+    const before = fetch.mock.calls.length;
+    expect((await getFormSession())?.ts).toBe('v1.new.sig');
+    expect(fetch.mock.calls.length).toBe(before);
   });
 });

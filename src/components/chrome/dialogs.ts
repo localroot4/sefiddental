@@ -4,10 +4,13 @@ const opener = new WeakMap<HTMLDialogElement, HTMLElement | null>();
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
 
-/** Tab stops of a dialog in order; content of a closed <details> is not visible, so it is out. */
+/**
+ * Tab stops of a dialog in order: what the browser can focus. Out: content of a closed <details>,
+ * `visibility: hidden` and `inert` (a booking form's success region before it shows).
+ */
 export function tabStops(root: ParentNode): HTMLElement[] {
   return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(
-    (el) => el.checkVisibility?.() ?? true,
+    (el) => (el.checkVisibility?.({ visibilityProperty: true }) ?? true) && !el.closest('[inert]'),
   );
 }
 
@@ -51,7 +54,9 @@ export function setupDialogs(doc: Document): () => void {
   };
   const onClose = (event: Event) => {
     const dialog = event.target;
-    if (!(dialog instanceof HTMLDialogElement)) return;
+    // `close` fires a task after close(): a dialog reopened since (closeModals, then a CTA opens
+    // it again) keeps its state and its focus.
+    if (!(dialog instanceof HTMLDialogElement) || dialog.open) return;
     controllers(doc, dialog).forEach((el) => el.setAttribute('aria-expanded', 'false'));
     const back = opener.get(dialog);
     opener.delete(dialog);

@@ -80,12 +80,24 @@ export const OPEN_STATES = [
 ] as const;
 /** `provider` of `directions_click`. */
 export const PROVIDERS = ['google', 'neshan', 'balad', 'waze'] as const;
+/** `error_type` of `booking_error`: one per message the booking form shows (conversion.md 5.2). */
+export const ERROR_TYPES = [
+  'phone_empty',
+  'phone_invalid',
+  'phone_landline',
+  'note_too_long',
+  'name_too_long',
+  'expired',
+  'network',
+  'server',
+] as const;
 
 export type EventName = (typeof EVENT_NAMES)[number];
 export type EventLocation = (typeof EVENT_LOCATIONS)[number];
 export type PageType = (typeof PAGE_TYPES)[number];
 export type OpenState = (typeof OPEN_STATES)[number];
 export type Provider = (typeof PROVIDERS)[number];
+export type ErrorType = (typeof ERROR_TYPES)[number];
 
 export interface EventRow {
   date: string;

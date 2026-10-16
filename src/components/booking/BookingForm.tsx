@@ -1,39 +1,51 @@
 import type { ReactNode } from 'react';
 
-import { ButtonLink } from '@/components/ui/Button';
-import { DirectionsLinks } from '@/components/ui/Contact';
 import { cx } from '@/components/ui/cx';
 import { SuccessCheck } from '@/components/ui/Feedback';
 import { ChipGroup, TextField } from '@/components/ui/Field';
 import { Icon } from '@/components/ui/Icon';
 import { TextLink } from '@/components/ui/TextLink';
-import { t, type MessageKey } from '@/i18n/fa';
+import { EMERGENCY_PATH, t, type MessageKey } from '@/i18n/fa';
+import { NAME_MAX } from '@/lib/booking/request';
 import { getClinic, getFeatures } from '@/lib/data/globals';
 import { getPublished } from '@/lib/data/published';
 import { PAGE_PATHS } from '@/lib/paths';
 import { formatPhoneFa, PHONE_ERRORS, REGISTERED_NUMBER_LABEL, telHref } from '@/lib/phone';
 
 import { BookingFormIsland } from './BookingFormIsland';
+import { BookingSuccessExtras, successWhatsappHref } from './BookingSuccess';
 import { BOOKING_FIELDS as F, BOOKING_GROUPS, TIME_PREFS } from './fields';
-import { clinicVcardHref } from './vcard';
+import type { BookingRestore } from './restore';
 
 /**
  * The one booking form (docs/conversion.md 5.1): `compact` in the home hero card, `full` in the
- * home scene 10 block and on other pages. Phase 4 ships markup and client validation; phase 5
- * wires submission. Without JavaScript it posts to /رزرو-نوبت.
+ * home scene 10 block, the page blocks, the booking page and the booking dialog. Without
+ * JavaScript it posts to /رزرو-نوبت; the proxy hands the post to /api/booking (freeze G2).
  */
+/** The form instances (conversion.md 5): one per page, two on home; also the events' location. */
+export type BookingInstance = 'hero' | 'block' | 'dialog' | 'page';
+
 export type BookingFormProps = {
   variant: 'compact' | 'full';
-  /** Prefix of every id and the `location` of booking_submit: `hero`, `block`, `page`, ... */
-  instance: string;
+  /** Prefix of every id (`bk-<instance>-…`) and the `location` of the booking events. */
+  instance: BookingInstance;
   /** Slug (or key) of the service to preselect (service pages, tier steps). */
   service?: string;
   /** Restoration tier key to carry (`standard`, `vip`, `cip`). */
   tier?: string;
   /** Slug of the dentist whose profile shows the form. */
   dentist?: string;
+  /** The stored `formLocation` when it differs from the instance (a no-JS home post, 5.6). */
+  location?: string;
   /** Placement classes on the card or sheet (width, alignment). */
   className?: string;
+  /** No card frame of its own: the dialog is the sheet. */
+  plain?: boolean;
+  /** The full form's «درد شدید دارید؟» link (freeze G10); off on home (conversion.md 3). */
+  emergencyLink?: boolean;
+  /** Booking page only: the tokens of the no-JS post and what a no-JS post left (the flash). */
+  tokens?: { csrf: string; ts: string } | null;
+  restore?: BookingRestore | null;
 };
 
 async function serviceOf(ref: string) {
@@ -58,21 +70,29 @@ export async function BookingForm(props: BookingFormProps) {
   const free = features.freeConsultation !== false;
   const p = `bk-${props.instance}`;
   const landline = clinic.phones.landline;
-  const caller = clinic.reception.callerNumber;
-  const whatsapp = clinic.phones.whatsappVerified ? clinic.phones.whatsapp : null;
+  const whatsapp = successWhatsappHref(clinic.phones);
+  const kept = props.restore?.values ?? {};
 
   const chips = (
     <ChipGroup
       legend={t('booking.serviceLegend')}
       name={F.service}
-      defaultValue={service?.bookingGroup ?? undefined}
+      defaultValue={kept[F.service] ?? service?.bookingGroup ?? undefined}
       options={BOOKING_GROUPS.map((group) => ({ value: group, label: groupLabel(group, free) }))}
     />
   );
 
   const fields: ReactNode = full ? (
     <>
-      <TextField id={`${p}-name`} name={F.name} label={t('booking.name')} autoComplete="name" />
+      <TextField
+        id={`${p}-name`}
+        name={F.name}
+        label={t('booking.name')}
+        autoComplete="name"
+        maxLength={NAME_MAX}
+        defaultValue={kept[F.name]}
+        error={props.restore?.nameError ? t('booking.nameTooLong') : undefined}
+      />
       {service ? (
         // The page knows the service: one line, and «تغییر» opens the chips (works without JS).
         <details>
@@ -92,6 +112,7 @@ export async function BookingForm(props: BookingFormProps) {
       <ChipGroup
         legend={t('booking.timeLegend')}
         name={F.timePref}
+        defaultValue={kept[F.timePref]}
         options={TIME_PREFS.map((time) => ({
           value: time,
           label: t(`booking.time.${time}` as MessageKey),
@@ -105,7 +126,7 @@ export async function BookingForm(props: BookingFormProps) {
       <input type="hidden" name={F.serviceKey} defaultValue={service?.key ?? ''} />
       <input type="hidden" name={F.tier} defaultValue={props.tier ?? ''} />
       <input type="hidden" name={F.dentist} defaultValue={props.dentist ?? ''} />
-      <input type="hidden" name={F.location} defaultValue={props.instance} />
+      <input type="hidden" name={F.location} defaultValue={props.location ?? props.instance} />
       {/* Honeypot (conversion.md 5.3): out of the tab order, autofill and the accessibility tree. */}
       <div aria-hidden="true" className="sr-only">
         <input type="text" name={F.honeypot} tabIndex={-1} autoComplete="off" defaultValue="" />
@@ -113,64 +134,24 @@ export async function BookingForm(props: BookingFormProps) {
     </>
   );
 
-  const success: ReactNode = (
+  // A message, then the clinic number as an LTR island and «تماس بگیرید.» (conversion.md 5.2).
+  const withNumber = (key: MessageKey) => (
     <>
-      {caller ? (
-        <p className="text-small text-ink-muted">
-          {t('booking.callerBefore')} <bdi dir="ltr">{formatPhoneFa(caller)}</bdi>{' '}
-          {t('booking.callerAfter')}
-        </p>
-      ) : null}
-      <ButtonLink
-        variant="secondary"
-        href={clinicVcardHref({
-          name: clinic.nameFa,
-          phones: [caller ?? '', landline, clinic.phones.mobile ?? ''],
-          street: clinic.address.fullFa,
-          city: clinic.address.city,
-          site: `https://${clinic.domain}`,
-        })}
-        download="sefid-dental.vcf"
-        track={{ event: 'save_contact', location: 'success' }}
-        className="mt-1"
-      >
-        {t('booking.saveContact')}
-      </ButtonLink>
-      {full ? (
-        <>
-          <div className="mt-4 grid gap-2">
-            <h3 className="text-body leading-[1.5] font-semibold">{t('booking.bringHeading')}</h3>
-            <ul className="grid list-disc gap-1 ps-6 text-small text-ink-muted">
-              {(['id', 'insurance', 'xray', 'meds'] as const).map((item) => (
-                <li key={item}>{t(`booking.bring.${item}`)}</li>
-              ))}
-            </ul>
-          </div>
-          <p className="mt-2 flex gap-2 text-small">
-            <Icon name="map-pin" size="sm" className="mt-[.2em] text-brand" />
-            <span>{clinic.address.fullFa}</span>
-          </p>
-          <DirectionsLinks maps={clinic.maps} location="success" />
-          {whatsapp ? (
-            <TextLink
-              standalone
-              href={`https://wa.me/${whatsapp.replace(/^\+/, '')}?text=${encodeURIComponent(t('booking.whatsappText'))}`}
-              track={{ event: 'whatsapp_click', location: 'success' }}
-              className="-ms-2"
-            >
-              {t('booking.whatsapp')}
-            </TextLink>
-          ) : null}
-        </>
-      ) : null}
+      {t(key)}{' '}
+      <bdi dir="ltr" className="whitespace-nowrap">
+        {formatPhoneFa(landline)}
+      </bdi>{' '}
+      {t('booking.fallbackAfter')}
     </>
   );
 
   return (
     <div
       className={cx(
-        'w-full border border-line bg-surface-raised p-6',
-        full ? 'rounded-sheet shadow-raised' : 'max-w-[26rem] rounded-card shadow-floating',
+        'w-full',
+        !props.plain && 'border border-line bg-surface-raised p-6',
+        !props.plain &&
+          (full ? 'rounded-sheet shadow-raised' : 'max-w-[26rem] rounded-card shadow-floating'),
         props.className,
       )}
     >
@@ -178,6 +159,8 @@ export async function BookingForm(props: BookingFormProps) {
         variant={props.variant}
         instance={props.instance}
         action={PAGE_PATHS.booking}
+        tokens={props.tokens}
+        initial={props.restore?.initial}
         labels={{
           phone: t('booking.phone'),
           phoneHelp: (
@@ -189,26 +172,30 @@ export async function BookingForm(props: BookingFormProps) {
           submitting: t('booking.submitting'),
           done: t('booking.done'),
           registered: REGISTERED_NUMBER_LABEL,
+          callbackGeneric: t('booking.callbackGeneric'),
           errors: { ...PHONE_ERRORS, noteTooLong: t('booking.noteTooLong') },
-          failed: {
-            network: (
-              <>
-                {t('booking.failed.network')}{' '}
-                <bdi dir="ltr" className="whitespace-nowrap">
-                  {formatPhoneFa(landline)}
-                </bdi>{' '}
-                {t('booking.fallbackAfter')}
-              </>
-            ),
+          notices: {
+            network: withNumber('booking.failed.network'),
             server: (
               <>
-                {t('booking.failed.server')}{' '}
-                <bdi dir="ltr" className="whitespace-nowrap">
-                  {formatPhoneFa(landline)}
-                </bdi>{' '}
-                {t('booking.fallbackAfter')}
+                {withNumber('booking.failed.server')}
+                {whatsapp ? (
+                  <>
+                    {' '}
+                    <TextLink
+                      href={whatsapp}
+                      track={{ event: 'whatsapp_click', location: props.instance }}
+                    >
+                      {t('booking.whatsapp')}
+                    </TextLink>
+                  </>
+                ) : null}
               </>
             ),
+            expired: t('booking.failed.expired'),
+            name: t('booking.nameTooLong'),
+            neutral: withNumber('booking.neutral'),
+            retry: t('booking.retry'),
           },
           ...(full
             ? {
@@ -235,6 +222,11 @@ export async function BookingForm(props: BookingFormProps) {
             {full && free ? (
               <p className="text-small text-ink-muted">{t('content.freeConsultation')}</p>
             ) : null}
+            {full && props.emergencyLink !== false ? (
+              <TextLink standalone href={EMERGENCY_PATH} className="-ms-2 w-fit text-small">
+                {t('urgent.label')}
+              </TextLink>
+            ) : null}
           </div>
         }
         fields={fields}
@@ -249,6 +241,7 @@ export async function BookingForm(props: BookingFormProps) {
         }
         icons={{
           error: <Icon name="warning-circle" size="sm" className="mt-[.15em]" />,
+          info: <Icon name="info" className="mt-[.1em] text-info" />,
           check: <SuccessCheck compact={!full} />,
           chevron: (
             <Icon
@@ -258,7 +251,7 @@ export async function BookingForm(props: BookingFormProps) {
             />
           ),
         }}
-        success={success}
+        success={<BookingSuccessExtras full={full} />}
       />
     </div>
   );

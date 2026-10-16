@@ -66,47 +66,11 @@ describe('home scene 4 tier step (F24, CV9)', () => {
     expect(track).toHaveBeenCalledWith('tier_select', { location: 'tier', tier: 'cip' });
   });
 
-  it('RS4 a tier CTA fills the page form; a CTA without a service leaves it as the page set it', () => {
-    vi.stubGlobal('CSS', { escape: (value: string) => value }); // jsdom has no CSS.escape
-    render(
-      <>
-        <HomeBookingPrefill />
-        <RestorationTiers service={service} tiers={TIERS} />
-        <a href="/رزرو-نوبت" data-booking-cta="">
-          header
-        </a>
-        <div data-booking-form="hero">
-          <form aria-label="hero">
-            <input name="tier" defaultValue="" />
-          </form>
-        </div>
-        <div data-booking-form="block">
-          <form aria-label="block">
-            <input name="service_key" defaultValue="restoration" />
-            <input name="tier" defaultValue="" />
-            <input type="radio" name="service" value="exam" aria-label="exam" />
-            <input type="radio" name="service" value="restore" aria-label="restore" />
-          </form>
-        </div>
-      </>,
-    );
-    const block = document.querySelector<HTMLFormElement>('[aria-label="block"]')!;
-    const value = (name: string) => (block.elements.namedItem(name) as HTMLInputElement).value;
-    // Keep jsdom from navigating; the prefill listens in the capture phase before this.
-    const click = (link: Element) => {
-      link.addEventListener('click', (e) => e.preventDefault(), { once: true });
-      fireEvent.click(link);
-    };
+  it('RS4 a tier CTA carries its tier for the chrome route and booking_open (CB11, TL3)', () => {
+    render(<RestorationTiers service={service} tiers={TIERS} />);
     const vip = [...document.querySelectorAll('a')].find((a) => a.href.includes('tier=vip'))!;
-    expect(vip.getAttribute('data-tier')).toBe('vip'); // booking_open carries the tier (TL3)
-    click(document.querySelector('a[href="/رزرو-نوبت"]')!);
-    expect([value('service_key'), value('tier')]).toEqual(['restoration', '']);
-    click(vip);
-    expect([value('service_key'), value('tier')]).toEqual(['restoration', 'vip']);
-    expect((block.querySelector('[value="restore"]') as HTMLInputElement).checked).toBe(true);
-    // The home hero card is not the target.
-    expect((document.querySelector('[aria-label="hero"] input') as HTMLInputElement).value).toBe(
-      '',
-    );
+    expect(vip.hasAttribute('data-booking-cta')).toBe(true);
+    expect(new URL(vip.href).searchParams.get('service')).toBe('restoration');
+    expect(vip.getAttribute('data-tier')).toBe('vip');
   });
 });

@@ -55,6 +55,7 @@ export async function captureTemplate(
   testInfo: TestInfo,
   template: string,
   theme: Theme,
+  opts: { fullPage?: boolean } = {},
 ): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
   // A full-page capture never scrolls, so lazy images below the fold would show as empty frames:
@@ -78,7 +79,8 @@ export async function captureTemplate(
   const width = page.viewportSize()?.width ?? 0;
   const file = `${template}-${width}-${theme}.png`;
   const dir = qaScreenshotDir();
-  const body = await page.screenshot({ fullPage: true, animations: 'disabled' });
+  // fullPage false for a dialog or a first screen: what the viewer sees, where they see it.
+  const body = await page.screenshot({ fullPage: opts.fullPage ?? true, animations: 'disabled' });
   // Lossless recompression halves the committed files (a 390 px page is 1170 px wide at 3x).
   if (dir) {
     await mkdir(dir, { recursive: true });

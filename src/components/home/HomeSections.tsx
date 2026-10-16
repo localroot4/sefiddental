@@ -497,7 +497,8 @@ export function BookingSection(props: { clinic: Clinic; hours: ClinicHours }) {
     <div data-scene="booking" data-home-section="booking" data-family="J" data-sticky-hide="">
       <Section labelledBy="bk-block-title" tone="warm">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-12">
-          <BookingForm variant="full" instance="block" />
+          {/* No contextual emergency link on home, by the client's wish (conversion.md 3, G10). */}
+          <BookingForm variant="full" instance="block" emergencyLink={false} />
           <div className="grid content-start gap-8">
             <MapBlock
               image={
