@@ -1,3 +1,5 @@
+import { after } from 'next/server';
+
 import { cachedRead } from '@/lib/data/cache';
 import { hoursOptionsFrom, toClinicHours } from '@/lib/data/clinicHours';
 import { getClinic, getFeatures } from '@/lib/data/globals';
@@ -5,10 +7,16 @@ import { getPayloadClient } from '@/lib/data/payload';
 import { colTag } from '@/lib/data/tags';
 import { readEnv } from '@/lib/env';
 import { incrementEventDaily } from '@/lib/events/increment';
+import { createRateLimiter } from '@/lib/http/rateLimit';
 import { log } from '@/lib/log/logger';
 import { notifier } from '@/lib/notify';
 
-import type { BookingHandlerDeps, EmergencyHandlerDeps, FormHandlerDeps } from './handler';
+import {
+  FORM_PROCESS_LIMIT,
+  type BookingHandlerDeps,
+  type EmergencyHandlerDeps,
+  type FormHandlerDeps,
+} from './handler';
 import type { Catalog } from './request';
 import { payloadBookingStore } from './store';
 
@@ -63,6 +71,10 @@ const common: FormHandlerDeps = {
   },
   notify: (event) => notifier.notify(event),
   countEvent: async (row) => incrementEventDaily(await getPayloadClient(), row),
+  defer: after,
+  // shortcut: one in-memory window for both routes in this process; move the cap to the
+  // database or nginx limit_req when the app runs as several instances.
+  limiter: createRateLimiter({ ...FORM_PROCESS_LIMIT, maxKeys: 1 }),
   logger: log,
   now: Date.now,
 };

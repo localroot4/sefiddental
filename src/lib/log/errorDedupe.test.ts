@@ -27,6 +27,14 @@ describe('errorDedupe (spec 12.5)', () => {
     expect(errorSignature(sample)).not.toBe(errorSignature({ ...sample, errName: 'TypeError' }));
   });
 
+  it('ED4 a window passed per call wins over the default (R5)', () => {
+    const dedupe = createErrorDedupe({ windowMs: 60 * MIN });
+    expect(dedupe.record(sample, 0, 10 * MIN).notify).toBe(true);
+    expect(dedupe.record(sample, 9 * MIN, 10 * MIN).notify).toBe(false);
+    expect(dedupe.record(sample, 11 * MIN, 10 * MIN).notify).toBe(true);
+    expect(dedupe.record(sample, 12 * MIN).notify).toBe(false);
+  });
+
   it('ED3 entries newest first; bounded', () => {
     const dedupe = createErrorDedupe({ windowMs: MIN, maxEntries: 2 });
     dedupe.record({ ...sample, routePath: '/a' }, 1);

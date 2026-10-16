@@ -50,18 +50,7 @@
   grid-column: 1 / -1;
 }
 
-/* The fifth short section closes its row: full row on two columns, two cells on three. */
-@media (min-width: 768px) {
-  .fill {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (min-width: 1280px) {
-  .fill {
-    grid-column: span 2;
-  }
-}
+/* Six short sections fill whole rows on two and on three columns; no section spans. */
 
 .heading {
   margin: 0 0 calc(var(--base) * 0.5);
@@ -131,6 +120,11 @@
 
 .empty {
   margin: 0;
+  color: var(--theme-elevation-650);
+}
+
+.note {
+  margin: calc(var(--base) * 0.5) 0 0;
   color: var(--theme-elevation-650);
 }
 

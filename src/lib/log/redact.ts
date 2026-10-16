@@ -34,12 +34,57 @@ const PHONE = new RegExp(
 export const PHONE_MASK = '[phone]';
 export const REDACTED = '[redacted]';
 
-/** Keys whose values are personal or secret whatever they hold. */
+/**
+ * Keys whose values are personal or secret whatever they hold. `query` and `params` hold a failed
+ * SQL statement and its bound values (drizzle's DrizzleQueryError), `detail` a Postgres error's
+ * failing row (S3).
+ */
 const SENSITIVE_KEY =
-  /^(?:phone\w*|mobile|tel|e164|national|cookie|authorization|password|token|secret|x-internal-token|ip|ipaddress)$/i;
+  /^(?:phone\w*|mobile|tel|e164|national|cookie|authorization|password|token|secret|x-internal-token|ip|ipaddress|query|params|detail)$/i;
 
 export function scrubPhones(text: string): string {
   return text.replace(PHONE, PHONE_MASK);
+}
+
+// drizzle-orm 0.45's DrizzleQueryError message (and so its stack, and every message or stack
+// that wraps it) is `Failed query: ${query}\nparams: ${params}`. The values (a name, a note) may
+// span lines, so everything after the marker goes: no bound value reaches a log line (S3).
+const PARAMS_MARKER = '\nparams:';
+
+export function cutParams(text: string): string {
+  const at = text.indexOf(PARAMS_MARKER);
+  return at === -1 ? text : `${text.slice(0, at)}${PARAMS_MARKER} ${REDACTED}`;
+}
+
+/** Every string the logger writes: query values cut, then phones masked. */
+export function scrubText(text: string): string {
+  return scrubPhones(cutParams(text));
+}
+
+/**
+ * An error's stack, scrubbed. V8 writes `${name}: ${message}` before the frames, so a failed
+ * query's frames survive the cut; any other stack is cut as a whole.
+ */
+export function stackOf(err: Error): string | undefined {
+  const head = `${err.name}: ${err.message}`;
+  if (!err.stack?.startsWith(head)) return err.stack && scrubText(err.stack);
+  return scrubText(head) + scrubText(err.stack.slice(head.length));
+}
+
+const DRIVER_CODE = /^[A-Z0-9_]{2,40}$/;
+
+/**
+ * The cause chain as class and driver code only (SQLITE_BUSY, 23505): a driver's message may
+ * quote a bound value, so it never goes in (S3).
+ */
+export function causesOf(err: Error): Array<{ type: string; code?: string }> {
+  const out: Array<{ type: string; code?: string }> = [];
+  for (let cause = err.cause; cause instanceof Error && out.length < 5; cause = cause.cause) {
+    const code = (cause as { code?: unknown }).code;
+    const valid = typeof code === 'string' && DRIVER_CODE.test(code);
+    out.push({ type: cause.constructor.name, ...(valid ? { code } : {}) });
+  }
+  return out;
 }
 
 const MAX_DEPTH = 8;
@@ -53,7 +98,7 @@ export function scrubDeep(
   depth = 0,
   seen: WeakSet<object> = new WeakSet(),
 ): unknown {
-  if (typeof value === 'string') return scrubPhones(value);
+  if (typeof value === 'string') return scrubText(value);
   if (value === null || typeof value !== 'object') return value;
   if (seen.has(value)) return '[circular]';
   if (depth >= MAX_DEPTH) return '[depth]';
@@ -62,13 +107,17 @@ export function scrubDeep(
   if (value instanceof Date) return value.toISOString();
 
   const out: Record<string, unknown> = {};
+  // A failed query's driver error goes in as class and code only (see causesOf).
+  const failedQuery = value instanceof Error && value.message.includes(PARAMS_MARKER);
   if (value instanceof Error) {
     out.type = value.constructor.name;
-    out.message = scrubPhones(value.message);
-    if (value.stack) out.stack = scrubPhones(value.stack);
+    out.message = scrubText(value.message);
+    if (value.stack) out.stack = stackOf(value);
+    if (failedQuery) out.causes = causesOf(value);
   }
   for (const [key, inner] of Object.entries(value)) {
     if (key === 'raw') continue; // pino's serialized error keeps the original Error under `raw`
+    if (failedQuery && key === 'cause') continue;
     out[key] = SENSITIVE_KEY.test(key) ? REDACTED : scrubDeep(inner, depth + 1, seen);
   }
   return out;

@@ -3,10 +3,14 @@ import path from 'node:path';
 
 import type { Payload, Where } from 'payload';
 
+import { FORM_SESSION_RATE } from '@/app/(site)/api/form-session/handler';
 import { getContentGaps, type ContentGapsReport } from '@/content-gaps/registry';
 import type { DbKind, ServerEnv } from '@/lib/env';
+import { clientIpFrom } from '@/lib/http/clientIp';
 import { withTimeout } from '@/lib/http/health';
 import { log } from '@/lib/log/logger';
+import { readyChannels } from '@/lib/notify/drivers';
+import { readNotifierSettings } from '@/lib/notify/task';
 import { processStartedAt, warnLines } from '@/lib/log/ringBuffer';
 import { migrations as postgresMigrations } from '@/migrations/postgres';
 import { migrations as sqliteMigrations } from '@/migrations/sqlite';
@@ -23,6 +27,12 @@ export interface FailedJob {
   message: string;
   tries: number;
   at: string;
+}
+
+/** A Notifier channel: its switch, and whether it can actually send (switch, env, recipients). */
+export interface ChannelState {
+  on: boolean;
+  ready: boolean;
 }
 
 export interface LogLine {
@@ -73,8 +83,14 @@ export interface SystemStatusData {
     cspMode: ServerEnv['cspMode'];
     cspAdminMode: ServerEnv['cspAdminMode'];
     trustProxyHeaders: boolean;
+    /** This request's client address was read from the proxy headers (S2, review 3). */
+    clientIpKnown: boolean;
     smtp: boolean;
+    /** Names of the test-only settings that change behaviour (deploy.md 2.3, S12). */
+    testOnly: string[];
   };
+  /** admin-notify.md 9.10: on or off and ready or not, never a value. */
+  notifier: { mail: ChannelState; telegram: ChannelState; sms: ChannelState } | null;
   lastSeedAt: string | null;
   gaps: ContentGapsReport | null;
   logs: LogLine[];
@@ -104,6 +120,16 @@ function errorMessage(error: unknown): string {
         ? String((error as { message: unknown }).message)
         : JSON.stringify(error ?? '');
   return text.slice(0, MESSAGE_MAX);
+}
+
+/** Test-only settings in effect; a rate limit equal to its default 60 changes nothing. */
+export function testOnlySettings(
+  env: Pick<ServerEnv, 'qaRoutes' | 'formSessionRateLimit'>,
+): string[] {
+  return [
+    ...(env.qaRoutes ? ['QA_ROUTES'] : []),
+    ...(env.formSessionRateLimit !== FORM_SESSION_RATE.limit ? ['FORM_SESSION_RATE_LIMIT'] : []),
+  ];
 }
 
 /** Warn and error lines of this process, newest first, without fields beyond time, level, msg. */
@@ -176,6 +202,7 @@ async function freeDiskBytes(dir: string): Promise<number> {
 export async function collectSystemStatus(
   payload: Payload,
   env: ServerEnv,
+  headers: Headers,
   now: Date = new Date(),
 ): Promise<SystemStatusData> {
   const nowMs = now.getTime();
@@ -193,6 +220,7 @@ export async function collectSystemStatus(
     freeBytes,
     seed,
     gaps,
+    notifier,
   ] = await Promise.all([
     known('database', async () => {
       const t0 = Date.now();
@@ -243,7 +271,13 @@ export async function collectSystemStatus(
       }),
     ),
     known('content-gaps', () => getContentGaps(payload)),
+    known('notifier', () => readNotifierSettings(payload)),
   ]);
+  // A booking reaches every channel the clinic receives on.
+  const ready = notifier ? readyChannels(notifier, env, { type: 'booking', bookingId: 0 }) : [];
+  // Failed jobs name their task by its label («ارسال اعلان» for the Notifier).
+  const taskLabel = (slug: string | null | undefined) =>
+    payload.config.jobs?.tasks?.find((task) => task.slug === slug)?.label ?? slug ?? 'نامشخص';
 
   return {
     generatedAt: now.toISOString(),
@@ -268,7 +302,7 @@ export async function collectSystemStatus(
       failed:
         failedRows?.docs.map((job) => ({
           id: job.id,
-          task: job.taskSlug ?? 'نامشخص',
+          task: taskLabel(job.taskSlug),
           message: errorMessage(job.error),
           tries: job.totalTried ?? 0,
           at: job.updatedAt,
@@ -296,8 +330,21 @@ export async function collectSystemStatus(
       cspMode: env.cspMode,
       cspAdminMode: env.cspAdminMode,
       trustProxyHeaders: env.trustProxyHeaders,
+      // The admin's request takes the visitors' proxy chain: unreadable here, unreadable there.
+      clientIpKnown: clientIpFrom(headers, env) !== null,
       smtp: env.smtp !== null,
+      testOnly: testOnlySettings(env),
     },
+    notifier: notifier
+      ? {
+          mail: { on: Boolean(notifier.mail?.enabled), ready: ready.includes('mail') },
+          telegram: { on: Boolean(notifier.telegram?.enabled), ready: ready.includes('telegram') },
+          sms: {
+            on: Boolean(notifier.sms?.enabled),
+            ready: ready.includes('sms_admin') || ready.includes('sms_patient'),
+          },
+        }
+      : null,
     lastSeedAt: seed?.docs[0]?.createdAt ?? null,
     gaps,
     logs: recentLogLines(warnLines.entries()),

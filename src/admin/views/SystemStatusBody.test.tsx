@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-import type { ServerProps } from 'payload';
+import type { Payload, ServerProps } from 'payload';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
@@ -9,8 +9,16 @@ import { Icon, MARK_VIEW_BOX } from '@/admin/components/Icon';
 import { Logo } from '@/admin/components/Logo';
 import { SystemStatusNavLink } from '@/admin/components/SystemStatusNavLink';
 
+import { parseEnv } from '@/lib/env';
+
+import styles from './SystemStatus.module.css';
 import { SystemStatusBody } from './SystemStatusBody';
-import { recentLogLines, type SystemStatusData } from './systemStatusData';
+import {
+  collectSystemStatus,
+  recentLogLines,
+  testOnlySettings,
+  type SystemStatusData,
+} from './systemStatusData';
 
 const healthy: SystemStatusData = {
   generatedAt: '2026-10-13T08:30:00.000Z',
@@ -57,7 +65,14 @@ const healthy: SystemStatusData = {
     cspMode: 'enforce',
     cspAdminMode: 'report-only',
     trustProxyHeaders: false,
+    clientIpKnown: false,
     smtp: false,
+    testOnly: [],
+  },
+  notifier: {
+    mail: { on: true, ready: true },
+    telegram: { on: false, ready: false },
+    sms: { on: true, ready: false },
   },
   lastSeedAt: '2026-10-13T06:00:00.000Z',
   gaps: {
@@ -97,6 +112,28 @@ const healthy: SystemStatusData = {
 
 const text = (html: string) => html.replace(/<[^>]+>/g, ' ');
 
+/** The rendered value of one «پیکربندی» row. */
+function row(data: SystemStatusData, label: string): string {
+  const html = renderToStaticMarkup(<SystemStatusBody data={data} />);
+  return new RegExp(`<dt>${label}</dt><dd>(.*?)</dd>`).exec(html)?.[1] ?? 'row missing';
+}
+const inDev = (data: SystemStatusData): SystemStatusData => ({
+  ...data,
+  runtime: { ...data.runtime, nodeEnv: 'development' },
+});
+const testOnlyOn: SystemStatusData = {
+  ...healthy,
+  config: { ...healthy.config, testOnly: ['QA_ROUTES', 'FORM_SESSION_RATE_LIMIT'] },
+};
+const red = `class="${styles.bad}"`;
+const proxyRow = 'اعتماد به سربرگ‌های پراکسی';
+const proxyBroken: SystemStatusData = {
+  ...healthy,
+  config: { ...healthy.config, trustProxyHeaders: true, clientIpKnown: false },
+};
+const statusEnv = (extra: Record<string, string>) =>
+  parseEnv({ DATABASE_URL: 'file:./status.db', PAYLOAD_SECRET: 'status-test', ...extra });
+
 describe('System status view body (spec 13.3, freeze 29)', () => {
   const html = renderToStaticMarkup(<SystemStatusBody data={healthy} />);
 
@@ -108,6 +145,7 @@ describe('System status view body (spec 13.3, freeze 29)', () => {
       'صف کارها',
       'ذخیره‌سازی رسانه',
       'نسخه و اجرا',
+      'اعلان‌ها',
       'پیکربندی',
       'کارهای ناموفق در ۷ روز اخیر',
       'کمبود محتوا',
@@ -146,6 +184,7 @@ describe('System status view body (spec 13.3, freeze 29)', () => {
       database: { adapter: 'sqlite', reachable: false, latencyMs: null, migrations: null },
       jobs: { queued: null, processing: null, stuck: null, failed: null, lastCron: null },
       media: { storage: 'local', files: null, bytes: null, freeBytes: null },
+      notifier: null,
       gaps: null,
       logs: [],
     };
@@ -156,9 +195,91 @@ describe('System status view body (spec 13.3, freeze 29)', () => {
     expect(text(down)).not.toMatch(/(^|\s)۰(\s|$)/);
   });
 
+  it('SS6 notifier rows: on and ready, off, or on but unable to send; never a value', () => {
+    expect(text(html)).toContain('روشن و آماده');
+    expect(text(html)).toContain('خاموش');
+    expect(text(html)).toContain('روشن است ولی حساب فراپیامک یا شمارهٔ خط تنظیم نشده');
+    expect(html).not.toContain('هیچ راهی روشن نیست');
+    const silent = renderToStaticMarkup(
+      <SystemStatusBody
+        data={{
+          ...healthy,
+          notifier: {
+            mail: { on: false, ready: false },
+            telegram: { on: false, ready: false },
+            sms: { on: false, ready: false },
+          },
+          jobs: {
+            ...healthy.jobs,
+            failed: [
+              { id: 8, task: 'ارسال اعلان', message: 'x', tries: 5, at: healthy.generatedAt },
+            ],
+          },
+        }}
+      />,
+    );
+    expect(silent).toContain(
+      'هیچ راهی روشن نیست؛ درخواست‌ها فقط در پنل و گزارش سرور دیده می‌شوند.',
+    );
+    // A Persian task label reads as Persian, outside the LTR island a slug gets.
+    expect(silent).toContain('<td>ارسال اعلان</td>');
+    expect(html).toContain('schedulePublish</bdi>');
+  });
+
+  it('SS7 proxy headers off: red with the fix in production, plain «خاموش» elsewhere (S2)', () => {
+    const label = proxyRow;
+    const off = row(healthy, label);
+    expect(off).toContain(red);
+    expect(off).toContain('نشانی بازدیدکننده‌ها شناخته نمی‌شود');
+    expect(off).toContain('بدون اعلان در «مشکوک» بمانند یا اصلاً ثبت نشوند');
+    expect(off).toContain('متغیرهای محیط سرور');
+    expect(off).toContain('TRUST_PROXY_HEADERS=true</bdi>');
+    expect(row(inDev(healthy), label)).toBe('خاموش');
+    const on = { ...proxyBroken, config: { ...proxyBroken.config, clientIpKnown: true } };
+    expect(row(on, label)).toBe('روشن');
+  });
+
+  it('SS10 proxy headers on but this request has no readable address: red in every mode', () => {
+    for (const data of [proxyBroken, inDev(proxyBroken)]) {
+      const value = row(data, proxyRow);
+      expect(value).toContain(red);
+      expect(value).toContain('نشانی شما از سربرگ‌های پراکسی خوانده نشد');
+      expect(value).toContain('اصلاً ثبت نشوند');
+      expect(value).toContain('TRUSTED_PROXY_HOPS</bdi>');
+    }
+  });
+
+  it('SS8 test-only settings: red with the fix in production, listed elsewhere (S12)', () => {
+    const label = 'تنظیمات ویژهٔ آزمون';
+    expect(row(healthy, label)).toBe('ندارد');
+    const prod = row(testOnlyOn, label);
+    expect(prod).toContain(red);
+    expect(prod).toContain('تنظیم شده است');
+    expect(prod).toContain('فقط برای آزمون است');
+    expect(prod).toContain('رفتار سایت را تغییر می‌دهد');
+    expect(prod).toContain('از متغیرهای محیط سرور بردارید');
+    expect(prod).toContain('QA_ROUTES</bdi>');
+    expect(prod).toContain('FORM_SESSION_RATE_LIMIT</bdi>');
+    const dev = row(inDev(testOnlyOn), label);
+    expect(dev).not.toContain(red);
+    expect(dev).toContain('QA_ROUTES</bdi>');
+  });
+
+  it('SS9 a test-only setting counts when it is on or differs from its default (S12)', () => {
+    const env = statusEnv;
+    expect(testOnlySettings(env({}))).toEqual([]);
+    expect(testOnlySettings(env({ QA_ROUTES: '1', FORM_SESSION_RATE_LIMIT: '500' }))).toEqual([
+      'QA_ROUTES',
+      'FORM_SESSION_RATE_LIMIT',
+    ]);
+    expect(testOnlySettings(env({ QA_ROUTES: '0', FORM_SESSION_RATE_LIMIT: '60' }))).toEqual([]);
+  });
+
   it('SS5 copy: no Arabic yeh or kaf, no em dash, no Latin digit outside LTR islands', () => {
     for (const markup of [
       html,
+      renderToStaticMarkup(<SystemStatusBody data={testOnlyOn} />),
+      renderToStaticMarkup(<SystemStatusBody data={proxyBroken} />),
       renderToStaticMarkup(<SystemStatusNavLink {...navProps(admin)} />),
     ]) {
       const visible = text(markup.replace(/<bdi dir="ltr"[^>]*>[^<]*<\/bdi>/g, ''));
@@ -170,6 +291,26 @@ describe('System status view body (spec 13.3, freeze 29)', () => {
 
 const navProps = (user: object | null) => ({ user }) as unknown as ServerProps;
 const admin = { id: 1, role: 'admin' };
+
+describe('System status data', () => {
+  it("SD1 the config rows come from the env and from this request's proxy headers", async () => {
+    const env = statusEnv({ QA_ROUTES: '1', TRUST_PROXY_HEADERS: 'true' });
+    // Every database read fails into null (known()); only the settings are under test.
+    const payload = {} as Payload;
+    const seen = await collectSystemStatus(
+      payload,
+      env,
+      new Headers({ 'x-forwarded-for': '203.0.113.7' }),
+    );
+    expect(seen.config).toMatchObject({
+      trustProxyHeaders: true,
+      clientIpKnown: true,
+      testOnly: ['QA_ROUTES'],
+    });
+    const unseen = await collectSystemStatus(payload, env, new Headers());
+    expect(unseen.config.clientIpKnown).toBe(false);
+  });
+});
 
 describe('admin nav link and graphics', () => {
   it('NL1 the nav link renders for an admin only', () => {

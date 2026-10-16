@@ -62,6 +62,19 @@ export function csrfFor(secret: string, sid: string): string {
   return mac(secret, `csrf.v1|${sid}`);
 }
 
+const SID_HASH_LABEL = 'sefid-form-sid-hash.v1';
+
+/**
+ * The mark a booking row keeps of the browser that sent it (S4): HMAC-SHA256 of the sid under a key
+ * derived from the current secret by its own label, hex. Never the sid, never equal to a token.
+ */
+export function sidHash(secrets: readonly string[], sid: string): string {
+  const key = createHmac('sha256', usableSecrets(secrets)[0] as string)
+    .update(SID_HASH_LABEL)
+    .digest();
+  return createHmac('sha256', key).update(sid).digest('hex');
+}
+
 export function issueTimeToken(
   secret: string,
   sid: string,

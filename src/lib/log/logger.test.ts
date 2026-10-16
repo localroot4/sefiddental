@@ -1,3 +1,4 @@
+import { DrizzleQueryError } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createLogger } from '@/lib/log/logger';
@@ -92,6 +93,52 @@ describe('logger (spec 12.1)', () => {
     logger.error({ msg: 'boom', err: Object.assign(new Error('db down'), { status: 500 }) });
     expect(parsed().map((l) => l.level)).toEqual(['warn', 'warn', 'error']);
     expect(parsed()[0]).toMatchObject({ msg: 'login_failed', err: { status: 401 } });
+  });
+
+  it('BH-LOG-DB a failed query logs no bound value: message, stack, params, msg, format args, cause or detail (S3)', () => {
+    const NAME = 'علی رضایی';
+    const NOTE = 'درد شدید دندان عقل\nاز دیشب';
+    const query = 'insert into "bookings" ("phone", "name", "note") values ($1, $2, $3)';
+    const cause = Object.assign(new Error('database or disk is full'), { code: 'SQLITE_FULL' });
+    // drizzle-orm 0.45.2's own class: the values sit in message and stack after `\nparams: `, in
+    // the enumerable `params`, and the driver error is the enumerable `cause`.
+    const err = new DrizzleQueryError(query, ['+989121234567', NAME, NOTE], cause);
+    expect(err.message).toContain(`\nparams: +989121234567,${NAME}`);
+    const pg = Object.assign(new Error('null value in column "x" violates not-null constraint'), {
+      code: '23502',
+      detail: `Failing row contains (12, ${NAME}, null).`,
+    });
+    const wrapped = new Error('save failed', { cause: err });
+    const { logger, lines, parsed } = capture();
+    logger.child({ reqId: 'r1', route: '/api/booking' }).error({ msg: 'form_error', err });
+    logger.error(err);
+    logger.error({ err });
+    logger.warn({ msg: 'form_retry', error: err, reason: err.message });
+    logger.error({ msg: 'save_failed', err: wrapped });
+    logger.error('save failed %o', err);
+    logger.error({ msg: 'interp' }, 'values %j', { params: err.params, to: '+989121234567' });
+    logger.error({ msg: 'pg_failed', err: pg, error: pg });
+    const all = lines.join('\n');
+    for (const value of [NAME, 'رضایی', 'درد شدید', 'دیشب', '9121234567']) {
+      expect(all).not.toContain(value);
+    }
+    const first = parsed()[0]?.err as Record<string, unknown>;
+    expect(first).toMatchObject({ type: 'DrizzleQueryError', query: '[redacted]' });
+    expect(first.params).toBe('[redacted]');
+    expect(String(first.message)).toBe(`Failed query: ${query}\nparams: [redacted]`);
+    // The frames stay after the cut; the driver error comes back as class and code only.
+    expect(String(first.stack)).toMatch(/^Error: Failed query: insert into "bookings"/);
+    expect(String(first.stack)).toMatch(/\nparams: \[redacted\]\n {4}at .*logger\.test\.ts/);
+    expect(first.causes).toEqual([{ type: 'Error', code: 'SQLITE_FULL' }]);
+    expect(parsed()[1]?.msg).toBe(`Failed query: ${query}\nparams: [redacted]`);
+    expect((parsed()[4]?.err as Record<string, unknown>).causes).toEqual([
+      { type: 'DrizzleQueryError' },
+      { type: 'Error', code: 'SQLITE_FULL' },
+    ]);
+    expect(parsed()[7]).toMatchObject({
+      err: { detail: '[redacted]', code: '23502' },
+      error: { detail: '[redacted]' },
+    });
   });
 
   it('LG5 level filter', () => {

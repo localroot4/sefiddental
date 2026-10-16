@@ -31,7 +31,9 @@ export type AuditAction =
   | 'login'
   | 'logout'
   | 'forgot_password'
-  | 'seed';
+  | 'seed'
+  // CSV export of bookings (admin-notify.md 4.8); the audit-log select needs the option.
+  | 'export';
 
 // Never a change: timestamps, row ids, generated sizes, redirect hit counters.
 const ALWAYS_IGNORED = new Set(['id', 'updatedAt', 'createdAt', 'sizes', 'hits', 'lastHitAt']);
@@ -167,16 +169,21 @@ export interface AuditEntry {
 
 const AUTOSAVE_MERGE_MS = 10 * 60 * 1000;
 
-/** Writes one audit row; failures are logged, never thrown (the change itself already happened). */
-export async function writeAudit(req: PayloadRequest, entry: AuditEntry): Promise<void> {
-  if (ctx(req).skipAudit) return;
+/**
+ * Writes one audit row; failures are logged, never thrown (the change itself already happened).
+ * False when no row was written, for callers that must not go on unaudited (the CSV export).
+ */
+export async function writeAudit(req: PayloadRequest, entry: AuditEntry): Promise<boolean> {
+  if (ctx(req).skipAudit) return true;
   const actor = entry.actor ?? actorOf(req, entry.action);
   // The nested Local API calls below clear `req.file` (createLocalReq sets it from their own
   // `file` option), and the outer upload then never unlinks its temp file (UP-2).
   const file = req.file;
   try {
     // Autosave flood control: merge into the same actor's recent update row of this document.
-    if (entry.action === 'update' && entry.docId && actor.actor !== null) {
+    // A status change never merges: its from and to would be lost (C-9).
+    const statusChange = Boolean(entry.statusFrom || entry.statusTo);
+    if (entry.action === 'update' && entry.docId && actor.actor !== null && !statusChange) {
       const recent = await req.payload.find({
         collection: 'audit-log',
         where: {
@@ -203,7 +210,7 @@ export async function writeAudit(req: PayloadRequest, entry: AuditEntry): Promis
           depth: 0,
           req,
         });
-        return;
+        return true;
       }
     }
     await req.payload.create({
@@ -227,6 +234,7 @@ export async function writeAudit(req: PayloadRequest, entry: AuditEntry): Promis
       depth: 0,
       req,
     });
+    return true;
   } catch (err) {
     logFor(requestIdOf(req), 'hook:audit').error(
       {
@@ -236,6 +244,7 @@ export async function writeAudit(req: PayloadRequest, entry: AuditEntry): Promis
       },
       'audit row not written',
     );
+    return false;
   } finally {
     req.file = file;
   }

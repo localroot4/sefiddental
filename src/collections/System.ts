@@ -47,6 +47,7 @@ export const AuditLog: CollectionConfig = {
         { label: 'خروج', value: 'logout' },
         { label: 'فراموشی رمز', value: 'forgot_password' },
         { label: 'بذر داده', value: 'seed' },
+        { label: 'خروجی', value: 'export' },
       ],
       admin: { description: 'کار انجام‌شده.' },
     },

@@ -268,13 +268,13 @@ Request handling:
 | Name | Required in production | Secret | Purpose |
 |---|---|---|---|
 | `ALLOW_INDEXING` | `true` on production only | no | `false`: robots.txt disallows everything, pages carry `X-Robots-Tag: noindex`, sitemaps list no URL. Staging stays `false`. |
-| `TRUST_PROXY_HEADERS` | `true` behind a proxy | no | Trust `X-Forwarded-For`, `X-Forwarded-Proto` and an incoming `X-Request-Id` (2.4). `X-Forwarded-Host` is never read: the canonical check uses `Host`. |
-| `TRUSTED_PROXY_HOPS` | no (default `1`) | no | Number of proxies in front of Node that append to `X-Forwarded-For` (2.4). |
+| `TRUST_PROXY_HEADERS` | `true` behind a proxy | no | Trust `X-Forwarded-For`, `X-Forwarded-Proto` and an incoming `X-Request-Id` (2.4). `X-Forwarded-Host` is never read: the canonical check uses `Host`. With `false` in production, the System status view shows the row red; the start does not fail. |
+| `TRUSTED_PROXY_HOPS` | no (default `1`) | no | Number of proxies in front of Node that append to `X-Forwarded-For` (2.4). When the trust is on and the admin's own address cannot be read, the System status view shows the trust row red in every mode. |
 | `MAINTENANCE_MODE` | no (default `off`) | no | `on`: public requests get the 503 maintenance response (2.12). |
 | `MAINTENANCE_RETRY_AFTER` | no (default `900`) | no | `Retry-After` seconds on the maintenance response. |
 | `CSP_MODE` | no (default `enforce`) | no | CSP of public pages. Keep `enforce`. |
 | `CSP_ADMIN_MODE` | no (default `enforce`) | no | CSP of `/admin`. Keep `enforce`; `report-only` is a debugging switch. |
-| `QA_ROUTES` | never set | no | `1` enables `/qa/*` (CI and local QA only). It also lets any client move the server's opening-hours clock with the `x-qa-hours-at` request header, which changes the callback line and the stored `callbackDueAt` of real bookings. Never set it in production. |
+| `QA_ROUTES` | never set | no | `1` enables `/qa/*` (CI and local QA only). It also lets any client move the server's opening-hours clock with the `x-qa-hours-at` request header, which changes the callback line and the stored `callbackDueAt` of real bookings. Never set it in production; there the System status view shows it red. |
 | `LOG_LEVEL` | no (default `info`) | no | `fatal`, `error`, `warn`, `info`, `debug` or `trace`. Production: `info`. |
 
 Media and e-mail:
@@ -328,6 +328,10 @@ Never in production: `PROXY_CONFIG_TTL_MS`, `FORM_SESSION_RATE_LIMIT`, `INT_DATA
 `QA_SCREENSHOTS`, `LHCI_THEME`, `CI`, `PAYLOAD_FORCE_DRIZZLE_PUSH`. Set by Next.js and Payload, never by us:
 `NEXT_PHASE`, `NEXT_RUNTIME`, `VITEST_POOL_ID`, `PAYLOAD_MIGRATING`.
 
+In production the System status view shows the row «تنظیمات ویژهٔ آزمون» red while
+`QA_ROUTES` is on or `FORM_SESSION_RATE_LIMIT` differs from its default `60` (the default
+value changes nothing). The start does not fail.
+
 ### 2.4 Behind a proxy: TRUST_PROXY_HEADERS and TRUSTED_PROXY_HOPS
 
 Every PaaS puts a router in front of the app. Behind it, set
@@ -337,6 +341,19 @@ Every PaaS puts a router in front of the app. Behind it, set
   `/api/form-session` then allows 60 requests per minute for the whole site,
   and sign-in allows 10 attempts per 15 minutes for everyone. The app also
   ignores `X-Forwarded-Proto`, so it cannot redirect plain HTTP to HTTPS.
+- The booking and emergency forms count every visitor under one fixed key
+  with ten times the per-IP limits. The windows roll, and every request of
+  the key counts, suspicious ones included. For the whole site:
+  - After 100 requests in the last 60 minutes, every later request is stored
+    suspicious (`ip_rate`) and sends no notification.
+  - After 500 suspicious rows in the last 60 minutes, a request is not stored
+    at all, and the patient still sees the success answer. About 9 forged
+    POSTs a minute keep the site there; they need no form session.
+  - After 30 emergencies in the last 24 hours, every later emergency gets
+    `emergency_ip_rate`. It still notifies, but ranks after the clean open
+    emergencies.
+- In production the System status view shows the row red. The start does
+  not fail (S2), so check the view after every deploy (section 3).
 - Set `true` only when the Node port is reachable through the proxy alone.
   Otherwise a client sends its own `X-Forwarded-For` and `X-Request-Id`.
 
@@ -350,9 +367,15 @@ right.
 | CDN, then the platform router | `2` |
 
 - Too high: the chosen entry comes from the client, who can then dodge the
-  rate limit.
+  rate limit. A visitor who sends no `X-Forwarded-For` has too few entries:
+  unknown, on the one shared key above. The System status view reads the
+  admin's own request the same way and shows the row red.
 - Too low: the chosen entry is a proxy address, so many visitors share one
   key.
+- With a CDN in front (`2`), let the origin accept connections from the
+  CDN's addresses only (nginx `allow` and `deny all`, or the host firewall). A
+  client that reaches the origin directly sends one entry, lands on the shared
+  unknown key, and can push every visitor into its limits.
 - Confirm the hop count on staging before launch. Liara's docs do not state
   it.
 
@@ -388,9 +411,68 @@ Node must also set the static set.
    `x-nextjs-rewritten-path` and `x-nextjs-rewritten-query`: the App Router
    client reads them during client navigation.
 
-3. Allow request bodies of 64 MiB (nginx: `client_max_body_size 64m;`).
-   Payload accepts uploads up to that size (`requestSizeLimit` in
-   `src/payload.config.ts`); the nginx default of 1 MB rejects most images.
+3. Cap request bodies per path. Next's proxy (`src/proxy.ts`) holds up to
+   10 MB of every request body in memory before a route sees it, and cuts a
+   longer body without an error (`experimental.proxyClientMaxBodySize`,
+   `node_modules/next/dist/server/body-streams.js`). Its matcher covers every
+   path except `api/media` and static files. So nginx refuses an oversized
+   body first, and only the paths that need a large body get one.
+
+   | Paths | `client_max_body_size` | Why |
+   |---|---|---|
+   | every path not listed below (server block), `/رزرو-نوبت` and `/اورژانس` included | `32k` | Public pages take no body; the two form pages answer 413 above 16 KiB. |
+   | `/api/booking`, `/api/emergency`, `/api/events`, `/api/csp-report` | `32k` | The handlers answer 413 above 16 KiB (the events beacon above 2 KB). They sit under `/api/`, so they need their own location. |
+   | `/admin`, every other path under `/api/` | `10m` | Admin server functions post under `/admin`, Payload REST and sign-in under `/api/`. Above 10 MB the proxy would cut the body without an error; nginx answers 413 instead. |
+   | `/api/media` | `64m` | Payload accepts uploads up to that size (`requestSizeLimit` in `src/payload.config.ts`); the nginx default of 1 MB rejects most images. |
+
+   nginx (untested). A regex location wins over the `/api/` prefix, and the
+   longer prefix `/api/media` wins over `/api/`. The `if` lines are item 5.
+
+   ```nginx
+   server {
+       # items 1, 2 and 4 here (see item 4: never inside a location)
+       client_max_body_size 32k;
+
+       location / {
+           proxy_pass http://127.0.0.1:3000;
+       }
+       location ~ ^/api/(?:booking|emergency|events|csp-report)/?$ {
+           if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
+           proxy_pass http://127.0.0.1:3000;
+       }
+       location /api/ {
+           client_max_body_size 10m;
+           if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
+           proxy_pass http://127.0.0.1:3000;
+       }
+       location /admin {
+           client_max_body_size 10m;
+           if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
+           proxy_pass http://127.0.0.1:3000;
+       }
+       location /api/media {
+           client_max_body_size 64m;
+           limit_req zone=media burst=5;
+           if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
+           proxy_pass http://127.0.0.1:3000;
+       }
+   }
+   ```
+
+   Remaining risk (finding 11): an unauthenticated POST of up to 10 MB to
+   `/admin` or any `/api/` path still sits in the proxy's memory before the
+   route answers. About 200 such POSTs in parallel hold 2 GB. To lower the
+   `10m`, first log `$content_length` of `/admin` and `/api/` POSTs on
+   staging during normal admin work. Then lower the nginx cap and
+   `experimental.proxyClientMaxBodySize` together, with a margin.
+
+   `experimental.proxyClientMaxBodySize` in `next.config.ts` stays at its
+   default until then. It is one value for every proxied path, and Next cuts a
+   longer body silently. A lower value would break large admin saves without a
+   clear error, and no measurement shows how large an admin save can be.
+
+   Where no nginx runs in front (Liara), the proxy still holds up to 10 MB per
+   POST on every path. Record the platform's body limit in section 3.
 
 4. Pass `Host` unchanged and set the forwarding headers. The canonical
    redirect reads `Host` only, and the app keeps an incoming `X-Request-Id`
@@ -404,9 +486,18 @@ Node must also set the static set.
    proxy_set_header X-Request-Id $request_id;
    ```
 
+   Put the directives of items 1, 2 and 4 (`add_header`, `proxy_hide_header`,
+   `proxy_set_header`) in the `server` block, never inside a location. nginx
+   copies each of them into a location only when that location sets none of
+   its own. A location with one `proxy_set_header` loses every inherited
+   `proxy_set_header` (the same holds for `add_header` and
+   `proxy_hide_header`). The forms there get no `X-Forwarded-For`, so every
+   visitor shares the unknown key (2.4), and `Host` becomes the upstream
+   name, which breaks the canonical redirect.
+
 5. Answer 400 for an invalid percent-escape under `/api` and `/admin`; Next
-   answers a bare 500 first (SEC-S9). nginx (untested), inside the `/api/`
-   and `/admin` locations:
+   answers a bare 500 first (SEC-S9). nginx (untested), inside every `/api`
+   and `/admin` location (item 3 shows all four):
 
    ```nginx
    if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
@@ -417,10 +508,10 @@ Node must also set the static set.
    nginx (untested); an empty key is not counted, so other methods pass:
 
    ```nginx
-   # http block
+   # http block; $client_subject is defined below
    map $request_method $media_write_key {
-       POST    $binary_remote_addr;
-       PATCH   $binary_remote_addr;
+       POST    $client_subject;
+       PATCH   $client_subject;
        default "";
    }
    limit_req_zone $media_write_key zone=media:10m rate=10r/m;
@@ -428,6 +519,47 @@ Node must also set the static set.
    # location /api/media
    limit_req zone=media burst=5;
    ```
+
+   Rate-limit POST on the four form paths per client too: 10 a minute with a
+   burst of 20 answers 429 to a flood, not to a person filling a form. The app keeps
+   its own limits behind this (per IP, per phone and per process).
+   nginx (untested); the map key is empty for every other path and method:
+
+   ```nginx
+   # http block
+   # The client as the app counts it (limitSubject in src/lib/http/clientIp.ts):
+   # IPv4 per address, IPv6 per /64. When "::" falls inside the first four
+   # groups, the groups before it stand in for the /64 (a coarser key).
+   map $remote_addr $client_subject {
+       "~^(?<p64>[0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+):" $p64;
+       "~^(?<pre>[0-9a-f][0-9a-f:]*)::"                    $pre;
+       default                                             $binary_remote_addr;
+   }
+   map "$request_method:$uri" $form_post_key {
+       "~^POST:/(?:رزرو-نوبت|اورژانس|api/booking|api/emergency)/?$" $client_subject;
+       default "";
+   }
+   limit_req_zone $form_post_key zone=forms:10m rate=10r/m;
+
+   # server block
+   limit_req zone=forms burst=20 nodelay;
+   limit_req_status 429;
+   error_page 429 /maintenance.html;
+   ```
+
+   - A location with its own `limit_req` (such as `/api/media`) does not
+     inherit this one. That is fine: the forms key is empty there.
+   - Behind a CDN, `$remote_addr` is the CDN's address. Restore the client
+     address first (`set_real_ip_from` and `real_ip_header`), or every
+     visitor shares one bucket.
+   - Without the `$client_subject` map, one IPv6 host rotates addresses
+     inside its /64 past the limit. Keep it whenever nginx listens on IPv6.
+   - `error_page 429` shows a person the static Persian page with the
+     clinic's call button instead of nginx's English page. Its heading says
+     the site is being updated; the call button is what the person needs.
+     The form islands read only the 429 status. The app's own 429 answers
+     (sign-in, form session) pass unchanged, because `proxy_intercept_errors`
+     stays off.
 
 7. Serve HTTP/2 to browsers over TLS (nginx 1.25.1 and later:
    `http2 on;` in the `server` block). The Lighthouse gates measure the
@@ -678,6 +810,9 @@ otherwise:
    (glibc base image, non-root user, the cron and backup schedule), a pinned
    `@liara/cli` version, deploy to staging, then production, on push to
    `main` (brief section 6), with a post-deploy health and `version` check.
+   After the first deploy, and after any change to the environment or the
+   proxy, a person signs in, opens «وضعیت سیستم» and checks that the
+   «پیکربندی» section shows no red row (2.3, 2.4).
 4. Secrets in GitHub environments: `LIARA_API_TOKEN` in the `staging` and
    `production` environments, with its expiry date written here. App secrets
    stay in the Liara app environment, never in GitHub.
@@ -829,7 +964,8 @@ Steps:
    ```
 
    `"status":"ok"` and `"database":{"status":"ok", ...}`. Sign in to the
-   admin, open «وضعیت سیستم», open one public page.
+   admin and open «وضعیت سیستم»: the «پیکربندی» section shows no red row.
+   Open one public page.
 10. Turn off maintenance mode and restart.
 11. Keep the old database for 14 days. Dropping it deletes data, so it needs
     the client's confirmation.

@@ -1,5 +1,5 @@
 import type { Payload } from 'payload';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, type Mock } from 'vitest';
 
 import { NOTIFY_MESSAGES } from '@/i18n/fa-notify';
 import { createLogger, log } from '@/lib/log/logger';
@@ -143,17 +143,127 @@ describe('Notifier', () => {
     expect(t.queued).toEqual([]);
   });
 
-  it('NT10 a spike alert goes out once per hash per window; mail and Telegram only', async () => {
+  it('NT10 one spike alert per window across all hashes, with the distinct hashes seen in it (S5)', async () => {
     const t = notifierFor(ALL_ON);
-    const spike: NotifyEvent = { type: 'ip_spike', ipHashPrefix: 'abcd1234', count: 11 };
+    const spike: NotifyEvent = { type: 'ip_spike', ipHashPrefix: 'aaaa0000', count: 11 };
     await t.notifier.notify(spike);
+    t.advance(30 * 60_000);
     await t.notifier.notify({ ...spike, count: 12 });
+    await t.notifier.notify({ ...spike, ipHashPrefix: 'bbbb0000' });
     expect(t.queued.map((i) => i.channel)).toEqual(['mail', 'telegram']);
+    // A spike inside the last window read needs no database read and writes no line.
+    expect(t.payload.findGlobal).toHaveBeenCalledTimes(1);
+    expect(t.lines.filter((l) => l.includes('notify_deduped'))).toHaveLength(0);
+    // 61 minutes after the first alert: 'aaaa0000' was last seen 31 minutes ago, 'bbbb0000' too.
+    t.advance(31 * 60_000);
+    await t.notifier.notify({ ...spike, ipHashPrefix: 'cccc0000' });
+    expect(t.queued).toHaveLength(4);
+    expect(t.queued.map((i) => (i.event.type === 'ip_spike' ? i.event.addresses : 0))).toEqual([
+      1, 1, 3, 3,
+    ]);
+    // A hash older than the window is pruned and no longer counted.
     t.advance(60 * 60_000);
-    await t.notifier.notify(spike);
-    await t.notifier.notify({ ...spike, ipHashPrefix: 'ffff0000' });
-    expect(t.queued).toHaveLength(6);
-    expect(t.lines.filter((l) => l.includes('notify_deduped'))).toHaveLength(1);
+    await t.notifier.notify({ ...spike, ipHashPrefix: 'dddd0000' });
+    expect(t.queued.at(-1)?.event).toMatchObject({ addresses: 1, windowMinutes: 60 });
+  });
+
+  it('NT-BUDGET mail and Telegram take 20 booking notifications an hour; one budget alert per channel per hour says how many were held since when (S5)', async () => {
+    const t = notifierFor(ALL_ON);
+    const t0 = '2026-10-13T08:00:00.000Z';
+    const send = async (n: number) => {
+      for (let i = 0; i < n; i += 1) await t.notifier.notify({ type: 'booking', bookingId: i });
+    };
+    const count = (channel: string, type = 'booking') =>
+      t.queued.filter((i) => i.channel === channel && i.event.type === type).length;
+    await send(20);
+    expect([count('mail'), count('telegram'), count('sms_admin'), count('sms_patient')]).toEqual([
+      20, 20, 40, 20,
+    ]);
+    await send(1);
+    // SMS keeps its own rules; mail and Telegram hold it, and alert once each.
+    expect([count('mail'), count('telegram'), count('sms_admin')]).toEqual([20, 20, 42]);
+    expect(t.queued.filter((i) => i.event.type === 'budget')).toEqual([
+      {
+        event: { type: 'budget', channel: 'mail', held: 1, since: t0, limit: 20 },
+        channel: 'mail',
+      },
+      {
+        event: { type: 'budget', channel: 'telegram', held: 1, since: t0, limit: 20 },
+        channel: 'telegram',
+      },
+    ]);
+    const lines = t.lines.map((l) => JSON.parse(l) as Record<string, unknown>);
+    expect(lines.filter((l) => l.msg === 'notify_budget')).toHaveLength(2);
+    expect(lines.at(-1)).toMatchObject({ msg: 'notify', held: ['mail', 'telegram'] });
+    // Ten minutes on, one more is held without an alert; the next alert counts it from then.
+    t.advance(10 * 60_000);
+    await send(1);
+    expect(count('mail', 'budget')).toBe(1);
+    t.advance(50 * 60_000);
+    await send(21);
+    expect(count('mail')).toBe(40);
+    expect(t.queued.filter((i) => i.event.type === 'budget').map((i) => i.event)).toEqual([
+      expect.objectContaining({ channel: 'mail', held: 1, since: t0 }),
+      expect.objectContaining({ channel: 'telegram', held: 1, since: t0 }),
+      expect.objectContaining({ channel: 'mail', held: 2, since: '2026-10-13T08:10:00.000Z' }),
+      expect.objectContaining({ channel: 'telegram', held: 2, since: '2026-10-13T08:10:00.000Z' }),
+    ]);
+  });
+
+  it('NT-BUDGET-KIND regular bookings take at most 15 of the 20 slots, so emergencies keep 5', async () => {
+    const t = notifierFor(ALL_ON);
+    const send = (kind: 'regular' | 'emergency', n: number) =>
+      Array.from({ length: n }).reduce<Promise<void>>(
+        (prev, _, i) => prev.then(() => t.notifier.notify({ type: 'booking', bookingId: i, kind })),
+        Promise.resolve(),
+      );
+    const mail = () =>
+      t.queued.filter((i) => i.channel === 'mail' && i.event.type === 'booking').length;
+    await send('regular', 20);
+    expect(mail()).toBe(15);
+    expect(t.queued.find((i) => i.event.type === 'budget')?.event).toMatchObject({ limit: 15 });
+    await send('emergency', 6);
+    expect(mail()).toBe(20);
+  });
+
+  it("NT-BUDGET-FIRST budget alerts are queued before the request's own jobs", async () => {
+    const t = notifierFor(ALL_ON);
+    for (let i = 0; i < 20; i += 1) await t.notifier.notify({ type: 'booking', bookingId: i });
+    const queue = t.payload.jobs.queue as unknown as Mock<
+      (args: { input: NotifyJobInput }) => Promise<void>
+    >;
+    queue.mockImplementation(async ({ input }) => {
+      if (input.channel === 'sms_admin') throw new Error('queue down');
+      t.queued.push(input);
+    });
+    await expect(t.notifier.notify({ type: 'booking', bookingId: 21 })).rejects.toThrow(
+      'queue down',
+    );
+    expect(t.queued.filter((i) => i.event.type === 'budget').map((i) => i.channel)).toEqual([
+      'mail',
+      'telegram',
+    ]);
+  });
+
+  it('NT-R5 reading the global moves the error-alert window to errorDedupMinutes', async () => {
+    const { logRequestError, setErrorAlertSink, setErrorAlertWindow } =
+      await import('@/lib/log/requestError');
+    const write = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    const alerts: unknown[] = [];
+    setErrorAlertSink(async (alert) => void alerts.push(alert));
+    try {
+      const t = notifierFor({ ...ALL_ON, errorDedupMinutes: 5 });
+      await t.notifier.notify(booking);
+      const request = { path: '/x', method: 'GET', headers: {} };
+      const context = { routePath: '/qa/nt-r5', routeType: 'route' };
+      logRequestError(new Error('r5'), request, context, 0);
+      logRequestError(new Error('r5'), request, context, 6 * 60_000);
+      expect(alerts).toHaveLength(2);
+    } finally {
+      setErrorAlertSink(undefined);
+      setErrorAlertWindow(undefined);
+      write.mockRestore();
+    }
   });
 
   it('NT-FLAGS a channel needs its switch AND its server credentials', () => {
@@ -205,10 +315,21 @@ describe('messages (D-4)', () => {
 
   it('NT3b event messages carry no address or phone', () => {
     const spike = renderEvent(
-      { type: 'ip_spike', ipHashPrefix: 'abcd1234', count: 11 },
+      { type: 'ip_spike', ipHashPrefix: 'abcd1234', count: 11, addresses: 3, windowMinutes: 45 },
       ENV.siteUrl,
     );
     expect(spike.text).not.toContain('abcd1234');
+    expect(spike.text).toContain('شمار این نشانی‌ها در ۴۵ دقیقهٔ گذشته: ۳.');
+    const budget = renderEvent(
+      { type: 'budget', channel: 'telegram', held: 12, since: BOOKING.createdAt, limit: 20 },
+      ENV.siteUrl,
+    );
+    expect(budget.subject).toBe('هشدار: سقف اعلان تلگرام پر شد');
+    expect(budget.text).toContain('سقف ۲۰ اعلان در ساعت برای تلگرام پر شد.');
+    expect(budget.text).toContain('از ۲۱ مهر ۱۴۰۵، ساعت ۱۱:۳۰ تا این لحظه ۱۲ درخواست');
+    // No promise of a later alert: it comes only if another request is held after the hour.
+    expect(budget.text).not.toContain('هشدار بعدی');
+    expect(budget.text).toContain('https://sefiddental.ir/admin/collections/bookings');
     const error = renderEvent(
       { type: 'error', signature: 's', routePath: '/x/09123456789', errName: 'E', count: 3 },
       ENV.siteUrl,
@@ -317,6 +438,22 @@ describe('drivers and the notify task', () => {
       { payload: sent.payload, env: ENV, now: Date.now },
     );
     expect(sent.sendEmail).toHaveBeenCalledTimes(1);
+  });
+
+  it('NT-BUDGET-JOB a budget alert goes by mail or Telegram only, never by SMS', async () => {
+    const event: NotifyEvent = {
+      type: 'budget',
+      channel: 'mail',
+      held: 4,
+      since: BOOKING.createdAt,
+      limit: 20,
+    };
+    expect(readyChannels(ALL_ON, ENV, event)).toEqual(['mail', 'telegram']);
+    const { payload, sendEmail } = fakePayload(ALL_ON);
+    await runNotifyJob({ event, channel: 'mail' }, { payload, env: ENV, now: Date.now });
+    expect(sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: 'هشدار: سقف اعلان ایمیل پر شد' }),
+    );
   });
 
   it('NT-SMS-ADMIN the Farapayamak scaffold fails loudly for a known admin; an unknown hash is skipped', async () => {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { PHONE_MASK, scrubDeep, scrubPhones } from '@/lib/log/redact';
+import { cutParams, PHONE_MASK, scrubDeep, scrubPhones } from '@/lib/log/redact';
 
 describe('scrubPhones', () => {
   it.each([
@@ -63,6 +63,23 @@ describe('scrubDeep', () => {
     expect(out.message).toBe(`no user with phone ${PHONE_MASK}`);
     expect(String(out.stack)).not.toContain('09123456789');
     expect(out.code).toBe('E1');
+  });
+
+  it('LR6 query, params and detail keys are redacted; text after the drizzle params marker is cut (S3)', () => {
+    const out = scrubDeep({
+      query: 'insert into "bookings" ("name") values ($1)',
+      params: ['علی رضایی'],
+      detail: 'Failing row contains (12, علی رضایی, null).',
+      reason:
+        'Failed query: insert into "bookings" ("name") values ($1)\nparams: علی رضایی,درد\nدندان',
+    }) as Record<string, unknown>;
+    expect(out.query).toBe('[redacted]');
+    expect(out.params).toBe('[redacted]');
+    expect(out.detail).toBe('[redacted]');
+    expect(out.reason).toBe(
+      'Failed query: insert into "bookings" ("name") values ($1)\nparams: [redacted]',
+    );
+    expect(cutParams('no marker here')).toBe('no marker here');
   });
 
   it('LR5 cycles and depth are cut, never thrown', () => {

@@ -3,11 +3,18 @@ import { randomInt } from 'node:crypto';
 import type { Payload } from 'payload';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-import { createBookingHandler, createEmergencyHandler } from '@/lib/booking/handler';
+import { Bookings } from '@/collections/Bookings';
+import {
+  createBookingHandler,
+  createEmergencyHandler,
+  DUPLICATE_MAX,
+  FORM_PROCESS_LIMIT,
+} from '@/lib/booking/handler';
 import { payloadBookingStore } from '@/lib/booking/store';
-import { csrfFor, FORM_COOKIE, issueTimeToken } from '@/lib/formTokens';
+import { csrfFor, FORM_COOKIE, issueTimeToken, sidHash } from '@/lib/formTokens';
 import type { ClinicHours } from '@/lib/hoursState';
 import { runCronTick } from '@/lib/http/cron';
+import { createRateLimiter } from '@/lib/http/rateLimit';
 import { readEnv } from '@/lib/env';
 import { createLogger, log } from '@/lib/log/logger';
 import { createNotifier } from '@/lib/notify';
@@ -26,6 +33,7 @@ vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), unstable_cache: (fn: unkn
 
 let payload: Payload;
 let admin: StaffUser;
+let editor: StaffUser;
 
 const K = 'k'.repeat(48);
 const SID = 'S'.repeat(43);
@@ -49,6 +57,8 @@ function harness(start = Date.now()) {
   let now = start;
   const notified: NotifyEvent[] = [];
   const lines: string[] = [];
+  // Work handed to `after`, run once each answer is out.
+  const deferred: Array<() => Promise<void>> = [];
   const deps = {
     env: () => ({
       ...readEnv(),
@@ -62,18 +72,27 @@ function harness(start = Date.now()) {
     loadHours: async () => ({ hours: HOURS, options: { callbackMinutes: 10 } }),
     notify: vi.fn(async (event: NotifyEvent) => void notified.push(event)),
     countEvent: async () => undefined,
+    defer: (work: () => Promise<void>) => void deferred.push(work),
+    limiter: createRateLimiter({ ...FORM_PROCESS_LIMIT, maxKeys: 1 }),
     logger: createLogger(
       { logLevel: 'info', gitSha: 'int', nodeEnv: 'test' },
       { write: (line: string) => void lines.push(line) },
     ),
     now: () => now,
   };
+  const afterAnswer = (handler: (r: Request) => Promise<Response>) => async (r: Request) => {
+    const res = await handler(r);
+    for (let work = deferred.shift(); work; work = deferred.shift()) await work();
+    return res;
+  };
   return {
-    booking: createBookingHandler({
-      ...deps,
-      catalog: async () => ({ services: new Map(), tiers: new Map(), doctors: new Map() }),
-    }),
-    emergency: createEmergencyHandler({ ...deps, emergencyEnabled: async () => true }),
+    booking: afterAnswer(
+      createBookingHandler({
+        ...deps,
+        catalog: async () => ({ services: new Map(), tiers: new Map(), doctors: new Map() }),
+      }),
+    ),
+    emergency: afterAnswer(createEmergencyHandler({ ...deps, emergencyEnabled: async () => true })),
     deps,
     notified,
     lines,
@@ -87,9 +106,10 @@ function post(
   fields: Record<string, string | string[]>,
   ip: string,
   path = '/api/booking',
+  sid = SID,
 ) {
   const body = new URLSearchParams();
-  const all = { csrf: csrfFor(K, SID), ts: issueTimeToken(K, SID, nowMs - 5000), ...fields };
+  const all = { csrf: csrfFor(K, sid), ts: issueTimeToken(K, sid, nowMs - 5000), ...fields };
   for (const [key, value] of Object.entries(all)) {
     for (const item of Array.isArray(value) ? value : [value]) body.append(key, item);
   }
@@ -98,7 +118,7 @@ function post(
     body,
     headers: {
       accept: 'application/json',
-      cookie: `${FORM_COOKIE}=${SID}`,
+      cookie: `${FORM_COOKIE}=${sid}`,
       'sec-fetch-site': 'same-origin',
       'x-forwarded-for': ip,
       'x-request-id': 'req-int-0001',
@@ -121,7 +141,7 @@ const rowsOf = async (phone: string) =>
 describe('booking pipeline on the database (booking-pipeline 12.2, emergency.md 16)', () => {
   beforeAll(async () => {
     payload = await getTestPayload();
-    ({ admin } = await staffUsers(payload));
+    ({ admin, editor } = await staffUsers(payload));
   });
 
   it('BI-CREATE the stored row gets its hook fields; the audit row names #id and no phone', async () => {
@@ -257,7 +277,7 @@ describe('booking pipeline on the database (booking-pipeline 12.2, emergency.md 
     });
     expect(row?.callbackDueAt).toEqual(expect.any(String));
     expect(t.notified).toEqual([
-      { type: 'booking', bookingId: row?.id, requestId: 'req-int-0001' },
+      { type: 'booking', bookingId: row?.id, kind: 'emergency', requestId: 'req-int-0001' },
     ]);
     expect(kindAtNotify).toBe('emergency');
     expect(t.lines.join('\n')).toContain('req-int-0001');
@@ -293,8 +313,24 @@ describe('booking pipeline on the database (booking-pipeline 12.2, emergency.md 
     expect((await rowsOf(phones[3]!))[0]).toMatchObject({
       status: 'new',
       flags: ['emergency_ip_rate'],
+      urgencyRank: 0.5,
     });
+    // S6: the flagged emergency sorts after every clean one and before regular new requests.
+    const order = async () =>
+      (
+        await payload.find({
+          collection: 'bookings',
+          where: { phone: { in: phones.slice(0, 5).map(e164) } },
+          sort: ['urgencyRank', '-createdAt'],
+          depth: 0,
+          overrideAccess: true,
+        })
+      ).docs;
     for (const phone of phones.slice(4, 10)) await t.booking(post(t.now(), { phone }, ip));
+    // Created in the same millisecond: the clean three in any order, then the flagged one.
+    const sorted = (await order()).map((d) => d.phoneNational);
+    expect(sorted.slice(0, 3).sort()).toEqual(phones.slice(0, 3).sort());
+    expect(sorted.slice(3)).toEqual([phones[3], phones[4]]);
     await t.booking(post(t.now(), { phone: phones[10]! }, ip));
     expect((await rowsOf(phones[9]!))[0]?.status).toBe('new');
     expect((await rowsOf(phones[10]!))[0]).toMatchObject({
@@ -317,6 +353,134 @@ describe('booking pipeline on the database (booking-pipeline 12.2, emergency.md 
     expect((await rowsOf(other))[0]).toMatchObject({ status: 'suspicious', flags: ['ip_rate'] });
   });
 
+  it('BI-SID a repeat from another browser answers success and keeps its sid hash; editors never see one (S4)', async () => {
+    const t = harness();
+    const phone = uniquePhone();
+    const other = 'O'.repeat(43);
+    const first = await (await t.booking(post(t.now(), { phone }, uniqueIp()))).json();
+    const probe = await t.booking(
+      post(t.now(), { phone, note: 'probe' }, uniqueIp(), undefined, other),
+    );
+    expect(await probe.json()).toEqual(first);
+    expect((await (await t.booking(post(t.now(), { phone }, uniqueIp()))).json()).state).toBe(
+      'neutral',
+    );
+    expect(
+      (await (await t.booking(post(t.now(), { phone }, uniqueIp(), undefined, other))).json())
+        .state,
+    ).toBe('neutral');
+    const [row, ...rest] = await rowsOf(phone);
+    expect(rest).toHaveLength(0);
+    const marked = row as unknown as {
+      sidHash: string;
+      duplicateSubmissions: Array<{ note: string | null; sidHash: string }>;
+    };
+    expect(marked.sidHash).toBe(sidHash([K], SID));
+    expect(marked.duplicateSubmissions.map((d) => [d.note, d.sidHash])).toEqual([
+      ['probe', sidHash([K], other)],
+      [null, sidHash([K], SID)],
+      [null, sidHash([K], other)],
+    ]);
+    expect(t.notified.filter((e) => e.type === 'booking')).toHaveLength(1);
+    const asEditor = await payload.findByID({
+      collection: 'bookings',
+      id: row!.id,
+      user: editor,
+      overrideAccess: false,
+    });
+    expect(JSON.stringify(asEditor)).not.toContain(marked.sidHash);
+    expect(JSON.stringify(asEditor)).not.toContain(sidHash([K], other));
+    expect(asEditor.duplicateSubmissions).toHaveLength(3);
+    const field = (name: string, fields = Bookings.fields) =>
+      fields.find((f) => 'name' in f && f.name === name) as { admin?: { hidden?: boolean } };
+    const entries = field('duplicateSubmissions') as unknown as { fields: typeof Bookings.fields };
+    expect(field('sidHash').admin?.hidden).toBe(true);
+    expect(field('sidHash', entries.fields).admin?.hidden).toBe(true);
+  });
+
+  it('BI-ORACLE a stranger gets the same answers whether or not someone else sent the number (S4)', async () => {
+    // The probe's first request lands on the victim's emergency; a day later that row is past the
+    // storage window, yet the probe's own mark on it still makes its second request a repeat.
+    const run = async (victim: boolean) => {
+      const t = harness();
+      const phone = uniquePhone();
+      const em = async (sid: string) => {
+        const fields = { phone, triage: 'bleeding' };
+        const res = await t.emergency(post(t.now(), fields, uniqueIp(), '/api/emergency', sid));
+        return (await res.json()).state as string;
+      };
+      if (victim) {
+        await em('V'.repeat(43));
+        t.advance(HOUR);
+      }
+      const first = await em('X'.repeat(43));
+      t.advance(23 * HOUR + 30 * 60_000);
+      return [first, await em('X'.repeat(43))];
+    };
+    expect(await run(false)).toEqual(['success', 'neutral']);
+    expect(await run(true)).toEqual(['success', 'neutral']);
+  });
+
+  it('BI-APPEND-CAP past 20 entries the row counts the lost requests, atomically (S10)', async () => {
+    const t = harness();
+    const phone = uniquePhone();
+    await t.booking(post(t.now(), { phone }, uniqueIp()));
+    const [row] = await rowsOf(phone);
+    expect(row).toMatchObject({ appendsDropped: 0 });
+    const entry = {
+      at: new Date(t.now()).toISOString(),
+      name: null,
+      note: null,
+      serviceKey: null,
+      preferredTime: null,
+      sourceUrl: null,
+      triage: null,
+      ipHash: null,
+      sidHash: null,
+    };
+    const store = t.deps.store;
+    for (let i = 0; i < DUPLICATE_MAX; i += 1) {
+      expect(await store.appendDuplicate(row!.id, entry, DUPLICATE_MAX)).toBe(true);
+    }
+    // Parallel capped requests (another process, say) must each add one.
+    const added = await Promise.all(
+      Array.from({ length: 5 }, () => store.appendDuplicate(row!.id, entry, DUPLICATE_MAX)),
+    );
+    expect(added).toEqual([false, false, false, false, false]);
+    const [after] = await rowsOf(phone);
+    expect(after?.duplicateSubmissions).toHaveLength(DUPLICATE_MAX);
+    expect(after).toMatchObject({ appendsDropped: 5 });
+    // The handler path: a capped request adds one more.
+    await t.booking(post(t.now(), { phone }, uniqueIp()));
+    expect((await rowsOf(phone))[0]).toMatchObject({ appendsDropped: 6 });
+    // Read-only in the record, shown only above zero.
+    const field = Bookings.fields.find((f) => 'name' in f && f.name === 'appendsDropped') as {
+      admin: { readOnly?: boolean; condition: (data: object) => boolean };
+    };
+    expect(field.admin.readOnly).toBe(true);
+    expect(field.admin.condition({ appendsDropped: 0 })).toBe(false);
+    expect(field.admin.condition({ appendsDropped: 6 })).toBe(true);
+    await expect(
+      payload.update({
+        collection: 'bookings',
+        id: row!.id,
+        data: { appendsDropped: 0 } as never,
+        user: admin,
+        overrideAccess: false,
+      }),
+    ).resolves.toMatchObject({ appendsDropped: 6 });
+  });
+
+  it('BI-SUS-CEIL the 51st suspicious request of an hour from one address is not stored (S1)', async () => {
+    const t = harness();
+    const ip = uniqueIp();
+    const phones = Array.from({ length: 51 }, () => uniquePhone());
+    for (const phone of phones) await t.booking(post(t.now(), { phone, extra_7: 'bot' }, ip));
+    expect(await rowsOf(phones[49]!)).toHaveLength(1);
+    expect(await rowsOf(phones[50]!)).toHaveLength(0);
+    expect(t.lines.filter((l) => l.includes('form_dropped'))).toHaveLength(1);
+  });
+
   it('BI-CLOSED a repeat emergency after staff closed the first one is a new row', async () => {
     const t = harness();
     const phone = uniquePhone();
@@ -327,7 +491,7 @@ describe('booking pipeline on the database (booking-pipeline 12.2, emergency.md 
     await payload.update({
       collection: 'bookings',
       id: first!.id,
-      data: { status: 'done' },
+      data: { status: 'done', adminNotes: [{ text: 'تماس گرفته شد؛ مشکل برطرف شد.' }] },
       user: admin,
     });
     t.advance(HOUR);

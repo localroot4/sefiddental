@@ -19,7 +19,7 @@ export async function SystemStatusView(props: AdminViewServerProps) {
   const { initPageResult, params, searchParams, user } = props;
   const { req } = initPageResult;
   if ((await verifiedAdmin({ req })) !== true) notFound();
-  const data = await collectSystemStatus(req.payload, readEnv());
+  const data = await collectSystemStatus(req.payload, readEnv(), req.headers);
   return (
     <DefaultTemplate
       i18n={req.i18n}

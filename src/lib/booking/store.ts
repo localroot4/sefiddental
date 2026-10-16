@@ -28,14 +28,29 @@ export function payloadBookingStore(getPayload: () => Promise<Payload>): Booking
         sort: '-createdAt',
         limit: 50,
         depth: 0,
-        select: { createdAt: true, status: true },
+        select: {
+          createdAt: true,
+          status: true,
+          sidHash: true,
+          duplicateSubmissions: { sidHash: true, at: true },
+        },
         overrideAccess: true,
       });
-      return docs.map((doc) => ({
-        id: doc.id,
-        createdAtMs: Date.parse(doc.createdAt),
-        status: doc.status ?? 'new',
-      }));
+      return docs.map((doc) => {
+        const createdAtMs = Date.parse(doc.createdAt);
+        return {
+          id: doc.id,
+          createdAtMs,
+          status: doc.status ?? 'new',
+          marks: [
+            { sidHash: doc.sidHash, atMs: createdAtMs },
+            ...(doc.duplicateSubmissions ?? []).map((e) => ({
+              sidHash: e.sidHash,
+              atMs: Date.parse(e.at ?? ''),
+            })),
+          ].filter((m): m is { sidHash: string; atMs: number } => typeof m.sidHash === 'string'),
+        };
+      });
     },
     async countFromIp(ipHash, sinceMs, kind) {
       const payload = await getPayload();
@@ -73,6 +88,21 @@ export function payloadBookingStore(getPayload: () => Promise<Payload>): Booking
         ).length
       );
     },
+    async countSuspiciousFromIp(ipHash, sinceMs) {
+      const payload = await getPayload();
+      const { totalDocs } = await payload.count({
+        collection: 'bookings',
+        where: {
+          and: [
+            { ipHash: { equals: ipHash } },
+            since(sinceMs),
+            { status: { in: ['suspicious', 'spam'] } },
+          ],
+        },
+        overrideAccess: true,
+      });
+      return totalDocs;
+    },
     async create(row: NewBooking) {
       const payload = await getPayload();
       // The flag `bad_token` and the duplicate `triage` and `ipHash` fields join the generated
@@ -91,7 +121,16 @@ export function payloadBookingStore(getPayload: () => Promise<Payload>): Booking
         overrideAccess: true,
       });
       const earlier = doc.duplicateSubmissions ?? [];
-      if (earlier.length >= max) return false;
+      if (earlier.length >= max) {
+        // One SQL `appends_dropped + 1`: no read-modify-write, no hooks, no audit row (S10).
+        await payload.db.updateOne({
+          collection: 'bookings',
+          id,
+          data: { appendsDropped: { $inc: 1 } },
+          returning: false,
+        });
+        return false;
+      }
       await payload.update({
         collection: 'bookings',
         id,

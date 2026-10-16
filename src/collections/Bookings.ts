@@ -1,7 +1,9 @@
-import type { CollectionConfig } from 'payload';
+import type { CollectionConfig, Field } from 'payload';
 import { select } from 'payload/shared';
 
 import { isAdmin, isAdminField, isStaff, isStaffField } from '@/access/roles';
+import { exportBookingsCsv } from '@/admin/bookings/exportEndpoint';
+import { bookingWorkflow, rerankPhone } from '@/admin/bookings/workflow';
 import { BOOKING_GROUP_OPTIONS, withRules } from '@/fields/factories';
 import {
   BOOKING_STATUS_LABELS,
@@ -10,6 +12,8 @@ import {
   phoneSearch,
 } from '@/hooks/booking';
 import { contentHooks } from '@/hooks/compose';
+import { ADMIN_MESSAGES as M } from '@/i18n/fa-admin';
+import { BOOKING_MESSAGES as B } from '@/i18n/fa-booking';
 
 const readOnlyField = { readOnly: true } as const;
 
@@ -28,9 +32,32 @@ const TRIAGE_OPTIONS = [
   { label: 'خونریزی کم بعد از کشیدن دندان که هنوز ادامه دارد', value: 'bleeding' },
 ];
 
+// Fields the admin list never offers as a filter: free text, hashes, generated or nested data.
+const noFilter = { disableListFilter: true } as const;
+
+// HMAC of the sending browser's form sid (S4), so only that browser sees the neutral answer.
+// Never shown in the admin; editors get neither the value nor the field.
+const sidHashField = (): Field => ({
+  name: 'sidHash',
+  type: 'text',
+  label: B['booking.sidHash.label'],
+  access: { read: isAdminField, create: never, update: never },
+  admin: { hidden: true, ...noFilter },
+});
+
+/** D-7: the native bulk editor offers the status only; everything else is per record. */
+const statusOnlyBulkEdit = (fields: Field[]): Field[] =>
+  fields.map((field) =>
+    'name' in field && field.name === 'status'
+      ? field
+      : ({ ...field, admin: { ...field.admin, disableBulkEdit: true } } as Field),
+  );
+
 /**
  * spec-data 2.14. Operational data: no versions (they would copy phone numbers); the audit log
  * records every change by field path and labels the row '#id', never the phone or name.
+ * Admin workflow (freeze G15, admin-notify.md 4): urgency order, tabs, contact links, restore,
+ * bulk spam and the admin-only CSV export at /api/bookings/export.
  */
 export const Bookings: CollectionConfig = {
   slug: 'bookings',
@@ -38,17 +65,27 @@ export const Bookings: CollectionConfig = {
   admin: {
     group: 'نوبت‌ها',
     useAsTitle: 'listTitle',
+    description: M['admin.bookings.description'],
     defaultColumns: [
       'listTitle',
+      'contact',
       'kind',
       'status',
       'bookingGroup',
       'callbackDueAt',
-      'createdAt',
+      'receivedAt',
       'flags',
+      'rowActions',
     ],
     listSearchableFields: ['phoneNational', 'name'],
+    components: {
+      beforeListTable: [
+        '/admin/bookings/BookingTabs#BookingTabs',
+        '/admin/bookings/BulkSpam#BulkSpam',
+      ],
+    },
   },
+  // Urgency rank (emergency, new, contacted, scheduled, suspicious, closed), newest first inside.
   defaultSort: ['urgencyRank', '-createdAt'],
   disableDuplicate: true,
   trash: true,
@@ -58,24 +95,51 @@ export const Bookings: CollectionConfig = {
     { fields: ['status', 'createdAt'] },
   ],
   access: { read: isStaff, create: isStaff, update: isStaff, delete: isAdmin },
+  endpoints: [{ path: '/export', method: 'get', handler: exportBookingsCsv }],
   hooks: {
     beforeOperation: [phoneSearch],
     ...contentHooks('bookings', {
       beforeValidate: [normalizeBooking],
-      beforeChange: [bookingRules],
+      beforeChange: [bookingRules, bookingWorkflow],
+      afterChange: [rerankPhone],
       revalidate: false,
       audit: { label: (doc) => `#${String(doc.id)}`, statusField: 'status' },
     }),
   },
-  fields: [
+  fields: statusOnlyBulkEdit([
     {
       name: 'listTitle',
       type: 'text',
       label: 'عنوان',
       admin: {
         ...readOnlyField,
+        ...noFilter,
         description: 'عنوان فهرست؛ شماره کامل فقط داخل پرونده دیده می‌شود.',
       },
+    },
+    {
+      name: 'contact',
+      type: 'ui',
+      label: M['admin.contact.label'],
+      admin: {
+        position: 'sidebar',
+        components: {
+          Cell: '/admin/bookings/contact#ContactCell',
+          Field: '/admin/bookings/contact#ContactField',
+        },
+      },
+    },
+    {
+      name: 'receivedAt',
+      type: 'ui',
+      label: M['admin.receivedAt.label'],
+      admin: { components: { Cell: '/admin/bookings/cells#ReceivedAtCell' } },
+    },
+    {
+      name: 'rowActions',
+      type: 'ui',
+      label: M['admin.rowActions.label'],
+      admin: { components: { Cell: '/admin/bookings/RowActions#RowActions' } },
     },
     {
       name: 'phone',
@@ -88,7 +152,10 @@ export const Bookings: CollectionConfig = {
           ? true
           : 'شمارهٔ موبایل معتبر نیست.',
       access: { create: isStaffField, update: isAdminField },
-      admin: { description: 'شمارهٔ موبایل به شکل بین‌المللی. با دکمهٔ تماس شماره بگیرید.' },
+      admin: {
+        ...noFilter,
+        description: 'شمارهٔ موبایل به شکل بین‌المللی. با دکمهٔ تماس شماره بگیرید.',
+      },
     },
     {
       name: 'phoneNational',
@@ -120,7 +187,10 @@ export const Bookings: CollectionConfig = {
         { label: 'فوری', value: 'emergency' },
       ],
       access: { update: isAdminField },
-      admin: { description: 'نوع درخواست.' },
+      admin: {
+        description: 'نوع درخواست.',
+        components: { Cell: '/admin/bookings/cells#KindCell' },
+      },
     },
     {
       name: 'bookingGroup',
@@ -176,7 +246,7 @@ export const Bookings: CollectionConfig = {
       type: 'textarea',
       label: 'توضیح بیمار',
       maxLength: 500,
-      admin: { description: 'توضیح بیمار.' },
+      admin: { ...noFilter, description: 'توضیح بیمار.' },
     },
     {
       name: 'triage',
@@ -214,7 +284,7 @@ export const Bookings: CollectionConfig = {
       index: true,
       defaultValue: 'new',
       options: Object.entries(BOOKING_STATUS_LABELS).map(([value, label]) => ({ value, label })),
-      admin: { position: 'sidebar', description: 'وضعیت پیگیری.' },
+      admin: { position: 'sidebar', description: M['admin.bookings.statusHelp'] },
     },
     {
       name: 'flags',
@@ -240,11 +310,10 @@ export const Bookings: CollectionConfig = {
     {
       name: 'formLocation',
       type: 'select',
-      label: 'فرم',
-      options: ['hero', 'block', 'dialog', 'page', 'emergency', 'admin'].map((value) => ({
-        value,
-        label: value,
-      })),
+      label: M['admin.bookings.formLocation'],
+      options: (['hero', 'block', 'dialog', 'page', 'emergency', 'admin'] as const).map(
+        (value) => ({ value, label: M[`admin.formLocation.${value}`] }),
+      ),
       admin: { description: 'فرمی که درخواست از آن آمد.' },
     },
     {
@@ -262,7 +331,7 @@ export const Bookings: CollectionConfig = {
         { label: 'سایت نوبت‌دهی', value: 'directory' },
         { label: 'سایر', value: 'other' },
       ],
-      admin: { description: 'پاسخ بیمار به «از کجا با ما آشنا شدید؟».' },
+      admin: { position: 'sidebar', description: 'پاسخ بیمار به «از کجا با ما آشنا شدید؟».' },
     },
     {
       name: 'callbackDueAt',
@@ -272,7 +341,8 @@ export const Bookings: CollectionConfig = {
       admin: {
         position: 'sidebar',
         date: { pickerAppearance: 'dayAndTime', timeFormat: 'HH:mm' },
-        description: 'تا این زمان باید با بیمار تماس گرفته شود.',
+        description: M['admin.bookings.callbackDueHelp'],
+        components: { Cell: '/admin/bookings/cells#CallbackDueCell' },
       },
     },
     {
@@ -280,7 +350,7 @@ export const Bookings: CollectionConfig = {
       type: 'number',
       label: 'ترتیب فوریت',
       index: true,
-      admin: { hidden: true },
+      admin: { hidden: true, ...noFilter },
     },
     {
       name: 'handledBy',
@@ -305,6 +375,7 @@ export const Bookings: CollectionConfig = {
       label: 'یادداشت‌های پذیرش',
       labels: { singular: 'یادداشت', plural: 'یادداشت‌ها' },
       admin: {
+        ...noFilter,
         description:
           'یادداشت‌های پذیرش. یادداشت‌های قبلی ویرایش نمی‌شوند؛ یادداشت تازه اضافه کنید.',
       },
@@ -325,22 +396,47 @@ export const Bookings: CollectionConfig = {
       type: 'array',
       label: 'درخواست‌های تکراری',
       access: { create: never, update: never },
+      admin: { ...readOnlyField, ...noFilter, description: M['admin.duplicates.help'] },
+      fields: [
+        { name: 'at', type: 'date', label: M['admin.duplicates.at'] },
+        { name: 'name', type: 'text', label: M['admin.duplicates.name'] },
+        { name: 'note', type: 'textarea', label: M['admin.duplicates.note'] },
+        { name: 'serviceKey', type: 'text', label: M['admin.duplicates.serviceKey'] },
+        { name: 'preferredTime', type: 'text', label: M['admin.duplicates.preferredTime'] },
+        { name: 'sourceUrl', type: 'text', label: M['admin.duplicates.sourceUrl'] },
+        // Labels as on the row; staff read the boxes, not codes.
+        {
+          name: 'triage',
+          type: 'select',
+          hasMany: true,
+          label: M['admin.duplicates.triage'],
+          options: TRIAGE_OPTIONS,
+        },
+        // The per-IP rule counts appended requests too (they add no row). Admins only: an editor
+        // gets neither the value nor the field (Payload drops fields without read access).
+        {
+          name: 'ipHash',
+          type: 'text',
+          index: true,
+          label: M['admin.duplicates.ipHash'],
+          access: { read: isAdminField },
+        },
+        sidHashField(),
+      ],
+    },
+    {
+      // S10: requests past the 20 entries above; the handler adds 1 per request, in SQL.
+      name: 'appendsDropped',
+      type: 'number',
+      label: B['booking.appendsDropped.label'],
+      defaultValue: 0,
+      access: { create: never, update: never },
       admin: {
         ...readOnlyField,
-        description: 'درخواست‌های تکراری همین شماره در ۱۰ دقیقه. چیزی بازنویسی نمی‌شود.',
+        ...noFilter,
+        description: B['booking.appendsDropped.help'],
+        condition: (data) => Number(data?.appendsDropped ?? 0) > 0,
       },
-      fields: [
-        { name: 'at', type: 'date' },
-        { name: 'name', type: 'text' },
-        { name: 'note', type: 'textarea' },
-        { name: 'serviceKey', type: 'text' },
-        { name: 'preferredTime', type: 'text' },
-        { name: 'sourceUrl', type: 'text' },
-        // Labels as on the row; staff read the boxes, not codes.
-        { name: 'triage', type: 'select', hasMany: true, options: TRIAGE_OPTIONS },
-        // The per-IP rule counts appended requests too (they add no row).
-        { name: 'ipHash', type: 'text', index: true, access: { read: isAdminField } },
-      ],
     },
     {
       name: 'sourceUrl',
@@ -353,13 +449,13 @@ export const Bookings: CollectionConfig = {
         (typeof value === 'string' && value.startsWith('/'))
           ? true
           : 'فقط مسیر صفحه، با / شروع شود.',
-      admin: { description: 'صفحه‌ای که فرم از آن ارسال شد.' },
+      admin: { ...noFilter, description: 'صفحه‌ای که فرم از آن ارسال شد.' },
     },
     {
       name: 'utm',
       type: 'group',
       label: 'کمپین',
-      admin: { description: 'پارامترهای کمپین، اگر بود.' },
+      admin: { ...noFilter, description: 'پارامترهای کمپین، اگر بود.' },
       fields: ['source', 'medium', 'campaign', 'term', 'content'].map((name) => ({
         name,
         type: 'text' as const,
@@ -392,8 +488,10 @@ export const Bookings: CollectionConfig = {
       access: { read: isAdminField, update: never },
       admin: {
         readOnly: true,
+        ...noFilter,
         description: 'اثر یک‌طرفهٔ IP برای محدودیت‌ها. IP خام ذخیره نمی‌شود.',
       },
     },
-  ],
+    sidHashField(),
+  ]),
 };

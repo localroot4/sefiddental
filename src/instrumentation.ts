@@ -8,6 +8,8 @@ import type { Instrumentation } from 'next';
  */
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return;
+  // Next prints uncaught server errors with console.error before onRequestError (S3).
+  (await import('@/lib/log/consoleScrub')).scrubConsole();
   const { assertEnv } = await import('@/lib/env');
   try {
     assertEnv();

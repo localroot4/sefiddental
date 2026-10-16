@@ -1,5 +1,5 @@
 import type { GlobalConfig } from 'payload';
-import { array, text } from 'payload/shared';
+import { array, checkbox, text } from 'payload/shared';
 
 import { hiddenForEditors, isAdmin } from '@/access/roles';
 import { imageUpload, withRules } from '@/fields/factories';
@@ -9,6 +9,10 @@ import {
   descriptionRule,
 } from '@/fields/validators';
 import { globalHooks } from '@/hooks/compose';
+import { ADMIN_MESSAGES as M } from '@/i18n/fa-admin';
+import { setErrorAlertWindow } from '@/lib/log/requestError';
+
+import { needsEnv, notifierTest } from './notifierAdmin';
 
 const adminOnly = { read: isAdmin, update: isAdmin, readVersions: isAdmin };
 const settingsAdmin = { group: 'تنظیمات', hidden: hiddenForEditors };
@@ -182,6 +186,8 @@ const requiredWhenEnabled =
       ? message
       : true;
 
+const notifierHooks = globalHooks('notifier');
+
 /**
  * spec-data 3.4: switches and recipients only. SMTP passwords, bot tokens and SMS credentials
  * live in environment variables.
@@ -189,10 +195,27 @@ const requiredWhenEnabled =
 export const Notifier: GlobalConfig = {
   slug: 'notifier',
   label: 'اعلان‌ها',
-  admin: settingsAdmin,
+  admin: {
+    ...settingsAdmin,
+    components: {
+      elements: {
+        beforeDocumentControls: ['/admin/components/NotifierTestButton#NotifierTestButton'],
+      },
+    },
+  },
   access: adminOnly,
   versions: { max: 50 },
-  hooks: globalHooks('notifier'),
+  // POST /api/globals/notifier/test (admin-notify.md 9.8).
+  endpoints: [notifierTest],
+  hooks: {
+    ...notifierHooks,
+    // A save moves the error-alert window at once in this process (R5); other processes follow
+    // at their next notification, which reads the global (src/lib/notify).
+    afterChange: [
+      ...(notifierHooks.afterChange ?? []),
+      ({ doc }) => setErrorAlertWindow(doc.errorDedupMinutes),
+    ],
+  },
   fields: [
     {
       name: 'mail',
@@ -204,6 +227,10 @@ export const Notifier: GlobalConfig = {
           type: 'checkbox',
           label: 'فعال',
           defaultValue: false,
+          validate: withRules(
+            checkbox,
+            needsEnv((env) => env.smtp !== null, M['admin.notifier.needsSmtp']),
+          ),
           admin: { description: 'ارسال اعلان نوبت با ایمیل.' },
         },
         {
@@ -226,6 +253,10 @@ export const Notifier: GlobalConfig = {
           type: 'checkbox',
           label: 'فعال',
           defaultValue: false,
+          validate: withRules(
+            checkbox,
+            needsEnv((env) => env.telegram !== null, M['admin.notifier.needsTelegram']),
+          ),
           admin: { description: 'ارسال اعلان در تلگرام (بعداً).' },
         },
         {
@@ -247,6 +278,10 @@ export const Notifier: GlobalConfig = {
           type: 'checkbox',
           label: 'فعال',
           defaultValue: false,
+          validate: withRules(
+            checkbox,
+            needsEnv((env) => env.farapayamak !== null, M['admin.notifier.needsSms']),
+          ),
           admin: { description: 'پیامک از طریق فراپیامک (بعداً).' },
         },
         {

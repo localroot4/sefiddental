@@ -49,10 +49,13 @@ export function urgencyRank(input: {
   kind: string | null | undefined;
   status: BookingStatus;
   priorityRemoved: boolean;
+  /** The row carries `emergency_ip_rate`: its address sent 3 emergencies in the last 24 h. */
+  ipRateFlagged?: boolean;
 }): number {
   const { kind, status, priorityRemoved } = input;
+  // S6: a flagged emergency ranks right after every clean one, still above regular requests.
   if (kind === 'emergency' && (status === 'new' || status === 'contacted') && !priorityRemoved)
-    return 0;
+    return input.ipRateFlagged ? 0.5 : 0;
   const ranks: Record<BookingStatus, number> = {
     new: 1,
     contacted: 2,
@@ -204,6 +207,7 @@ export const bookingRules: CollectionBeforeChangeHook = async ({
     kind: (out.kind ?? before.kind) as string,
     status,
     priorityRemoved,
+    ipRateFlagged: flags.includes('emergency_ip_rate'),
   });
 
   if (operation === 'create' && !out.callbackDueAt) out.callbackDueAt = await callbackDue(req, now);

@@ -196,8 +196,8 @@ the note `<details>` opens when its error shows; typed values are kept.
 | Honeypot | one extra input with a neutral name that does not look like a real field, `tabindex="-1"`, `autocomplete="off"`, hidden from assistive tech |
 | Time token | signed server timestamp in a hidden field; a submit faster than 2 seconds counts as suspicious |
 | Suspicious requests | honeypot filled or too fast: the visitor sees the normal success state, the request is stored with status «مشکوک» (not deleted), and admin shows a daily count. Staff can restore a real request in one click |
-| Per phone | 3 requests per 24 hours; more show the neutral message |
-| Per IP | 10 per hour (generous: mobile carriers share IPs); above that, requests are stored as «مشکوک»; a spike alert reaches the admin |
+| Per phone | 3 requests per 24 hours; more show the neutral message, but only to the browser that sent the earlier requests; any other browser sees the normal success, so the answer never tells a stranger that a number booked (phase 5 S4) |
+| Per IP | 10 per hour (generous: mobile carriers share IPs); above that, requests are stored as «مشکوک» (at most 50 an hour per address, then answered success and not stored; phase 5 S1); a spike alert reaches the admin, at most one per `errorDedupMinutes` window for all addresses together, with the number of distinct addresses; mail and Telegram take at most 20 booking and emergency notifications per hour each (regular bookings at most 15 of them), then one budget alert per channel per hour with the number held since the first unreported one (the admin list holds every request) |
 | Duplicates | the same phone within 10 minutes: the new details are added as a note on the existing request; nothing is overwritten |
 | SMS (when Farapayamak is enabled) | at most 1 message per destination number per 24 hours, whatever the form receives |
 
@@ -347,7 +347,7 @@ Messages:
 | Case | Message |
 |---|---|
 | No triage item (server) | «یکی از موارد را انتخاب کنید. اگر هیچ‌کدام درست نیست، نوبت عادی بگیرید.» |
-| Second emergency from one phone in 24 hours | «امروز یک درخواست فوری با این شماره ثبت شده است. پذیرش با شما تماس می‌گیرد. اگر حالتان بدتر شده، در ساعات کاری با ۰۲۱ ۵۵۱۰ ۱۰۵۴ تماس بگیرید یا به اورژانس بیمارستان بروید.» |
+| Second emergency from one phone in 24 hours (shown only to the browser that sent the first; any other browser sees the normal success, phase 5 S4) | «امروز یک درخواست فوری با این شماره ثبت شده است. پذیرش با شما تماس می‌گیرد. اگر حالتان بدتر شده، در ساعات کاری با ۰۲۱ ۵۵۱۰ ۱۰۵۴ تماس بگیرید یا به اورژانس بیمارستان بروید.» |
 | Success | «درخواست فوری شما ثبت شد.» plus the computed callback line from section 5.4 and the safety box again |
 
 ### 7.4 Self-care block

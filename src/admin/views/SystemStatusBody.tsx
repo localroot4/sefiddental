@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
 
+import { adminText, type AdminMessageKey } from '@/i18n/fa-admin';
+import { STATUS_MESSAGES } from '@/i18n/fa-status';
 import { formatJalali, formatTimeFa } from '@/lib/jalali';
 import { formatNumberFa } from '@/lib/persianText';
 
 import styles from './SystemStatus.module.css';
-import type { SystemStatusData } from './systemStatusData';
+import type { ChannelState, SystemStatusData } from './systemStatusData';
 
 const UNKNOWN = 'نامشخص';
 
@@ -42,12 +44,7 @@ const Ltr = ({ children }: { children: ReactNode }) => (
   </bdi>
 );
 
-function Section(props: {
-  id: string;
-  title: string;
-  span?: 'wide' | 'fill';
-  children: ReactNode;
-}) {
+function Section(props: { id: string; title: string; span?: 'wide'; children: ReactNode }) {
   return (
     <section
       aria-labelledby={props.id}
@@ -74,14 +71,29 @@ function Rows({ rows }: { rows: Array<[string, ReactNode]> }) {
   );
 }
 
-const Status = ({ ok, text }: { ok: boolean; text: string }) => (
+const Status = ({ ok, text }: { ok: boolean; text: ReactNode }) => (
   <span className={ok ? styles.ok : styles.bad}>{text}</span>
 );
 
+/** A Notifier channel: off, on and ready, or on but unable to send (9.10). */
+function channel(state: ChannelState, notReady: AdminMessageKey): ReactNode {
+  if (!state.on) return adminText('admin.status.off');
+  if (state.ready) return <Status ok text={adminText('admin.status.ready')} />;
+  return <Status ok={false} text={adminText(notReady)} />;
+}
+
 /** The view's content (spec 13.3); presentational, so it renders from collected data in tests. */
 export function SystemStatusBody({ data }: { data: SystemStatusData }) {
-  const { runtime, version, database, jobs, media, config, gaps } = data;
+  const { runtime, version, database, jobs, media, config, gaps, notifier } = data;
   const cron = jobs.lastCron;
+  // Settings that are fine in development and wrong on the live server (S2, S12).
+  const production = runtime.nodeEnv === 'production';
+  const testOnly = config.testOnly.map((name, index) => (
+    <span key={name}>
+      {index > 0 ? '، ' : null}
+      <Ltr>{name}</Ltr>
+    </span>
+  ));
   return (
     <div className={styles.root}>
       <header className={styles.header}>
@@ -187,7 +199,35 @@ export function SystemStatusBody({ data }: { data: SystemStatusData }) {
           />
         </Section>
 
-        <Section id="status-config" title="پیکربندی" span="fill">
+        <Section id="status-notifier" title={adminText('admin.status.notifier')}>
+          {notifier === null ? (
+            <p className={styles.empty}>{UNKNOWN}</p>
+          ) : (
+            <>
+              <Rows
+                rows={[
+                  [
+                    adminText('admin.notifier.mail'),
+                    channel(notifier.mail, 'admin.status.mailNotReady'),
+                  ],
+                  [
+                    adminText('admin.notifier.telegram'),
+                    channel(notifier.telegram, 'admin.status.telegramNotReady'),
+                  ],
+                  [
+                    adminText('admin.notifier.sms'),
+                    channel(notifier.sms, 'admin.status.smsNotReady'),
+                  ],
+                ]}
+              />
+              {[notifier.mail, notifier.telegram, notifier.sms].some((c) => c.ready) ? null : (
+                <p className={styles.note}>{adminText('admin.status.logOnly')}</p>
+              )}
+            </>
+          )}
+        </Section>
+
+        <Section id="status-config" title="پیکربندی">
           <Rows
             rows={[
               ['نشانی سایت', <Ltr key="url">{config.siteUrl}</Ltr>],
@@ -197,14 +237,47 @@ export function SystemStatusBody({ data }: { data: SystemStatusData }) {
               ['سیاست امنیت محتوای پنل', cspLabel(config.cspAdminMode)],
               [
                 'اعتماد به سربرگ‌های پراکسی',
-                config.trustProxyHeaders ? (
-                  'روشن'
+                config.trustProxyHeaders && !config.clientIpKnown ? (
+                  <Status
+                    key="t"
+                    ok={false}
+                    text={
+                      <>
+                        {STATUS_MESSAGES['status.trustProxyBroken']} <Ltr>TRUSTED_PROXY_HOPS</Ltr>
+                      </>
+                    }
+                  />
+                ) : config.trustProxyHeaders || !production ? (
+                  onOff(config.trustProxyHeaders)
                 ) : (
                   <Status
                     key="t"
                     ok={false}
-                    text="خاموش: همهٔ بازدیدکننده‌ها یک سهمیهٔ درخواست مشترک دارند."
+                    text={
+                      <>
+                        {STATUS_MESSAGES['status.trustProxyOff']}{' '}
+                        <Ltr>TRUST_PROXY_HEADERS=true</Ltr>
+                      </>
+                    }
                   />
+                ),
+              ],
+              [
+                STATUS_MESSAGES['status.testOnly'],
+                testOnly.length === 0 ? (
+                  'ندارد'
+                ) : production ? (
+                  <Status
+                    key="q"
+                    ok={false}
+                    text={
+                      <>
+                        {STATUS_MESSAGES['status.testOnlyOn']} {testOnly}
+                      </>
+                    }
+                  />
+                ) : (
+                  <span key="q">{testOnly}</span>
                 ),
               ],
               [
@@ -239,9 +312,8 @@ export function SystemStatusBody({ data }: { data: SystemStatusData }) {
                 <tbody>
                   {jobs.failed.map((job) => (
                     <tr key={job.id}>
-                      <td>
-                        <Ltr>{job.task}</Ltr>
-                      </td>
+                      {/* A task with a Persian label reads as Persian; a bare slug is an LTR island. */}
+                      <td>{/^[\x20-\x7E]+$/.test(job.task) ? <Ltr>{job.task}</Ltr> : job.task}</td>
                       <td>
                         <Ltr>{job.message}</Ltr>
                       </td>

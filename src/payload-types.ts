@@ -141,6 +141,8 @@ export interface UserAuthOperations {
   };
 }
 /**
+ * درخواست‌های فرم‌های سایت. فوری‌ها اول، بعد تازه‌ترها. شمارهٔ کامل داخل هر درخواست و در دکمهٔ تماس است.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "bookings".
  */
@@ -203,7 +205,7 @@ export interface Booking {
    */
   emergencyOutcome?: ('truly_urgent' | 'not_urgent') | null;
   /**
-   * وضعیت پیگیری.
+   * وضعیت پیگیری. هر تغییر وضعیت با نام شما و زمان در یادداشت‌ها ثبت می‌شود. برای «انجام شد» و «لغو شد» اول یک یادداشت تازه بنویسید؛ این دو پایانی‌اند و برای تغییرشان به مدیر بگویید.
    */
   status: 'new' | 'contacted' | 'scheduled' | 'done' | 'cancelled' | 'spam' | 'suspicious';
   /**
@@ -230,7 +232,7 @@ export interface Booking {
    */
   heardFrom?: ('google' | 'maps' | 'instagram' | 'referral' | 'returning' | 'signage' | 'directory' | 'other') | null;
   /**
-   * تا این زمان باید با بیمار تماس گرفته شود.
+   * تا این زمان باید با بیمار تماس گرفته شود. اگر پاسخ نداد، یادداشت بگذارید و این زمان را جلو ببرید.
    */
   callbackDueAt?: string | null;
   urgencyRank?: number | null;
@@ -254,7 +256,7 @@ export interface Booking {
       }[]
     | null;
   /**
-   * درخواست‌های تکراری همین شماره در ۱۰ دقیقه. چیزی بازنویسی نمی‌شود.
+   * درخواست‌های تکراری همین شماره: در ۱۰ دقیقه، چهارمین درخواست در ۲۴ ساعت یا درخواست فوری دوباره در ۲۴ ساعت. چیزی بازنویسی نمی‌شود.
    */
   duplicateSubmissions?:
     | {
@@ -266,9 +268,14 @@ export interface Booking {
         sourceUrl?: string | null;
         triage?: ('severe_pain' | 'swelling' | 'broken' | 'avulsion' | 'bleeding')[] | null;
         ipHash?: string | null;
+        sidHash?: string | null;
         id?: string | null;
       }[]
     | null;
+  /**
+   * این تعداد درخواست تکراری بعد از ۲۰ مورد بالا رسید و متن‌شان ذخیره نشد. با بیمار تماس بگیرید.
+   */
+  appendsDropped?: number | null;
   /**
    * صفحه‌ای که فرم از آن ارسال شد.
    */
@@ -291,6 +298,7 @@ export interface Booking {
    * اثر یک‌طرفهٔ IP برای محدودیت‌ها. IP خام ذخیره نمی‌شود.
    */
   ipHash?: string | null;
+  sidHash?: string | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -1470,7 +1478,7 @@ export interface Page {
       )[]
     | null;
   /**
-   * بازبین پزشکی این راهنما.
+   * بازبین پزشکی این صفحه.
    */
   reviewer?: (number | null) | Doctor;
   /**
@@ -1479,7 +1487,7 @@ export interface Page {
   reviewedAt?: string | null;
   reviewedAt_tz?: SupportedTimezones;
   /**
-   * منابع علمی این راهنما.
+   * منابع علمی این صفحه.
    */
   sources?:
     | {
@@ -1774,7 +1782,8 @@ export interface AuditLog {
     | 'login'
     | 'logout'
     | 'forgot_password'
-    | 'seed';
+    | 'seed'
+    | 'export';
   /**
    * نوع موجودیت.
    */
@@ -2104,8 +2113,10 @@ export interface BookingsSelect<T extends boolean = true> {
         sourceUrl?: T;
         triage?: T;
         ipHash?: T;
+        sidHash?: T;
         id?: T;
       };
+  appendsDropped?: T;
   sourceUrl?: T;
   utm?:
     | T
@@ -2118,6 +2129,7 @@ export interface BookingsSelect<T extends boolean = true> {
       };
   device?: T;
   ipHash?: T;
+  sidHash?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;

@@ -1,17 +1,20 @@
 import type { Logger } from 'pino';
+import { DrizzleQueryError } from '@payloadcms/db-postgres/drizzle';
 import { describe, expect, it, vi } from 'vitest';
 
-import { csrfFor, FORM_COOKIE, issueTimeToken } from '@/lib/formTokens';
+import { csrfFor, FORM_COOKIE, issueTimeToken, sidHash } from '@/lib/formTokens';
 import type { ClinicHours } from '@/lib/hoursState';
 import { hoursState, QA_CLOCK_HEADER } from '@/lib/hoursState';
 import { hashIp } from '@/lib/http/clientIp';
 import { openFlash } from '@/lib/http/flash';
+import { createRateLimiter } from '@/lib/http/rateLimit';
 import { createLogger } from '@/lib/log/logger';
 import type { NotifyEvent } from '@/lib/notify/types';
 
 import {
   createBookingHandler,
   createEmergencyHandler,
+  FORM_PROCESS_LIMIT,
   type BookingStore,
   type DuplicateEntry,
   type NewBooking,
@@ -63,6 +66,7 @@ const ROW: NewBooking = {
   utm: {},
   device: 'unknown',
   ipHash: null,
+  sidHash: null,
   callbackDueAt: null,
   createdAt: new Date(NOW).toISOString(),
 };
@@ -71,6 +75,7 @@ interface Row extends Omit<NewBooking, 'status'> {
   id: number;
   status: NewBooking['status'] | 'contacted' | 'scheduled' | 'done' | 'cancelled' | 'spam';
   duplicateSubmissions: DuplicateEntry[];
+  appendsDropped: number;
 }
 
 function memoryStore(latencyMs = 0): BookingStore & { rows: Row[] } {
@@ -92,7 +97,15 @@ function memoryStore(latencyMs = 0): BookingStore & { rows: Row[] } {
             at(r) >= sinceMs,
         )
         .sort((a, b) => at(b) - at(a))
-        .map((r) => ({ id: r.id, createdAtMs: at(r), status: r.status }));
+        .map((r) => ({
+          id: r.id,
+          createdAtMs: at(r),
+          status: r.status,
+          marks: [
+            { sidHash: r.sidHash, atMs: at(r) },
+            ...r.duplicateSubmissions.map((d) => ({ sidHash: d.sidHash, atMs: Date.parse(d.at) })),
+          ].filter((m): m is { sidHash: string; atMs: number } => m.sidHash !== null),
+        }));
     },
     async countFromIp(ipHash, sinceMs, kind) {
       await tick();
@@ -103,16 +116,29 @@ function memoryStore(latencyMs = 0): BookingStore & { rows: Row[] } {
         appended.filter((d) => d.ipHash === ipHash && Date.parse(d.at) >= sinceMs).length
       );
     },
+    async countSuspiciousFromIp(ipHash, sinceMs) {
+      await tick();
+      return rows.filter(
+        (r) =>
+          r.ipHash === ipHash &&
+          (r.status === 'suspicious' || r.status === 'spam') &&
+          at(r) >= sinceMs,
+      ).length;
+    },
     async create(row) {
       await tick();
-      const stored = { ...row, id: rows.length + 1, duplicateSubmissions: [] };
+      const stored = { ...row, id: rows.length + 1, duplicateSubmissions: [], appendsDropped: 0 };
       rows.push(stored);
       return { id: stored.id };
     },
     async appendDuplicate(id, entry, max) {
       await tick();
       const row = rows.find((r) => r.id === id);
-      if (!row || row.duplicateSubmissions.length >= max) return false;
+      if (!row) return false;
+      if (row.duplicateSubmissions.length >= max) {
+        row.appendsDropped += 1;
+        return false;
+      }
       row.duplicateSubmissions.push(entry);
       return true;
     },
@@ -120,7 +146,13 @@ function memoryStore(latencyMs = 0): BookingStore & { rows: Row[] } {
 }
 
 function setup(
-  over: { trust?: boolean; qa?: boolean; emergencyEnabled?: boolean; latencyMs?: number } = {},
+  over: {
+    trust?: boolean;
+    qa?: boolean;
+    emergencyEnabled?: boolean;
+    latencyMs?: number;
+    processLimit?: number;
+  } = {},
 ) {
   let now = NOW;
   const store = memoryStore(over.latencyMs);
@@ -144,6 +176,11 @@ function setup(
     },
   } as unknown as Pick<Logger, 'child'>;
   const notify = vi.fn(async (event: NotifyEvent) => void notified.push(event));
+  // Work the handler hands to `after`: run once the answer is out (flush), as Next.js does.
+  const deferred: Array<() => Promise<void>> = [];
+  const flush = async () => {
+    for (let work = deferred.shift(); work; work = deferred.shift()) await work();
+  };
   const deps = {
     env: () => ({
       formTokenSecrets: [K],
@@ -158,17 +195,31 @@ function setup(
     loadHours: vi.fn(async () => ({ hours: HOURS, options: { callbackMinutes: 10 } })),
     notify,
     countEvent: async (row: unknown) => void counted.push(row),
+    defer: (work: () => Promise<void>) => void deferred.push(work),
+    limiter: createRateLimiter({
+      ...FORM_PROCESS_LIMIT,
+      limit: over.processLimit ?? FORM_PROCESS_LIMIT.limit,
+      maxKeys: 1,
+    }),
     logger,
     now: () => now,
   };
-  const booking = createBookingHandler({ ...deps, catalog: async () => CATALOG });
-  const emergency = createEmergencyHandler({
+  const rawBooking = createBookingHandler({ ...deps, catalog: async () => CATALOG });
+  const rawEmergency = createEmergencyHandler({
     ...deps,
     emergencyEnabled: async () => over.emergencyEnabled ?? true,
   });
+  const afterAnswer = (handler: (r: Request) => Promise<Response>) => async (r: Request) => {
+    const res = await handler(r);
+    await flush();
+    return res;
+  };
   return {
-    booking,
-    emergency,
+    booking: afterAnswer(rawBooking),
+    emergency: afterAnswer(rawEmergency),
+    rawBooking,
+    deferred,
+    flush,
     store,
     notified,
     notify,
@@ -190,13 +241,16 @@ interface Post {
   headers?: Record<string, string>;
   multipart?: boolean;
   path?: string;
+  /** The browser's form cookie (another browser than the default one). */
+  sid?: string;
 }
 
 function post(nowMs: number, options: Post = {}): Request {
   const fields: Record<string, string | string[]> = { phone: PHONE, ...options.fields };
+  const sid = options.sid ?? SID;
   if (options.tokens !== 'none') {
-    fields.csrf ??= options.tokens === 'forged' ? 'x'.repeat(43) : csrfFor(K, SID);
-    fields.ts ??= issueTimeToken(K, SID, nowMs - (options.tokenAgeMs ?? 5000));
+    fields.csrf ??= options.tokens === 'forged' ? 'x'.repeat(43) : csrfFor(K, sid);
+    fields.ts ??= issueTimeToken(K, sid, nowMs - (options.tokenAgeMs ?? 5000));
   }
   const entries = Object.entries(fields).flatMap(([key, value]) =>
     (Array.isArray(value) ? value : [value]).map((v) => [key, v] as [string, string]),
@@ -211,7 +265,7 @@ function post(nowMs: number, options: Post = {}): Request {
     method: 'POST',
     body,
     headers: {
-      cookie: `${FORM_COOKIE}=${SID}`,
+      cookie: `${FORM_COOKIE}=${sid}`,
       'x-request-id': 'req-test-0001',
       'sec-fetch-site': 'same-origin',
       'user-agent': 'Mozilla/5.0 (Linux; Android 14) Mobile',
@@ -440,15 +494,132 @@ describe('POST /api/booking handler', () => {
     expect(t.store.rows[12]?.status).toBe('new');
   });
 
-  it('BH-IP-NULL an unknown client IP skips the per-IP rule and warns once per process', async () => {
+  it('BH-IP-UNKNOWN unknown clients share one key with ten times the limit and warn once (S2)', async () => {
     const t = setup({ trust: false });
-    for (let i = 0; i < 12; i += 1) {
-      await t.booking(post(NOW, { fields: { phone: `0912000${String(i).padStart(4, '0')}` } }));
+    for (let i = 0; i < 100; i += 1) {
+      await t.booking(
+        post(NOW, {
+          ip: `198.51.100.${i}`,
+          fields: { phone: `0912000${String(i).padStart(4, '0')}` },
+        }),
+      );
     }
+    expect(t.store.rows.every((r) => r.status === 'new')).toBe(true);
+    const key = t.store.rows[0]?.ipHash;
+    expect(key).toMatch(/^[a-f0-9]{64}$/);
+    expect(t.store.rows.every((r) => r.ipHash === key)).toBe(true);
     await t.emergency(post(NOW, { path: '/api/emergency', fields: { triage: 'bleeding' } }));
-    expect(t.store.rows.every((r) => r.status === 'new' && r.ipHash === null)).toBe(true);
+    expect(t.store.rows[100]).toMatchObject({ status: 'suspicious', flags: ['ip_rate'] });
+    expect(t.notified.filter((e) => e.type === 'ip_spike')).toEqual([
+      expect.objectContaining({ ipHashPrefix: key?.slice(0, 8), count: 101 }),
+    ]);
     // Both handlers share the one warning.
     expect(t.lines.filter((l) => l.includes('form_ip_unknown'))).toHaveLength(1);
+    // A known address keeps its own key and the limit of ten.
+    const known = setup();
+    await known.booking(post(NOW));
+    expect(known.store.rows[0]?.ipHash).not.toBe(key);
+  });
+
+  it('BH-SUS-CEIL past 50 suspicious rows an hour an IP key stores nothing more, same answer (S1)', async () => {
+    const t = setup();
+    const trap = (phone: number) =>
+      t.booking(
+        post(t.now(), {
+          fields: { extra_7: 'bot', phone: `0912000${String(phone).padStart(4, '0')}` },
+        }),
+      );
+    for (let i = 0; i < 50; i += 1) await trap(i);
+    expect(t.store.rows.filter((r) => r.status === 'suspicious')).toHaveLength(50);
+    const real = await (
+      await t.booking(post(t.now(), { ip: '198.51.100.1', fields: { phone: '09120000050' } }))
+    ).json();
+    const dropped = await trap(50);
+    expect(dropped.status).toBe(200);
+    expect(await dropped.json()).toEqual(real);
+    await trap(51);
+    expect(t.store.rows).toHaveLength(51);
+    // One line per key per hour: the hash prefix and a count only.
+    const warned = t.raw.filter((o) => (o as { msg?: string }).msg === 'form_dropped');
+    expect(warned).toEqual([
+      {
+        reqId: 'req-test-0001',
+        route: '/api/booking',
+        msg: 'form_dropped',
+        ipHashPrefix: t.store.rows[0]?.ipHash?.slice(0, 8),
+        count: 50,
+      },
+    ]);
+    // Rows marked spam by staff still count; an hour later the window frees.
+    t.store.rows[0]!.status = 'spam';
+    await trap(52);
+    expect(t.store.rows).toHaveLength(51);
+    t.advance(HOUR + 1);
+    await trap(53);
+    expect(t.store.rows).toHaveLength(52);
+    expect(t.raw.filter((o) => (o as { msg?: string }).msg === 'form_dropped')).toHaveLength(1);
+  });
+
+  it('BH-SUS-CEIL-UNKNOWN the shared unknown key stores up to 500 suspicious rows an hour (S2)', async () => {
+    const t = setup({ trust: false });
+    await t.booking(post(NOW, { fields: { extra_7: 'bot' } }));
+    const key = t.store.rows[0]!.ipHash;
+    for (let i = 0; i < 498; i += 1) {
+      await t.store.create({ ...ROW, status: 'suspicious', flags: ['honeypot'], ipHash: key });
+    }
+    await t.booking(post(NOW, { fields: { extra_7: 'bot' } }));
+    expect(t.store.rows).toHaveLength(500);
+    await t.booking(post(NOW, { fields: { extra_7: 'bot' } }));
+    expect(t.store.rows).toHaveLength(500);
+    expect(t.lines.filter((l) => l.includes('form_dropped'))).toHaveLength(1);
+  });
+
+  it('BH-PROCESS-CAP the 601st form POST in a minute, either form, answers 503 unread (S1)', async () => {
+    const t = setup();
+    // Cross-site posts are refused before the cap and never spend it (review finding 3).
+    const cross = { headers: { 'sec-fetch-site': 'cross-site' } };
+    for (let i = 0; i < 300; i += 1) {
+      expect((await t.booking(post(t.now(), cross))).status).toBe(403);
+    }
+    const invalid = { fields: { phone: '' } };
+    for (let i = 0; i < 300; i += 1) {
+      expect((await t.booking(post(t.now(), invalid))).status).toBe(422);
+      expect(
+        (await t.emergency(post(t.now(), { ...invalid, path: '/api/emergency' }))).status,
+      ).toBe(422);
+    }
+    t.advance(59_000);
+    const busy = post(t.now());
+    const res = await t.booking(busy);
+    expect(res.status).toBe(503);
+    expect(res.headers.get('retry-after')).toBe('1');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+    expect(busy.bodyUsed).toBe(false);
+    expect((await t.emergency(post(t.now(), { path: '/api/emergency' }))).status).toBe(503);
+    expect((await t.booking(post(t.now(), cross))).status).toBe(403);
+    expect(t.store.rows).toHaveLength(0);
+    t.advance(1000);
+    expect((await t.booking(post(t.now()))).status).toBe(200);
+  });
+
+  it('BH-BUSY a refused post: one form_busy line a window with a count; no-JS gets the server notice', async () => {
+    const t = setup({ processLimit: 2 });
+    const busyLines = () => t.raw.filter((o) => (o as { msg?: string }).msg === 'form_busy');
+    for (let i = 0; i < 2; i += 1) expect((await t.booking(post(t.now()))).status).toBe(200);
+    expect((await t.booking(post(t.now()))).status).toBe(503);
+    // No-JS: the form page with its server notice, which gives the clinic number; never a blank page.
+    const html = await t.booking(post(t.now(), { json: false }));
+    expect(html.status).toBe(303);
+    expect(html.headers.get('location')).toBe(encodeURI('/رزرو-نوبت'));
+    expect(flashOf(html)).toMatchObject({ form: 'booking', outcome: 'server' });
+    expect(busyLines()).toEqual([
+      { reqId: 'req-test-0001', route: '/api/booking', msg: 'form_busy', count: 1 },
+    ]);
+    // The next window's line counts every busy answer since the last line.
+    t.advance(60_000);
+    for (let i = 0; i < 2; i += 1) await t.booking(post(t.now()));
+    expect((await t.booking(post(t.now()))).status).toBe(503);
+    expect(busyLines().map((o) => (o as { count?: number }).count)).toEqual([1, 2]);
   });
 
   it('BH-IP-RACE parallel posts from one IP: ten new rows, the rest suspicious', async () => {
@@ -498,7 +669,12 @@ describe('POST /api/booking handler', () => {
     }
     expect(t.store.rows).toHaveLength(1);
     expect(t.store.rows[0]?.duplicateSubmissions).toHaveLength(20);
+    expect(t.store.rows[0]?.appendsDropped).toBe(1);
     expect(t.lines.filter((l) => l.includes('form_append_capped'))).toHaveLength(1);
+    // A capped request from another browser gets the normal success answer (S4).
+    const stranger = await t.booking(post(NOW, { ip: '198.51.100.99', sid: 'O'.repeat(43) }));
+    expect((await stranger.json()).state).toBe('success');
+    expect(t.store.rows[0]?.appendsDropped).toBe(2);
   });
 
   it('BH-OPEN a request is never appended to a closed row', async () => {
@@ -631,6 +807,107 @@ describe('POST /api/booking handler', () => {
     expect(t.store.rows).toHaveLength(0);
   });
 
+  it('BH-SID the neutral answer only to the browser that sent the earlier request (S4)', async () => {
+    const t = setup();
+    const first = await (await t.booking(post(NOW))).json();
+    expect(first.state).toBe('success');
+    const row = t.store.rows[0]!;
+    expect(row.sidHash).toBe(sidHash([K], SID));
+    expect(row.sidHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(row.sidHash).not.toBe(csrfFor(K, SID));
+    // Another browser posting the same number: the normal success body, appended, no notification.
+    const other = 'O'.repeat(43);
+    const probe = await t.booking(post(NOW, { sid: other, fields: { note: 'probe' } }));
+    expect(await probe.json()).toEqual(first);
+    expect(t.store.rows).toHaveLength(1);
+    expect(row.duplicateSubmissions).toEqual([
+      expect.objectContaining({ note: 'probe', sidHash: sidHash([K], other) }),
+    ]);
+    expect(t.notified.filter((e) => e.type === 'booking')).toHaveLength(1);
+    // Each browser that already sent one to this row gets the neutral answer: the row's, an entry's.
+    for (const sid of [SID, other]) {
+      expect((await (await t.booking(post(NOW, { sid }))).json()).state).toBe('neutral');
+    }
+    // No-JS: the normal success page for a stranger, the neutral flash for a known browser.
+    const html = await t.booking(post(NOW, { sid: 'P'.repeat(43), json: false }));
+    expect(html.headers.get('location')).toBe(encodeURI('/رزرو-نوبت/ثبت-شد'));
+    expect(flashOf(html)).toMatchObject({ outcome: 'success', masked: '۰۹۱۲ ••• ۶۷۸۹' });
+    const known = await t.booking(post(NOW, { json: false }));
+    expect(flashOf(known)).toMatchObject({ outcome: 'neutral' });
+    expect(row.duplicateSubmissions).toHaveLength(5);
+    // A forged token stores no sid hash.
+    await t.booking(post(NOW, { tokens: 'forged', fields: { phone: '09121112222' } }));
+    expect(t.store.rows[1]).toMatchObject({ status: 'suspicious', sidHash: null });
+  });
+
+  it('BH-ORACLE a stranger gets the same answers whether or not someone else sent the number (S4, review finding 1)', async () => {
+    const VICTIM = 'V'.repeat(43);
+    const PROBE = 'X'.repeat(43);
+    const MIN = 60_000;
+    // The victim's requests, `spacing` apart; then the probe's, `gap` apart, from one browser.
+    const run = async (
+      form: 'booking' | 'emergency',
+      victims: number,
+      spacing: number,
+      probes: number,
+      gap: number,
+    ) => {
+      const t = setup();
+      const send = async (sid: string, ip: string) => {
+        const fields: Record<string, string> = form === 'emergency' ? { triage: 'bleeding' } : {};
+        const res = await t[form](post(t.now(), { sid, ip, path: `/api/${form}`, fields }));
+        return (await res.json()).state as string;
+      };
+      for (let i = 0; i < victims; i += 1) {
+        await send(VICTIM, '198.51.100.20');
+        t.advance(spacing);
+      }
+      const states: string[] = [];
+      for (let i = 0; i < probes; i += 1) {
+        if (i > 0) t.advance(gap);
+        states.push(await send(PROBE, '203.0.113.7'));
+      }
+      return states;
+    };
+    for (const [form, victims, spacing, probes, gap, alone] of [
+      // The 10-minute window starts at the probe's own request, not at the victim's row.
+      ['booking', 1, 3 * MIN, 2, 9 * MIN, ['success', 'neutral']],
+      // The limit counts the probe's own requests, never the victim's rows.
+      ['booking', 2, HOUR, 2, 11 * MIN, ['success', 'success']],
+      ['booking', 3, HOUR, 4, 11 * MIN, ['success', 'success', 'success', 'neutral']],
+      // The emergency day starts at the probe's own request, even on a row older than a day.
+      ['emergency', 1, HOUR, 2, 23 * HOUR + 30 * MIN, ['success', 'neutral']],
+    ] as const) {
+      expect(await run(form, 0, spacing, probes, gap)).toEqual(alone);
+      expect(await run(form, victims, spacing, probes, gap)).toEqual(alone);
+    }
+  });
+
+  it('BH-AFTER notify and the event count run after the answer, whatever the class (S4, finding 9)', async () => {
+    const t = setup();
+    t.notify.mockImplementation(() => new Promise(() => undefined)); // a notifier that never answers
+    const answer = (r: Request) =>
+      Promise.race([
+        t.rawBooking(r),
+        new Promise<never>((_, reject) => setTimeout(() => reject(new Error('blocked')), 200)),
+      ]);
+    expect((await answer(post(NOW, { json: false }))).status).toBe(303);
+    expect(t.counted).toHaveLength(0);
+    expect(t.notify).not.toHaveBeenCalled();
+    // A suspicious request hands the same one task over.
+    expect(
+      (await answer(post(NOW, { json: false, fields: { extra_7: 'x', phone: '09121112222' } })))
+        .status,
+    ).toBe(303);
+    expect(t.deferred).toHaveLength(2);
+    t.notify.mockImplementation(async (event: NotifyEvent) => void t.notified.push(event));
+    await t.flush();
+    expect(t.notified).toEqual([
+      { type: 'booking', bookingId: 1, kind: 'regular', requestId: 'req-test-0001' },
+    ]);
+    expect(t.counted).toHaveLength(1);
+  });
+
   it('BH-RACE two simultaneous posts of one phone make one row and one appended entry', async () => {
     const t = setup();
     const answers = await Promise.all([t.booking(post(NOW)), t.booking(post(NOW))]);
@@ -655,7 +932,30 @@ describe('POST /api/booking handler', () => {
     await t.booking(post(NOW, { tokenAgeMs: 100 }));
     await t.booking(post(NOW));
     await t.booking(post(NOW));
-    expect(t.notified).toEqual([{ type: 'booking', bookingId: 3, requestId: 'req-test-0001' }]);
+    expect(t.notified).toEqual([
+      { type: 'booking', bookingId: 3, kind: 'regular', requestId: 'req-test-0001' },
+    ]);
+  });
+
+  it('BH-LOG-DB a failed query logs its name and driver code, never its bound values (S3)', async () => {
+    const t = setup();
+    const name = 'علی رضایی';
+    const note = 'درد شدید دندان عقل';
+    t.store.create = async (row) => {
+      const cause = Object.assign(new Error('database is locked'), { code: 'SQLITE_BUSY' });
+      throw new DrizzleQueryError(
+        'insert into "bookings" values (?, ?, ?)',
+        [row.phone, row.name, row.note],
+        cause,
+      );
+    };
+    const res = await t.booking(post(NOW, { fields: { name, note } }));
+    expect(res.status).toBe(500);
+    const line = t.lines.find((l) => l.includes('form_error')) ?? '';
+    expect(JSON.parse(line)).toMatchObject({ errName: 'DrizzleQueryError', code: 'SQLITE_BUSY' });
+    for (const text of [name, note, '9123456789', 'params', 'insert into']) {
+      expect(line).not.toContain(text);
+    }
   });
 
   it('BH-500 a store failure answers 500 with the request id and logs it', async () => {
@@ -734,7 +1034,9 @@ describe('POST /api/emergency handler', () => {
       serviceKey: null,
       tier: null,
     });
-    expect(t.notified).toEqual([{ type: 'booking', bookingId: 1, requestId: 'req-test-0001' }]);
+    expect(t.notified).toEqual([
+      { type: 'booking', bookingId: 1, kind: 'emergency', requestId: 'req-test-0001' },
+    ]);
   });
 
   it('T-EM3 the server validates triage: none answers 422 required, nothing stored', async () => {
@@ -765,6 +1067,17 @@ describe('POST /api/emergency handler', () => {
     expect((await (await em(t)).json()).state).toBe('success');
     expect(t.store.rows).toHaveLength(2);
     expect(t.notified.filter((e) => e.type === 'booking')).toHaveLength(2);
+  });
+
+  it('T-EM-SID a repeat from another browser gets the normal success body, appended, unnotified (S4)', async () => {
+    const t = setup();
+    const first = await (await em(t)).json();
+    const probe = await em(t, { sid: 'O'.repeat(43), fields: { triage: 'avulsion' } });
+    expect(await probe.json()).toEqual(first);
+    expect(t.store.rows).toHaveLength(1);
+    expect(t.store.rows[0]?.duplicateSubmissions.map((d) => d.triage)).toEqual([['avulsion']]);
+    expect(t.notified.filter((e) => e.type === 'booking')).toHaveLength(1);
+    expect((await (await em(t)).json()).state).toBe('neutral');
   });
 
   it('T-EM9 the 4th emergency from one IP in 24 h is stored new + emergency_ip_rate', async () => {
@@ -862,6 +1175,11 @@ describe('POST /api/emergency handler', () => {
       triage: ['swelling', 'bleeding'],
       values: { note: 'بدتر شد' },
     });
+    // Another browser with the same number: the normal success state, never the repeat (S4).
+    const probe = await em(t, { json: false, sid: 'O'.repeat(43) });
+    expect(flashOf(probe)).toMatchObject({ outcome: 'success', masked: '۰۹۱۲ ••• ۶۷۸۹' });
+    expect(t.store.rows).toHaveLength(1);
+    expect(t.store.rows[0]?.duplicateSubmissions).toHaveLength(2);
     expect(t.counted).toEqual([
       {
         date: '2026-10-13',

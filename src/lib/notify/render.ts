@@ -81,8 +81,23 @@ export function renderEvent(
   switch (event.type) {
     case 'ip_spike': {
       const link = `${siteUrl}/admin/collections/bookings?where[status][equals]=suspicious`;
-      const text = msg('notify.spike.text', { link });
+      const text = msg('notify.spike.text', {
+        link,
+        addresses: fa(event.addresses ?? 1),
+        minutes: fa(event.windowMinutes ?? 60),
+      });
       return { subject: msg('notify.spike.subject'), text, sms: msg('notify.spike.subject') };
+    }
+    case 'budget': {
+      const vars = {
+        channel: msg(`notify.channel.${event.channel}`),
+        limit: fa(event.limit),
+        held: fa(event.held),
+        since: when(event.since),
+        link: `${siteUrl}/admin/collections/bookings`,
+      };
+      const subject = msg('notify.budget.subject', vars);
+      return { subject, text: msg('notify.budget.text', vars), sms: subject };
     }
     case 'error': {
       const subject = msg('notify.error.subject', { route: scrubPhones(event.routePath) });

@@ -16,8 +16,15 @@ export interface DedupeEntry {
 }
 
 export interface ErrorDedupe {
-  /** Counts the error; `notify` is true for the first one per signature in each window. */
-  record(sample: ErrorSample, nowMs: number): { notify: boolean; signature: string; count: number };
+  /**
+   * Counts the error; `notify` is true for the first one per signature in each window. `windowMs`
+   * overrides the default for this call (the alert window follows the notifier global, R5).
+   */
+  record(
+    sample: ErrorSample,
+    nowMs: number,
+    windowMs?: number,
+  ): { notify: boolean; signature: string; count: number };
   /** Newest first, for the System status view. */
   entries(): DedupeEntry[];
 }
@@ -38,7 +45,7 @@ export function createErrorDedupe(opts: { windowMs: number; maxEntries?: number 
   const maxEntries = opts.maxEntries ?? 500;
   const map = new Map<string, DedupeEntry>();
   return {
-    record(sample, nowMs) {
+    record(sample, nowMs, windowMs = opts.windowMs) {
       const signature = errorSignature(sample);
       let entry = map.get(signature);
       if (entry === undefined) {
@@ -59,7 +66,7 @@ export function createErrorDedupe(opts: { windowMs: number; maxEntries?: number 
       entry.count += 1;
       entry.lastAt = nowMs;
       entry.sample = sample;
-      const notify = nowMs - entry.lastNotifiedAt >= opts.windowMs;
+      const notify = nowMs - entry.lastNotifiedAt >= windowMs;
       if (notify) entry.lastNotifiedAt = nowMs;
       return { notify, signature, count: entry.count };
     },
@@ -72,7 +79,7 @@ export function createErrorDedupe(opts: { windowMs: number; maxEntries?: number 
 // One instance per process: each server layer holds its own copy of this module (SEC-S2).
 const store = globalThis as typeof globalThis & { __sefidRequestErrors?: ErrorDedupe };
 
-/** Process-wide instance used by onRequestError; window 60 minutes until the notifier global is read. */
+/** Process-wide instance used by onRequestError; 60 minutes unless record() is given a window. */
 export const requestErrors = (store.__sefidRequestErrors ??= createErrorDedupe({
   windowMs: 60 * 60 * 1000,
 }));

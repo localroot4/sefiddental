@@ -6,12 +6,15 @@
  */
 
 import { CONTENT_MESSAGES } from '@/i18n/fa-content';
+import { ADMIN_MESSAGES } from '@/i18n/fa-admin';
+import { BOOKING_MESSAGES } from '@/i18n/fa-booking';
 import { EMERGENCY_MESSAGES } from '@/i18n/fa-emergency';
 import { HOME_MESSAGES } from '@/i18n/fa-home';
 import { NAV_MESSAGES } from '@/i18n/fa-nav';
 import { NOTIFY_MESSAGES } from '@/i18n/fa-notify';
 import { PAGES_MESSAGES } from '@/i18n/fa-pages';
 import { SERVICES_MESSAGES } from '@/i18n/fa-services';
+import { STATUS_MESSAGES } from '@/i18n/fa-status';
 import { CLINIC_FALLBACK, SYSTEM_LINKS, SYSTEM_MESSAGES } from '@/i18n/fa-system';
 import { UI_MESSAGES } from '@/i18n/fa-ui';
 
@@ -43,6 +46,9 @@ const MESSAGES = {
   ...PAGES_MESSAGES,
   ...NOTIFY_MESSAGES,
   ...EMERGENCY_MESSAGES,
+  ...ADMIN_MESSAGES,
+  ...BOOKING_MESSAGES,
+  ...STATUS_MESSAGES,
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

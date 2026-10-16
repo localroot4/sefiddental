@@ -12,7 +12,9 @@ import { richTextEditor } from './fields/richText';
 import { globals } from './globals';
 import { readEnv } from './lib/env';
 import { log } from './lib/log/logger';
+import { setErrorAlertSink } from './lib/log/requestError';
 import { limitedSharp } from './lib/media/limitedSharp';
+import { notifier } from './lib/notify';
 import { notifyTask } from './lib/notify/task';
 import { databaseAdapter, logPoolErrors } from './payload/db';
 
@@ -49,6 +51,8 @@ export default buildConfig({
         Icon: '/admin/components/Icon#Icon',
       },
       afterNavLinks: ['/admin/components/SystemStatusNavLink#SystemStatusNavLink'],
+      // Today's booking numbers above the dashboard (G15; not the experimental widgets API).
+      beforeDashboard: ['/admin/components/BookingsToday#BookingsToday'],
       views: {
         systemStatus: {
           Component: '/admin/views/SystemStatus#SystemStatusView',
@@ -72,7 +76,11 @@ export default buildConfig({
   // `notify` delivers the Notifier's messages (src/lib/notify, freeze G11).
   jobs: { access: { run: canRunJobs }, tasks: [notifyTask] },
   db: databaseAdapter(srcDir),
-  onInit: (payload) => logPoolErrors(payload.db, (line) => log.warn(line)),
+  onInit: (payload) => {
+    logPoolErrors(payload.db, (line) => log.warn(line));
+    // Error alerts reach the Notifier once Payload is up (src/lib/log/requestError.ts, R-13).
+    setErrorAlertSink((alert) => notifier.notify(alert));
+  },
   // One image encode at a time: 23 sizes in parallel peaked at 1.1 GB per upload (UP-6).
   sharp: limitedSharp(1),
   // Types come only from `npm run generate:types` (freeze 2.3; CI checks drift). Payload's

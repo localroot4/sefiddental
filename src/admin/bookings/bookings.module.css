@@ -1,0 +1,282 @@
+/*
+ * Booking workflow UI in the admin (operate mode): Payload's theme tokens only, so light and dark
+ * follow the admin; spacing in multiples of --base; logical properties for RTL; every control at
+ * least 44px tall; the error tokens mark only real urgency (emergency, overdue). Focus rings use
+ * Payload's outline token.
+ */
+
+/* Payload's `a:focus { outline: none }` outranks its own :focus-visible ring on links. */
+.tab:focus-visible,
+.figure:focus-visible,
+.contactLink:focus-visible,
+.orderLink:focus-visible {
+  outline: var(--accessibility-outline);
+  outline-offset: var(--accessibility-outline-offset);
+}
+
+/* Tabs row: the views, then the admin's CSV button at the inline end. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--base) * 0.5) var(--base);
+  margin-block-end: calc(var(--base) * 0.75);
+}
+
+.tabs {
+  min-width: 0;
+  /* Phones scroll the row sideways inside itself; the page never scrolls sideways. */
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.tabList {
+  display: flex;
+  gap: calc(var(--base) * 0.25);
+  margin: 0;
+  /* Room for the focus ring, which the scrolling row would clip. */
+  padding: calc(var(--base) * 0.2);
+  list-style: none;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--base) * 0.4);
+  min-height: 44px;
+  padding-inline: calc(var(--base) * 0.6);
+  border-block-end: 2px solid transparent;
+  color: var(--theme-elevation-650);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tab:hover {
+  color: var(--theme-text);
+  border-block-end-color: var(--theme-elevation-250);
+}
+
+.tab[aria-current='page'] {
+  color: var(--theme-text);
+  font-weight: 600;
+  border-block-end-color: var(--theme-text);
+}
+
+.badge {
+  min-width: 1.5em;
+  padding: 0.1em 0.5em;
+  border-radius: var(--style-radius-s);
+  background: var(--theme-elevation-100);
+  color: var(--theme-elevation-800);
+  font-size: 0.85em;
+  font-weight: 500;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.badgeAlert {
+  background: var(--theme-error-150);
+  color: var(--theme-error-800);
+}
+
+/* The list follows a saved sort that is not the urgency order: say so, link back to «همه». */
+.orderNote {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--theme-elevation-650);
+}
+
+.orderLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--theme-text);
+  text-underline-offset: 0.2em;
+}
+
+/* Bulk bar: visible only while rows are selected. */
+.bulk {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--base) * 0.5) var(--base);
+  margin-block-end: calc(var(--base) * 0.75);
+  padding: calc(var(--base) * 0.5) calc(var(--base) * 0.75);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-elevation-50);
+}
+
+.bulk p {
+  margin: 0;
+}
+
+/* Payload's Button keeps its own look; only the target size is raised. */
+.action {
+  min-height: 44px;
+  margin: 0;
+}
+
+/* Notifier test action beside the save button. */
+.testAction {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--base) * 0.5);
+}
+
+.hint {
+  color: var(--theme-elevation-650);
+  font-size: 0.9em;
+}
+
+/* Contact links in a list row and in the record's sidebar. */
+.contact {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--base) * 0.25) calc(var(--base) * 0.75);
+}
+
+.contactLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--theme-text);
+  white-space: nowrap;
+  text-underline-offset: 0.2em;
+}
+
+.contactField {
+  display: grid;
+  gap: calc(var(--base) * 0.5);
+  margin-block-end: var(--base);
+}
+
+.contactField .label {
+  color: var(--theme-elevation-650);
+}
+
+.phone {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-size: 1.15rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.contactField .contact {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+}
+
+.contactField .contactLink {
+  justify-content: center;
+  padding-inline: calc(var(--base) * 0.75);
+  border: 1px solid var(--theme-elevation-250);
+  border-radius: var(--style-radius-s);
+  text-decoration: none;
+}
+
+.contactField .contactLink:hover {
+  border-color: var(--theme-elevation-500);
+  background: var(--theme-elevation-50);
+}
+
+.time {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--base) * 0.4);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* Dashboard widget: one panel, four figures that each open their view. */
+.today {
+  margin-block-end: calc(var(--base) * 1.5);
+  padding: var(--base);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-elevation-0);
+}
+
+.todayHeading {
+  margin: 0 0 calc(var(--base) * 0.75);
+  font-size: 1.15rem;
+}
+
+.todayEmpty {
+  margin: 0 0 calc(var(--base) * 0.75);
+  color: var(--theme-elevation-650);
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--base) * 0.5);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 1024px) {
+  .figures {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.figure {
+  display: grid;
+  align-content: start;
+  gap: calc(var(--base) * 0.2);
+  min-height: 44px;
+  height: 100%;
+  padding: calc(var(--base) * 0.6) calc(var(--base) * 0.75);
+  border-radius: var(--style-radius-s);
+  background: var(--theme-elevation-50);
+  color: var(--theme-text);
+  text-decoration: none;
+}
+
+.figure:hover {
+  background: var(--theme-elevation-100);
+}
+
+.figureLabel {
+  color: var(--theme-elevation-650);
+}
+
+.figureValue {
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.alert {
+  color: var(--theme-error-650);
+}
+
+.figureNote {
+  font-size: 0.9em;
+}
+
+/* This month's «فوری نبود» share, under today's figures. */
+.month {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 calc(var(--base) * 0.5);
+  margin: calc(var(--base) * 0.5) 0 0;
+}
+
+.monthValue {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

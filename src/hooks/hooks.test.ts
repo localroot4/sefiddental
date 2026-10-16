@@ -103,6 +103,20 @@ describe('H-BOOKING (spec-data 6.9)', () => {
     expect(urgencyRank({ kind: 'emergency', status: 'done', priorityRemoved: false })).toBe(9);
   });
 
+  it('BK2b an IP-flagged open emergency ranks after every clean one, above regular ones (S6)', () => {
+    const flagged = (status: 'new' | 'contacted', priorityRemoved = false) =>
+      urgencyRank({ kind: 'emergency', status, priorityRemoved, ipRateFlagged: true });
+    for (const status of ['new', 'contacted'] as const) {
+      expect(flagged(status)).toBeGreaterThan(
+        urgencyRank({ kind: 'emergency', status, priorityRemoved: false }),
+      );
+      expect(flagged(status)).toBeLessThan(
+        urgencyRank({ kind: 'regular', status: 'new', priorityRemoved: false }),
+      );
+    }
+    expect(flagged('new', true)).toBe(1);
+  });
+
   it.each([
     ['PS1', '۰۹۱۲ ۳۴۵ ۶۷۸۹', '9123456789'],
     ['PS2', '+98 912 345 6789', '9123456789'],

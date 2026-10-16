@@ -110,16 +110,38 @@ describe('audit log (spec-data 4.1, 6.5)', () => {
     }
   });
 
+  it('AD5 each status change keeps its own audit row, even inside the merge window', async () => {
+    const booking = await payload.create({
+      collection: 'bookings',
+      data: { phone: '09121114455' } as never,
+      user: editor,
+    });
+    for (const status of ['contacted', 'scheduled'] as const) {
+      await payload.update({
+        collection: 'bookings',
+        id: booking.id,
+        data: { status },
+        user: editor,
+      });
+    }
+    const updates = (await auditRows('bookings', booking.id)).filter((r) => r.action === 'update');
+    expect(updates.map((r) => [r.statusFrom, r.statusTo, r.actor])).toEqual([
+      ['new', 'contacted', editor.id],
+      ['contacted', 'scheduled', editor.id],
+    ]);
+  });
+
   it('AD4 editors follow the status table; admins may set any status', async () => {
     const booking = await payload.create({
       collection: 'bookings',
       data: { phone: '09121112233' } as never,
       user: editor,
     });
+    // Closing needs a note from admins too (freeze G15).
     await payload.update({
       collection: 'bookings',
       id: booking.id,
-      data: { status: 'done' },
+      data: { status: 'done', adminNotes: [{ text: 'انجام شد.' }] },
       user: admin,
     });
     await expect(

@@ -8,7 +8,7 @@ import {
 } from 'pino';
 
 import { readEnv, type ServerEnv } from '@/lib/env';
-import { scrubDeep, scrubPhones } from '@/lib/log/redact';
+import { causesOf, cutParams, scrubDeep, scrubPhones, stackOf } from '@/lib/log/redact';
 import { ringRepeats, warnLines } from '@/lib/log/ringBuffer';
 
 /** Key paths redacted by pino (spec 12.1); value-based phone scrubbing runs as well. */
@@ -66,6 +66,19 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 /**
+ * pino's err serializer, scrubbed. pino puts causes after the message, so a failed query's cut
+ * (S3) drops them and the frames: the frames come back from the error's own stack, the causes as
+ * class and driver code.
+ */
+function serializeErr(err: unknown): unknown {
+  const out = scrubDeep(stdSerializers.err(err as Error));
+  if (!(err instanceof Error) || !isRecord(out)) return out;
+  if (cutParams(err.message) !== err.message) out.stack = stackOf(err);
+  if (err.cause instanceof Error) out.causes = causesOf(err);
+  return out;
+}
+
+/**
  * JSON lines: `time` (ISO), `level` (label), `msg` (snake_case event), `service`, `env`, `sha`,
  * plus `reqId` and `route` on request loggers. Never a phone, name, note, IP, cookie, token or
  * full query string: key paths are redacted, every string is phone-scrubbed, errors are
@@ -78,7 +91,7 @@ export function createLogger(settings: LoggerSettings, destination?: Destination
     timestamp: stdTimeFunctions.isoTime,
     messageKey: 'msg',
     redact: { paths: REDACT_PATHS, censor: '[redacted]' },
-    serializers: { err: (err: unknown) => scrubDeep(stdSerializers.err(err as Error)) },
+    serializers: { err: serializeErr },
     formatters: {
       level: (label) => ({ level: label }),
       log: (object) => {
@@ -112,7 +125,10 @@ export function createLogger(settings: LoggerSettings, destination?: Destination
         ) {
           list = [first, first.err.message];
         }
-        const scrubbed = list.map((arg) => (typeof arg === 'string' ? scrubPhones(arg) : arg));
+        // Arguments after the first are messages or %o / %j values, which skip formatters.log.
+        const scrubbed = list.map((arg, i) =>
+          i > 0 || typeof arg === 'string' ? scrubDeep(arg) : arg,
+        );
         return method.apply(this, scrubbed as Parameters<typeof method>);
       },
     },
