@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 
 import { describe, expect, it } from 'vitest';
 
-import { cpuMultiplierFor, lcpSpread, spreadTable } from './lhci.mjs';
+import { cpuMultiplierFor, lcpSpread, spreadTable, tbtGate } from './lhci.mjs';
 
 const matrix = [
   {
@@ -98,6 +98,53 @@ describe('lcpSpread (scripts/lhci.mjs)', () => {
   });
 });
 
+describe('tbtGate (scripts/lhci.mjs, docs/brief.md section 7)', () => {
+  const FLOOR = 'http://localhost:3000/qa/floor';
+  const rows = (floorTbt: number[], pageTbt: number[]) =>
+    lcpSpread(
+      [
+        ...floorTbt.map((tbt) => lhr(FLOOR, 1500, 1, tbt)),
+        ...pageTbt.map((tbt) => lhr(NOT_FOUND, 2000, 0.9, tbt)),
+        lhr(HOME, 2000, 0.8, 900),
+      ],
+      matrix,
+    );
+
+  it('T-LH5 a gated median passes within the limit or the floor median plus the allowance', () => {
+    // Fast host: floor 100, the 400 limit decides; 434 fails.
+    let gate = tbtGate(rows([100, 90, 110], [434, 401, 453]), '/qa/floor', 250);
+    expect(gate.floorMs).toBe(100);
+    expect(gate.rows.find((r) => r.url === NOT_FOUND)).toMatchObject({
+      tbtGateMs: 400,
+      tbtPasses: false,
+    });
+    // Slow host: floor 200, the gate rises to 450; the same 434 passes.
+    gate = tbtGate(rows([200, 190, 210], [434, 401, 453]), '/qa/floor', 250);
+    expect(gate.rows.find((r) => r.url === NOT_FOUND)).toMatchObject({
+      tbtGateMs: 450,
+      tbtPasses: true,
+    });
+    // Ungated URLs (home, the floor itself) always pass; the table marks a failure.
+    expect(gate.rows.filter((r) => r.tbtGateMs === null).map((r) => r.url)).toEqual([FLOOR, HOME]);
+    const failing = tbtGate(rows([200], [500]), '/qa/floor', 250);
+    expect(spreadTable('light', failing.rows)).toContain('| 450 FAIL |');
+  });
+
+  it('T-LH6 no floor runs: the limit alone; a gated URL without TBT fails', () => {
+    const noFloor = tbtGate(lcpSpread([lhr(NOT_FOUND, 2000, 0.9, 420)], matrix), '/qa/floor', 250);
+    expect(noFloor.floorMs).toBeNull();
+    expect(noFloor.rows[0]).toMatchObject({ tbtGateMs: 400, tbtPasses: false });
+    const noTbt = {
+      ...lhr(NOT_FOUND, 2000),
+      audits: { 'largest-contentful-paint': { numericValue: 2000 } },
+    };
+    expect(tbtGate(lcpSpread([noTbt], matrix), '/qa/floor', 250).rows[0]).toMatchObject({
+      tbtMedianMs: null,
+      tbtPasses: false,
+    });
+  });
+});
+
 describe('cpuMultiplierFor (lighthouse/docs/throttling.md, mid-tier mobile target)', () => {
   it('uses 4x on a high-end desktop host and above it', () => {
     expect(cpuMultiplierFor(1500)).toBe(4);
@@ -122,6 +169,7 @@ describe('lighthouserc.cjs', () => {
     const entries = (url: string) =>
       ci.assert.assertMatrix.filter((m) => new RegExp(m.matchingUrlPattern).test(url));
     expect(ci.collect.url.map((url) => new URL(url).pathname + new URL(url).search)).toEqual([
+      '/qa/floor',
       '/qa/not-found',
       encodeURI('/خدمات/ترمیم-دندان'),
       encodeURI('/پزشکان/دکتر-نمونه-آزمایشی'),
@@ -130,9 +178,15 @@ describe('lighthouserc.cjs', () => {
       '/?tier=1',
     ]);
     for (const url of ci.collect.url) expect(entries(url), url).toHaveLength(1);
-    const [notFound, service, dentist, pricing, tier0] = ci.collect.url.map(
+    const [floor, notFound, service, dentist, pricing, tier0] = ci.collect.url.map(
       (url) => entries(url)[0]!,
     );
+    // The floor is measured, never asserted; content TBT only warns in LHCI (tbtGate gates it).
+    expect(floor!.assertions).toEqual({});
+    expect(notFound!.assertions['total-blocking-time']).toEqual([
+      'warn',
+      { maxNumericValue: 400, aggregationMethod: 'median' },
+    ]);
     expect(service!.assertions).toEqual(notFound!.assertions);
     expect(dentist!.assertions).toEqual(notFound!.assertions);
     expect(pricing!.assertions).toEqual(notFound!.assertions);

@@ -29,7 +29,8 @@
       "interimKiB": 150,
       "routeAllowanceKiB": 15,
       "tbtTargetMs": 200,
-      "tbtInterimMs": 400
+      "tbtInterimMs": 400,
+      "tbtOverFloorMs": 250
     },
     "booking": {
       "label": "Booking and emergency",

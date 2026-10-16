@@ -262,7 +262,14 @@ framework scripts in LCP. In 8 theme runs of unchanged code, the best run
 stayed at 1368 to 1752 ms, but one median failed at 2519 ms. This gate
 catches only LCP regressions of about 750 ms or more, so every run prints
 min, median and max. TBT keeps the median gate, because its best run moves
-with host speed (72 to 262 ms for the same code). Until the real home lands in phase 7, home
+with host speed (72 to 262 ms for the same code). From phase 5 the TBT
+limit follows the host: CI runners measured slower than that model
+(benchmarkIndex 1954 to 1991, content-page medians up to 464 ms for code
+that measures under 140 ms locally), and CI run 29 failed on TBT alone
+(434 and 407 ms) for pages that had not changed. `scripts/lhci.mjs` gates each content median at 400 ms or at the
+median of a framework floor page of the same build (`/qa/floor`, no code
+of ours, measured in the same run and theme) plus 250 ms
+(`tbtOverFloorMs`), whichever is higher. Until the real home lands in phase 7, home
 asserts performance, LCP and script size as warnings and CLS and
 third-party requests as errors; accessibility, best practices, SEO, TBT,
 stylesheet and font size and console errors are not asserted on home yet.

@@ -57,11 +57,12 @@ const PRICING = encodeURI('/هزینه-و-پرداخت');
 const contentAssertions = {
   ...common,
   // INP has no value in a navigation run; total blocking time is the CI proxy. The 200 ms target
-  // sits below what the framework alone blocks on a slow CI host, so CI gates the interim limit
-  // (docs/brief.md section 7). The score warns at its target: TBT, LCP and CLS, 80% of its
-  // weight, are errors on their own.
+  // sits below what the framework alone blocks on a slow CI host. The gate is scripts/lhci.mjs
+  // (tbtGate): the median against this interim limit, raised on a slow host to the framework
+  // floor page's median plus tbtOverFloorMs (docs/brief.md section 7); LHCI itself only warns.
+  // The score warns at its target: TBT, LCP and CLS, 80% of its weight, are errors on their own.
   'total-blocking-time': [
-    'error',
+    'warn',
     { maxNumericValue: limits.classes.content.tbtInterimMs, ...median },
   ],
   'categories:performance': ['warn', { minScore: 0.95, ...median }],
@@ -78,6 +79,8 @@ module.exports = {
       startServerReadyPattern: 'Ready in',
       startServerReadyTimeout: 60000,
       url: [
+        // The framework floor of this build (src/app/(floor)): no assertions, the TBT gate's base.
+        `${pageOrigin}/qa/floor`,
         `${pageOrigin}/qa/not-found`,
         `${pageOrigin}${SERVICE}`,
         `${pageOrigin}${DENTIST}`,
@@ -108,6 +111,7 @@ module.exports = {
     },
     assert: {
       assertMatrix: [
+        { matchingUrlPattern: '/qa/floor', assertions: {} },
         { matchingUrlPattern: '/qa/not-found', assertions: contentAssertions },
         { matchingUrlPattern: SERVICE, assertions: contentAssertions },
         { matchingUrlPattern: DENTIST, assertions: contentAssertions },

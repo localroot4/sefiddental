@@ -1,6 +1,7 @@
 // Lighthouse CI in both themes (light, then LHCI_THEME=dark; docs/brief.md asks for both) and
-// the LCP and TBT spread of every URL. The gates stay in lighthouserc.cjs: LCP on the best of 5
-// runs against the 2500 ms target, TBT on the median against its interim limit. Simulated LCP on
+// the LCP and TBT spread of every URL. LCP is gated in lighthouserc.cjs on the best of 5 runs
+// against the 2500 ms target; TBT here (tbtGate), on the median against the interim limit or the
+// framework floor page's median plus an allowance, whichever is higher. Simulated LCP on
 // the 404 template varies between runs (1359-2121 ms on the container, up to 2610 ms on a shared
 // 2-core runner), so every run prints min, median and max beside each limit.
 // Lighthouse loads the pages over HTTPS and HTTP/2 through scripts/tls-front.mjs, as browsers
@@ -82,16 +83,38 @@ export function lcpSpread(lhrs, assertMatrix) {
   });
 }
 
+/**
+ * The CI TBT gate (docs/brief.md section 7). A shared 2-core runner blocks up to twice as long as
+ * a fast host for the same code, the framework's own bootstrap included, so each URL with a TBT
+ * limit passes when its median is within that limit or within the floor page's median (same
+ * theme, same host, same run) plus `overFloorMs`, whichever is higher. No floor runs: the limit
+ * alone. A gated URL without a TBT value fails: unknown is not a pass.
+ * @param {ReturnType<typeof lcpSpread>} rows
+ * @param {string} floorPath
+ * @param {number} overFloorMs
+ */
+export function tbtGate(rows, floorPath, overFloorMs) {
+  const floorMs = rows.find((r) => new URL(r.url).pathname === floorPath)?.tbtMedianMs ?? null;
+  return {
+    floorMs,
+    rows: rows.map((r) => {
+      if (r.tbtLimitMs === null) return { ...r, tbtGateMs: null, tbtPasses: true };
+      const tbtGateMs = Math.max(r.tbtLimitMs, floorMs === null ? 0 : floorMs + overFloorMs);
+      return { ...r, tbtGateMs, tbtPasses: r.tbtMedianMs !== null && r.tbtMedianMs <= tbtGateMs };
+    }),
+  };
+}
+
 /** Markdown table of one theme's rows. */
 export function spreadTable(theme, rows) {
   const lines = [
     `### LCP spread, ${theme} (${rows[0]?.runs ?? 0} runs per URL)`,
     '',
-    '| URL | Runs | Min ms | Median ms | Max ms | Spread ms | Runs over limit | Limit ms (level) | Gate (statistic) | TBT median ms (min to max) | TBT limit ms (median) | Perf. median |',
+    '| URL | Runs | Min ms | Median ms | Max ms | Spread ms | Runs over limit | Limit ms (level) | Gate (statistic) | TBT median ms (min to max) | TBT gate ms (median) | Perf. median |',
     '|---|---|---|---|---|---|---|---|---|---|---|---|',
     ...rows.map(
       (r) =>
-        `| ${new URL(r.url).pathname}${new URL(r.url).search} | ${r.runs} | ${r.minMs} | ${r.medianMs} | ${r.maxMs} | ${r.spreadMs} | ${r.runsOverLimit} | ${r.limitMs ?? 'none'} (${r.level}) | ${r.gatePasses ? 'pass' : 'FAIL'} (${r.gate}) | ${r.tbtMedianMs ?? '-'} (${r.tbtMinMs ?? '-'} to ${r.tbtMaxMs ?? '-'}) | ${r.tbtLimitMs ?? 'none'} | ${r.performanceMedian} |`,
+        `| ${new URL(r.url).pathname}${new URL(r.url).search} | ${r.runs} | ${r.minMs} | ${r.medianMs} | ${r.maxMs} | ${r.spreadMs} | ${r.runsOverLimit} | ${r.limitMs ?? 'none'} (${r.level}) | ${r.gatePasses ? 'pass' : 'FAIL'} (${r.gate}) | ${r.tbtMedianMs ?? '-'} (${r.tbtMinMs ?? '-'} to ${r.tbtMaxMs ?? '-'}) | ${r.tbtGateMs ?? r.tbtLimitMs ?? 'none'}${r.tbtPasses === false ? ' FAIL' : ''} | ${r.performanceMedian} |`,
     ),
     '',
   ];
@@ -218,7 +241,7 @@ function run() {
   // The assertions do not depend on the theme (only the Chrome flags and the report folder do).
   const require = createRequire(import.meta.url);
   const { assertMatrix } = require('../lighthouserc.cjs').ci.assert;
-  const { tbtTargetMs } = require('../tests/budgets/limits.json').classes.content;
+  const { tbtTargetMs, tbtOverFloorMs } = require('../tests/budgets/limits.json').classes.content;
   // A multiplier set in the shell wins (to reproduce a run); otherwise calibrate on this host.
   const index = process.env.LHCI_CPU_MULTIPLIER ? Number.NaN : measureHost();
   const multiplier =
@@ -229,7 +252,7 @@ function run() {
   // The targets stay visible beside the interim TBT limit the gate uses (docs/brief.md section 7).
   const sections = [
     host,
-    `Content-page TBT target ${tbtTargetMs} ms; CI gates the TBT limit below.`,
+    `Content-page TBT target ${tbtTargetMs} ms; CI gates the TBT median at the limit below or the /qa/floor median + ${tbtOverFloorMs} ms, whichever is higher.`,
     '',
   ];
   let failed = false;
@@ -248,7 +271,15 @@ function run() {
     } catch {
       // No .lighthouseci folder: collect failed before the first run; autorun already said why.
     }
-    const table = spreadTable(theme, lcpSpread(lhrs, assertMatrix));
+    const tbt = tbtGate(lcpSpread(lhrs, assertMatrix), '/qa/floor', tbtOverFloorMs);
+    for (const r of tbt.rows.filter((row) => !row.tbtPasses)) {
+      failed = true;
+      const line = `${r.url} TBT median ${r.tbtMedianMs ?? 'unknown'} ms over the gate ${r.tbtGateMs} ms (limit ${r.tbtLimitMs} ms; floor median ${tbt.floorMs ?? 'not measured'} ms + ${tbtOverFloorMs} ms)`;
+      console.log(
+        process.env.GITHUB_ACTIONS ? `::error title=lhci ${theme} TBT::${line}` : `lhci: ${line}`,
+      );
+    }
+    const table = `${spreadTable(theme, tbt.rows)}Framework floor (/qa/floor) TBT median: ${tbt.floorMs ?? 'not measured'} ms.\n`;
     console.log(`\n${table}`);
     sections.push(table);
   }
