@@ -174,19 +174,26 @@ describe('lighthouserc.cjs', () => {
       encodeURI('/خدمات/ترمیم-دندان'),
       encodeURI('/پزشکان/دکتر-نمونه-آزمایشی'),
       encodeURI('/هزینه-و-پرداخت'),
+      encodeURI('/رزرو-نوبت'),
+      encodeURI('/اورژانس'),
       '/?tier=0',
       '/?tier=1',
     ]);
     for (const url of ci.collect.url) expect(entries(url), url).toHaveLength(1);
-    const [floor, notFound, service, dentist, pricing, tier0] = ci.collect.url.map(
-      (url) => entries(url)[0]!,
-    );
+    const [floor, notFound, service, dentist, pricing, booking, emergency, tier0] =
+      ci.collect.url.map((url) => entries(url)[0]!);
     // The floor is measured, never asserted; content TBT only warns in LHCI (tbtGate gates it).
     expect(floor!.assertions).toEqual({});
     expect(notFound!.assertions['total-blocking-time']).toEqual([
       'warn',
       { maxNumericValue: 400, aggregationMethod: 'median' },
     ]);
+    for (const page of [booking, emergency]) {
+      const { 'resource-summary:script:size': script, ...rest } = page!.assertions;
+      const { 'resource-summary:script:size': _content, ...contentRest } = notFound!.assertions;
+      expect(rest).toEqual(contentRest);
+      expect(script).toEqual(['error', { maxNumericValue: 150 * 1024 }]);
+    }
     expect(service!.assertions).toEqual(notFound!.assertions);
     expect(dentist!.assertions).toEqual(notFound!.assertions);
     expect(pricing!.assertions).toEqual(notFound!.assertions);

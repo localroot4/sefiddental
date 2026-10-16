@@ -40,6 +40,8 @@ const TEMPLATES: ReadonlyArray<{
   // Phase 5 pages.
   { name: 'pricing', url: encodeURI('/هزینه-و-پرداخت'), status: 200 },
   { name: 'privacy', url: encodeURI('/حریم-خصوصی'), status: 200 },
+  { name: 'booking', url: encodeURI('/رزرو-نوبت'), status: 200 },
+  { name: 'emergency', url: encodeURI('/اورژانس'), status: 200 },
 ];
 
 for (const template of TEMPLATES) {

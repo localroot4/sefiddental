@@ -53,6 +53,8 @@ const common = {
 const SERVICE = encodeURI('/خدمات/ترمیم-دندان');
 const DENTIST = encodeURI('/پزشکان/دکتر-نمونه-آزمایشی');
 const PRICING = encodeURI('/هزینه-و-پرداخت');
+const BOOKING = encodeURI('/رزرو-نوبت');
+const EMERGENCY = encodeURI('/اورژانس');
 
 const contentAssertions = {
   ...common,
@@ -85,6 +87,8 @@ module.exports = {
         `${pageOrigin}${SERVICE}`,
         `${pageOrigin}${DENTIST}`,
         `${pageOrigin}${PRICING}`,
+        `${pageOrigin}${BOOKING}`,
+        `${pageOrigin}${EMERGENCY}`,
         `${pageOrigin}/?tier=0`,
         `${pageOrigin}/?tier=1`,
       ],
@@ -116,6 +120,16 @@ module.exports = {
         { matchingUrlPattern: SERVICE, assertions: contentAssertions },
         { matchingUrlPattern: DENTIST, assertions: contentAssertions },
         { matchingUrlPattern: PRICING, assertions: contentAssertions },
+        // Booking and emergency (freeze G19): the content gates with the booking-class script
+        // limit; their 2.0 s LCP target (docs/brief.md section 7) is reported, not gated, on CI
+        // runners whose content-page LCP already reaches 2.2 s.
+        ...[BOOKING, EMERGENCY].map((url) => ({
+          matchingUrlPattern: url,
+          assertions: {
+            ...contentAssertions,
+            'resource-summary:script:size': ['error', { maxNumericValue: scriptLimit('booking') }],
+          },
+        })),
         {
           matchingUrlPattern: '/\\?tier=0',
           assertions: {

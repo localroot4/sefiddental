@@ -34,8 +34,7 @@
     },
     "booking": {
       "label": "Booking and emergency",
-      "pages": [],
-      "pendingNote": "no booking or emergency page before phase 5",
+      "pages": ["/رزرو-نوبت", "/اورژانس"],
       "targetKB": 70,
       "interimKiB": 150,
       "routeAllowanceKiB": 20
