@@ -249,6 +249,24 @@ await payload.update({
   context,
 });
 
+// A closed holiday on a far date (Nowruz 1406, 2027-03-21), so the QA hours clock can show the
+// emergency page's holiday state (tests/e2e/emergency.spec.ts T-EM1). Outside the 60-day window
+// of the holidays gap, so that gap stays open.
+const clinic = await payload.findGlobal({ slug: 'clinic', depth: 0 });
+await payload.updateGlobal({
+  slug: 'clinic',
+  data: {
+    hours: {
+      ...clinic.hours,
+      holidays: [
+        ...(clinic.hours?.holidays ?? []).filter((row) => !row.labelFa.startsWith(MARK)),
+        { dateJalali: '۱۴۰۶/۰۱/۰۱', labelFa: `${MARK}: تعطیل رسمی` },
+      ],
+    },
+  } as never,
+  context,
+});
+
 // The e2e scripts grep this line: `payload run` can exit 0 before the script ran.
 payload.logger.info(
   `qa-fixture: dentist /پزشکان/${dentist.slug}, guide ${guide.path}, case ${sample.id}, testimonial ${voice.id}, financing ${loan.key}`,

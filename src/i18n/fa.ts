@@ -6,6 +6,7 @@
  */
 
 import { CONTENT_MESSAGES } from '@/i18n/fa-content';
+import { EMERGENCY_MESSAGES } from '@/i18n/fa-emergency';
 import { HOME_MESSAGES } from '@/i18n/fa-home';
 import { NAV_MESSAGES } from '@/i18n/fa-nav';
 import { NOTIFY_MESSAGES } from '@/i18n/fa-notify';
@@ -41,6 +42,7 @@ const MESSAGES = {
   ...SERVICES_MESSAGES,
   ...PAGES_MESSAGES,
   ...NOTIFY_MESSAGES,
+  ...EMERGENCY_MESSAGES,
 } as const;
 
 export type MessageKey = keyof typeof MESSAGES;

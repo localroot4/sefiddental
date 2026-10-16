@@ -39,7 +39,15 @@ const PAGE_LABELS: Record<string, string> = {
   privacy: 'حریم خصوصی',
 };
 
-const guideOnly = (data: Partial<{ key: string }> | undefined) => isGuideKey(data?.key);
+type KeyData = Partial<{ key: string; blocks: unknown[] | null }> | undefined;
+/** Pages that show the medical reviewer fields: the guides and the emergency page (EM-S1). */
+const guideOnly = (data: KeyData) => isGuideKey(data?.key) || data?.key === 'emergency';
+/**
+ * Medical content that needs a reviewer and sources before it publishes: a guide, or the
+ * emergency page once it has self-care blocks. Without blocks the emergency page stays publishable.
+ */
+export const needsMedicalReview = (data: KeyData) =>
+  isGuideKey(data?.key) || (data?.key === 'emergency' && Boolean(data.blocks?.length));
 
 /** Home sections with a heading from Payload (freeze F4, F5); the hero and trust band have none. */
 const SECTION_OPTIONS = [
@@ -237,9 +245,9 @@ export const Pages: CollectionConfig = {
       relationTo: 'doctors',
       label: 'بازبین پزشکی',
       validate: withRules(relationship, (value, { data }) =>
-        reviewerRule(guideOnly(data as { key?: string }), value, data.reviewedAt),
+        reviewerRule(needsMedicalReview(data as KeyData), value, data.reviewedAt),
       ),
-      admin: { condition: guideOnly, description: 'بازبین پزشکی این راهنما.' },
+      admin: { condition: guideOnly, description: 'بازبین پزشکی این صفحه.' },
     },
     {
       ...dayOnlyDate('reviewedAt', 'تاریخ بازبینی', 'تاریخ بازبینی.'),
@@ -250,11 +258,11 @@ export const Pages: CollectionConfig = {
       },
     },
     {
-      ...sourcesArray('منابع علمی این راهنما.'),
+      ...sourcesArray('منابع علمی این صفحه.'),
       validate: withRules(array, (value, { data }) =>
-        sourcesRule(guideOnly(data as { key?: string }), value),
+        sourcesRule(needsMedicalReview(data as KeyData), value),
       ),
-      admin: { condition: guideOnly, description: 'منابع علمی این راهنما.' },
+      admin: { condition: guideOnly, description: 'منابع علمی این صفحه.' },
     },
     seoGroup(),
   ],

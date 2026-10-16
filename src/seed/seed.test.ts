@@ -285,6 +285,12 @@ describe('phase 4 seed copy (freeze F6, F7, F15, F17, F28)', () => {
     }
   });
 
+  it('SC-EM1 the emergency page seeds its search description within the length rule (EM-SEO3)', () => {
+    const data = pageData(pages.find((p) => p.key === 'emergency')!);
+    expect(data.seo.description).toMatch(/^درد شدید دندان دارید؟/);
+    expect(descriptionRule(data.seo.description, true)).toBe(true);
+  });
+
   it('SC6 home blocks: four journey steps and the six FAQ topics; sections are unique', () => {
     const data = pageData(home);
     const steps = data.blocks.find((b) => b.blockType === 'steps');

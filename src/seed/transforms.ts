@@ -344,6 +344,7 @@ export function pageData(page: PagesYaml['pages'][number]) {
     blocks: (page.blocks ?? []).map(blockData),
     seo: {
       ...(page.seo_title ? { title: fixText(page.seo_title) } : {}),
+      ...(page.seo_description ? { description: fixText(page.seo_description) } : {}),
       ...(page.noindex ? { noindex: true } : {}),
     },
   };

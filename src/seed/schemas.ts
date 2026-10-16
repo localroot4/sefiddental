@@ -220,6 +220,7 @@ export const pagesYaml = z.object({
         slug: z.string(),
         title: text,
         seo_title: text.optional(),
+        seo_description: text.optional(),
         lead: text.optional(),
         noindex: z.boolean().optional(),
         /** Home only: the hero subtext without the flag sentence (freeze F7). */
