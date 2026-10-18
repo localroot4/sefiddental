@@ -65,7 +65,12 @@ export async function captureTemplate(
     const width = page.viewportSize()?.width ?? 0;
     await page.mouse.move(Math.round(width / 2), 1);
     await page.evaluate(() => window.scrollTo(0, 0));
-    await page.addStyleTag({ content: '[data-sticky-bar][data-hidden]{visibility:hidden}' });
+    // Through the element's style property: the site's CSP refuses an injected <style>.
+    await page.evaluate(() => {
+      for (const bar of document.querySelectorAll<HTMLElement>('[data-sticky-bar][data-hidden]')) {
+        bar.style.visibility = 'hidden';
+      }
+    });
   }
   // A full-page capture never scrolls, so lazy images below the fold would show as empty frames:
   // load them as a reader who scrolls down would see them, and decode them, because Chromium may
