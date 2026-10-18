@@ -9,7 +9,6 @@ import {
   type ReactNode,
 } from 'react';
 
-import { Button } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
 import type { ErrorType } from '@/lib/events/allowlist';
 import { toPersianDigits } from '@/lib/persianText';
@@ -131,7 +130,15 @@ export function BookingFormIsland(props: {
   fields?: ReactNode;
   hidden: ReactNode;
   privacy: ReactNode;
-  icons: { error: ReactNode; info: ReactNode; check: ReactNode; chevron?: ReactNode };
+  icons: {
+    error: ReactNode;
+    info: ReactNode;
+    check: ReactNode;
+    chevron?: ReactNode;
+    spinner: ReactNode;
+  };
+  /** The submit's classes from src/components/ui/Button.tsx `submitClasses`. */
+  submitClass: { idle: string; busy: string };
   /** Success lines after the callback and the registered number (items 4-6). */
   success: ReactNode;
   /** Tokens in the page HTML (booking page only). */
@@ -485,15 +492,17 @@ export function BookingFormIsland(props: {
         <input type="hidden" name={F.ts} defaultValue={props.tokens?.ts ?? ''} />
         {props.privacy}
         <div className="grid">
-          <Button
+          {/* Button's markup (src/components/ui/Button.tsx): the spinner replaces no icon. */}
+          <button
             type="submit"
-            size="lg"
-            fullWidth
-            loading={loading}
+            aria-busy={loading || undefined}
+            data-loading={loading || undefined}
+            className={loading ? props.submitClass.busy : props.submitClass.idle}
             onPointerDown={() => (pressingSubmit.current = true)}
           >
+            {loading ? props.icons.spinner : null}
             {loading ? labels.submitting : labels.submit}
-          </Button>
+          </button>
           {notice && !info ? (
             <p role="alert" className="mt-3 flex gap-1 text-small font-medium text-danger">
               {props.icons.error}

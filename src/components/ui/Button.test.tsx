@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { Button, ButtonLink, IconButton } from './Button';
+import { Button, ButtonLink, IconButton, submitClasses } from './Button';
 import { Icon } from './Icon';
 import { ICON_SPRITE_HASH } from './icons';
 import { TextLink } from './TextLink';
@@ -132,5 +133,19 @@ describe('buttons and links (DESIGN.md 3.1-3.3)', () => {
     expect(screen.getByRole('button', { name: 'بستن منو' }).className).toContain(
       'transition-[background-color,scale]',
     );
+  });
+
+  it('UB10 submitClasses() is what Button renders for a form submit, idle and busy', () => {
+    // The form islands render a plain <button> with these classes: they must not drift from Button.
+    const rendered = (loading: boolean) => {
+      const box = document.createElement('div');
+      box.innerHTML = renderToStaticMarkup(
+        <Button type="submit" size="lg" fullWidth loading={loading}>
+          ثبت
+        </Button>,
+      );
+      return box.querySelector('button')!.className;
+    };
+    expect(submitClasses()).toEqual({ idle: rendered(false), busy: rendered(true) });
   });
 });

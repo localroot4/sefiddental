@@ -52,6 +52,18 @@ export function buttonClasses(
   );
 }
 
+/**
+ * Classes of a form island's submit (primary, lg, full width), idle and busy, exactly as Button
+ * renders them: the islands render a plain `<button>`, so this module stays out of their chunks.
+ */
+export function submitClasses(className?: string): { idle: string; busy: string } {
+  const base = buttonClasses('primary', 'lg', true);
+  return {
+    idle: cx(base, className),
+    busy: cx(base, 'pointer-events-none', LOADING_PAD.lg, className),
+  };
+}
+
 /** 18 px ring (DESIGN.md 3.1); 0.8 s per turn, 1.6 s under reduced motion (globals.css). */
 export function Spinner(props: { className?: string }) {
   return (

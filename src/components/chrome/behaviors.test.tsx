@@ -272,7 +272,7 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     document.body.innerHTML = `
       <form data-booking-form="hero"><input type="tel"></form>
       <form data-booking-form="block"><input type="tel"></form>
-      <dialog data-booking-dialog><div data-booking-form="dialog"><form><input type="tel"></form></div></dialog>`;
+      <dialog data-booking-dialog><div data-booking-form="dialog"><form novalidate><input type="tel"></form></div></dialog>`;
     const hero = document.querySelector('[data-booking-form="hero"] input')!;
     place(hero, 300, 44);
     expect(bookingRoute(document, 844)?.kind).toBe('hero');
@@ -295,7 +295,7 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
       <a id="cta" href="/رزرو-نوبت?service=ceramic-laminate&tier=vip" data-booking-cta data-booking-group="cosmetic">b</a>
       <dialog id="booking-dialog" data-booking-dialog>
         <button id="close" command="close" commandfor="booking-dialog">x</button>
-        <div data-booking-form="dialog"><form>
+        <div data-booking-form="dialog"><form novalidate>
           <h2>title</h2><input type="tel" id="phone">
           <input type="radio" name="service" value="exam"><input type="radio" name="service" value="cosmetic">
           <input type="hidden" name="service_key" value=""><input type="hidden" name="tier" value="">
@@ -329,7 +329,7 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
   it('CB12 a touch press focuses the dialog heading, so no keyboard covers the lead', () => {
     document.body.innerHTML = `
       <a id="cta" href="/رزرو-نوبت" data-booking-cta>b</a>
-      <dialog data-booking-dialog><div data-booking-form="dialog"><form>
+      <dialog data-booking-dialog><div data-booking-form="dialog"><form novalidate>
         <h2 id="title">title</h2><input type="tel" id="phone">
       </form></div></dialog>`;
     const stop = setupBookingRoute(document);
@@ -384,7 +384,7 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
 
   const DIALOG_PAGE = `
     <a id="cta" href="/رزرو-نوبت" data-booking-cta>b</a>
-    <dialog id="booking-dialog" data-booking-dialog><div data-booking-form="dialog"><form>
+    <dialog id="booking-dialog" data-booking-dialog><div data-booking-form="dialog"><form novalidate>
       <h2>title</h2><input type="tel" id="phone">
     </form></div></dialog>`;
   const locked = () => document.documentElement.classList.contains('overflow-hidden');
@@ -447,7 +447,7 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     document.body.innerHTML = `
       <a id="cta" href="/رزرو-نوبت" data-booking-cta>b</a>
       <dialog data-booking-dialog><div data-booking-form="dialog" data-state="success">
-        <form inert><h2>title</h2><input type="tel" id="phone"></form>
+        <form inert novalidate><h2>title</h2><input type="tel" id="phone"></form>
         <div><h2 id="done" tabindex="-1">done</h2><h3>bring</h3></div>
       </div></dialog>`;
     const stop = setupBookingRoute(document);
@@ -461,6 +461,16 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     cta.dispatchEvent(touch);
     expect(document.activeElement?.id).toBe('done');
     document.querySelector('dialog')!.close();
+    stop();
+  });
+
+  it('CB19 a dialog whose island has not taken its form yet is no route: the CTA navigates', () => {
+    // The island loads after `load` (BookingFormIslandDeferred); the booking page has its tokens.
+    document.body.innerHTML = DIALOG_PAGE.replace(' novalidate', '');
+    const stop = setupBookingRoute(document);
+    expect(bookingRoute(document, 844)).toBeNull();
+    expect(click(document.getElementById('cta')!).defaultPrevented).toBe(false);
+    expect(document.querySelector('dialog')!.hasAttribute('open')).toBe(false);
     stop();
   });
 

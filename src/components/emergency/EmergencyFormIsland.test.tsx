@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renewFormSession, type FormSession } from '@/components/chrome/formSession';
+import { submitClasses } from '@/components/ui/Button';
 import { PHONE_ERRORS } from '@/lib/phone';
 import { track } from '@/lib/track/track';
 
@@ -74,7 +75,8 @@ function island(initial: EmergencyInitial = EMPTY) {
       }
       privacy={<p>privacy</p>}
       aboveSubmit={null}
-      icons={{ error: <i />, info: <i />, check: <i />, chevron: <i /> }}
+      icons={{ error: <i />, info: <i />, check: <i />, chevron: <i />, spinner: <i /> }}
+      submitClass={submitClasses('md:max-w-[26rem]')}
       success={<p>safety again</p>}
       cardClassName="card"
     />

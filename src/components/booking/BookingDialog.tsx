@@ -5,7 +5,8 @@ import { t } from '@/i18n/fa';
 import { getClinic, getFeatures } from '@/lib/data/globals';
 import { log } from '@/lib/log/logger';
 
-import { BookingForm } from './BookingForm';
+import { BookingFormBody } from './BookingFormBody';
+import { BookingFormIslandDeferred } from './BookingFormIslandDeferred';
 
 const CLOSE = { command: 'close', commandfor: BOOKING_DIALOG_ID } as const;
 
@@ -19,7 +20,8 @@ const CLOSE = { command: 'close', commandfor: BOOKING_DIALOG_ID } as const;
  * pattern: a bottom sheet under 1024 px, centered from 1024 px, never taller than the screen,
  * scrolling inside. The form's success state shows in place. Without JavaScript it never opens:
  * the links navigate to /رزرو-نوبت. With the database down it renders nothing, so the branded 404
- * still answers (CC-7) and its links navigate.
+ * still answers (CC-7) and its links navigate. Its island loads after `load`
+ * (BookingFormIslandDeferred): until then, or if it fails to load, the links navigate too.
  */
 export async function BookingDialog(props: {
   /** Slug or key of the service the page is about: the form shows «خدمت: …» (conversion.md 5.1). */
@@ -45,12 +47,13 @@ export async function BookingDialog(props: {
       <div className="sticky top-0 z-10 -mx-6 flex justify-end bg-surface-raised px-3 pt-3">
         <IconButton label={t('booking.close')} icon={<Icon name="close" />} {...CLOSE} />
       </div>
-      <BookingForm
+      <BookingFormBody
         variant="full"
         instance="dialog"
         plain
         service={props.service}
         emergencyLink={props.emergencyLink}
+        Island={BookingFormIslandDeferred}
       />
     </dialog>
   );

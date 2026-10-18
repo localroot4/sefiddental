@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-import { BookingSuccessView } from '@/components/booking/BookingPage';
+import { BookingSuccessView } from '@/components/booking/BookingSuccessPage';
 import { pageMetadata } from '@/components/pages/data';
 import { t } from '@/i18n/fa';
 import { readFlash } from '@/lib/http/flash';

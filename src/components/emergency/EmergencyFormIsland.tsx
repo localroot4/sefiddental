@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 
-import { Button } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
 import { BOOKING_FIELDS as F, NOTE_MAX } from '@/components/booking/fields';
 import { parseMobile } from '@/components/booking/phoneInput';
@@ -82,7 +81,15 @@ export function EmergencyFormIsland(props: {
   hidden: ReactNode;
   privacy: ReactNode;
   aboveSubmit: ReactNode;
-  icons: { error: ReactNode; info: ReactNode; check: ReactNode; chevron: ReactNode };
+  icons: {
+    error: ReactNode;
+    info: ReactNode;
+    check: ReactNode;
+    chevron: ReactNode;
+    spinner: ReactNode;
+  };
+  /** The submit's classes from src/components/ui/Button.tsx `submitClasses`. */
+  submitClass: { idle: string; busy: string };
   /** After the success lines, outside the card: the safety box again (7.3). */
   success: ReactNode;
   /** The card around the form and around the success lines (never around the safety box). */
@@ -473,17 +480,17 @@ export function EmergencyFormIsland(props: {
       <div className="grid gap-3">
         {props.privacy}
         {props.aboveSubmit}
-        <Button
+        {/* Button's markup (src/components/ui/Button.tsx): the spinner replaces no icon. */}
+        <button
           type="submit"
-          size="lg"
-          fullWidth
-          loading={loading}
+          aria-busy={loading || undefined}
+          data-loading={loading || undefined}
+          className={loading ? props.submitClass.busy : props.submitClass.idle}
           onPointerDown={() => (pressingSubmit.current = true)}
-          // The column's width, not the label's: «در حال ثبت» never resizes it (EM-F7).
-          className="md:max-w-[26rem]"
         >
+          {loading ? props.icons.spinner : null}
           {loading ? labels.submitting : labels.submit}
-        </Button>
+        </button>
         {notice ? (
           <p
             role={noticeTone === 'info' ? 'status' : 'alert'}

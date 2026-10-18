@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
     throw new Error('NEXT_REDIRECT');
   }),
 }));
-vi.mock('@/components/booking/BookingPage', () => ({ BookingSuccessView: () => null }));
+vi.mock('@/components/booking/BookingSuccessPage', () => ({ BookingSuccessView: () => null }));
 vi.mock('@/components/pages/data', () => ({ pageMetadata: vi.fn() }));
 
 const BOOKING = encodeURI('/رزرو-نوبت');

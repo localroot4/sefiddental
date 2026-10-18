@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { BOOKING_FIELDS as F } from '@/components/booking/fields';
-import { ButtonLink } from '@/components/ui/Button';
+import { ButtonLink, Spinner, submitClasses } from '@/components/ui/Button';
 import { SuccessCheck } from '@/components/ui/Feedback';
 import { Icon } from '@/components/ui/Icon';
 import { TextLink } from '@/components/ui/TextLink';
@@ -183,7 +183,10 @@ export function EmergencyForm(props: {
             className="transition-transform group-open:rotate-180"
           />
         ),
+        spinner: <Spinner />,
       }}
+      // The column's width, not the label's: «در حال ثبت» never resizes it (EM-F7).
+      submitClass={submitClasses('md:max-w-[26rem]')}
       success={<SafetyBox id="em-safety-again" repeat />}
       cardClassName={props.cardClassName}
     />

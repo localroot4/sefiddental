@@ -7,6 +7,7 @@ import {
   renewFormSession,
   type FormSession,
 } from '@/components/chrome/formSession';
+import { submitClasses } from '@/components/ui/Button';
 import { MIN_AGE_MS } from '@/lib/formTokens';
 import { PHONE_ERRORS } from '@/lib/phone';
 import { track } from '@/lib/track/track';
@@ -101,7 +102,9 @@ function island(
         error: <i data-icon="error" />,
         info: <i data-icon="info" />,
         check: <i data-icon="check" />,
+        spinner: <i data-icon="spinner" />,
       }}
+      submitClass={submitClasses()}
       success={<p>save</p>}
       {...extra}
     />

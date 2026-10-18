@@ -20,8 +20,9 @@ export type BookingRoute =
 /**
  * Where a «رزرو نوبت» CTA goes on this page (nav spec 1.6 and 4, freeze G7): the home hero card's
  * phone field while it shows between the bars (not in its success state, when the field is gone),
- * else the page's full booking form, else the booking dialog of a page without one, else nowhere
- * (the link navigates to /رزرو-نوبت).
+ * else the page's full booking form, else the booking dialog of a page without one once its island
+ * owns the form (`novalidate`; it loads after `load`), else nowhere (the link navigates to
+ * /رزرو-نوبت, whose own form has its tokens).
  */
 export function bookingRoute(doc: Document, viewportHeight: number): BookingRoute {
   const field = doc.querySelector('[data-booking-form="hero"] input[type="tel"]');
@@ -36,7 +37,9 @@ export function bookingRoute(doc: Document, viewportHeight: number): BookingRout
   );
   if (visible(block)) return { kind: 'block', block };
   const dialog = doc.querySelector('dialog[data-booking-dialog]');
-  return dialog instanceof HTMLDialogElement ? { kind: 'dialog', dialog } : null;
+  return dialog instanceof HTMLDialogElement && dialog.querySelector('form')?.noValidate
+    ? { kind: 'dialog', dialog }
+    : null;
 }
 
 /**

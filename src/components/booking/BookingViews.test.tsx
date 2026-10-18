@@ -12,8 +12,9 @@ import { clinicYaml } from '@/seed/schemas';
 import { globalsData } from '@/seed/transforms';
 
 import { BookingDialog } from './BookingDialog';
-import { BookingPageView, BookingSuccessView } from './BookingPage';
+import { BookingPageView } from './BookingPage';
 import { BookingSuccessExtras } from './BookingSuccess';
+import { BookingSuccessView } from './BookingSuccessPage';
 
 vi.mock('@/lib/data/globals', () => ({ getClinic: vi.fn(), getFeatures: vi.fn() }));
 vi.mock('@/lib/data/published', () => ({ getPublished: vi.fn() }));
