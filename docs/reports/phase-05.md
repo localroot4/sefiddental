@@ -692,5 +692,12 @@ TBT gate compares each URL with the framework floor of the same run
 | home `?tier=0` | 115, 157 ms | 2044, 2195 ms |
 | home `?tier=1` (no TBT gate) | 448, 523 ms | median 2564 ms (warn), 2347 ms |
 
-The run on the closing commit of this phase is recorded in the commit that
-follows it.
+Run 34 (39166734718) on `6ba2864`, which carries all of phase 5 and the
+phase 6 plan, passed both jobs: lint, format, types, knip, bidi, coverage,
+test:tz, SQLite integration and the audit; then the generated-file drift
+check on both adapters, the PostgreSQL 16 integration suite, migrate and
+seed, the build, check-no-prerender, the full e2e suite on PostgreSQL,
+check:bundle and Lighthouse in both themes (the floor-relative TBT gate
+included). Run 33 on `178b7f9` had passed every step through e2e and
+check:bundle before the next push cancelled it at Lighthouse; runs 31 and 32
+were cancelled the same way.
