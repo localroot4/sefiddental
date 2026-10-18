@@ -4,6 +4,7 @@ import { BOOKING_FIELDS as F } from '@/components/booking/fields';
 import { ButtonLink, Spinner, submitClasses } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
 import { SuccessCheck } from '@/components/ui/Feedback';
+import { CONTROL } from '@/components/ui/Field';
 import { Icon } from '@/components/ui/Icon';
 import { TextLink } from '@/components/ui/TextLink';
 import { t } from '@/i18n/fa';
@@ -202,6 +203,7 @@ export function EmergencyForm(props: {
       }}
       // The column's width, not the label's: «در حال ثبت» never resizes it (EM-F7).
       submitClass={submitClasses()}
+      controlClass={CONTROL}
       success={<SafetyBox id="em-safety-again" repeat />}
       cardClassName={props.cardClassName}
     />

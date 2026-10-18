@@ -38,6 +38,8 @@ const props = {
   privacy: null,
   icons: { error: null, info: null, check: null, spinner: null },
   submitClass: { idle: 'idle', busy: 'busy' },
+  controlClass: 'control',
+  infoClass: 'info',
   success: null,
 } as const;
 

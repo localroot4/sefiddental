@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { renewFormSession, type FormSession } from '@/components/chrome/formSession';
 import { submitClasses } from '@/components/ui/Button';
+import { CONTROL } from '@/components/ui/Field';
 import { PHONE_ERRORS } from '@/lib/phone';
 import { track } from '@/lib/track/track';
 
@@ -84,6 +85,7 @@ function island(initial: EmergencyInitial = EMPTY) {
         tick: <i data-icon="tick" />,
       }}
       submitClass={submitClasses()}
+      controlClass={CONTROL}
       success={<p>safety again</p>}
       cardClassName="card"
     />

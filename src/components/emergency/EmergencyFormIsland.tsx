@@ -11,10 +11,6 @@ import type { HoursStateName } from '@/lib/hoursState';
 import { toPersianDigits } from '@/lib/persianText';
 import { track } from '@/lib/track/track';
 
-// The TextField control of src/components/ui/Field.tsx, repeated as the booking island does: that
-// module imports the icon code, which an island never ships (F2).
-const CONTROL =
-  'w-full rounded-input border-[1.5px] border-line-strong bg-surface-raised px-4 py-2 leading-[1.5] text-ink transition-colors hover:not-aria-invalid:border-ink-muted focus-visible:border-brand aria-invalid:border-danger aria-invalid:outline-danger';
 const NAME_MAX = 80;
 // The server's time trap (formTokens MIN_AGE_MS): a post younger than this is stored as suspicious.
 const TOKEN_MIN_AGE_MS = 2000;
@@ -92,6 +88,8 @@ export function EmergencyFormIsland(props: {
   };
   /** The submit's classes from src/components/ui/Button.tsx `submitClasses`. */
   submitClass: { idle: string; busy: string };
+  /** `CONTROL` of src/components/ui/Field.tsx, which imports the icon code (F2). */
+  controlClass: string;
   /** After the success lines, outside the card: the safety box again (7.3). */
   success: ReactNode;
   /** The card around the form and around the success lines (never around the safety box). */
@@ -383,7 +381,7 @@ export function EmergencyFormIsland(props: {
               !text.trim() && !prev.phone ? prev : { ...prev, phone: phoneMessage(text) },
             );
           }}
-          className={cx(CONTROL, 'min-h-target text-start')}
+          className={cx(props.controlClass, 'min-h-target text-start')}
         />
         <p id={`${p}-phone-help`} className="text-caption text-ink-muted">
           {labels.phoneHelp}
@@ -414,7 +412,7 @@ export function EmergencyFormIsland(props: {
             const long = event.currentTarget.value.trim().length > NAME_MAX;
             setErrors((prev) => ({ ...prev, name: long ? labels.errors.nameTooLong : undefined }));
           }}
-          className={cx(CONTROL, 'min-h-target')}
+          className={cx(props.controlClass, 'min-h-target')}
         />
         {errors.name ? (
           <p id={`${p}-name-error`} className="flex gap-1 text-small font-medium text-danger">
@@ -461,7 +459,7 @@ export function EmergencyFormIsland(props: {
                 note: long ? labels.errors.noteTooLong : undefined,
               }));
             }}
-            className={cx(CONTROL, 'min-h-24 resize-y')}
+            className={cx(props.controlClass, 'min-h-24 resize-y')}
           />
           <span
             id={`${p}-note-counter`}

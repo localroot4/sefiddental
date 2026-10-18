@@ -19,11 +19,6 @@ import { getFormSession, renewFormSession } from '@/components/chrome/formSessio
 import { BOOKING_FIELDS as F, NOTE_MAX } from './fields';
 import { maskNational, parseMobile } from './phoneInput';
 
-// The TextField control of src/components/ui/Field.tsx: that module imports the icon code, which
-// an island never ships (F2), so the two fields this island owns repeat its classes.
-const CONTROL =
-  'w-full rounded-input border-[1.5px] border-line-strong bg-surface-raised px-4 py-2 leading-[1.5] text-ink transition-colors hover:not-aria-invalid:border-ink-muted focus-visible:border-brand aria-invalid:border-danger aria-invalid:outline-danger';
-
 /** MIN_AGE_MS of src/lib/formTokens.ts (a server module): a younger token is stored as suspicious. */
 export const TOKEN_MIN_AGE_MS = 2000;
 
@@ -31,9 +26,6 @@ export type PhoneReason = 'empty' | 'invalid' | 'landline';
 /** Messages under the button: `neutral` and `retry` are an info state, the rest errors. */
 export type Notice = 'neutral' | 'retry' | 'expired' | 'network' | 'server' | 'name';
 const INFO: readonly Notice[] = ['neutral', 'retry'];
-// The info tone of src/components/ui/Alert.tsx (it imports the icon code, F2): Q3's info state.
-const INFO_BOX =
-  'grid grid-cols-[auto_1fr] items-start gap-3 rounded-card border border-info-fill bg-[color-mix(in_srgb,var(--color-info-fill)_22%,var(--color-surface-raised))] p-4 text-small text-ink';
 
 /** What a no-JS post left (the flash, freeze G3): the server renders it, the island keeps it. */
 export interface BookingInitial {
@@ -140,6 +132,12 @@ export function BookingFormIsland(props: {
   };
   /** The submit's classes from src/components/ui/Button.tsx `submitClasses`. */
   submitClass: { idle: string; busy: string };
+  /**
+   * `CONTROL` of src/components/ui/Field.tsx and `alertBoxClass('info')` of Alert.tsx (Q3's info
+   * state): those modules import the icon code, which an island never ships (F2).
+   */
+  controlClass: string;
+  infoClass: string;
   /** Success lines after the callback and the registered number (items 4-6). */
   success: ReactNode;
   /** Tokens in the page HTML (booking page only). */
@@ -422,7 +420,7 @@ export function BookingFormIsland(props: {
               if (passing(event) || !event.currentTarget.value.trim()) return;
               showErrors({ phone: phoneReason(event.currentTarget.value) });
             }}
-            className={cx(CONTROL, 'min-h-target text-start')}
+            className={cx(props.controlClass, 'min-h-target text-start')}
           />
           <p id={`${p}-phone-help`} className="text-caption text-ink-muted">
             {labels.phoneHelp}
@@ -470,7 +468,7 @@ export function BookingFormIsland(props: {
                 onBlur={(event) => {
                   if (!passing(event)) showErrors({ note: noteTooLong(event.currentTarget.value) });
                 }}
-                className={cx(CONTROL, 'min-h-24 resize-y')}
+                className={cx(props.controlClass, 'min-h-24 resize-y')}
               />
               <div className="flex items-start justify-between gap-3">
                 <p id={`${p}-note-help`} className="text-caption text-ink-muted">
@@ -531,7 +529,7 @@ export function BookingFormIsland(props: {
               <div
                 tabIndex={-1}
                 autoFocus={fromFlash}
-                className={cx(INFO_BOX, 'mt-3 focus:outline-none')}
+                className={cx(props.infoClass, 'mt-3 focus:outline-none')}
               >
                 {props.icons.info}
                 <p>{labels.notices[notice]}</p>
@@ -573,7 +571,7 @@ export function BookingFormIsland(props: {
         {done?.kind === 'neutral' ? (
           // The neutral answer in the compact card (conversion.md 5.2): not a success, no check.
           <>
-            <div className={INFO_BOX}>
+            <div className={props.infoClass}>
               {props.icons.info}
               <p ref={doneHeading} tabIndex={-1} className="focus:outline-none">
                 {labels.notices.neutral}

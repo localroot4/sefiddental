@@ -7,7 +7,9 @@ import {
   renewFormSession,
   type FormSession,
 } from '@/components/chrome/formSession';
+import { alertBoxClass } from '@/components/ui/Alert';
 import { submitClasses } from '@/components/ui/Button';
+import { CONTROL } from '@/components/ui/Field';
 import { MIN_AGE_MS } from '@/lib/formTokens';
 import { PHONE_ERRORS } from '@/lib/phone';
 import { track } from '@/lib/track/track';
@@ -105,6 +107,8 @@ function island(
         spinner: <i data-icon="spinner" />,
       }}
       submitClass={submitClasses()}
+      controlClass={CONTROL}
+      infoClass={alertBoxClass('info')}
       success={<p>save</p>}
       {...extra}
     />

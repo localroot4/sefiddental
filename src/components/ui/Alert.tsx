@@ -32,6 +32,13 @@ const TONE: Record<AlertTone, { box: string; icon: string; name: IconName }> = {
   },
 };
 
+/** The box of a tone, for an island that draws its own alert without the icon code (F2). */
+export const alertBoxClass = (tone: AlertTone) =>
+  cx(
+    'grid grid-cols-[auto_1fr] content-start items-start gap-3 rounded-card border p-4 text-small text-ink',
+    TONE[tone].box,
+  );
+
 /**
  * Alert (DESIGN.md Alerts): a bold first line and an optional body. `role="alert"` for danger,
  * `role="status"` otherwise. Article callouts reuse it.
@@ -48,11 +55,7 @@ export function Alert(props: {
     <div
       id={props.id}
       role={props.tone === 'danger' ? 'alert' : 'status'}
-      className={cx(
-        'grid grid-cols-[auto_1fr] content-start items-start gap-3 rounded-card border p-4 text-small text-ink',
-        tone.box,
-        props.className,
-      )}
+      className={cx(alertBoxClass(props.tone), props.className)}
     >
       <Icon name={tone.name} className={cx('mt-[.1em]', tone.icon)} />
       <div className="grid gap-1">

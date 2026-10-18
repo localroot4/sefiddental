@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 
+import { alertBoxClass } from '@/components/ui/Alert';
 import { Spinner, submitClasses } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
 import { SuccessCheck } from '@/components/ui/Feedback';
-import { ChipGroup, TextField } from '@/components/ui/Field';
+import { ChipGroup, CONTROL, TextField } from '@/components/ui/Field';
 import { Icon } from '@/components/ui/Icon';
 import { TextLink } from '@/components/ui/TextLink';
 import { EMERGENCY_PATH, t, type MessageKey } from '@/i18n/fa';
@@ -267,6 +268,8 @@ export async function BookingFormBody({
           spinner: <Spinner />,
         }}
         submitClass={submitClasses()}
+        controlClass={CONTROL}
+        infoClass={alertBoxClass('info')}
         success={<BookingSuccessExtras full={full} />}
       />
     </div>
