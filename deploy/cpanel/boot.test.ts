@@ -111,3 +111,23 @@ describe('cPanel start-up (docs/deploy.md section 3)', () => {
     expect(await get('/admin')).toBe(404);
   });
 });
+
+describe('boot() end to end', () => {
+  it('CB6 the internal listener forwards to the server Next creates after boot, not to itself', async () => {
+    const createServer = http.createServer;
+    closers.push(() => (http.createServer = createServer));
+    const env: Record<string, string | undefined> = { SEFID_DATA_DIR: tmp() };
+    const run = require('./boot.cjs') as { boot: (root: string, env: object) => Promise<unknown> };
+    await run.boot(tmp(), env);
+    // What Next's start-server does after boot: one http server for the public traffic.
+    const next = http.createServer((_req, res) => {
+      res.statusCode = 204;
+      res.end();
+    });
+    closers.push(() => next.close());
+    const res = await fetch(new URL('/api/internal/proxy-config', env.INTERNAL_ORIGIN), {
+      signal: AbortSignal.timeout(3000),
+    });
+    expect(res.status).toBe(204);
+  });
+});

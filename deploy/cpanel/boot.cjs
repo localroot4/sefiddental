@@ -163,8 +163,10 @@ async function boot(root, env = process.env) {
   applyDefaults(env, dataDir, readRelease(root));
   fs.mkdirSync(env.MEDIA_DIR, { recursive: true });
   const seeded = seedFirstRun(env, dataDir, path.join(root, 'seed'));
-  const getNextServer = captureNextServer();
-  if (!env.INTERNAL_ORIGIN) await startInternalListener(env, getNextServer);
+  // The listener first: the capture keeps the first server created after it, which must be Next's.
+  let getNextServer = () => null;
+  if (!env.INTERNAL_ORIGIN) await startInternalListener(env, () => getNextServer());
+  getNextServer = captureNextServer();
   return { dataDir, seeded };
 }
 
