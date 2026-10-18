@@ -286,14 +286,17 @@ export function BookingFormIsland(props: {
       const input = el.elements.namedItem(name);
       return input instanceof HTMLInputElement || input instanceof RadioNodeList ? input.value : '';
     };
+    const current = await tokens();
+    if (current) {
+      const wait = current.at + TOKEN_MIN_AGE_MS - Date.now();
+      if (wait > 0) await sleep(wait);
+    }
+    // After the last await: a render while waiting resets each hidden input to its defaultValue.
     set(F.sourceUrl, window.location.pathname);
     set(F.utm, utmOf(window.location.search));
-    const current = await tokens();
     if (current) {
       set(F.csrf, current.csrf);
       set(F.ts, current.ts);
-      const wait = current.at + TOKEN_MIN_AGE_MS - Date.now();
-      if (wait > 0) await sleep(wait);
     }
     track('booking_submit', {
       location: instance,
@@ -340,7 +343,7 @@ export function BookingFormIsland(props: {
         setNotice('expired');
         // A new token for the next press, values kept; never an automatic resubmit (5.2).
         pageTokens.current = null;
-        void renewFormSession(value(F.ts));
+        void renewFormSession(current?.ts ?? '');
         return;
       default:
         report(answer.kind);

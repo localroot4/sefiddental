@@ -471,6 +471,32 @@ describe('booking form island (conversion.md 5.1-5.4)', () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it('BF14b a submit before the token answer posts the tokens though the answer re-renders the form', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout'] });
+    let answer = (_: FormSession) => {};
+    const held = new Promise<FormSession>((resolve) => (answer = resolve));
+    vi.mocked(getFormSession).mockImplementation(() => held);
+    const fetchMock = vi.fn().mockResolvedValue(json({ ok: true }));
+    vi.stubGlobal('fetch', fetchMock);
+    render(island());
+    fireEvent.change(phone(), { target: { value: '09123456789' } });
+    await act(async () => {
+      fireEvent.submit(phone().form!);
+      await vi.advanceTimersByTimeAsync(500);
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+    // callsAllowed true re-renders the island while the submit waits out the time trap.
+    await act(async () => {
+      answer({ ...SESSION, receivedAt: Date.now() });
+      await vi.advanceTimersByTimeAsync(TOKEN_MIN_AGE_MS);
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = fetchMock.mock.calls[0]?.[1]?.body as FormData;
+    expect(body.get('csrf')).toBe(SESSION.csrf);
+    expect(body.get('ts')).toBe(SESSION.ts);
+    expect(body.get('source_url')).toBe(window.location.pathname);
+  });
+
   it('BF15 the booking page keeps its own tokens and counts its view once', async () => {
     const tokens = { csrf: 'page-csrf', ts: 'v1.page.sig' };
     expect(renderToStaticMarkup(island('full', 'page', { tokens }))).toMatch(
