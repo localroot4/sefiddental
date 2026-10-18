@@ -277,7 +277,7 @@ export function FinancingList(props: { options: FinancingOption[]; phones: Clini
             <p className="text-body font-semibold text-ink">
               {t('pages.pricing.surcharge')} {ltr(option.surchargeNote ?? '')}
             </p>
-            <dl className={cx('grid gap-3', lone && 'md:grid-cols-2 md:gap-x-8')}>
+            <dl className={cx('grid items-start gap-3', lone && 'md:grid-cols-2 md:gap-x-8')}>
               {rows.map(([term, value]) =>
                 value ? (
                   <div key={term} className="grid gap-[2px]">

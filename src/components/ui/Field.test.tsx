@@ -73,6 +73,15 @@ describe('form fields (DESIGN.md Input and Chips; conversion.md 5.2)', () => {
     expect(screen.getByLabelText('توضیح (اختیاری)').tagName).toBe('TEXTAREA');
   });
 
+  it('UF5b the counter turns danger with the over-limit error, as in the form islands (screens 8)', () => {
+    const { rerender } = render(<TextAreaField id="n" label="توضیح" counter="۵۰۰/۵۰۰" />);
+    expect(document.getElementById('n-counter')!.className).toContain('text-ink-muted');
+    rerender(<TextAreaField id="n" label="توضیح" counter="۵۰۴/۵۰۰" error="طولانی است" />);
+    const over = document.getElementById('n-counter')!.className;
+    expect(over).toContain('text-danger');
+    expect(over).not.toContain('text-ink-muted');
+  });
+
   it('UF6 chips: one radio group in a named fieldset, the default checked, disabled kept', () => {
     render(
       <ChipGroup

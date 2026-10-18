@@ -60,6 +60,8 @@ describe('bookings admin config (freeze G15, admin-notify.md 4 and 8)', () => {
   it('BK12 the record opens with the call, the status and the callback due, on phones too', () => {
     // Payload puts sidebar fields after all main fields under 1024 px, so these are main fields.
     expect(top.slice(0, 3).map((f) => f.name)).toEqual(['contact', 'status', 'callbackDueAt']);
+    // Payload's default "MMM d, yyy h:mm a" cuts the Persian month with a tatweel (confirm pass).
+    expect(top[2]).toMatchObject({ admin: { date: { displayFormat: 'd MMMM yyyy، HH:mm' } } });
     for (const f of top.slice(0, 3)) expect(f.admin?.position, f.name).toBeUndefined();
   });
 

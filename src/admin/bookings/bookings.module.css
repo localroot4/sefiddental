@@ -132,6 +132,7 @@
 /* Contact links in a list row and at the top of the record: compact buttons on one row. */
 .contact {
   display: flex;
+  flex-wrap: wrap;
   gap: calc(var(--base) * 0.4);
 }
 
@@ -156,8 +157,14 @@
 .contactField {
   display: grid;
   gap: calc(var(--base) * 0.5);
-  max-inline-size: 28rem;
   margin-block-end: var(--base);
+}
+
+/* Payload sets a 12 px root under 1024 px: a rem cap there is narrower than the fields below. */
+@media (min-width: 1024px) {
+  .contactField {
+    max-inline-size: 28rem;
+  }
 }
 
 .contactField .label {

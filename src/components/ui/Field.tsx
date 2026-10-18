@@ -107,7 +107,11 @@ export function TextAreaField({
       className={className}
       footer={
         counter ? (
-          <span id={`${id}-counter`} dir="ltr" className="shrink-0 text-caption text-ink-muted">
+          <span
+            id={`${id}-counter`}
+            dir="ltr"
+            className={cx('shrink-0 text-caption', error ? 'text-danger' : 'text-ink-muted')}
+          >
             {counter}
           </span>
         ) : null

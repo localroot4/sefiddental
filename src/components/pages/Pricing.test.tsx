@@ -143,7 +143,8 @@ describe('pricing page (T-pricing, pricing-tiers-measure 1.2)', () => {
   it('PR8 a lone option takes the full row with its terms in two columns; two share a row (screens 37)', () => {
     const lone = renderToStaticMarkup(<FinancingList options={[loan]} phones={CLINIC.phones} />);
     expect(lone).toMatch(/^<ul class="grid gap-4">/);
-    expect(lone).toMatch(/<dl class="grid gap-3 md:grid-cols-2 md:gap-x-8">/);
+    // items-start: a one-line value stays level with its label beside a two-line one (confirm pass).
+    expect(lone).toMatch(/<dl class="grid items-start gap-3 md:grid-cols-2 md:gap-x-8">/);
     const two = renderToStaticMarkup(
       <FinancingList
         options={[loan, { ...loan, id: 8, key: 'dental-credit' }]}

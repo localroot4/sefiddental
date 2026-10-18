@@ -136,7 +136,12 @@ export const Bookings: CollectionConfig = {
       label: 'مهلت تماس',
       index: true,
       admin: {
-        date: { pickerAppearance: 'dayAndTime', timeFormat: 'HH:mm' },
+        // Payload's default "MMM d, yyy h:mm a" cuts the Persian month name with a tatweel.
+        date: {
+          pickerAppearance: 'dayAndTime',
+          timeFormat: 'HH:mm',
+          displayFormat: 'd MMMM yyyy، HH:mm',
+        },
         description: M['admin.bookings.callbackDueHelp'],
         components: { Cell: '/admin/bookings/cells#CallbackDueCell' },
       },
