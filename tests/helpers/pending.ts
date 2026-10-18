@@ -26,6 +26,17 @@ const ROUTES = {
     file: 'src/payload.config.ts',
     contains: '/admin/views/SystemStatus#SystemStatusView',
   },
+  // Phase 6 (docs/reports/phase-06.md plan, lanes TEMPLATES and ADMIN).
+  articlesHub: { file: 'src/app/(site)/r/articles/page.tsx' },
+  article: { file: 'src/app/(site)/r/articles/[slug]/page.tsx' },
+  articleCategory: { file: 'src/app/(site)/r/article-categories/[slug]/page.tsx' },
+  tag: { file: 'src/app/(site)/r/tags/[slug]/page.tsx' },
+  cases: { file: 'src/app/(site)/r/cases/page.tsx' },
+  preview: { file: 'src/app/(site)/api/preview/route.ts' },
+  contentCalendar: {
+    file: 'src/payload.config.ts',
+    contains: '/admin/views/EditorialCalendar#EditorialCalendar',
+  },
 } satisfies Record<string, { file: string; contains?: string }>;
 
 export type PendingRoute = keyof typeof ROUTES;
