@@ -192,7 +192,8 @@ describe('lighthouserc.cjs', () => {
       const { 'resource-summary:script:size': script, ...rest } = page!.assertions;
       const { 'resource-summary:script:size': _content, ...contentRest } = notFound!.assertions;
       expect(rest).toEqual(contentRest);
-      expect(script).toEqual(['error', { maxNumericValue: 150 * 1024 }]);
+      // The booking class adds the deferred dialog island's allowance (limits.json deferredKiB).
+      expect(script).toEqual(['error', { maxNumericValue: (150 + 5) * 1024 }]);
     }
     expect(service!.assertions).toEqual(notFound!.assertions);
     expect(dentist!.assertions).toEqual(notFound!.assertions);

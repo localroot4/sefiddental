@@ -37,7 +37,9 @@
       "pages": ["/رزرو-نوبت", "/اورژانس"],
       "targetKB": 70,
       "interimKiB": 150,
-      "routeAllowanceKiB": 20
+      "routeAllowanceKiB": 20,
+      "deferredKiB": 5,
+      "deferredNote": "Lighthouse only: the booking dialog's form island loads after the load event (emergency page); check:bundle gates the initial JS at interimKiB"
     }
   },
   "cssKiB": 50,

@@ -127,7 +127,14 @@ module.exports = {
           matchingUrlPattern: url,
           assertions: {
             ...contentAssertions,
-            'resource-summary:script:size': ['error', { maxNumericValue: scriptLimit('booking') }],
+            // Lighthouse counts every script of the load, so the dialog's island, which loads
+            // after `load` off the critical path, gets its own allowance (deferredKiB).
+            'resource-summary:script:size': [
+              'error',
+              {
+                maxNumericValue: scriptLimit('booking') + limits.classes.booking.deferredKiB * KiB,
+              },
+            ],
           },
         })),
         {
