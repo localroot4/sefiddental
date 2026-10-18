@@ -96,6 +96,14 @@ describe('tier choice mode (freeze G13, F24)', () => {
     expect(scroller.filter((cls) => cls.startsWith('lg:'))).toEqual([]);
   });
 
+  it('TC6b a narrow card moves the badge under the name instead of breaking it in two', () => {
+    const { container } = render(<TierComparison label="سطح‌ها" tiers={TIERS} choice={choice} />);
+    const badge = screen.getAllByText('انتخاب شما')[0]!;
+    expect(badge.className.split(' ')).toContain('whitespace-nowrap');
+    const row = container.querySelector('h3, h4')?.parentElement as HTMLElement;
+    expect(row.className.split(' ')).toContain('flex-wrap');
+  });
+
   it('TC7 the radio is drawn: 20 px, the input border, a brand ring when checked, in both themes (screens 23)', () => {
     render(<TierComparison label="سطح‌ها" tiers={TIERS} choice={choice} />);
     const radio = screen.getByRole('radio', { name: 'VIP' }).className.split(' ');

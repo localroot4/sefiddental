@@ -77,7 +77,7 @@ export function TierComparison(props: {
                 'group/card relative transition-colors hover:border-line-strong has-[input:checked]:border-warm has-[input:checked]:bg-warm-soft',
             )}
           >
-            <div className="flex items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <Heading className="text-heading font-semibold">
                 {choice ? (
                   // The label's ::after covers the card (its positioned ancestor): a tap anywhere

@@ -19,7 +19,7 @@ export function Badge(props: {
   return (
     <span
       className={cx(
-        'inline-flex min-h-6 items-center rounded-badge px-2 text-caption leading-none font-semibold',
+        'inline-flex min-h-6 items-center rounded-badge px-2 text-caption leading-none font-semibold whitespace-nowrap',
         BADGE[props.tone ?? 'neutral'],
         props.className,
       )}
