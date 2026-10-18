@@ -21,17 +21,19 @@ Contents:
 
 ### 1.1 Status
 
-- Hosting path: not approved. Gap 32 is open.
+- Hosting path: C2, a shared cPanel or DirectAdmin "Node.js" host that the
+  client bought on 2026-10-18 (1.2). Release procedure: section 3. The limits
+  of 1.3 are accepted.
 - Built and green: the app runs on environment-driven configuration (database
   adapter, media storage, base URL), so the same artifact runs on any path in
-  this file. CI runs on GitHub Actions on every push. CI has no deploy job.
-- Held until the client approves a priced path (brief decision 21): the deploy
-  workflow (phase 3 deliverable 9), the staging target and section 3 of this
-  file. No deploy code exists.
-- Open acceptance line: "`docs/deploy.md` lets the client deploy without asking
-  a question" stays open until section 3 is filled.
-- Deadline: hosting is settled before phase 7. The phase 7 hand-off needs a
-  staging URL that the client opens on a phone.
+  this file. CI runs on GitHub Actions on every push.
+- Release artifact: the workflow "Package for cPanel" (run by hand) builds the
+  package of 3.1 and attaches `sefid-cpanel.zip` to the release
+  `cpanel-latest`. There is no automatic deploy: the host has no SSH access
+  known to the studio, so the zip is uploaded by hand (3.3, 3.4).
+- Not verified yet: the host's Node versions, its glibc, the proxy headers its
+  web server passes (2.4) and its memory limit. The first release checks them
+  (3.3 step 7).
 
 ### 1.2 Decision record
 
@@ -41,6 +43,7 @@ Contents:
 | 2026-10-13 | The host answered: it does not support Node.js. | C2 at the current host is rejected. The client offered to buy a Node host. |
 | 2026-10-13 | Hosting evaluation: Liara, ArvanCloud, shared cPanel "Node.js hosts", C1 (sources: Liara docs and CLI repositories on GitHub, Payload and Next.js docs at the pinned tags). | Recommend path A on Liara (1.4). ArvanCloud is second. C1 only if the client's WHM gives root SSH (1.5). Do not buy a shared cPanel "Node.js host" (1.3). |
 | 2026-10-13 | Brief decision 21. | No deploy code until the client approves a priced path. |
+| 2026-10-18 | The client bought a shared cPanel or DirectAdmin "Node.js" host and asked to put the site on it. Node version, database and SSH access unknown. | Path C2 with a package built for the panel's loader (section 3): SQLite in a data folder outside the release, secrets generated on the host, a loopback listener for the internal calls, the zip uploaded by hand. The risks of 1.3 are accepted. |
 
 ### 1.3 Why a shared cPanel "Node.js host" does not qualify
 
@@ -792,56 +795,146 @@ Verified on 2026-10-14 against the local standalone build: the home page and
 the cron tick answered 503, `/api/health` answered 200 with
 `"maintenance":true`.
 
-## 3. Chosen-path steps (blocked by gap 32)
+## 3. Chosen path: a shared cPanel or DirectAdmin "Node.js" host (C2)
 
-Blocked by gap 32 and brief decision 21. No deploy code exists. This section is
-filled after the client approves the priced path (section 4). It will hold
-exactly these items, written for path A on Liara unless the client chooses
-otherwise:
+On 2026-10-18 the client bought a shared host with a Node.js selector
+(decision record, 1.2). This section is the release procedure for that host.
+It accepts the limits of 1.3: no staging, no health-gated release, no
+rollback beyond re-uploading the previous package, SQLite instead of
+PostgreSQL, and one memory limit for the whole account.
 
-1. Liara app and database creation: the team, the private network, the apps
-   `sefid-prod` and `sefid-staging` (Docker platform), PostgreSQL `sefid-db`
-   with a second database and user for staging, the buckets `sefid-media` and
-   `sefid-backups`, the plans and bundles that the client approved, and the
-   environment values of 2.3 in each app.
-2. `liara.json`: `platform` `docker`, `port` 3000, the health check of 2.6
-   with the time unit verified on staging, time zone UTC.
-3. The GitHub Actions deploy job: build the artifact (2.2), the Dockerfile
-   (glibc base image, non-root user, the cron and backup schedule), a pinned
-   `@liara/cli` version, deploy to staging, then production, on push to
-   `main` (brief section 6), with a post-deploy health and `version` check.
-   After the first deploy, and after any change to the environment or the
-   proxy, a person signs in, opens «وضعیت سیستم» and checks that the
-   «پیکربندی» section shows no red row (2.3, 2.4).
-4. Secrets in GitHub environments: `LIARA_API_TOKEN` in the `staging` and
-   `production` environments, with its expiry date written here. App secrets
-   stay in the Liara app environment, never in GitHub.
-5. Staging app: `sefid-staging`, its own secrets and database,
-   `ALLOW_INDEXING=false`, basic auth, the URL the client opens on a phone in
-   phase 7.
-6. DNS records: the three records per domain that the Liara console shows
-   (ALIAS or CNAME for traffic, TXT for ownership, CNAME for the certificate),
-   the staging subdomain first, the apex and `www` only in phase 10, MX
-   records untouched.
-7. Rollback by redeploying the previous commit: the exact workflow command and
-   the console path (section 5).
+### 3.1 How the package runs on the host
+
+`node scripts/package-cpanel.mjs` (after `npm run build`, or the workflow
+"Package for cPanel") writes `release/sefid-cpanel-<sha>.zip`. Its root is the
+panel's "Application root":
+
+| Path | What it is |
+|---|---|
+| `app.cjs`, `boot.cjs` | Startup file (`deploy/cpanel/`). CommonJS: the panel's loader (Phusion Passenger or LiteSpeed lsnode) `require()`s it. |
+| `server/` | Next's standalone server with `public/` and `.next/static/`. No `node_modules` sits in the root: the Node selector reserves that name for its own environment. |
+| `seed/` | A migrated and seeded SQLite database with its media, copied to the data folder on the first start only. |
+| `package.json`, `release.json` | A minimal manifest (no dependencies; never run "NPM Install") and the commit and build time. |
+
+At start `boot.cjs`:
+
+1. Stops with a clear line when Node is older than 22.18.
+2. Uses the data folder `~/sefid-data` (`SEFID_DATA_DIR` overrides it), outside
+   the release, mode 0700. A new release never touches it.
+3. Takes each secret of 2.3 from the panel's environment, else from
+   `~/sefid-data/secrets.json` (0600), which the first start creates with
+   48 random bytes per value. It writes `~/sefid-data/cron-secret` (0600) for
+   the cron job. Values are never printed.
+4. Fills the defaults of this host type unless the panel sets them:
+   `DATABASE_URL=file:~/sefid-data/sefid.db`, `MEDIA_DIR=~/sefid-data/media`,
+   `DB_PUSH=false`, `TRUST_PROXY_HEADERS=true`, `TRUSTED_PROXY_HOPS=1`,
+   `TZ=UTC`, `NEXT_TELEMETRY_DISABLED=1`, `GIT_SHA` and `BUILD_TIME` from
+   `release.json`.
+5. On the first start only, copies `seed/sefid.db` and `seed/media/` into the
+   data folder (an existing database is never overwritten).
+6. Opens a second HTTP server on a free loopback port and sets
+   `INTERNAL_ORIGIN` to it. The panel's loader takes the app's first
+   `listen()` (public traffic arrives on its socket, not on a TCP port), so the
+   proxy's calls to `/api/internal/*` need their own listener. It serves those
+   paths only (404 for anything else) and listens through `net.Server`'s
+   `listen`, which the loaders leave alone.
+7. Imports `server/server.js`. Pending migrations run when Payload first
+   starts (2.7, `prodMigrations` of the SQLite adapter).
+
+A failed start writes one JSON line to stderr and to `startup-error.log` in
+the application root (readable in File Manager).
+
+Unit tests: `deploy/cpanel/boot.test.ts` (CB1 to CB5, including a simulated
+loader that throws on a second `listen()`).
+
+### 3.2 Panel settings
+
+| Setting | Value |
+|---|---|
+| Node.js version | 22.18 or newer. If the list stops below 22, ask the host to enable Node 22; the app does not start on older versions. |
+| Application mode | Production |
+| Application root | `sefid` |
+| Application URL | `sefiddental.ir` (the root, no path) |
+| Application startup file | `app.cjs` |
+| Environment variables | `SITE_URL=https://sefiddental.ir`, `ALLOW_INDEXING=false` until the client approves the content, `ALLOW_FIRST_USER=true` only until the first admin exists. Optional: SMTP values of 2.3. Nothing else is needed. |
+
+### 3.3 First release
+
+1. Create the application with the settings above, then stop it.
+2. File Manager: open `sefid`, upload the zip, "Extract", delete the zip.
+3. SSL/TLS Status: run AutoSSL for `sefiddental.ir` and `www`. Domains:
+   turn on "Force HTTPS Redirect". The form cookies are `__Host-` cookies and
+   work over HTTPS only.
+4. Start the application. Open `https://sefiddental.ir/api/health`: it
+   answers `{"status":"ok", ...}` with the release's `version`.
+5. Open `/admin` and create the first admin. Then remove `ALLOW_FIRST_USER`
+   and restart.
+6. Cron Jobs: every minute (`* * * * *`):
+
+   ```sh
+   curl -fsS -m 55 -H "Authorization: Bearer $(cat $HOME/sefid-data/cron-secret)" https://sefiddental.ir/api/cron/tick > /dev/null
+   ```
+
+7. In the admin, open «وضعیت سیستم». Every row of «پیکربندی» must be green.
+   A red proxy-trust row means the host's web server does not pass the
+   visitor's address in `X-Forwarded-For` (2.4): every visitor then shares
+   one rate-limit key (S2). Report it before going further.
+
+### 3.4 Later releases
+
+1. Download the new zip. Stop the application.
+2. File Manager, in `sefid`: delete the `server` folder (stale chunks of the
+   old release would stay otherwise), upload and extract the zip, delete it.
+3. Start the application and check `/api/health` shows the new `version`.
+
+Migrations run at the first request after the start. Rollback: the same steps
+with the previous zip, but only when that release has the same migrations
+(2.7: a down migration needs a backup and the client's confirmation).
+
+### 3.5 Backups
+
+Everything that cannot be rebuilt is in `~/sefid-data`: `sefid.db`, `media/`
+and `secrets.json`. Include the folder in the host's account backup and
+download a copy every week. Copy `sefid.db` only while the application is
+stopped, or with its `-wal` file beside it. Losing `secrets.json` signs every
+admin out and voids pending form tokens; it does not lose data.
+
+### 3.6 Known limits on this host
+
+- One account memory limit (LVE) for Next.js, the Payload admin and sharp.
+  An out-of-memory kill shows as a restart in the panel.
+- The loader may stop an idle application; the minute cron keeps it warm
+  and runs the job queue.
+- sharp and libsql ship prebuilt Linux x64 glibc binaries. A host on an old
+  glibc (CloudLinux 7, glibc 2.17) cannot load them; the start fails with a
+  loader error in `stderr.log`.
+- Request body caps of 2.5 (nginx) do not exist here: Next's own 10 MB cap
+  applies (S11).
 
 ## 4. کارهای شما
 
-این فهرست کارهای کلینیک برای راه‌اندازی میزبان سایت است. هر سطر یک کار است. کارها را به ترتیب انجام دهید.
+این فهرست، راه‌اندازی سایت روی هاست cPanel است. کارها را به همین ترتیب انجام دهید. هر سطر یک کار است.
 
-1. لیارا (Liara) را به‌عنوان میزبان سایت تأیید کنید.
-2. در console.liara.ir حساب بسازید. شماره و ایمیل خود کلینیک را وارد کنید. اگر لیارا خواست، احراز هویت را کامل کنید.
-3. در حساب، تیمی به نام `sefid-dental` بسازید. حساب لیارای استودیو را با نقش «مدیر» به تیم دعوت کنید.
-4. قیمت زنده را ببینید: پروفایل › «افزایش اعتبار» › «تخمین هزینه‌ها». استودیو جمع ماهانه را با همین قیمت‌ها برایتان می‌فرستد.
-5. جمع ماهانه را کتبی تأیید کنید. برآورد فعلی حدود ۲٫۶ تا ۳٫۴ میلیون تومان در ماه است، به‌اضافهٔ بسته‌ها و فضای ذخیره‌سازی. این برآورد تأیید نشده است.
-6. اعتبار تیم را شارژ کنید. هشدار «کمبود اعتبار» را روشن کنید. لیارا ساعتی از اعتبار کم می‌کند.
-7. در منوی «API» تیم، کلید API بسازید. مدت اعتبار را ۶ ماه بگذارید. «ساخت کلید جدید» را بزنید.
-8. کلید را فقط از راه امنی بفرستید که استودیو تعیین می‌کند، مثلاً پیوند یک‌بارمصرف. کلید را در پیامک، ایمیل یا پیام‌رسان نفرستید. تاریخ پایان اعتبار کلید را هم بفرستید.
-9. بگویید DNS دامنهٔ sefiddental.ir کجا مدیریت می‌شود و رمز ورود آن دست چه کسی است. فعلاً هیچ رکوردی را تغییر ندهید.
-10. بگویید ایمیل‌های `@sefiddental.ir` کجا هستند (مثلاً روی همین هاست cPanel). بگویید بعد از راه‌اندازی سایت، هاست cPanel را نگه می‌دارید یا نه.
+1. فایل `sefid-cpanel.zip` را بگیرید. استودیو آن را می‌فرستد.
+2. وارد cPanel شوید. بخش «Setup Node.js App» را باز کنید. «Create Application» را بزنید.
+3. «Node.js version» را روی ۲۲ یا بالاتر بگذارید. اگر ۲۲ در فهرست نیست، از پشتیبانی هاست Node 22 را بخواهید.
+4. «Application mode» را روی Production بگذارید.
+5. در «Application root» بنویسید `sefid`.
+6. در «Application URL» دامنهٔ `sefiddental.ir` را انتخاب کنید. مسیر را خالی بگذارید.
+7. در «Application startup file» بنویسید `app.cjs`.
+8. سه متغیر محیطی اضافه کنید: `SITE_URL` با مقدار `https://sefiddental.ir`، `ALLOW_INDEXING` با مقدار `false` و `ALLOW_FIRST_USER` با مقدار `true`.
+9. «Create» را بزنید. بعد «Stop App» را بزنید.
+10. «File Manager» را باز کنید. وارد پوشهٔ `sefid` شوید. فایل zip را بارگذاری کنید. روی آن «Extract» را بزنید. بعد فایل zip را پاک کنید.
+11. در «SSL/TLS Status» برای `sefiddental.ir` و `www.sefiddental.ir` گزینهٔ «Run AutoSSL» را بزنید.
+12. در «Domains» گزینهٔ «Force HTTPS Redirect» را روشن کنید.
+13. به «Setup Node.js App» برگردید. «Start App» را بزنید.
+14. نشانی `https://sefiddental.ir/api/health` را باز کنید. باید عبارت `"status":"ok"` را ببینید.
+15. نشانی `https://sefiddental.ir/admin` را باز کنید. حساب مدیر را با ایمیل کلینیک و یک گذرواژهٔ قوی بسازید.
+16. در «Setup Node.js App» متغیر `ALLOW_FIRST_USER` را پاک کنید. «Save» و بعد «Restart» را بزنید.
+17. در «Cron Jobs» یک کار با زمان‌بندی «Once Per Minute» بسازید. دستور بخش 3.3 بند ۶ را در آن بگذارید.
+18. در پنل مدیریت سایت، «وضعیت سیستم» را باز کنید. از بخش «پیکربندی» عکس بگیرید و برای استودیو بفرستید.
 
-استودیو بعد از این کارها اپ‌ها، پایگاه داده و فضای ذخیره‌سازی را می‌سازد. شما خودتان منبعی نسازید.
+اگر سایت بالا نیامد، فایل‌های `stderr.log` و `startup-error.log` را از پوشهٔ `sefid` بفرستید. هیچ فایلی از پوشهٔ `sefid-data` را برای کسی نفرستید: رمزهای سایت در آن است.
 
 ## 5. Rollback
 

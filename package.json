@@ -69,6 +69,7 @@
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",
     "@lhci/cli": "0.15.1",
+    "@libsql/client": "0.14.0",
     "@phosphor-icons/core": "2.1.1",
     "@playwright/test": "1.64.0",
     "@tailwindcss/postcss": "4.3.3",

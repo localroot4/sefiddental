@@ -1,0 +1,63 @@
+# Builds the package for the shared cPanel host (docs/deploy.md section 3) and attaches it to the
+# release `cpanel-latest` as `sefid-cpanel.zip`. Run by hand ("Run workflow") after CI is green on
+# the commit. It deploys nothing: the clinic uploads the zip in the panel's File Manager.
+# No stored secrets: the build and the seeder get random values per run; the package holds none.
+name: Package for cPanel
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: package-cpanel
+  cancel-in-progress: false
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  package:
+    name: Build, seed and publish the cPanel package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SITE_URL: https://sefiddental.ir
+      GIT_SHA: ${{ github.sha }}
+      ALLOW_INDEXING: 'false'
+      DB_PUSH: 'false'
+      # The build opens no database (2.2); the seed uses its own file under release/.
+      DATABASE_URL: file:/tmp/build-only.db
+      MEDIA_DIR: /tmp/sefid-media
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Generate per-run secrets
+        run: |
+          for name in PAYLOAD_SECRET FORM_TOKEN_SECRET CRON_SECRET IP_HASH_SECRET INTERNAL_API_TOKEN; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+          done
+      - run: npm ci
+      - run: npm run build
+      - name: Package (standalone server, start-up file, seeded SQLite database)
+        run: node scripts/package-cpanel.mjs
+      - name: Publish as release cpanel-latest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp release/sefid-cpanel-*.zip release/sefid-cpanel.zip
+          notes="Commit ${GITHUB_SHA::12}, built $(date -u +%Y-%m-%dT%H:%MZ). Upload steps: docs/deploy.md section 3."
+          if ! gh release view cpanel-latest --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release create cpanel-latest --repo "$GITHUB_REPOSITORY" --prerelease \
+              --target "$GITHUB_SHA" --title "cPanel package" --notes "$notes"
+          fi
+          gh release upload cpanel-latest release/sefid-cpanel.zip --repo "$GITHUB_REPOSITORY" --clobber
+          gh release edit cpanel-latest --repo "$GITHUB_REPOSITORY" --notes "$notes"

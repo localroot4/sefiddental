@@ -6,13 +6,15 @@
     "src/seed/index.ts",
     "scripts/reset-admin.ts",
     "tests/setup/e2eUsers.ts",
-    "tests/fixtures/qa-seed.ts"
+    "tests/fixtures/qa-seed.ts",
+    "deploy/cpanel/app.cjs"
   ],
   "project": [
     "src/**/*.{ts,tsx,css}",
     "tests/**/*.ts",
     "scripts/**/*.{mjs,ts}",
-    "*.{ts,mts,cjs,mjs}"
+    "*.{ts,mts,cjs,mjs}",
+    "deploy/**/*.{cjs,ts}"
   ],
   "ignoreBinaries": ["openssl"],
   "ignoreExportsUsedInFile": true

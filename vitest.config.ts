@@ -35,7 +35,12 @@ export default defineConfig({
         test: {
           name: 'unit',
           environment: 'node',
-          include: ['src/**/*.test.ts', 'scripts/**/*.test.ts', 'tests/helpers/**/*.test.ts'],
+          include: [
+            'src/**/*.test.ts',
+            'scripts/**/*.test.ts',
+            'tests/helpers/**/*.test.ts',
+            'deploy/**/*.test.ts',
+          ],
           exclude: [...exclude, 'src/**/*.int.test.ts'],
         },
       },
