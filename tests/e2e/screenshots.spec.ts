@@ -116,6 +116,8 @@ test('T-SS emergency hours states, first screen and avulsion', async ({
   page,
   context,
 }, testInfo) => {
+  // Up to eight page loads and full-page captures on a phone: 29 s alone, over 30 s under load.
+  test.setTimeout(90_000);
   const theme = projectTheme(testInfo);
   const phone = size(testInfo) === 'phone';
   const at = async (state: keyof typeof CLOCK) => {
