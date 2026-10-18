@@ -33,12 +33,13 @@ const SHOW = [
 ];
 
 /**
- * Tier comparison (DESIGN.md 3.19): one article per tier with a definition list. Under 1024 px a
- * native snap scroller bleeding into the gutters (the page never scrolls sideways); from 1024 three
- * equal columns. `selectedKey` (the warm state with its badge) is for a page where the visitor
- * picked one. With `choice` the visitor picks on the page: a native radio in each card heading,
- * none checked in the server HTML (F24), the whole card its hit area; the checked card turns warm
- * and the CTA under the cards carries its tier, through CSS alone, so it works without JavaScript.
+ * Tier comparison (DESIGN.md 3.19): one article per tier with a definition list. Under 744 px a
+ * native snap scroller bleeding into the gutters (the page never scrolls sideways); from 744 three
+ * equal columns, so a tablet never cuts a card without a cue. `selectedKey` (the warm state with
+ * its badge) is for a page where the visitor picked one. With `choice` the visitor picks on the
+ * page: a native radio in each card heading, none checked in the server HTML (F24), the whole card
+ * its hit area; the checked card turns warm and the CTA under the cards carries its tier, through
+ * CSS alone, so it works without JavaScript.
  */
 export function TierComparison(props: {
   tiers: TierColumn[];
@@ -60,7 +61,7 @@ export function TierComparison(props: {
       // The radios make the scroller keyboard-reachable; without them it takes focus itself.
       tabIndex={choice ? undefined : 0}
       className={cx(
-        '-mx-gutter grid snap-x snap-mandatory auto-cols-[min(84%,20rem)] grid-flow-col gap-3 overflow-x-auto scroll-px-gutter px-gutter pt-1 pb-3 lg:mx-0 lg:grid-flow-row lg:grid-cols-3 lg:overflow-visible lg:px-0',
+        '-mx-gutter grid snap-x snap-mandatory auto-cols-[min(84%,20rem)] grid-flow-col gap-3 overflow-x-auto scroll-px-gutter px-gutter pt-1 pb-3 md:mx-0 md:grid-flow-row md:grid-cols-3 md:overflow-visible md:px-0',
         !choice && props.className,
       )}
     >
@@ -86,8 +87,9 @@ export function TierComparison(props: {
                       type="radio"
                       name={choice.name}
                       value={tier.key}
-                      // Above the label's ::after, so the radio itself takes the pointer too.
-                      className="relative z-[1] size-5 shrink-0 cursor-pointer accent-brand"
+                      // Above the label's ::after, so the radio itself takes the pointer too. Drawn,
+                      // not native: a native radio stays grey in dark; checked, a brand ring.
+                      className="relative z-[1] size-[1.25rem] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-line-strong bg-surface-raised checked:border-[6px] checked:border-brand"
                     />
                     {tier.name}
                   </label>

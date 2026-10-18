@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
@@ -63,5 +66,20 @@ describe('compare slider (DESIGN.md 3.21)', () => {
       location: 'section',
       serviceKey: 'restoration',
     });
+  });
+
+  it('CM5 every consent caption under a slider wraps pretty: no lone last word (screens 43)', () => {
+    // A figcaption or span is not a <p>, so the base `p { text-wrap: pretty }` misses it.
+    const dir = path.resolve('src/components');
+    const files = readdirSync(dir, { recursive: true, encoding: 'utf8' }).filter(
+      (file) => file.endsWith('.tsx') && !file.endsWith('.test.tsx'),
+    );
+    const captions = files.flatMap((file) => [
+      ...readFileSync(path.join(dir, file), 'utf8').matchAll(
+        /className="([^"]*)"\s*>\s*\{t\('ui\.compare\.consent'\)\}/g,
+      ),
+    ]);
+    expect(captions.length).toBeGreaterThanOrEqual(3); // service, dentist profile, home
+    for (const [, cls] of captions) expect(cls!.split(' ')).toContain('text-pretty');
   });
 });

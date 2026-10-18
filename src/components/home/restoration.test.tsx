@@ -28,7 +28,7 @@ describe('home scene 4 tier step (F24, CV9)', () => {
     const html = renderToStaticMarkup(
       <RestorationSection tiers={TIERS} path={null} copy={{ heading: 'h', intro: null }} />,
     );
-    expect(html).not.toMatch(/<input[^>]*checked/);
+    expect(html).not.toMatch(/<input[^>]*\schecked=/); // the attribute, not a checked: class
     const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => decodeURI(m[1]!));
     expect(hrefs).toEqual([
       '/رزرو-نوبت?service=restoration',

@@ -49,6 +49,14 @@ describe('hours views (address page, booking block)', () => {
     expect(container.querySelector('.flex.min-h-8.items-center')?.textContent).toBe('وضعیت');
   });
 
+  it('UH6 a full-width column keeps day and hours close: the table is capped (screens 10)', () => {
+    const { container } = render(
+      <HoursTable hours={week([{ days: ['sat'], open: '10:00', close: '20:00' }])} />,
+    );
+    // The aside's 26rem at 1024 px fits under the cap; a 770 px column no longer spreads the row.
+    expect((container.firstChild as HTMLElement).className.split(' ')).toContain('max-w-[28rem]');
+  });
+
   it('UH4 the badge: a skeleton of the same height until the state is known, then its label', () => {
     const labels = hoursBadgeLabels();
     const pending = render(<HoursBadge state={null} labels={labels} icon={<svg />} />);

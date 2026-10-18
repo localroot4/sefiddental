@@ -246,6 +246,7 @@ describe('phase 4 seed copy (freeze F6, F7, F15, F17, F28)', () => {
     expect(text).not.toMatch(/[يكى]/);
     expect(text).not.toMatch(/[—–]/);
     expect(text).not.toMatch(/[0-9]/);
+    expect(text).not.toMatch(/\([^)]*[A-Za-z][^)]*\)/); // an English gloss in brackets (screens 42)
     expect(text).not.toMatch(/\[\[NEEDS_CLIENT/);
     expect(text).not.toMatch(/(^|[\s«])ن?می [آ-ی]/); // missing ZWNJ after می
     expect(text).not.toMatch(/ (ها|های|هایی|تر|ترین)([\s.،؟»]|$)/); // missing ZWNJ before a suffix

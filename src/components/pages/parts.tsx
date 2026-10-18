@@ -96,10 +96,11 @@ export function MapImage(props: { clinic: Clinic; sizes: string }) {
 
 /**
  * Booking block (family J): the full form on the warm stage beside the static map, the address
- * and the hours; on phones they go under the form. `map={false}` is J-form (address page, which
- * shows its map at the top): the same grid without the map. On a dentist profile `dentist` (the
- * slug) rides along in the form. The sticky bar steps aside while it is in view (conversion.md
- * 4), and the page's «رزرو نوبت» links scroll here (the chrome's booking route).
+ * and the hours; on phones they go under the form, and tablets put the map beside the address and
+ * hours, as the service pages do. `map={false}` is J-form (address page, which shows its map at
+ * the top): the same grid without the map. On a dentist profile `dentist` (the slug) rides along
+ * in the form. The sticky bar steps aside while it is in view (conversion.md 4), and the page's
+ * «رزرو نوبت» links scroll here (the chrome's booking route).
  */
 export function PageBooking(props: { clinic: Clinic; map?: boolean; dentist?: string }) {
   const withMap = props.map !== false;
@@ -109,19 +110,28 @@ export function PageBooking(props: { clinic: Clinic; map?: boolean; dentist?: st
       <Section labelledBy="bk-block-title" tone="warm">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-12">
           <BookingForm variant="full" instance="block" dentist={props.dentist} />
-          <div className="grid content-start gap-8">
+          <div
+            className={cx('grid content-start gap-8', withMap && 'md:grid-cols-2 lg:grid-cols-1')}
+          >
             {withMap ? (
               <MapBlock
-                image={<MapImage clinic={props.clinic} sizes="(min-width: 1024px) 26rem, 100vw" />}
+                image={
+                  <MapImage
+                    clinic={props.clinic}
+                    sizes="(min-width: 1024px) 26rem, (min-width: 744px) 50vw, 100vw"
+                  />
+                }
                 maps={props.clinic.maps}
                 location="block"
               />
             ) : null}
-            <p className="flex gap-2 text-small">
-              <Icon name="map-pin" size="sm" className="mt-[.2em] text-brand" />
-              <span>{props.clinic.address.fullFa}</span>
-            </p>
-            <HoursTable hours={hours} note={hoursTableNote(hours)} />
+            <div className="grid content-start gap-8">
+              <p className="flex gap-2 text-small">
+                <Icon name="map-pin" size="sm" className="mt-[.2em] text-brand" />
+                <span>{props.clinic.address.fullFa}</span>
+              </p>
+              <HoursTable hours={hours} note={hoursTableNote(hours)} />
+            </div>
           </div>
         </div>
       </Section>

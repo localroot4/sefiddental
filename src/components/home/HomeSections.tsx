@@ -262,7 +262,9 @@ export function CasesSection(props: { cases: HomeCase[]; copy: Copy }) {
               percent: t('ui.compare.percent'),
             }}
           />
-          <figcaption className="text-small text-ink-muted">{t('ui.compare.consent')}</figcaption>
+          <figcaption className="text-small text-pretty text-ink-muted">
+            {t('ui.compare.consent')}
+          </figcaption>
         </figure>
         <div className="grid content-start justify-items-start gap-3">
           <h3 className="text-heading font-semibold">{featured.title}</h3>

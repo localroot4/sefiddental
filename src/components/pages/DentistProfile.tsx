@@ -208,7 +208,7 @@ export async function DentistProfile({ doctor }: { doctor: Doctor }) {
                             <span className="text-body leading-[1.5] font-semibold">
                               {pair.title}
                             </span>
-                            <span className="text-caption text-ink-muted">
+                            <span className="text-caption text-pretty text-ink-muted">
                               {t('ui.compare.consent')}
                             </span>
                           </figcaption>

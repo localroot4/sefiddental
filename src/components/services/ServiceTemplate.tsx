@@ -206,7 +206,7 @@ export async function ServiceTemplate({ service }: { service: Service }) {
                     percent: t('ui.compare.percent'),
                   }}
                 />
-                <figcaption className="text-small text-ink-muted">
+                <figcaption className="text-small text-pretty text-ink-muted">
                   {t('ui.compare.consent')}
                 </figcaption>
               </figure>

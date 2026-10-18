@@ -11,7 +11,7 @@ import { pagesYaml } from '@/seed/schemas';
 import { pageData } from '@/seed/transforms';
 import type { FinancingOption, Page } from '@/payload-types';
 
-import { Pricing } from './Pricing';
+import { FinancingList, Pricing } from './Pricing';
 
 vi.mock('@/components/booking/BookingForm', () => ({
   BookingForm: () => <form data-booking-form="block" />,
@@ -140,6 +140,20 @@ describe('pricing page (T-pricing, pricing-tiers-measure 1.2)', () => {
     expect(card).toMatch(/<h3[^>]*>وام درمان<\/h3><p[^>]*>هزینهٔ نهایی:/);
   });
 
+  it('PR8 a lone option takes the full row with its terms in two columns; two share a row (screens 37)', () => {
+    const lone = renderToStaticMarkup(<FinancingList options={[loan]} phones={CLINIC.phones} />);
+    expect(lone).toMatch(/^<ul class="grid gap-4">/);
+    expect(lone).toMatch(/<dl class="grid gap-3 md:grid-cols-2 md:gap-x-8">/);
+    const two = renderToStaticMarkup(
+      <FinancingList
+        options={[loan, { ...loan, id: 8, key: 'dental-credit' }]}
+        phones={CLINIC.phones}
+      />,
+    );
+    expect(two).toMatch(/^<ul class="grid gap-4 lg:grid-cols-2">/);
+    expect(two).not.toContain('md:grid-cols-2');
+  });
+
   it('PR7 WhatsApp verified: the card asks about its own option in the prefill (F12)', async () => {
     financing = [loan];
     vi.mocked(getClinic).mockResolvedValue({
@@ -157,7 +171,7 @@ describe('pricing page (T-pricing, pricing-tiers-measure 1.2)', () => {
   it('PR5 the tiers summary: radios, none checked, the CTA carries the service; JSON-LD crumbs and FAQ', async () => {
     const markup = await html();
     expect(markup.match(/name="restoration-tier"/g)).toHaveLength(3);
-    expect(markup).not.toMatch(/<input[^>]*checked/);
+    expect(markup).not.toMatch(/<input[^>]*\schecked=/); // the attribute, not a checked: class
     expect(markup).toContain('href="/خدمات/ترمیم-دندان#سطح-ترمیم"');
     expect(markup).toContain('href="/رزرو-نوبت?service=restoration&amp;tier=vip"');
     const ld = markup.match(/<script type="application\/ld\+json">(.*?)<\/script>/)?.[1] ?? '';

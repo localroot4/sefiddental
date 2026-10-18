@@ -5,7 +5,7 @@ const LATIN = /[A-Za-z][A-Za-z0-9]*(?:[ .&+-]+[A-Za-z0-9]+)*/g;
 
 /**
  * Persian copy with its Latin words as LTR islands (DESIGN.md 8, copy-facts CR-35): «VIP» and
- * «CIP» in headings, tier names, FAQs and intros, «characterization» in the CIP line.
+ * «CIP» in headings, tier names, FAQs and intros.
  */
 export function ltr(text: string): ReactNode {
   const parts: ReactNode[] = [];

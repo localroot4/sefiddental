@@ -63,7 +63,8 @@ export function HoursTable(props: {
   className?: string;
 }) {
   return (
-    <div className={cx('grid content-start gap-3', props.className)}>
+    // Capped: in a full-width column (tablets) day and hours would sit 700 px apart.
+    <div className={cx('grid max-w-[28rem] content-start gap-3', props.className)}>
       {/* A flex box keeps a 32 px badge at 32 px: in a line box the strut's descent grew the row. */}
       {props.status ? <div className="flex min-h-8 items-center">{props.status}</div> : null}
       <table className="w-full border-collapse text-small">

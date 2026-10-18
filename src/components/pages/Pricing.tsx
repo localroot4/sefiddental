@@ -254,8 +254,10 @@ export async function Pricing({ page }: { page: Page }) {
  * partner, who applies, the terms and the fixed legal line (copy-guidelines "Legal lines").
  */
 export function FinancingList(props: { options: FinancingOption[]; phones: Clinic['phones'] }) {
+  // A lone card takes the row and fills it with its terms in two columns, never half a row.
+  const lone = props.options.length === 1;
   return (
-    <ul className={cx('grid gap-4', props.options.length > 1 ? 'lg:grid-cols-2' : 'max-w-[40rem]')}>
+    <ul className={cx('grid gap-4', !lone && 'lg:grid-cols-2')}>
       {props.options.map((option) => {
         const amount = tomanInWords(option.maxAmountToman);
         const whatsapp = financingWhatsapp(props.phones, option.title);
@@ -275,7 +277,7 @@ export function FinancingList(props: { options: FinancingOption[]; phones: Clini
             <p className="text-body font-semibold text-ink">
               {t('pages.pricing.surcharge')} {ltr(option.surchargeNote ?? '')}
             </p>
-            <dl className="grid gap-3">
+            <dl className={cx('grid gap-3', lone && 'md:grid-cols-2 md:gap-x-8')}>
               {rows.map(([term, value]) =>
                 value ? (
                   <div key={term} className="grid gap-[2px]">

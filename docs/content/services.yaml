@@ -349,7 +349,7 @@ services:
         price_from: null
       - key: cip
         name: CIP
-        description: همهٔ ویژگی‌های VIP، به‌علاوهٔ رنگ‌آمیزی و کاراکتردهی (characterization) تا رنگ ترمیم به دندان‌های کناری نزدیک‌تر شود.
+        description: همهٔ ویژگی‌های VIP، به‌علاوهٔ رنگ‌آمیزی و کاراکتردهی تا رنگ ترمیم به دندان‌های کناری نزدیک‌تر شود.
         price_from: null
   - key: scaling
     category: restorative
