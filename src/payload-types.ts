@@ -149,6 +149,14 @@ export interface UserAuthOperations {
 export interface Booking {
   id: number;
   /**
+   * وضعیت پیگیری. هر تغییر وضعیت با نام شما و زمان در یادداشت‌ها ثبت می‌شود. برای «انجام شد» و «لغو شد» اول یک یادداشت تازه بنویسید؛ این دو پایانی‌اند و برای تغییرشان به مدیر بگویید.
+   */
+  status: 'new' | 'contacted' | 'scheduled' | 'done' | 'cancelled' | 'spam' | 'suspicious';
+  /**
+   * تا این زمان باید با بیمار تماس گرفته شود. اگر پاسخ نداد، یادداشت بگذارید و این زمان را جلو ببرید.
+   */
+  callbackDueAt?: string | null;
+  /**
    * عنوان فهرست؛ شماره کامل فقط داخل پرونده دیده می‌شود.
    */
   listTitle?: string | null;
@@ -205,10 +213,6 @@ export interface Booking {
    */
   emergencyOutcome?: ('truly_urgent' | 'not_urgent') | null;
   /**
-   * وضعیت پیگیری. هر تغییر وضعیت با نام شما و زمان در یادداشت‌ها ثبت می‌شود. برای «انجام شد» و «لغو شد» اول یک یادداشت تازه بنویسید؛ این دو پایانی‌اند و برای تغییرشان به مدیر بگویید.
-   */
-  status: 'new' | 'contacted' | 'scheduled' | 'done' | 'cancelled' | 'spam' | 'suspicious';
-  /**
    * علامت‌های سیستم. «اولویت فوری برداشته شد» یعنی درخواست‌های فوری بعدی این شماره عادی حساب می‌شوند.
    */
   flags?:
@@ -231,10 +235,6 @@ export interface Booking {
    * پاسخ بیمار به «از کجا با ما آشنا شدید؟».
    */
   heardFrom?: ('google' | 'maps' | 'instagram' | 'referral' | 'returning' | 'signage' | 'directory' | 'other') | null;
-  /**
-   * تا این زمان باید با بیمار تماس گرفته شود. اگر پاسخ نداد، یادداشت بگذارید و این زمان را جلو ببرید.
-   */
-  callbackDueAt?: string | null;
   urgencyRank?: number | null;
   /**
    * نخستین کسی که وضعیت را از «جدید» تغییر داد.
@@ -2072,6 +2072,8 @@ export interface PayloadMigration {
  * via the `definition` "bookings_select".
  */
 export interface BookingsSelect<T extends boolean = true> {
+  status?: T;
+  callbackDueAt?: T;
   listTitle?: T;
   phone?: T;
   phoneNational?: T;
@@ -2086,11 +2088,9 @@ export interface BookingsSelect<T extends boolean = true> {
   note?: T;
   triage?: T;
   emergencyOutcome?: T;
-  status?: T;
   flags?: T;
   formLocation?: T;
   heardFrom?: T;
-  callbackDueAt?: T;
   urgencyRank?: T;
   handledBy?: T;
   handledAt?: T;

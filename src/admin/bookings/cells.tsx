@@ -6,10 +6,10 @@ import { adminText } from '@/i18n/fa-admin';
 import styles from './bookings.module.css';
 import { dayTime, isOverdue } from './format';
 
-/** `kind`: emergencies carry the red pill at the top of the list (R-10). */
+/** `kind`: emergencies carry the warning pill at the top of the list (R-10); red is for errors. */
 export function KindCell({ cellData }: DefaultServerCellComponentProps) {
   return cellData === 'emergency' ? (
-    <Pill pillStyle="error" size="small">
+    <Pill pillStyle="warning" size="small">
       {adminText('admin.kind.emergency')}
     </Pill>
   ) : (
@@ -25,7 +25,7 @@ export function CallbackDueCell({ cellData, rowData }: DefaultServerCellComponen
     <span className={styles.time}>
       {text}
       {isOverdue(rowData?.status, cellData) ? (
-        <Pill pillStyle="error" size="small">
+        <Pill pillStyle="warning" size="small">
           {adminText('admin.cell.overdue')}
         </Pill>
       ) : null}

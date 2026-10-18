@@ -71,8 +71,8 @@ export const Bookings: CollectionConfig = {
       'contact',
       'kind',
       'status',
-      'bookingGroup',
       'callbackDueAt',
+      'bookingGroup',
       'receivedAt',
       'flags',
       'rowActions',
@@ -107,6 +107,40 @@ export const Bookings: CollectionConfig = {
     }),
   },
   fields: statusOnlyBulkEdit([
+    // The call, the status and the callback due first: Payload stacks sidebar fields after every
+    // main field under 1024 px, three screens down on a phone.
+    {
+      name: 'contact',
+      type: 'ui',
+      label: M['admin.contact.label'],
+      admin: {
+        components: {
+          Cell: '/admin/bookings/contact#ContactCell',
+          Field: '/admin/bookings/contact#ContactField',
+        },
+      },
+    },
+    {
+      name: 'status',
+      type: 'select',
+      label: 'وضعیت',
+      required: true,
+      index: true,
+      defaultValue: 'new',
+      options: Object.entries(BOOKING_STATUS_LABELS).map(([value, label]) => ({ value, label })),
+      admin: { description: M['admin.bookings.statusHelp'] },
+    },
+    {
+      name: 'callbackDueAt',
+      type: 'date',
+      label: 'مهلت تماس',
+      index: true,
+      admin: {
+        date: { pickerAppearance: 'dayAndTime', timeFormat: 'HH:mm' },
+        description: M['admin.bookings.callbackDueHelp'],
+        components: { Cell: '/admin/bookings/cells#CallbackDueCell' },
+      },
+    },
     {
       name: 'listTitle',
       type: 'text',
@@ -115,18 +149,6 @@ export const Bookings: CollectionConfig = {
         ...readOnlyField,
         ...noFilter,
         description: 'عنوان فهرست؛ شماره کامل فقط داخل پرونده دیده می‌شود.',
-      },
-    },
-    {
-      name: 'contact',
-      type: 'ui',
-      label: M['admin.contact.label'],
-      admin: {
-        position: 'sidebar',
-        components: {
-          Cell: '/admin/bookings/contact#ContactCell',
-          Field: '/admin/bookings/contact#ContactField',
-        },
       },
     },
     {
@@ -277,16 +299,6 @@ export const Bookings: CollectionConfig = {
       },
     },
     {
-      name: 'status',
-      type: 'select',
-      label: 'وضعیت',
-      required: true,
-      index: true,
-      defaultValue: 'new',
-      options: Object.entries(BOOKING_STATUS_LABELS).map(([value, label]) => ({ value, label })),
-      admin: { position: 'sidebar', description: M['admin.bookings.statusHelp'] },
-    },
-    {
       name: 'flags',
       type: 'select',
       hasMany: true,
@@ -332,18 +344,6 @@ export const Bookings: CollectionConfig = {
         { label: 'سایر', value: 'other' },
       ],
       admin: { position: 'sidebar', description: 'پاسخ بیمار به «از کجا با ما آشنا شدید؟».' },
-    },
-    {
-      name: 'callbackDueAt',
-      type: 'date',
-      label: 'مهلت تماس',
-      index: true,
-      admin: {
-        position: 'sidebar',
-        date: { pickerAppearance: 'dayAndTime', timeFormat: 'HH:mm' },
-        description: M['admin.bookings.callbackDueHelp'],
-        components: { Cell: '/admin/bookings/cells#CallbackDueCell' },
-      },
     },
     {
       name: 'urgencyRank',
@@ -396,7 +396,13 @@ export const Bookings: CollectionConfig = {
       type: 'array',
       label: 'درخواست‌های تکراری',
       access: { create: never, update: never },
-      admin: { ...readOnlyField, ...noFilter, description: M['admin.duplicates.help'] },
+      admin: {
+        ...readOnlyField,
+        ...noFilter,
+        description: M['admin.duplicates.help'],
+        // Inside the array block: a ui field gets no field spacing and reads as the next field's.
+        components: { afterInput: ['/admin/bookings/duplicates#DuplicatesEmpty'] },
+      },
       fields: [
         { name: 'at', type: 'date', label: M['admin.duplicates.at'] },
         { name: 'name', type: 'text', label: M['admin.duplicates.name'] },

@@ -28,6 +28,7 @@ export const ADMIN_MESSAGES = {
   'admin.duplicates.sourceUrl': 'صفحهٔ ارسال',
   'admin.duplicates.triage': 'نشانه‌ها',
   'admin.duplicates.ipHash': 'اثر IP',
+  'admin.duplicates.empty': 'درخواست تکراری‌ای از این شماره ثبت نشده است.',
   'admin.contact.label': 'تماس با بیمار',
   'admin.contact.call': 'تماس با بیمار',
   'admin.contact.whatsapp': 'پیام واتساپ',

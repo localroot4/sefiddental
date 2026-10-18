@@ -16,3 +16,9 @@
     padding-right: var(--gutter-h);
   }
 }
+
+// Payload draws the pagination chevrons for LTR; under RTL «بعدی» pointed back toward page 1.
+// `scale` composes with Payload's rotate transform instead of replacing it.
+html[dir='rtl'] .clickable-arrow .icon {
+  scale: -1 1;
+}

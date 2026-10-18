@@ -54,7 +54,7 @@ export function ContactCell({ rowData }: DefaultServerCellComponentProps) {
   return phone ? <ContactLinks phone={phone} whatsapp={verified(rowData)} /> : null;
 }
 
-/** Sidebar block of a saved request: the number in an LTR island, then the two links. */
+/** First main field of a saved request: the number in an LTR island, then the two links. */
 export function ContactField({ data }: UIFieldServerProps) {
   const phone = phoneOf(data);
   if (!phone || !parseIranPhone(phone, { accept: 'mobile' }).ok) return null;

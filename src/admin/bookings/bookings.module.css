@@ -1,8 +1,8 @@
 /*
  * Booking workflow UI in the admin (operate mode): Payload's theme tokens only, so light and dark
  * follow the admin; spacing in multiples of --base; logical properties for RTL; every control at
- * least 44px tall; the error tokens mark only real urgency (emergency, overdue). Focus rings use
- * Payload's outline token.
+ * least 44px tall; the warning tokens mark urgency (emergency, overdue), as on the public
+ * emergency path; red stays for errors. Focus rings use Payload's outline token.
  */
 
 /* Payload's `a:focus { outline: none }` outranks its own :focus-visible ring on links. */
@@ -26,17 +26,15 @@
 
 .tabs {
   min-width: 0;
-  /* Phones scroll the row sideways inside itself; the page never scrolls sideways. */
-  overflow-x: auto;
-  scrollbar-width: thin;
 }
 
+/* Phones wrap the tabs onto a second row: a sideways-scrolling row hid the last tabs. */
 .tabList {
   display: flex;
-  gap: calc(var(--base) * 0.25);
+  flex-wrap: wrap;
+  gap: 0 calc(var(--base) * 0.25);
   margin: 0;
-  /* Room for the focus ring, which the scrolling row would clip. */
-  padding: calc(var(--base) * 0.2);
+  padding: 0;
   list-style: none;
 }
 
@@ -76,8 +74,8 @@
 }
 
 .badgeAlert {
-  background: var(--theme-error-150);
-  color: var(--theme-error-800);
+  background: var(--theme-warning-150);
+  color: var(--theme-warning-800);
 }
 
 /* The list follows a saved sort that is not the urgency order: say so, link back to «همه». */
@@ -131,25 +129,34 @@
   font-size: 0.9em;
 }
 
-/* Contact links in a list row and in the record's sidebar. */
+/* Contact links in a list row and at the top of the record: compact buttons on one row. */
 .contact {
   display: flex;
-  flex-wrap: wrap;
-  gap: calc(var(--base) * 0.25) calc(var(--base) * 0.75);
+  gap: calc(var(--base) * 0.4);
 }
 
 .contactLink {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   min-height: 44px;
+  padding-inline: calc(var(--base) * 0.5);
+  border: 1px solid var(--theme-elevation-250);
+  border-radius: var(--style-radius-s);
   color: var(--theme-text);
+  text-decoration: none;
   white-space: nowrap;
-  text-underline-offset: 0.2em;
+}
+
+.contactLink:hover {
+  border-color: var(--theme-elevation-500);
+  background: var(--theme-elevation-50);
 }
 
 .contactField {
   display: grid;
   gap: calc(var(--base) * 0.5);
+  max-inline-size: 28rem;
   margin-block-end: var(--base);
 }
 
@@ -157,7 +164,9 @@
   color: var(--theme-elevation-650);
 }
 
+/* A grid item is a block: without justify-self an LTR box sits at the left edge. */
 .phone {
+  justify-self: start;
   direction: ltr;
   unicode-bidi: isolate;
   font-size: 1.15rem;
@@ -171,16 +180,7 @@
 }
 
 .contactField .contactLink {
-  justify-content: center;
   padding-inline: calc(var(--base) * 0.75);
-  border: 1px solid var(--theme-elevation-250);
-  border-radius: var(--style-radius-s);
-  text-decoration: none;
-}
-
-.contactField .contactLink:hover {
-  border-color: var(--theme-elevation-500);
-  background: var(--theme-elevation-50);
 }
 
 .time {
@@ -197,8 +197,15 @@
   unicode-bidi: isolate;
 }
 
-/* Dashboard widget: one panel, four figures that each open their view. */
+.empty {
+  margin: 0;
+  color: var(--theme-elevation-650);
+}
+
+/* Dashboard widget: one panel, four figures that each open their view. Payload pads each
+   dashboard widget below by 6px; the same inset lines the panel up with their cards. */
 .today {
+  margin-inline: 6px;
   margin-block-end: calc(var(--base) * 1.5);
   padding: var(--base);
   border: 1px solid var(--theme-elevation-150);
@@ -260,7 +267,7 @@
 }
 
 .alert {
-  color: var(--theme-error-650);
+  color: var(--theme-warning-650);
 }
 
 .figureNote {

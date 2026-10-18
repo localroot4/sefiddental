@@ -50,7 +50,9 @@ vi.mock('@payloadcms/ui', () => ({
       {children}
     </button>
   ),
-  Pill: ({ children }: { children: ReactNode }) => <span data-pill="">{children}</span>,
+  Pill: ({ children, pillStyle }: { children: ReactNode; pillStyle?: string }) => (
+    <span data-pill={pillStyle ?? ''}>{children}</span>
+  ),
   // Rendered open: the test presses its confirm button as a person would.
   ConfirmationModal: ({ body, onConfirm }: { body: ReactNode; onConfirm: () => unknown }) => (
     <div role="dialog">
@@ -179,10 +181,11 @@ describe('row restore and list cells (admin-notify.md 4.1, 4.5)', () => {
     expect(document.activeElement?.textContent).toBe('مشکوک');
   });
 
-  it('CL2 the red «فوری» pill and the «گذشته» pill only while a request waits past its time', () => {
+  it('CL2 the warning «فوری» pill and the «گذشته» pill only while a request waits past its time', () => {
     const cell = (props: object) => props as unknown as DefaultServerCellComponentProps;
+    // Urgency is the warning colour, as on the public emergency path; red stays for errors.
     expect(renderToStaticMarkup(<KindCell {...cell({ cellData: 'emergency' })} />)).toContain(
-      '<span data-pill="">فوری</span>',
+      '<span data-pill="warning">فوری</span>',
     );
     expect(renderToStaticMarkup(<KindCell {...cell({ cellData: 'regular' })} />)).toBe(
       '<span>عادی</span>',
@@ -190,7 +193,7 @@ describe('row restore and list cells (admin-notify.md 4.1, 4.5)', () => {
     const past = '2020-01-01T08:00:00.000Z';
     const due = (status: string) =>
       renderToStaticMarkup(<CallbackDueCell {...cell({ cellData: past, rowData: { status } })} />);
-    expect(due('new')).toContain('گذشته');
+    expect(due('new')).toContain('<span data-pill="warning">گذشته</span>');
     expect(due('contacted')).not.toContain('گذشته');
     expect(
       renderToStaticMarkup(

@@ -1,10 +1,16 @@
-import type { DefaultServerCellComponentProps, Payload, UIFieldServerProps } from 'payload';
+import type {
+  ArrayFieldServerProps,
+  DefaultServerCellComponentProps,
+  Payload,
+  UIFieldServerProps,
+} from 'payload';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BookingsToday, BookingsTodayBody } from '@/admin/components/BookingsToday';
 
 import { ContactCell, ContactField } from './contact';
+import { DuplicatesEmpty } from './duplicates';
 import { bulkSpamMessage, dayTime, errorMessage, isOverdue } from './format';
 
 const cell = (rowData: object) => ({ rowData }) as unknown as DefaultServerCellComponentProps;
@@ -49,6 +55,16 @@ describe('booking list cells and blocks (admin-notify.md 4.1, 4.2)', () => {
     expect(html).toContain('پیام واتساپ');
     const empty = { data: {} } as unknown as UIFieldServerProps;
     expect(renderToStaticMarkup(<ContactField {...empty} />)).toBe('');
+  });
+
+  it('DE1 an empty duplicates list says it is empty in one line; rows need no line', () => {
+    const block = (data: object) =>
+      renderToStaticMarkup(<DuplicatesEmpty {...({ data } as unknown as ArrayFieldServerProps)} />);
+    expect(text(block({ duplicateSubmissions: [] })).trim()).toBe(
+      'درخواست تکراری‌ای از این شماره ثبت نشده است.',
+    );
+    expect(block({})).toContain('<p');
+    expect(block({ duplicateSubmissions: [{ at: '2026-10-15T06:42:00.000Z' }] })).toBe('');
   });
 
   it('CL1 Jalali Tehran times; «گذشته» only while the request is new and past due', () => {

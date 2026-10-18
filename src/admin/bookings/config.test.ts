@@ -25,8 +25,8 @@ describe('bookings admin config (freeze G15, admin-notify.md 4 and 8)', () => {
       'contact',
       'kind',
       'status',
-      'bookingGroup',
       'callbackDueAt',
+      'bookingGroup',
       'receivedAt',
       'flags',
       'rowActions',
@@ -55,7 +55,20 @@ describe('bookings admin config (freeze G15, admin-notify.md 4 and 8)', () => {
       expect(field(name)?.admin?.disableListFilter, name).toBeUndefined();
     }
     expect(field('heardFrom')?.admin?.position).toBe('sidebar');
-    expect(field('contact')?.admin?.position).toBe('sidebar');
+  });
+
+  it('BK12 the record opens with the call, the status and the callback due, on phones too', () => {
+    // Payload puts sidebar fields after all main fields under 1024 px, so these are main fields.
+    expect(top.slice(0, 3).map((f) => f.name)).toEqual(['contact', 'status', 'callbackDueAt']);
+    for (const f of top.slice(0, 3)) expect(f.admin?.position, f.name).toBeUndefined();
+  });
+
+  it('BK13 an empty duplicates list says so inside its own block, not as a loose field', () => {
+    // A ui Field gets no field wrapper, so its line lands in the gap before the next field.
+    expect(field('duplicateSubmissions')?.admin?.components).toEqual({
+      afterInput: ['/admin/bookings/duplicates#DuplicatesEmpty'],
+    });
+    expect(field('duplicatesEmpty')).toBeUndefined();
   });
 
   it('BK10 Persian labels: form locations, every duplicate subfield, the help texts', () => {
