@@ -46,7 +46,7 @@ export default async function GlobalNotFound() {
         <>
           <JsonLd data={jsonLdGraph(dentistNode(clinic), websiteNode({ name: seo.siteName }))} />
           <TrackListener />
-          <Analytics />
+          <Analytics nonce={nonce} />
         </>
       }
     >

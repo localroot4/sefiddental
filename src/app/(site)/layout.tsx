@@ -41,7 +41,7 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
         <>
           <JsonLd data={jsonLdGraph(dentistNode(clinic), websiteNode({ name: seo.siteName }))} />
           <TrackListener />
-          <Analytics />
+          <Analytics nonce={nonce} />
         </>
       }
     >

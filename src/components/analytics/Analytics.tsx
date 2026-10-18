@@ -2,8 +2,6 @@ import { getFeatures } from '@/lib/data/globals';
 import { log } from '@/lib/log/logger';
 import type { Feature } from '@/payload-types';
 
-import { Ga4Loader } from './Ga4Loader';
-
 // The features global validates the same pattern; checked again before it reaches a script URL.
 const GA4_ID = /^G-[A-Z0-9]{4,}$/;
 
@@ -16,12 +14,13 @@ export function ga4Id(features: Pick<Feature, 'ga4Enabled' | 'ga4MeasurementId'>
 /**
  * The optional GA4 loader (conversion.md 9, freeze G16), mounted once by the site layout:
  * nothing at all unless an admin turned GA4 on (CI keeps it off, so pages make zero third-party
- * requests). A failed settings read renders nothing: measurement never breaks a page.
+ * requests), then the first-party bootstrap /ga4.js with the page's nonce (ga4Boot.ts). A failed
+ * settings read renders nothing: measurement never breaks a page.
  */
-export async function Analytics() {
+export async function Analytics({ nonce }: { nonce?: string }) {
   const id = await getFeatures().then(ga4Id, (err: unknown) => {
     log.warn({ msg: 'ga4_settings_unavailable', err });
     return null;
   });
-  return id ? <Ga4Loader id={id} /> : null;
+  return id ? <script src="/ga4.js" data-ga4-id={id} nonce={nonce} async /> : null;
 }

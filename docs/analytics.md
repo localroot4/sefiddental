@@ -131,12 +131,15 @@ Turning it on (admin, «تنظیمات» then «قابلیت‌ها»):
 
 What the site then does:
 
-- The layout renders `Analytics`, which renders the `Ga4Loader` island only
-  while both settings are valid. After the `load` event the island defines
-  `window.dataLayer` and `window.gtag`, queues `js` and `config`, and adds
-  one async script `https://www.googletagmanager.com/gtag/js?id=<id>`. No
-  inline script: the CSP nonce plus `'strict-dynamic'` trusts a script the
-  site's own bundle inserts.
+- The layout renders `Analytics`, which renders one tag only while both
+  settings are valid: `<script src="/ga4.js" data-ga4-id="<id>" nonce async>`,
+  the first-party bootstrap of `src/components/analytics/ga4Boot.ts`. With
+  GA4 off no page ships any GA code. After the `load` event the bootstrap
+  checks the id again, defines `window.dataLayer` and `window.gtag`, queues
+  `js` and `config`, and adds one async script
+  `https://www.googletagmanager.com/gtag/js?id=<id>`. No inline script: the
+  CSP nonce plus `'strict-dynamic'` trusts a script that the nonce'd
+  bootstrap inserts.
 - The proxy adds the GA4 hosts to the public CSP (`script-src
   https://www.googletagmanager.com`, `img-src` and `connect-src` for
   `*.google-analytics.com`, `*.analytics.google.com`,
