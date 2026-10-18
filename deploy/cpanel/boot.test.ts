@@ -131,3 +131,23 @@ describe('boot() end to end', () => {
     expect(res.status).toBe(204);
   });
 });
+
+describe('the protocol the panel hides', () => {
+  it('CB7 a request without X-Forwarded-Proto reaches Next as https; a sent value is kept', async () => {
+    const createServer = http.createServer;
+    closers.push(() => (http.createServer = createServer));
+    const run = require('./boot.cjs') as { captureNextServer: () => () => http.Server | null };
+    run.captureNextServer();
+    const seen: Array<string | undefined> = [];
+    const next = http.createServer((req, res) => {
+      seen.push(req.headers['x-forwarded-proto'] as string | undefined);
+      res.end();
+    });
+    await new Promise<void>((resolve) => next.listen(0, '127.0.0.1', resolve));
+    closers.push(() => next.close());
+    const origin = `http://127.0.0.1:${(next.address() as { port: number }).port}`;
+    await fetch(origin);
+    await fetch(origin, { headers: { 'x-forwarded-proto': 'http' } });
+    expect(seen).toEqual(['https', 'http']);
+  });
+});

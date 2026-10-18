@@ -838,14 +838,19 @@ At start `boot.cjs`:
    proxy's calls to `/api/internal/*` need their own listener. It serves those
    paths only (404 for anything else) and listens through `net.Server`'s
    `listen`, which the loaders leave alone.
-7. Imports `server/server.js`. Pending migrations run when Payload first
+7. Gives Next's requests `X-Forwarded-Proto: https` when the panel's web
+   server sent none. Without the header Next fills in `http`, and the
+   canonical redirect would send every visitor to the same https URL again
+   and again. The panel forces HTTPS itself (3.3 step 3); a header the web
+   server does send is kept.
+8. Imports `server/server.js`. Pending migrations run when Payload first
    starts (2.7, `prodMigrations` of the SQLite adapter).
 
 A failed start writes one JSON line to stderr and to `startup-error.log` in
 the application root (readable in File Manager).
 
-Unit tests: `deploy/cpanel/boot.test.ts` (CB1 to CB5, including a simulated
-loader that throws on a second `listen()`).
+Unit tests: `deploy/cpanel/boot.test.ts` (CB1 to CB7, including a simulated
+loader that throws on a second `listen()` and `boot()` end to end).
 
 ### 3.2 Panel settings
 

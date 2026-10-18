@@ -129,11 +129,24 @@ function startInternalListener(env, getNextServer) {
   });
 }
 
-/** Captures the first http server Next creates, without changing it. */
+/**
+ * Captures the first http server created after it: Next's. Its requests get
+ * `X-Forwarded-Proto: https` when the panel's web server sent none: the panel ends TLS and forces
+ * HTTPS (docs/deploy.md 3.3), but without the header Next fills in `http` and the canonical
+ * redirect (src/lib/http/canonical.ts) would send every visitor to the same https URL forever.
+ */
 function captureNextServer() {
   let captured = null;
   const create = http.createServer;
   http.createServer = function createServer(...args) {
+    const i = captured ? -1 : args.findIndex((arg) => typeof arg === 'function');
+    if (i !== -1) {
+      const listener = args[i];
+      args[i] = (req, res) => {
+        req.headers['x-forwarded-proto'] ??= 'https';
+        return listener(req, res);
+      };
+    }
     const server = create.apply(this, args);
     if (!captured) captured = server;
     return server;
