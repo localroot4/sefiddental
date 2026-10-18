@@ -39,6 +39,13 @@ describe('form fields (DESIGN.md Input and Chips; conversion.md 5.2)', () => {
     expect(document.getElementById('block-phone-error')?.textContent).toBe(PHONE_ERRORS.invalid);
   });
 
+  it('UF2b an invalid control keeps a danger focus ring (the brand ring would hide the error)', () => {
+    render(<TextField id="n" name="name" label="نام" error="نام بلند است." />);
+    expect(screen.getByLabelText('نام').className.split(' ')).toContain(
+      'aria-invalid:outline-danger',
+    );
+  });
+
   it('UF3 the phone field is an LTR island with a numeric keypad and tel autocomplete', () => {
     render(<TextField id="p" name="phone" kind="tel" label="شمارهٔ موبایل" />);
     const input = screen.getByLabelText('شمارهٔ موبایل');

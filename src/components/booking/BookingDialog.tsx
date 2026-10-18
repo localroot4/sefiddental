@@ -41,7 +41,7 @@ export async function BookingDialog(props: {
       id={BOOKING_DIALOG_ID}
       aria-labelledby="bk-dialog-title"
       data-booking-dialog=""
-      className="mx-0 mt-auto mb-0 max-h-[100dvh] w-full max-w-none translate-y-full overflow-y-auto overscroll-contain rounded-t-sheet border border-b-0 border-line bg-surface-raised px-6 pt-0 pb-[calc(var(--space-6)+env(safe-area-inset-bottom))] text-ink shadow-floating transition-[translate,opacity,display,overlay] transition-discrete duration-(--dur-3) backdrop:bg-backdrop open:translate-y-0 starting:open:translate-y-full lg:m-auto lg:max-h-[calc(100dvh-var(--space-12))] lg:max-w-[36rem] lg:translate-y-0 lg:rounded-sheet lg:border-b lg:pb-6 lg:opacity-0 lg:open:opacity-100 lg:starting:open:opacity-0"
+      className="mx-0 mt-auto mb-0 max-h-[100dvh] w-full max-w-none translate-y-full overflow-y-auto overscroll-contain rounded-t-sheet border border-b-0 border-line bg-surface-raised scroll-pb-[calc(var(--space-6)+env(safe-area-inset-bottom))] px-6 pt-0 text-ink shadow-floating transition-[translate,opacity,display,overlay] transition-discrete duration-(--dur-3) backdrop:bg-backdrop open:translate-y-0 starting:open:translate-y-full lg:m-auto lg:max-h-[calc(100dvh-var(--space-12))] lg:max-w-[36rem] lg:translate-y-0 lg:rounded-sheet lg:scroll-pb-6 lg:border-b lg:opacity-0 lg:open:opacity-100 lg:starting:open:opacity-0"
     >
       {/* Sticky, so «بستن» stays in reach while the form scrolls inside a phone-high sheet. */}
       <div className="sticky top-0 z-10 -mx-6 flex justify-end bg-surface-raised px-3 pt-3">
@@ -54,6 +54,13 @@ export async function BookingDialog(props: {
         service={props.service}
         emergencyLink={props.emergencyLink}
         Island={BookingFormIslandDeferred}
+      />
+      {/* The sheet's bottom padding, sticky: content scrolls under it and fades out, so no control
+          ever sits on the edge and a cut one shows there is more below. Clicks pass through it, and
+          the sheet's scroll padding of the same height keeps a focused control above it. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none sticky bottom-0 -mx-6 h-[calc(var(--space-6)+env(safe-area-inset-bottom))] bg-linear-to-t from-surface-raised to-transparent lg:h-6"
       />
     </dialog>
   );

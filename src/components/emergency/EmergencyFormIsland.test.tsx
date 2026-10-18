@@ -75,8 +75,15 @@ function island(initial: EmergencyInitial = EMPTY) {
       }
       privacy={<p>privacy</p>}
       aboveSubmit={null}
-      icons={{ error: <i />, info: <i />, check: <i />, chevron: <i />, spinner: <i /> }}
-      submitClass={submitClasses('md:max-w-[26rem]')}
+      icons={{
+        error: <i />,
+        info: <i />,
+        check: <i />,
+        chevron: <i />,
+        spinner: <i />,
+        tick: <i data-icon="tick" />,
+      }}
+      submitClass={submitClasses()}
       success={<p>safety again</p>}
       cardClassName="card"
     />
@@ -330,5 +337,54 @@ describe('emergency form island (conversion.md 7.3, 5.1-5.4)', () => {
     render(island(initial));
     expect(screen.getByRole('alert').textContent).toContain('دوباره');
     expect(phone().value).toBe('0912');
+  });
+
+  it('EF14 the note counter turns the danger colour over the limit', () => {
+    render(island());
+    const note = screen.getByLabelText('توضیح (اختیاری)');
+    fireEvent.change(note, { target: { value: 'ا'.repeat(500) } });
+    expect(screen.getByText('۵۰۰/۵۰۰').className).toContain('text-ink-muted');
+    fireEvent.change(note, { target: { value: 'ا'.repeat(501) } });
+    const counter = screen.getByText('۵۰۱/۵۰۰');
+    expect(counter.className).toContain('text-danger');
+    expect(counter.className).not.toContain('text-ink-muted');
+  });
+
+  it('EF15 an invalid field keeps a danger focus ring (the brand ring would hide the error)', () => {
+    render(island());
+    for (const label of ['شمارهٔ موبایل', 'نام (اختیاری)', 'توضیح (اختیاری)']) {
+      expect(screen.getByLabelText(label).className, label).toContain(
+        'aria-invalid:outline-danger',
+      );
+    }
+  });
+
+  it('EF16 the triage boxes are drawn with the input border and the brand fill in both themes', () => {
+    render(island());
+    const input = box('ورم');
+    const classes = input.className.split(' ');
+    expect(classes).toEqual(
+      expect.arrayContaining([
+        'appearance-none',
+        'border-line-strong',
+        'bg-surface-raised',
+        'checked:border-brand',
+        'checked:bg-brand',
+      ]),
+    );
+    // The tick shows over the checked box only; the label still names the native control.
+    const tick = input.nextElementSibling!;
+    expect(tick.querySelector('[data-icon="tick"]')).not.toBeNull();
+    expect(tick.className.split(' ')).toEqual(
+      expect.arrayContaining(['hidden', 'peer-checked:block']),
+    );
+    expect(classes).toContain('peer');
+    expect(input.getAttribute('type')).toBe('checkbox');
+  });
+
+  it('EF17 one content width: the form caps every part at the measure, none sets its own', () => {
+    render(island({ ...EMPTY, notice: 'neutral' }));
+    expect(form().className.split(' ')).toContain('md:*:max-w-measure');
+    expect(form().querySelectorAll('[class*="max-w-"]')).toHaveLength(0);
   });
 });

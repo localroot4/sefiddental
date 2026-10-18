@@ -21,7 +21,7 @@ const TONE: Record<AlertTone, { box: string; icon: string; name: IconName }> = {
     name: 'check-circle',
   },
   warning: {
-    box: 'border-warning-fill bg-[color-mix(in_srgb,var(--color-warning-fill)_22%,var(--color-surface-raised))]',
+    box: 'border-warning-fill bg-[color-mix(in_srgb,var(--color-warning-fill)_22%,var(--color-surface-raised))] dark:bg-[color-mix(in_srgb,var(--color-warning-fill)_22%,var(--color-warm-soft))]',
     icon: 'text-warning',
     name: 'warning',
   },

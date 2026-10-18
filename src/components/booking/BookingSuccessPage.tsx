@@ -16,7 +16,7 @@ export function BookingSuccessView(props: { callback: string; masked: string | n
   return (
     <div data-page-type="booking_success" className="bg-warm-soft">
       <div className="mx-auto w-full max-w-content px-gutter pt-8 pb-section md:pt-12">
-        <div className="grid max-w-[36rem] justify-items-start gap-2 rounded-sheet border border-line bg-surface-raised p-6 shadow-raised md:p-8">
+        <div className="mx-auto grid max-w-[36rem] justify-items-start gap-2 rounded-sheet border border-line bg-surface-raised p-6 shadow-raised md:p-8">
           <SuccessCheck />
           {/* autofocus without JavaScript too: the success heading takes focus (5.4). */}
           <h1

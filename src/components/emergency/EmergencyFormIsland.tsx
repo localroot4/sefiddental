@@ -14,7 +14,7 @@ import { track } from '@/lib/track/track';
 // The TextField control of src/components/ui/Field.tsx, repeated as the booking island does: that
 // module imports the icon code, which an island never ships (F2).
 const CONTROL =
-  'w-full rounded-input border-[1.5px] border-line-strong bg-surface-raised px-4 py-2 leading-[1.5] text-ink transition-colors hover:not-aria-invalid:border-ink-muted focus-visible:border-brand aria-invalid:border-danger';
+  'w-full rounded-input border-[1.5px] border-line-strong bg-surface-raised px-4 py-2 leading-[1.5] text-ink transition-colors hover:not-aria-invalid:border-ink-muted focus-visible:border-brand aria-invalid:border-danger aria-invalid:outline-danger';
 const NAME_MAX = 80;
 // The server's time trap (formTokens MIN_AGE_MS): a post younger than this is stored as suspicious.
 const TOKEN_MIN_AGE_MS = 2000;
@@ -87,6 +87,8 @@ export function EmergencyFormIsland(props: {
     check: ReactNode;
     chevron: ReactNode;
     spinner: ReactNode;
+    /** The mark over a checked triage box. */
+    tick: ReactNode;
   };
   /** The submit's classes from src/components/ui/Button.tsx `submitClasses`. */
   submitClass: { idle: string; busy: string };
@@ -293,7 +295,8 @@ export function EmergencyFormIsland(props: {
       onSubmit={submit}
       aria-labelledby={`${p}-title`}
       data-emergency-form=""
-      className={cx('grid content-start gap-6', props.cardClassName)}
+      // One content width for every part (inputs, first aid, notices); the card stays wide.
+      className={cx('grid content-start gap-6 md:*:max-w-measure', props.cardClassName)}
     >
       {props.header}
       <fieldset
@@ -304,15 +307,21 @@ export function EmergencyFormIsland(props: {
         {labels.triage.map(([item, label], i) => {
           const box = (
             <label className="flex min-h-target cursor-pointer items-start gap-3 py-2 text-body">
-              <input
-                type="checkbox"
-                name="triage"
-                value={item}
-                defaultChecked={initial.triage.includes(item)}
-                autoFocus={i === 0 && autoFocusOn('triage')}
-                onChange={() => setErrors((prev) => ({ ...prev, triage: undefined }))}
-                className="mt-[.3em] size-[1.25rem] shrink-0 cursor-pointer"
-              />
+              {/* Drawn, not native: a native box stays grey in dark, without the input border. */}
+              <span className="mt-[.3em] grid size-[1.25rem] shrink-0">
+                <input
+                  type="checkbox"
+                  name="triage"
+                  value={item}
+                  defaultChecked={initial.triage.includes(item)}
+                  autoFocus={i === 0 && autoFocusOn('triage')}
+                  onChange={() => setErrors((prev) => ({ ...prev, triage: undefined }))}
+                  className="peer col-start-1 row-start-1 size-full cursor-pointer appearance-none rounded-[.25rem] border-[1.5px] border-line-strong bg-surface-raised transition-colors checked:border-brand checked:bg-brand"
+                />
+                <span className="pointer-events-none col-start-1 row-start-1 hidden place-self-center text-on-brand peer-checked:block">
+                  {props.icons.tick}
+                </span>
+              </span>
               <span>{label}</span>
             </label>
           );
@@ -338,7 +347,7 @@ export function EmergencyFormIsland(props: {
         <p className="pt-2 text-small text-ink-muted">{props.none}</p>
       </fieldset>
 
-      <div className="grid content-start gap-2 md:max-w-[26rem]">
+      <div className="grid content-start gap-2">
         <label htmlFor={`${p}-phone`} className="text-small font-semibold">
           {labels.phone}
         </label>
@@ -387,7 +396,7 @@ export function EmergencyFormIsland(props: {
         ) : null}
       </div>
 
-      <div className="grid content-start gap-2 md:max-w-[26rem]">
+      <div className="grid content-start gap-2">
         <label htmlFor={`${p}-name`} className="text-small font-semibold">
           {labels.name}
         </label>
@@ -417,11 +426,7 @@ export function EmergencyFormIsland(props: {
 
       {/* Open from the server only with a note error; JS opens it itself (a changing `open` prop
           would close it under the visitor's typing). */}
-      <details
-        ref={noteBox}
-        open={initial.errors.note ? true : undefined}
-        className="group md:max-w-[36rem]"
-      >
+      <details ref={noteBox} open={initial.errors.note ? true : undefined} className="group">
         <summary className="flex min-h-target w-fit cursor-pointer list-none items-center gap-2 text-small font-semibold text-brand-strong [&::-webkit-details-marker]:hidden">
           {labels.note.summary}
           {props.icons.chevron}
@@ -461,7 +466,10 @@ export function EmergencyFormIsland(props: {
           <span
             id={`${p}-note-counter`}
             dir="ltr"
-            className="justify-self-end text-caption text-ink-muted"
+            className={cx(
+              'justify-self-end text-caption',
+              noteLength > NOTE_MAX ? 'text-danger' : 'text-ink-muted',
+            )}
           >
             {toPersianDigits(`${noteLength}/${NOTE_MAX}`)}
           </span>

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { renderToStaticMarkup } from 'react-dom/server';
+import { renderToStaticMarkup, renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import {
@@ -590,5 +590,68 @@ describe('booking form island (conversion.md 5.1-5.4)', () => {
     ]);
     const sent = JSON.stringify(vi.mocked(track).mock.calls);
     expect(sent).not.toMatch(/0912|۰۹۱۲|نمونه/);
+  });
+
+  it('BF20 a notice from the flash takes focus and scrolls into view, with and without JS', () => {
+    const page = (notice: BookingInitial['notice']) =>
+      renderToStaticMarkup(island('full', 'page', { initial: { notice } }));
+    // The browser focuses it from the server HTML, before any script runs.
+    expect(page('retry')).toMatch(
+      /<div role="status"><div tabindex="-1" autofocus=""[^>]*>.*درخواست هنوز ثبت نشده است\./,
+    );
+    expect(page('expired')).toMatch(/<p role="alert" tabindex="-1" autofocus=""/);
+    // With JS the page still loads as HTML (the 303 after the post): hydration keeps the attribute.
+    const ui = island('full', 'page', { initial: { notice: 'server' } });
+    const container = document.body.appendChild(document.createElement('div'));
+    container.innerHTML = renderToString(ui);
+    render(ui, { container, hydrate: true });
+    expect(screen.getByRole('alert').getAttribute('autofocus')).toBe('');
+  });
+
+  it('BF21 the note counter turns the danger colour over the limit', () => {
+    render(island('full', 'block'));
+    const note = screen.getByLabelText('توضیح (اختیاری)');
+    fireEvent.change(note, { target: { value: 'ا'.repeat(500) } });
+    expect(screen.getByText('۵۰۰/۵۰۰').className).toContain('text-ink-muted');
+    fireEvent.change(note, { target: { value: 'ا'.repeat(501) } });
+    const counter = screen.getByText('۵۰۱/۵۰۰');
+    expect(counter.className).toContain('text-danger');
+    expect(counter.className).not.toContain('text-ink-muted');
+  });
+
+  it('BF22 an invalid field keeps a danger focus ring (the brand ring would hide the error)', () => {
+    render(island('full', 'block'));
+    expect(phone().className).toContain('aria-invalid:outline-danger');
+    expect(screen.getByLabelText('توضیح (اختیاری)').className).toContain(
+      'aria-invalid:outline-danger',
+    );
+  });
+
+  it('BF23 the dialog sizes to its success: the form leaves the layout, in-page cards keep it', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async () => json({ ok: true })),
+    );
+    for (const [instance, gone] of [
+      ['dialog', true],
+      ['block', false],
+    ] as const) {
+      const { unmount } = render(island('full', instance));
+      fireEvent.change(phone(), { target: { value: '09123456789' } });
+      fireEvent.submit(phone().form!);
+      await screen.findByRole('heading', { name: 'درخواست شما ثبت شد' });
+      const form = document.querySelector('form')!.className.split(' ');
+      expect(form.includes('hidden'), instance).toBe(gone);
+      expect(form.includes('invisible'), instance).toBe(!gone);
+      unmount();
+    }
+  });
+
+  it('BF24 the success lines start at the top with no reserved band under the number', () => {
+    const { container } = render(island());
+    const success = container.querySelector('#bk-hero-done')!.parentElement!;
+    expect(success.className).toContain('content-start');
+    expect(success.className).not.toContain('content-center');
+    expect(container.querySelector('[class*="min-h-[4lh]"]')).toBeNull();
   });
 });

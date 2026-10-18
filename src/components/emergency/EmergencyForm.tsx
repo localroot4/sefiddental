@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { BOOKING_FIELDS as F } from '@/components/booking/fields';
 import { ButtonLink, Spinner, submitClasses } from '@/components/ui/Button';
+import { cx } from '@/components/ui/cx';
 import { SuccessCheck } from '@/components/ui/Feedback';
 import { Icon } from '@/components/ui/Icon';
 import { TextLink } from '@/components/ui/TextLink';
@@ -13,7 +14,7 @@ import { formatPhoneFa, PHONE_ERRORS, REGISTERED_NUMBER_LABEL, telHref } from '@
 import type { Clinic } from '@/payload-types';
 
 import { EmergencyFormIsland, type EmergencyInitial } from './EmergencyFormIsland';
-import { SafetyBox } from './SafetyBox';
+import { SafetyBox, WARNING_BOX } from './SafetyBox';
 import type { EmergencyView } from './view';
 
 /** «هیچ‌کدام؟ …» with its booking link (7.3); also the whole section while the form is off. */
@@ -26,14 +27,20 @@ export function NoneLine() {
   );
 }
 
-/** A message that ends with «با <clinic number> تماس بگیرید…» (5.2, 7.3). */
+/** A message ending with «با <clinic number> تماس بگیرید…» (5.2, 7.3), the number a call link. */
 function withPhone(before: string, phone: string, after: string): ReactNode {
   return (
     <>
       {before}{' '}
-      <bdi dir="ltr" className="whitespace-nowrap">
+      <TextLink
+        ltr
+        href={telHref(phone)}
+        data-call-sheet=""
+        track={{ event: 'call_click', location: 'section' }}
+        className="whitespace-nowrap"
+      >
         {formatPhoneFa(phone)}
-      </bdi>{' '}
+      </TextLink>{' '}
       {after}
     </>
   );
@@ -58,7 +65,7 @@ export function EmergencyForm(props: {
   const whatsapp = clinic.phones.whatsappVerified ? clinic.phones.whatsapp : null;
   const nearby = clinic.emergency?.nearby24hCenter?.trim();
 
-  const avulsion =
+  const firstAid =
     view.avulsion === 'call' ? (
       <>
         <p>{t('emergency.avulsion.text')}</p>
@@ -83,6 +90,13 @@ export function EmergencyForm(props: {
         {nearby ? <p>{nearby}</p> : null}
       </>
     );
+  // The safety box's warning tint: the most urgent text on the page, still never red (EM-B4).
+  const avulsion = (
+    <div className={cx(WARNING_BOX, 'grid grid-cols-[auto_1fr] gap-x-3 p-4')}>
+      <Icon name="warning" size="sm" className="mt-[.2em] text-warning" />
+      <div className="grid gap-3">{firstAid}</div>
+    </div>
+  );
 
   return (
     <EmergencyFormIsland
@@ -184,9 +198,10 @@ export function EmergencyForm(props: {
           />
         ),
         spinner: <Spinner />,
+        tick: <Icon name="check" size="custom" className="size-4" />,
       }}
       // The column's width, not the label's: «در حال ثبت» never resizes it (EM-F7).
-      submitClass={submitClasses('md:max-w-[26rem]')}
+      submitClass={submitClasses()}
       success={<SafetyBox id="em-safety-again" repeat />}
       cardClassName={props.cardClassName}
     />

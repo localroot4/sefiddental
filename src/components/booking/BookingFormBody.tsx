@@ -141,13 +141,20 @@ export async function BookingFormBody({
     </>
   );
 
-  // A message, then the clinic number as an LTR island and «تماس بگیرید.» (conversion.md 5.2).
+  // A message, then the clinic number as an LTR call link and «تماس بگیرید.» (conversion.md 5.2):
+  // the call is the way out of a failure, so it is one tap, through the closed-hours sheet.
   const withNumber = (key: MessageKey) => (
     <>
       {t(key)}{' '}
-      <bdi dir="ltr" className="whitespace-nowrap">
+      <TextLink
+        ltr
+        href={telHref(landline)}
+        data-call-sheet=""
+        track={{ event: 'call_click', location: props.instance }}
+        className="whitespace-nowrap"
+      >
         {formatPhoneFa(landline)}
-      </bdi>{' '}
+      </TextLink>{' '}
       {t('booking.fallbackAfter')}
     </>
   );

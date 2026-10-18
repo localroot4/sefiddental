@@ -144,6 +144,45 @@ describe('/اورژانس page (conversion.md 7, emergency spec 4)', () => {
     expect(closed.querySelector('a')).toBeNull();
   });
 
+  it('T-EM5c the safety box keeps a warm warning surface in dark, and its heading wraps pretty', async () => {
+    const box = (await render(OPEN)).querySelector('[data-section="safety"]')!;
+    // Orange mixed into the navy surface is grey: dark mixes it into the warm surface instead.
+    expect(box.className).toContain(
+      'dark:bg-[color-mix(in_srgb,var(--color-warning-fill)_22%,var(--color-warm-soft))]',
+    );
+    expect(box.querySelector('h2')!.className.split(' ')).toContain('text-pretty');
+  });
+
+  it('T-EM16b the avulsion first aid sits in the warning box with its icon, never red or an alert', async () => {
+    for (const clock of [OPEN, CLOSED]) {
+      const reveal = (await render(clock)).querySelector('[data-reveal]')!;
+      const box = reveal.firstElementChild!;
+      const safety = (await render(clock)).querySelector('[data-section="safety"]')!;
+      for (const token of ['border-warning-fill', 'rounded-card']) {
+        expect(box.className.split(' ')).toContain(token);
+      }
+      expect(box.className).toContain(safety.className.match(/dark:bg-\S+/)![0]);
+      expect(box.querySelector('svg use')?.getAttribute('href')).toMatch(/#warning$/);
+      expect(box.textContent).toContain(t('emergency.avulsion.text'));
+      expect(box.outerHTML).not.toMatch(/danger|role="alert"/);
+    }
+  });
+
+  it('T-EM19 the clinic number in a failure or the repeat line is a call link, through the sheet', async () => {
+    for (const outcome of ['server', 'neutral'] as const) {
+      const doc = await render(OPEN, {
+        flash: { form: 'emergency', to: '/اورژانس', outcome, at: 0, values: {}, triage: [] },
+      });
+      const notice = doc.querySelector('[data-section="form"] p[tabindex="-1"]')!;
+      const link = notice.querySelector('a[href="tel:+982155101054"]');
+      expect(link, outcome).not.toBeNull();
+      expect(link!.getAttribute('dir')).toBe('ltr');
+      expect(link!.closest('[data-call-sheet]')).not.toBeNull();
+      expect(link!.getAttribute('data-track')).toBe('call_click');
+      expect(link!.getAttribute('data-location')).toBe('section');
+    }
+  });
+
   it('T-EM3b the form: five boxes without `required`, tokens, honeypot, no booking-form marker', async () => {
     const doc = await render(OPEN);
     const form = doc.querySelector('form')!;

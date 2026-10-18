@@ -103,4 +103,51 @@ describe('booking views (conversion.md 5, 5.4; freeze G7, G9)', () => {
     expect(count(markup, /data-booking-dialog/g)).toBe(1);
     expect(markup).toMatch(/data-call-sheet=""/);
   });
+
+  it('BV6 the clinic number in a send failure or the neutral line is a call link, through the sheet', async () => {
+    for (const notice of ['server', 'neutral'] as const) {
+      const markup = await html(
+        await BookingPageView({
+          title: 'رزرو نوبت',
+          tokens: null,
+          inputs: { restore: { values: {}, nameError: false, initial: { notice } } } as never,
+        }),
+      );
+      const doc = new DOMParser().parseFromString(markup, 'text/html');
+      const box = doc.querySelector(notice === 'server' ? '[role="alert"]' : '[role="status"]')!;
+      const link = box.querySelector('a[href^="tel:+98"]');
+      expect(link, notice).not.toBeNull();
+      expect(link!.getAttribute('dir')).toBe('ltr');
+      expect(link!.hasAttribute('data-call-sheet')).toBe(true);
+      expect(link!.getAttribute('data-track')).toBe('call_click');
+      expect(link!.getAttribute('data-location')).toBe('page');
+      expect(link!.querySelector('.underline')).not.toBeNull();
+    }
+  });
+
+  it('BV7 the success page centres its card in the column (no empty half from 820 px)', async () => {
+    const markup = await html(BookingSuccessView({ callback: 'پذیرش', masked: null }));
+    const doc = new DOMParser().parseFromString(markup, 'text/html');
+    expect(doc.querySelector('h1')!.parentElement!.className.split(' ')).toContain('mx-auto');
+  });
+
+  it('BV8 the dialog keeps the panel padding under the last control while the form scrolls', async () => {
+    const markup = await html(await BookingDialog({}));
+    const dialog = new DOMParser().parseFromString(markup, 'text/html').querySelector('dialog')!;
+    const band = dialog.lastElementChild!;
+    expect(band.getAttribute('aria-hidden')).toBe('true');
+    // It sits over the content while the sheet scrolls: clicks pass through to the control below.
+    expect(band.className.split(' ')).toEqual(
+      expect.arrayContaining(['sticky', 'bottom-0', 'pointer-events-none']),
+    );
+    // The band is the padding: the sheet keeps none of its own under the content.
+    expect(dialog.className).not.toMatch(/(^|\s)(lg:)?pb-/);
+    // Focus and scrollIntoView stop above the band, so a focused control and its ring stay clear.
+    expect(dialog.className.split(' ')).toEqual(
+      expect.arrayContaining([
+        'scroll-pb-[calc(var(--space-6)+env(safe-area-inset-bottom))]',
+        'lg:scroll-pb-6',
+      ]),
+    );
+  });
 });

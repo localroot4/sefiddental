@@ -22,7 +22,7 @@ import { maskNational, parseMobile } from './phoneInput';
 // The TextField control of src/components/ui/Field.tsx: that module imports the icon code, which
 // an island never ships (F2), so the two fields this island owns repeat its classes.
 const CONTROL =
-  'w-full rounded-input border-[1.5px] border-line-strong bg-surface-raised px-4 py-2 leading-[1.5] text-ink transition-colors hover:not-aria-invalid:border-ink-muted focus-visible:border-brand aria-invalid:border-danger';
+  'w-full rounded-input border-[1.5px] border-line-strong bg-surface-raised px-4 py-2 leading-[1.5] text-ink transition-colors hover:not-aria-invalid:border-ink-muted focus-visible:border-brand aria-invalid:border-danger aria-invalid:outline-danger';
 
 /** MIN_AGE_MS of src/lib/formTokens.ts (a server module): a younger token is stored as suspicious. */
 export const TOKEN_MIN_AGE_MS = 2000;
@@ -113,12 +113,13 @@ async function send(form: HTMLFormElement): Promise<Answer> {
 /**
  * The booking form's behaviour (conversion.md 5.1-5.4, 6; freeze G5-G8): validation on blur and
  * submit, the tokens, one JSON POST to the form's action (the proxy hands it to /api/booking),
- * and every answer: the success in the same grid cell as the form (the card never changes
- * height), the neutral state, inline field errors, the 419 renewal, and the send failures. The
- * server parent renders every static part and passes the labels; without JavaScript the same
- * markup posts to the booking page. Tokens: the booking page renders its own (`tokens`, the no-JS
- * path), every other form takes the shared session answered after `load`. A submit waits until the
- * token is 2 s old, so a quick autofill and tap never lands as «مشکوک» (G5).
+ * and every answer: the success in the same grid cell as the form (a card on the page never
+ * changes height; the dialog fits the success), the neutral state, inline field errors, the 419
+ * renewal, and the send failures. The server parent renders every static part and passes the
+ * labels; without JavaScript the same markup posts to the booking page. Tokens: the booking page
+ * renders its own (`tokens`, the no-JS path), every other form takes the shared session answered
+ * after `load`. A submit waits until the token is 2 s old, so a quick autofill and tap never lands
+ * as «مشکوک» (G5).
  */
 export function BookingFormIsland(props: {
   variant: 'compact' | 'full';
@@ -353,6 +354,9 @@ export function BookingFormIsland(props: {
 
   const fallback = labels.fallback;
   const info = notice !== null && INFO.includes(notice);
+  // A no-JS post's message sits below the first screen: autofocus brings it there before any
+  // script runs (as the emergency form's).
+  const fromFlash = Boolean(initial.notice) && notice === initial.notice;
   return (
     // `data-booking-form` is the chrome's booking-route target (src/components/chrome/ids.ts); the
     // hero card drops it once done, so «رزرو نوبت» then scrolls to the scene 10 block.
@@ -375,7 +379,8 @@ export function BookingFormIsland(props: {
         className={cx(
           'col-start-1 row-start-1 grid content-start',
           full ? 'gap-4' : 'gap-2 md:gap-3',
-          done && 'invisible',
+          // The dialog is a modal: it fits the success, as nothing on the page moves under it.
+          done && (instance === 'dialog' ? 'hidden' : 'invisible'),
         )}
       >
         {props.header}
@@ -474,7 +479,10 @@ export function BookingFormIsland(props: {
                 <span
                   id={`${p}-note-counter`}
                   dir="ltr"
-                  className="shrink-0 text-caption text-ink-muted"
+                  className={cx(
+                    'shrink-0 text-caption',
+                    noteLength > NOTE_MAX ? 'text-danger' : 'text-ink-muted',
+                  )}
                 >
                   {toPersianDigits(`${noteLength}/${NOTE_MAX}`)}
                 </span>
@@ -507,7 +515,12 @@ export function BookingFormIsland(props: {
             {loading ? labels.submitting : labels.submit}
           </button>
           {notice && !info ? (
-            <p role="alert" className="mt-3 flex gap-1 text-small font-medium text-danger">
+            <p
+              role="alert"
+              tabIndex={-1}
+              autoFocus={fromFlash}
+              className="mt-3 flex gap-1 text-small font-medium text-danger focus:outline-none"
+            >
               {props.icons.error}
               <span>{labels.notices[notice]}</span>
             </p>
@@ -515,7 +528,11 @@ export function BookingFormIsland(props: {
           {/* Present before it fills, so the info state is announced (Q3: not an error). */}
           <div role="status">
             {notice && info ? (
-              <div className={cx(INFO_BOX, 'mt-3')}>
+              <div
+                tabIndex={-1}
+                autoFocus={fromFlash}
+                className={cx(INFO_BOX, 'mt-3 focus:outline-none')}
+              >
                 {props.icons.info}
                 <p>{labels.notices[notice]}</p>
               </div>
@@ -549,7 +566,7 @@ export function BookingFormIsland(props: {
       <div
         inert={done === null}
         className={cx(
-          'col-start-1 row-start-1 grid content-center justify-items-start gap-2',
+          'col-start-1 row-start-1 grid content-start justify-items-start gap-2',
           !done && 'invisible',
         )}
       >
@@ -577,9 +594,7 @@ export function BookingFormIsland(props: {
             >
               {labels.done}
             </h2>
-            {/* Four lines: the longest callback line (holiday, weekday and date) takes three at
-                320 px, then the registered number; the slack falls below the pair. */}
-            <div className="min-h-[4lh] text-small text-ink-muted">
+            <div className="text-small text-ink-muted">
               <p>{done?.kind === 'success' ? done.callback : null}</p>
               <p>
                 {labels.registered} <bdi dir="ltr">{done?.masked}</bdi>
