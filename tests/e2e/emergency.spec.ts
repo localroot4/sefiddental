@@ -103,7 +103,7 @@ async function fill(page: Page, phone: string, boxes = ['emergency.triage.severe
   await submit(page).click();
 }
 
-const masked = (phone: string) => toPersianDigits(`${phone.slice(0, 4)} ••• ${phone.slice(-4)}`);
+const masked = (phone: string) => toPersianDigits(`${phone.slice(0, 4)} *** ${phone.slice(-4)}`);
 
 test('T-EM1 the server picks the order from the hours state, in the HTML, no-store', async ({
   browser,

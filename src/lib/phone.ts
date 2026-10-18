@@ -89,10 +89,19 @@ export function formatPhoneFa(e164: string): string {
   return toPersianDigits(grouped);
 }
 
-/** First and last four national digits around three bullets: '۰۹۱۲ ••• ۶۷۸۹'. */
+/** First and last four national digits around three asterisks: '۰۹۱۲ *** ۶۷۸۹'. */
 export function maskPhone(e164: string): string {
   const n = nationalOf(e164, 'maskPhone');
-  return toPersianDigits(`${n.slice(0, 4)} \u2022\u2022\u2022 ${n.slice(-4)}`);
+  // Asterisks: bullets beside Persian digits read as zeros.
+  return toPersianDigits(`${n.slice(0, 4)} *** ${n.slice(-4)}`);
+}
+
+/**
+ * The mask inside plain RTL text (the admin title, notification lines): an LTR isolate keeps its
+ * groups in order, no-break spaces keep it on one line.
+ */
+export function maskPhoneInline(e164: string): string {
+  return `\u2066${maskPhone(e164).replace(/ /g, '\u00A0')}\u2069`;
 }
 
 export function telHref(e164: string): string {

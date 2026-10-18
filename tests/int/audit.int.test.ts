@@ -92,7 +92,7 @@ describe('audit log (spec-data 4.1, 6.5)', () => {
       user: editor,
     });
     expect(booking).toMatchObject({ phone: '+989123456789', phoneNational: '09123456789' });
-    expect(booking.listTitle).toBe('نام‌محرمانه · ۰۹۱۲ ••• ۶۷۸۹');
+    expect(booking.listTitle).toBe('نام‌محرمانه · \u2066۰۹۱۲\u00A0***\u00A0۶۷۸۹\u2069');
     await payload.update({
       collection: 'bookings',
       id: booking.id,

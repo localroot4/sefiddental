@@ -246,7 +246,7 @@ describe('booking form island (conversion.md 5.1-5.4)', () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValue(
-        json({ ok: true, state: 'success', callback: SERVER_CALLBACK, masked: '۰۹۱۲ ••• ۰۰۰۰' }),
+        json({ ok: true, state: 'success', callback: SERVER_CALLBACK, masked: '۰۹۱۲ *** ۰۰۰۰' }),
       );
     vi.stubGlobal('fetch', fetchMock);
     const { container } = render(island());
@@ -262,7 +262,7 @@ describe('booking form island (conversion.md 5.1-5.4)', () => {
     // The server's line at submit time (G6), never the session copy taken at mount.
     expect(root.textContent).toContain(SERVER_CALLBACK);
     expect(root.textContent).not.toContain(SESSION.hours.copy.callback);
-    expect(root.textContent).toContain('۰۹۱۲ ••• ۰۰۰۰');
+    expect(root.textContent).toContain('۰۹۱۲ *** ۰۰۰۰');
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(decodeURI(new URL(url, 'http://x').pathname)).toBe('/رزرو-نوبت');
     expect(new Headers(init.headers).get('accept')).toBe('application/json');
@@ -283,7 +283,7 @@ describe('booking form island (conversion.md 5.1-5.4)', () => {
     await screen.findByRole('heading', { name: 'درخواست شما ثبت شد' });
     const root = container.querySelector('#bk-hero') as HTMLElement;
     expect(root.textContent).toContain(LABELS.callbackGeneric);
-    expect(root.textContent).toContain('۰۹۱۲ ••• ۶۷۸۹');
+    expect(root.textContent).toContain('۰۹۱۲ *** ۶۷۸۹');
   });
 
   it('BF7 no answer is ever re-posted natively, a 404 or 405 included (X6)', async () => {
@@ -446,7 +446,7 @@ describe('booking form island (conversion.md 5.1-5.4)', () => {
     const root = container.querySelector('#bk-hero') as HTMLElement;
     await waitFor(() => expect(root.dataset.state).toBe('neutral'));
     expect(root.hasAttribute('data-booking-form')).toBe(false);
-    expect(root.textContent).toContain('۰۹۱۲ ••• ۶۷۸۹');
+    expect(root.textContent).toContain('۰۹۱۲ *** ۶۷۸۹');
     await waitFor(() => expect(document.activeElement?.textContent).toBe(LABELS.notices.neutral));
   });
 

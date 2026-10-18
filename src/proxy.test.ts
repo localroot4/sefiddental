@@ -424,7 +424,7 @@ describe('proxy', () => {
       outcome: 'success' as const,
       at: Date.now(),
       callback: 'پذیرش امروز از ساعت ۱۰ با شما تماس می\u200Cگیرد.',
-      masked: '۰۹۱۲ ••• ۶۷۸۹',
+      masked: '۰۹۱۲ *** ۶۷۸۹',
     };
     const get = (path: string, cookie: string, headers: Record<string, string> = {}) =>
       proxy(

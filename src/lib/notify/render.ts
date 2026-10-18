@@ -4,7 +4,7 @@ import { NOTIFY_MESSAGES, type NotifyMessageKey } from '@/i18n/fa-notify';
 import { formatJalali, formatTimeFa } from '@/lib/jalali';
 import { scrubPhones } from '@/lib/log/redact';
 import { toPersianDigits } from '@/lib/persianText';
-import { maskPhone } from '@/lib/phone';
+import { maskPhoneInline } from '@/lib/phone';
 
 import type { NotifyEvent, RenderedMessage } from './types';
 
@@ -41,7 +41,7 @@ function when(iso: string | null | undefined): string {
 
 function masked(phone: string): string {
   try {
-    return maskPhone(phone);
+    return maskPhoneInline(phone);
   } catch {
     return msg('notify.value.unknown');
   }

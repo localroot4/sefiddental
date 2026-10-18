@@ -306,7 +306,7 @@ test('T-HOME9 the compact success keeps the card size and position; focus on its
   const done = card.getByRole('heading', { name: 'درخواست شما ثبت شد' });
   await expect(done).toBeFocused();
   await expect(card).toHaveAttribute('data-state', 'success');
-  await expect(card.getByText('۰۹۱۲ ••• ۶۷۸۹')).toBeVisible();
+  await expect(card.getByText('۰۹۱۲ *** ۶۷۸۹')).toBeVisible();
   await page.evaluate(() => window.scrollTo(0, 0));
   const after = await card.boundingBox();
   expect(after?.height).toBeCloseTo(before?.height ?? 0, 0);

@@ -197,14 +197,14 @@ describe('/اورژانس page (conversion.md 7, emergency spec 4)', () => {
         outcome: 'success',
         at: 0,
         callback: 'پذیرش معمولاً تا ۱۰ دقیقهٔ دیگر با شما تماس می‌گیرد.',
-        masked: '۰۹۱۲ ••• ۶۷۸۹',
+        masked: '۰۹۱۲ *** ۶۷۸۹',
       },
     });
     const form = doc.querySelector('[data-section="form"]')!;
     expect(form.querySelector('form')).toBeNull();
     expect(form.querySelector('h2')?.textContent).toBe('درخواست فوری شما ثبت شد.');
     expect(form.textContent).toContain('دقیقهٔ دیگر');
-    expect(form.querySelector('bdi[dir="ltr"]')?.textContent).toBe('۰۹۱۲ ••• ۶۷۸۹');
+    expect(form.querySelector('bdi[dir="ltr"]')?.textContent).toBe('۰۹۱۲ *** ۶۷۸۹');
     expect(form.querySelector('a[href="tel:115"]')).not.toBeNull();
     // Focused and scrolled to by the browser after the 303 (EM-F14), before any script.
     expect(form.querySelector('h2')?.hasAttribute('autofocus')).toBe(true);

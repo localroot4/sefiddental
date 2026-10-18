@@ -326,7 +326,7 @@ test('T-AD11 contact links per row: call and WhatsApp to the patient, 44 px targ
   await page.goto(listOf(name));
   const call = row(page, name).locator(`a[href="tel:${booking.phone}"]`);
   const whatsapp = row(page, name).locator(`a[href="https://wa.me/${booking.phone.slice(1)}"]`);
-  await expect(call).toHaveAttribute('aria-label', /^تماس با بیمار ۰۹۹۹ ••• /);
+  await expect(call).toHaveAttribute('aria-label', /^تماس با بیمار ۰۹۹۹ \*\*\* /);
   await expect(whatsapp).toHaveAttribute('rel', 'noopener noreferrer');
   for (const link of [call, whatsapp]) {
     expect((await link.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);

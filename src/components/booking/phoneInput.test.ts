@@ -78,6 +78,6 @@ describe('parseMobile (zod-free twin of parseIranPhone, mobile only)', () => {
       if (!parsed.ok) throw new Error(`expected a mobile: ${input}`);
       expect(maskNational(parsed.national)).toBe(maskPhone(parsed.e164));
     }
-    expect(maskNational('09123456789')).toBe('۰۹۱۲ ••• ۶۷۸۹');
+    expect(maskNational('09123456789')).toBe('۰۹۱۲ *** ۶۷۸۹');
   });
 });

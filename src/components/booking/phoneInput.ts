@@ -35,7 +35,7 @@ export function parseMobile(input: string): MobileParse {
   return { ok: false, reason: 'invalid' };
 }
 
-/** «۰۹۱۲ ••• ۶۷۸۹» from a national mobile number (conversion.md 5.4 item 3). */
+/** «۰۹۱۲ *** ۶۷۸۹» from a national mobile number (conversion.md 5.4 item 3). */
 export function maskNational(national: string): string {
-  return toPersianDigits(`${national.slice(0, 4)} ••• ${national.slice(-4)}`);
+  return toPersianDigits(`${national.slice(0, 4)} *** ${national.slice(-4)}`);
 }

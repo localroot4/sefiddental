@@ -706,7 +706,7 @@ describe('POST /api/booking handler', () => {
       ok: true,
       state: 'success',
       callback: null,
-      masked: '۰۹۱۲ ••• ۶۷۸۹',
+      masked: '۰۹۱۲ *** ۶۷۸۹',
     });
     expect(t.store.rows[0]).toMatchObject({ status: 'new', callbackDueAt: null });
     expect(t.notified).toHaveLength(1);
@@ -753,7 +753,7 @@ describe('POST /api/booking handler', () => {
 
   it('BH-MASK the success body carries the masked number', async () => {
     const t = setup();
-    expect((await (await t.booking(post(NOW))).json()).masked).toBe('۰۹۱۲ ••• ۶۷۸۹');
+    expect((await (await t.booking(post(NOW))).json()).masked).toBe('۰۹۱۲ *** ۶۷۸۹');
   });
 
   it('BH-HTML no-JS success: 303 to the success page with a flash, counted once on the server', async () => {
@@ -766,7 +766,7 @@ describe('POST /api/booking handler', () => {
       /^__Host-sefid-flash=[A-Za-z0-9_-]+; Path=\/; Max-Age=600; Secure; HttpOnly; SameSite=Lax$/,
     );
     expect(cookie).not.toContain('0912');
-    expect(flashOf(res)).toMatchObject({ outcome: 'success', masked: '۰۹۱۲ ••• ۶۷۸۹' });
+    expect(flashOf(res)).toMatchObject({ outcome: 'success', masked: '۰۹۱۲ *** ۶۷۸۹' });
     expect(t.counted).toEqual([
       {
         date: '2026-10-13',
@@ -831,7 +831,7 @@ describe('POST /api/booking handler', () => {
     // No-JS: the normal success page for a stranger, the neutral flash for a known browser.
     const html = await t.booking(post(NOW, { sid: 'P'.repeat(43), json: false }));
     expect(html.headers.get('location')).toBe(encodeURI('/رزرو-نوبت/ثبت-شد'));
-    expect(flashOf(html)).toMatchObject({ outcome: 'success', masked: '۰۹۱۲ ••• ۶۷۸۹' });
+    expect(flashOf(html)).toMatchObject({ outcome: 'success', masked: '۰۹۱۲ *** ۶۷۸۹' });
     const known = await t.booking(post(NOW, { json: false }));
     expect(flashOf(known)).toMatchObject({ outcome: 'neutral' });
     expect(row.duplicateSubmissions).toHaveLength(5);
@@ -1177,7 +1177,7 @@ describe('POST /api/emergency handler', () => {
     });
     // Another browser with the same number: the normal success state, never the repeat (S4).
     const probe = await em(t, { json: false, sid: 'O'.repeat(43) });
-    expect(flashOf(probe)).toMatchObject({ outcome: 'success', masked: '۰۹۱۲ ••• ۶۷۸۹' });
+    expect(flashOf(probe)).toMatchObject({ outcome: 'success', masked: '۰۹۱۲ *** ۶۷۸۹' });
     expect(t.store.rows).toHaveLength(1);
     expect(t.store.rows[0]?.duplicateSubmissions).toHaveLength(2);
     expect(t.counted).toEqual([

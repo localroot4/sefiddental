@@ -154,14 +154,14 @@ describe('emergency form island (conversion.md 7.3, 5.1-5.4)', () => {
 
   it('EF3 success: the server line, the masked number, the safety box, one emergency_submit', async () => {
     fetchMock.mockResolvedValue(
-      answer(200, { ok: true, state: 'success', callback: 'پذیرش فردا', masked: '۰۹۱۲ ••• ۶۷۸۹' }),
+      answer(200, { ok: true, state: 'success', callback: 'پذیرش فردا', masked: '۰۹۱۲ *** ۶۷۸۹' }),
     );
     render(island());
     await send(['ورم', 'درآمده']);
     const heading = await screen.findByRole('heading', { name: 'درخواست فوری شما ثبت شد.' });
     expect(document.activeElement).toBe(heading);
     expect(screen.getByText('پذیرش فردا')).toBeTruthy();
-    expect(screen.getByText('۰۹۱۲ ••• ۶۷۸۹').getAttribute('dir')).toBe('ltr');
+    expect(screen.getByText('۰۹۱۲ *** ۶۷۸۹').getAttribute('dir')).toBe('ltr');
     expect(screen.getByText('safety again')).toBeTruthy();
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith('emergency_submit', { open_state: 'open', items_count: 2 });
@@ -311,7 +311,7 @@ describe('emergency form island (conversion.md 7.3, 5.1-5.4)', () => {
   });
 
   it('EF13 a no-JS success focuses its heading from the server HTML (EM-F14)', () => {
-    const initial = { ...EMPTY, done: { callback: null, masked: '۰۹۱۲ ••• ۶۷۸۹' } };
+    const initial = { ...EMPTY, done: { callback: null, masked: '۰۹۱۲ *** ۶۷۸۹' } };
     expect(renderToStaticMarkup(island(initial))).toMatch(
       /<h2 id="em-title" tabindex="-1" autofocus=""/,
     );

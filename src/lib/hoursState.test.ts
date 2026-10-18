@@ -252,7 +252,7 @@ describe('hoursState table H', () => {
 
   it('H27 success line label and mask', () => {
     expect(`${REGISTERED_NUMBER_LABEL} ${maskPhone('+989123456789')}`).toBe(
-      'شمارهٔ ثبت\u200Cشده: ۰۹۱۲ \u2022\u2022\u2022 ۶۷۸۹',
+      'شمارهٔ ثبت\u200Cشده: ۰۹۱۲ *** ۶۷۸۹',
     );
   });
 

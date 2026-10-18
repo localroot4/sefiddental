@@ -221,7 +221,7 @@ heading.
    - Open: «پذیرش معمولاً تا {callbackMinutes} دقیقهٔ دیگر با شما تماس می‌گیرد.» (setting `callbackMinutes`, default 10, Persian digits)
    - Before opening today: «پذیرش امروز از ساعت ۱۰ با شما تماس می‌گیرد.»
    - Closing soon, closed or holiday: «پذیرش {فردا | شنبه ۱۲ مهر} از ساعت ۱۰ با شما تماس می‌گیرد.» On a holiday the line starts with «امروز تعطیل رسمی است.»
-   - Then: «شمارهٔ ثبت‌شده: ۰۹۱۲ ••• ۶۷۸۹» (LTR island).
+   - Then: «شمارهٔ ثبت‌شده: ۰۹۱۲ *** ۶۷۸۹» (LTR island).
 4. «تماس از شمارهٔ {callerNumber} خواهد بود. شماره را ذخیره کنید تا تماس را
    بشناسید.» with «ذخیرهٔ شمارهٔ کلینیک» (vCard: name, phones, address, site).
    `callerNumber` is a setting in admin; while empty, this line is hidden

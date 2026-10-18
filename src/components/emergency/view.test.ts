@@ -92,8 +92,8 @@ describe('the form state from the no-JS flash (freeze G3)', () => {
 
   it('T-EM18c success carries the server line and the masked number', () => {
     expect(
-      initialFromFlash(flash({ outcome: 'success', callback: 'پذیرش', masked: '۰۹۱۲ ••• ۶۷۸۹' })),
-    ).toMatchObject({ done: { callback: 'پذیرش', masked: '۰۹۱۲ ••• ۶۷۸۹' } });
+      initialFromFlash(flash({ outcome: 'success', callback: 'پذیرش', masked: '۰۹۱۲ *** ۶۷۸۹' })),
+    ).toMatchObject({ done: { callback: 'پذیرش', masked: '۰۹۱۲ *** ۶۷۸۹' } });
     expect(initialFromFlash(flash({ outcome: 'success' })).done).toEqual({
       callback: null,
       masked: '',

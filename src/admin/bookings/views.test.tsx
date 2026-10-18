@@ -16,7 +16,7 @@ describe('booking list cells and blocks (admin-notify.md 4.1, 4.2)', () => {
     expect(html).toContain('href="tel:+989123456789"');
     expect(html).toContain('href="https://wa.me/989123456789"');
     expect(html).toContain('rel="noopener noreferrer"');
-    expect(html).toContain('aria-label="تماس با بیمار ۰۹۱۲ ••• ۶۷۸۹"');
+    expect(html).toContain('aria-label="تماس با بیمار ۰۹۱۲ *** ۶۷۸۹"');
     expect(text(html)).not.toMatch(/[0-9۰-۹]/);
     // A number that is not a valid Iranian mobile gets no link at all.
     expect(renderToStaticMarkup(<ContactCell {...cell({ phone: '+982112345678' })} />)).toBe('');

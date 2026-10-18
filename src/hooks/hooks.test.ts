@@ -172,6 +172,23 @@ describe('H-BOOKING (spec-data 6.9)', () => {
     });
   });
 
+  it('BK11 the list title holds the masked phone as one LTR isolate after the name', async () => {
+    const title = async (data: object) =>
+      (
+        (await bookingRules({
+          data,
+          operation: 'create',
+          req: { user: { id: 1, role: 'admin' } },
+        } as never)) as Record<string, unknown>
+      ).listTitle;
+    expect(await title({ phone: '+989123456789', name: 'سارا' })).toBe(
+      'سارا · \u2066۰۹۱۲\u00A0***\u00A0۶۷۸۹\u2069',
+    );
+    expect(await title({ phone: '+989123456789' })).toBe(
+      'بدون نام · \u2066۰۹۱۲\u00A0***\u00A0۶۷۸۹\u2069',
+    );
+  });
+
   it('PS6 exact matches and names: equals stays, names get Persian letters', () => {
     expect(rewritePhoneSearch({ phone: { equals: '+989123456789' } })).toEqual({
       phone: { equals: '+989123456789' },

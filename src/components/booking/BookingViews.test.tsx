@@ -95,11 +95,11 @@ describe('booking views (conversion.md 5, 5.4; freeze G7, G9)', () => {
 
   it('BV5 the success page focuses its heading without JavaScript and opens CTAs in a dialog', async () => {
     const markup = await html(
-      BookingSuccessView({ callback: 'پذیرش با شما تماس می‌گیرد.', masked: '۰۹۱۲ ••• ۶۷۸۹' }),
+      BookingSuccessView({ callback: 'پذیرش با شما تماس می‌گیرد.', masked: '۰۹۱۲ *** ۶۷۸۹' }),
     );
     expect(markup).toMatch(/<h1[^>]*tabindex="-1"[^>]*autofocus=""/i);
     expect(markup).toContain('پذیرش با شما تماس می‌گیرد.');
-    expect(markup).toMatch(/<bdi dir="ltr">۰۹۱۲ ••• ۶۷۸۹<\/bdi>/);
+    expect(markup).toMatch(/<bdi dir="ltr">۰۹۱۲ \*\*\* ۶۷۸۹<\/bdi>/);
     expect(count(markup, /data-booking-dialog/g)).toBe(1);
     expect(markup).toMatch(/data-call-sheet=""/);
   });

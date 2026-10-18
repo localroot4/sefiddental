@@ -5,6 +5,8 @@ import { toLatinDigits } from '@/lib/persianText';
 /** D-8: one file holds at most this many requests; a clinic writes a few a day. */
 export const CSV_MAX_ROWS = 10_000;
 
+const BIDI_CONTROLS = /[\u200E\u200F\u202A-\u202E\u2066-\u2069]/g;
+
 type Doc = Record<string, unknown>;
 interface OptionField {
   name: string;
@@ -13,10 +15,11 @@ interface OptionField {
 
 /**
  * RFC 4180 cell, always quoted. Formula guard: spreadsheet apps run a cell that starts with
- * = + - @ tab or CR, so such text gets a leading apostrophe.
+ * = + - @ tab or CR, so such text gets a leading apostrophe. Bidi controls are dropped: they
+ * would reorder what the cell shows.
  */
 export function csvCell(value: unknown): string {
-  let text = value === null || value === undefined ? '' : String(value);
+  let text = value === null || value === undefined ? '' : String(value).replace(BIDI_CONTROLS, '');
   if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
   return `"${text.replace(/"/g, '""')}"`;
 }

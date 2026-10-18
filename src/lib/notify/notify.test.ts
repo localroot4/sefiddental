@@ -296,7 +296,8 @@ describe('messages (D-4)', () => {
   it('NT3 a booking message: masked phone, admin link, request id, Persian digits; nothing else', () => {
     const message = renderBooking(BOOKING, ENV.siteUrl, 'req-n-0001');
     expect(message.subject).toBe('درخواست فوری تازه #۴۲');
-    expect(message.text).toContain('شماره: ۰۹۱۲ ••• ۶۷۸۹');
+    // An LTR isolate: the groups keep their order inside the Persian line.
+    expect(message.text).toContain('شماره: \u2066۰۹۱۲\u00A0***\u00A0۶۷۸۹\u2069');
     expect(message.text).toContain('https://sefiddental.ir/admin/collections/bookings/42');
     expect(message.text).toContain('شناسهٔ پیگیری: req-n-0001');
     expect(message.text).toContain('گروه خدمت: ایمپلنت');

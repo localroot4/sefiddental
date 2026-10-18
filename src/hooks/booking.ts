@@ -11,7 +11,7 @@ import { hasRole } from '@/access/roles';
 import { toClinicHours, hoursOptionsFrom } from '@/lib/data/clinicHours';
 import { hoursState, type ClinicHours, type HoursOptions } from '@/lib/hoursState';
 import { normalizeLetters, normalizePersian } from '@/lib/persianText';
-import { maskPhone, parseIranPhone, PHONE_ERRORS, phoneSearchFragment } from '@/lib/phone';
+import { maskPhoneInline, parseIranPhone, PHONE_ERRORS, phoneSearchFragment } from '@/lib/phone';
 
 /** H-BOOKING and H-PHONESEARCH (spec-data 6.9, 6.10). Never logs a phone, name or note. */
 
@@ -187,7 +187,7 @@ export const bookingRules: CollectionBeforeChangeHook = async ({
   if (phone) {
     let masked = '';
     try {
-      masked = maskPhone(phone);
+      masked = maskPhoneInline(phone);
     } catch {
       masked = '';
     }

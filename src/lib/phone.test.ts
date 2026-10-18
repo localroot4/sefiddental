@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatPhoneFa,
   maskPhone,
+  maskPhoneInline,
   mobilePhoneSchema,
   parseIranPhone,
   PHONE_ERRORS,
@@ -85,8 +86,13 @@ describe('phone table P', () => {
     expect(formatPhoneFa(e164)).toBe(expected);
   });
 
-  it('P34 mask', () => {
-    expect(maskPhone('+989123456789')).toBe('۰۹۱۲ \u2022\u2022\u2022 ۶۷۸۹');
+  it('P34 mask: asterisks, never bullets that read as Persian zeros', () => {
+    expect(maskPhone('+989123456789')).toBe('۰۹۱۲ *** ۶۷۸۹');
+  });
+
+  it('P34b mask inside RTL text: an LTR isolate with no-break spaces, so it reads and stays whole', () => {
+    expect(maskPhoneInline('+989123456789')).toBe('\u2066۰۹۱۲\u00A0***\u00A0۶۷۸۹\u2069');
+    expect(() => maskPhoneInline('09123456789')).toThrow(RangeError);
   });
 
   it('P35 tel link', () => {
@@ -104,7 +110,7 @@ describe('phone table P', () => {
 
   it('H27 success line label and mask', () => {
     expect(`${REGISTERED_NUMBER_LABEL} ${maskPhone('+989123456789')}`).toBe(
-      'شمارهٔ ثبت\u200Cشده: ۰۹۱۲ \u2022\u2022\u2022 ۶۷۸۹',
+      'شمارهٔ ثبت\u200Cشده: ۰۹۱۲ *** ۶۷۸۹',
     );
   });
 });

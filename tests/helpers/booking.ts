@@ -116,7 +116,7 @@ export function countBookingPosts(page: Page): () => number {
   return () => posts;
 }
 
-/** «۰۹۹۹ ••• ۱۲۳۴», the masked number the success state shows for a national mobile number. */
+/** «۰۹۹۹ *** ۱۲۳۴», the masked number the success state shows for a national mobile number. */
 export { maskNational as maskedPhone } from '@/components/booking/phoneInput';
 
 /**

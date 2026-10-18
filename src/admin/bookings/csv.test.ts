@@ -14,6 +14,13 @@ describe('booking CSV (admin-notify.md 4.8)', () => {
     }
     expect(csvCell('۰۹۱۲')).toBe('"۰۹۱۲"');
     expect(csvCell(null)).toBe('""');
+    // Bidi controls never reach a spreadsheet cell (they reorder what it shows).
+    expect(csvCell('\u2066۰۹۱۲\u00A0***\u00A0۶۷۸۹\u2069 \u202Eabc\u200F')).toBe(
+      '"۰۹۱۲\u00A0***\u00A0۶۷۸۹ abc"',
+    );
+    // Stripped before the guard, or a hidden control would carry a bare formula past it.
+    expect(csvCell('\u2066=SUM(A1)')).toBe(`"'=SUM(A1)"`);
+    expect(csvCell('\u200F+98912')).toBe(`"'+98912"`);
     const file = toCsv([
       ['a', 'b'],
       ['c', 'd'],
@@ -40,7 +47,7 @@ describe('booking CSV (admin-notify.md 4.8)', () => {
       formLocation: 'dialog',
       utm: { source: 'ig' },
       ipHash: 'f'.repeat(64),
-      listTitle: 'نام · ۰۹۱۲ ••• ۶۷۸۹',
+      listTitle: 'نام · \u2066۰۹۱۲\u00A0***\u00A0۶۷۸۹\u2069',
       urgencyRank: 0,
       adminNotes: [{ text: 'یادداشت‌محرمانه' }],
       duplicateSubmissions: [{}, {}],
@@ -70,7 +77,7 @@ describe('booking CSV (admin-notify.md 4.8)', () => {
     expect(cells['پیگیری‌کننده']).toBe('مدیر آزمون');
     expect(cells['utm_source']).toBe('ig');
     expect(row!.endsWith('"2"')).toBe(true);
-    for (const secret of ['f'.repeat(64), 'یادداشت‌محرمانه', '•••', '+989']) {
+    for (const secret of ['f'.repeat(64), 'یادداشت‌محرمانه', '***', '\u2066', '+989']) {
       expect(row).not.toContain(secret);
     }
   });
