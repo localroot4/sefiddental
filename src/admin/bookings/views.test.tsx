@@ -106,6 +106,7 @@ describe('dashboard widget (admin-notify.md 4.9)', () => {
     suspiciousToday: 2,
     notUrgentMonth: 1,
     outcomeMonth: 3,
+    openEmergency: 1,
   };
   const hrefs = (html: string) =>
     [...html.matchAll(/href="([^"]+)"/g)].map(
@@ -121,7 +122,7 @@ describe('dashboard widget (admin-notify.md 4.9)', () => {
     expect(text(html)).toContain('۲ از مهلت گذشته');
     expect(html).not.toContain('امروز هنوز درخواستی ثبت نشده است.');
     const links = hrefs(html);
-    expect(links).toHaveLength(5);
+    expect(links).toHaveLength(6);
     for (const link of links) expect(link.searchParams.get('sort'), link.search).toBeTruthy();
     // «درخواست تازه»: created since Tehran midnight, not suspicious or spam (counts.ts).
     expect(Object.fromEntries(links[0]!.searchParams)).toEqual({
@@ -131,8 +132,11 @@ describe('dashboard widget (admin-notify.md 4.9)', () => {
       sort: 'urgencyRank',
     });
     expect(links[1]!.searchParams.get('where[or][0][and][2][kind][equals]')).toBe('emergency');
-    // «منتظر تماس» is status new on any day: the «جدید» tab.
-    expect(links[2]!.searchParams.get('where[or][0][and][0][status][equals]')).toBe('new');
+    // «منتظر تماس»: exactly counts.ts `waiting` (status new on any day), most overdue first.
+    expect(Object.fromEntries(links[2]!.searchParams)).toEqual({
+      'where[or][0][and][0][status][equals]': 'new',
+      sort: 'callbackDueAt',
+    });
   });
 
   it('DW3 a failed read is «نامشخص», never «۰»; an empty day says so', () => {

@@ -1,7 +1,7 @@
 import { Pill } from '@payloadcms/ui';
 import type { DefaultServerCellComponentProps } from 'payload';
 
-import { adminText } from '@/i18n/fa-admin';
+import { adminText, type AdminMessageKey } from '@/i18n/fa-admin';
 
 import styles from './bookings.module.css';
 import { dayTime, isOverdue } from './format';
@@ -37,4 +37,17 @@ export function CallbackDueCell({ cellData, rowData }: DefaultServerCellComponen
 export function ReceivedAtCell({ rowData }: DefaultServerCellComponentProps) {
   const text = dayTime(rowData?.createdAt);
   return text ? <span className={styles.time}>{text}</span> : null;
+}
+
+const TIER_NAMES: Record<string, AdminMessageKey> = {
+  standard: 'admin.tier.standard',
+  vip: 'admin.tier.vip',
+  cip: 'admin.tier.cip',
+};
+
+/** `tier`: the tier's name, not its key (H34); an unknown key shows as stored. */
+export function TierCell({ cellData }: DefaultServerCellComponentProps) {
+  if (typeof cellData !== 'string' || !cellData) return null;
+  const name = TIER_NAMES[cellData];
+  return <span>{name ? adminText(name) : cellData}</span>;
 }

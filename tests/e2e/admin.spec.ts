@@ -7,13 +7,18 @@
 // sign-in endpoints allow 10 POSTs per 15 minutes per client key (decision 41). This file makes
 // six: admin enrollment (2), admin verification (2), editor enrollment (2). Later tests reuse
 // the sessions through their cookies.
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { randomBytes } from 'node:crypto';
 
-import { tabHref } from '@/admin/bookings/tabs';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import sharp from 'sharp';
+
+import { cond, listHref, tabHref } from '@/admin/bookings/tabs';
+import { CALENDAR_PATH } from '@/admin/calendar';
 import { t } from '@/i18n/fa';
 import { adminText } from '@/i18n/fa-admin';
 import { buildPath } from '@/lib/paths';
 import { persianSlug } from '@/lib/persianSlug';
+import { toPersianDigits } from '@/lib/persianText';
 
 import { signInToAdmin } from '../helpers/admin';
 import { expectNoA11yViolations } from '../helpers/axe';
@@ -467,12 +472,16 @@ test('T-AD16 the dashboard shows today’s numbers to admins and editors, linked
     await adminAs(page, role);
     const widget = page.getByRole('region', { name: adminText('admin.today.heading') });
     await expect(widget, role).toBeVisible();
-    // Four of today's figures and this month's «فوری نبود» share.
-    await expect(widget.getByRole('link')).toHaveCount(5);
+    // Four of today's figures, this month's «فوری نبود» share and the open emergencies (H33).
+    await expect(widget.getByRole('link')).toHaveCount(6);
+    // Every new request, as counted, most overdue first.
     await expect(widget.getByRole('link', { name: /منتظر تماس/ })).toHaveAttribute(
       'href',
-      tabHref('new'),
+      listHref(cond(0, 'status', 'equals', ['new']), 'callbackDueAt'),
     );
+    await expect(
+      widget.getByRole('link', { name: adminText('admin.today.openEmergency') }),
+    ).toHaveAttribute('href', tabHref('emergency'));
     await expect(widget).toContainText(adminText('admin.today.notUrgent'));
     await expect(widget).not.toContainText('NaN');
   }
@@ -583,4 +592,466 @@ test('T-AD20 four emergencies from one address: the 4th is stored new with emerg
     [['new', []]],
     [['new', ['emergency_ip_rate']]],
   ]);
+});
+
+// Phase 6 (docs/prompts/06-content-seo.md 2b, H32 to H35, C12 to C15). Documents made here carry
+// Persian-only names (a Persian-digit token), so the English scan never trips on test data.
+const faToken = () => toPersianDigits(`${Date.now()}`);
+
+/**
+ * H34: the only Latin words an editor may read (as src/collections/adminCopy.test.ts), plus the
+ * authenticator app the plugin names, its network-error toast and the live preview's
+ * «Responsive» size, recorded as deviations in the phase report (C15).
+ */
+const ALLOWED_LATIN = new Set([
+  ...['ADA', 'AAPD', 'AAP', 'Cochrane', 'NHS', 'IADT'],
+  ...['JPEG', 'JPG', 'PNG', 'HEIC', 'MP4', 'WebM', 'AVIF', 'WebP'],
+  ...['VIP', 'CIP', 'NEEDS_CLIENT'],
+  ...['Google', 'Authenticator', 'Something', 'went', 'wrong', 'Responsive'],
+  // «کد QR» on the TOTP setup page: the code's own name, as on every phone.
+  'QR',
+]);
+
+/**
+ * Latin words in what the page shows (text, labels, placeholders, titles) after stored values
+ * are taken out: table cells, chosen relationships, document titles, URLs, emails, file names.
+ */
+async function englishOn(page: Page): Promise<string[]> {
+  const shown = await page.evaluate(() => {
+    // Stored values (titles, cells, chosen options, file names) are data, not interface copy.
+    const STORED =
+      'tbody td, .rs__single-value, .rs__multi-value, .render-title, .step-nav__last, .file-details, .file-meta';
+    const stored = [...document.querySelectorAll(STORED)].map(
+      (el) => (el as HTMLElement).innerText,
+    );
+    let text = `${document.title}\n${document.body.innerText}`;
+    for (const value of stored) if (value) text = text.replaceAll(value, ' ');
+    const attributes = [...document.querySelectorAll('[aria-label], [placeholder], [title]')]
+      // Third-party labels with no translation key (C15, phase 6 report): sonner's toast region and
+      // close button, the title Payload's CheckboxInput copies from the field name, a drawer named
+      // by its slug, and the Lexical toolbar and block handles (visible editor text stays checked).
+      .filter(
+        (el) =>
+          !el.closest('tbody, .rich-text-lexical') &&
+          !el.matches(
+            `${STORED}, section[aria-label$="alt+T"], .payload-toast-close-button, input[type="checkbox"], dialog[class*="payload__modal-item--slug-"]`,
+          ),
+      )
+      .flatMap((el) => ['aria-label', 'placeholder', 'title'].map((a) => el.getAttribute(a) ?? ''));
+    return [text, ...attributes].join('\n');
+  });
+  const plain = shown
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/\S+@\S+\.\S+/g, ' ')
+    .replace(/\S+\.(jpe?g|png|webp|avif|gif|heic|mp4|webm|svg|csv)\b/gi, ' ')
+    .replace(/\b(image|video|application|text)\/[\w.+-]+/g, ' ');
+  return [...new Set(plain.match(/[A-Za-z][A-Za-z0-9_]+/g) ?? [])].filter(
+    (w) => !ALLOWED_LATIN.has(w),
+  );
+}
+
+async function expectPersianOnly(page: Page, where: string): Promise<void> {
+  // The sign-in page has a form and no heading.
+  await expect(page.locator('h1, h2, form').first(), where).toBeVisible();
+  // Soft: one run lists every page that shows English.
+  expect.soft(await englishOn(page), where).toEqual([]);
+}
+
+/** REST from inside the admin page, with the session's cookie; returns status and body. */
+async function rest(page: Page, method: string, path: string, body?: object) {
+  return page.evaluate(
+    async ({ method, path, body }) => {
+      const response = await fetch(path, {
+        method,
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return { status: response.status, body: await response.json().catch(() => null) };
+    },
+    { method, path, body },
+  );
+}
+
+/** A 1200x900 JPEG uploaded to the media library as the signed-in user, with a Persian alt. */
+async function uploadPhoto(page: Page, alt: string): Promise<number> {
+  const jpeg = await sharp({
+    create: { width: 1200, height: 900, channels: 3, background: '#d9d3c7' },
+  })
+    .jpeg()
+    .toBuffer();
+  const { status, body } = await page.evaluate(
+    async ({ b64, alt, name }) => {
+      const bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+      const form = new FormData();
+      form.append('file', new File([bytes], name, { type: 'image/jpeg' }));
+      form.append('_payload', JSON.stringify({ alt }));
+      const response = await fetch('/api/media?depth=0', { method: 'POST', body: form });
+      return { status: response.status, body: await response.json() };
+    },
+    { b64: jpeg.toString('base64'), alt, name: `case-${Date.now()}.jpg` },
+  );
+  expect(status, JSON.stringify(body)).toBe(201);
+  return body.doc.id as number;
+}
+
+const EDITOR_COLLECTIONS = ['bookings', 'articles', 'tags', 'media', 'testimonials', 'cases'];
+
+test('T-AD21 an editor reads no English: dashboard, lists, forms, a document each, account, calendar', async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  requireRoutes('contentCalendar');
+  await adminAs(page, 'editor');
+  await expectPersianOnly(page, 'dashboard');
+  for (const slug of EDITOR_COLLECTIONS) {
+    await page.goto(`/admin/collections/${slug}`);
+    await expectPersianOnly(page, `${slug} list`);
+    const first = page.locator(`tbody tr a[href*="/collections/${slug}/"]`).first();
+    if ((await first.count()) > 0) {
+      await page.goto((await first.getAttribute('href')) ?? '');
+      await expectPersianOnly(page, `${slug} document`);
+    }
+    await page.goto(`/admin/collections/${slug}/create`);
+    await expectPersianOnly(page, `${slug} create`);
+    // C15: the empty state of a search with no result.
+    await page.goto(`/admin/collections/${slug}?search=${encodeURIComponent('واژه‌ای‌که‌نیست')}`);
+    await expectPersianOnly(page, `${slug} empty search`);
+  }
+  // The media preview sizes drawer names every size in English unless custom.scss hides it.
+  await page.goto(`/admin/collections/media/${await uploadPhoto(page, `عکس نمونهٔ ${faToken()}`)}`);
+  await page.locator('.file-field__previewSizes').click();
+  await expect(page.locator('.preview-sizes')).toBeVisible();
+  await expectPersianOnly(page, 'media preview sizes');
+  await page.goto('/admin/account');
+  await expectPersianOnly(page, 'account');
+  for (const view of [CALENDAR_PATH, `${CALENDAR_PATH}?kind=failed`]) {
+    await page.goto(view);
+    await expectPersianOnly(page, view);
+  }
+  // C15: a refused publish shows the block messages in the toast and under the fields.
+  await page.goto('/admin/collections/articles/create');
+  await page.locator('#field-title').fill(`مقالهٔ ناقص ${faToken()}`);
+  await page.locator('#action-save').click();
+  await expect(page.locator('.payload-toast-container li').first()).toBeVisible();
+  await expectPersianOnly(page, 'refused publish');
+});
+
+test('T-AD21b the sign-in and TOTP setup pages are Persian too', async ({ browser, page }) => {
+  await adminAs(page, 'admin');
+  const email = `editor-${Date.now()}@sefid.test`;
+  const password = randomBytes(18).toString('base64url');
+  const created = await rest(page, 'POST', '/api/users?depth=0', {
+    email,
+    password,
+    name: `ویراستار موقت ${faToken()}`,
+    role: 'editor',
+  });
+  expect(created.status, JSON.stringify(created.body)).toBe(201);
+  // One more sign-in POST for this file (seven of the ten allowed in 15 minutes).
+  const context = await browser.newContext({ baseURL: APP_ORIGIN, locale: 'fa-IR' });
+  const visitor = await context.newPage();
+  await visitor.goto('/admin/login');
+  await expectPersianOnly(visitor, 'login');
+  await visitor.locator('#field-email').fill(email);
+  await visitor.locator('#field-password').fill(password);
+  await visitor.locator('form button[type="submit"]').click();
+  await visitor.waitForURL(/\/admin\/setup-totp(\?|$)/);
+  await expectPersianOnly(visitor, 'setup-totp');
+  await context.close();
+  expect((await rest(page, 'DELETE', `/api/users/${created.body.doc.id}`)).status).toBe(200);
+});
+
+test('T-AD22 navigation by daily task; the calendar link after the groups (H32, C12)', async ({
+  page,
+}) => {
+  requireRoutes('contentCalendar');
+  const groups = () =>
+    page
+      .locator('.nav-group')
+      .evaluateAll((all) =>
+        all.map((g) => [
+          g.querySelector('.nav-group__label')?.textContent?.trim() ?? '',
+          [...g.querySelectorAll('a[id^="nav-"]')].map((a) => a.id),
+        ]),
+      );
+  const linkOrder = () =>
+    page.locator('nav a[id^="nav-"]').evaluateAll((all) => all.map((a) => a.id));
+
+  await adminAs(page, 'admin');
+  const adminGroups = await groups();
+  expect(adminGroups.map(([label]) => label)).toEqual([
+    'نوبت‌ها',
+    'محتوا',
+    'بیماران و نظرات',
+    'تنظیمات',
+    'سیستم',
+  ]);
+  expect(adminGroups[3]?.[1]).toEqual([
+    'nav-insurances',
+    'nav-financing-options',
+    'nav-global-clinic',
+    'nav-global-seo-defaults',
+    'nav-global-features',
+    'nav-global-notifier',
+  ]);
+  const adminLinks = await linkOrder();
+  expect(adminLinks.slice(-2)).toEqual(['nav-content-calendar', 'nav-system-status']);
+  // H32: no API tab on a document, for admins either (Payload has no per-role switch).
+  await page.goto('/admin/collections/tags');
+  const tag = page.locator('tbody tr a[href*="/collections/tags/"]').first();
+  await page.goto((await tag.getAttribute('href')) ?? '');
+  await expect(page.locator('.doc-tabs')).toBeVisible();
+  await expect(page.locator('a[href$="/api"]')).toHaveCount(0);
+
+  await adminAs(page, 'editor');
+  expect(await groups()).toEqual([
+    ['نوبت‌ها', ['nav-bookings']],
+    ['محتوا', ['nav-articles', 'nav-tags', 'nav-media']],
+    ['بیماران و نظرات', ['nav-testimonials', 'nav-cases']],
+  ]);
+  expect((await linkOrder()).slice(-1)).toEqual(['nav-content-calendar']);
+});
+
+test('T-AD26 a scheduled publish shows on its day in the calendar, for the editor too', async ({
+  browser,
+  page,
+}) => {
+  test.setTimeout(90_000);
+  requireRoutes('contentCalendar');
+  await adminAs(page, 'admin');
+  const title = `مقالهٔ زمان‌بندی ${faToken()}`;
+  const draft = await rest(page, 'POST', '/api/articles?draft=true&depth=0', { title });
+  expect(draft.status, JSON.stringify(draft.body)).toBe(201);
+  const id = draft.body.doc.id as number;
+
+  // Payload's own scheduler: the publish menu, a day three days ahead, the first free time.
+  await page.goto(`/admin/collections/articles/${id}`);
+  await page.locator('#action-save-popup button').first().click();
+  await page.locator('#schedule-publish').click();
+  const drawer = page.locator('.schedule-publish');
+  // Payload preselects «لغو انتشار» for a document with no newer version, a never-published one too.
+  await drawer.locator('.schedule-publish__type li').first().locator('label').click();
+  await drawer.locator('.react-datepicker__input-container input').click();
+  const target = new Date(Date.now() + 3 * 86_400_000);
+  const shownMonth = await page.locator('.react-datepicker__current-month').textContent();
+  if (target.getMonth() !== new Date().getMonth()) {
+    await page.locator('.react-datepicker__navigation--next').click();
+    await expect(page.locator('.react-datepicker__current-month')).not.toHaveText(shownMonth ?? '');
+  }
+  const day = String(target.getDate()).padStart(3, '0');
+  await page
+    .locator(`.react-datepicker__day--${day}:not(.react-datepicker__day--outside-month)`)
+    .click();
+  await page
+    .locator('.react-datepicker__time-list-item:not(.react-datepicker__time-list-item--disabled)')
+    .first()
+    .click();
+  await page.locator('#scheduled-publish-save').click();
+  await expect(drawer.locator('.schedule-publish__upcoming tbody tr')).toHaveCount(1);
+
+  for (const role of ['admin', 'editor'] as const) {
+    await adminAs(page, role);
+    await page.goto(`${CALENDAR_PATH}?kind=scheduled`);
+    // The draft also sits in the drafts list; the dated row carries the kind.
+    const row = page
+      .locator(`#content-calendar li:has(a[href="/admin/collections/articles/${id}"])`)
+      .filter({ hasText: adminText('admin.calendar.kind.scheduled') });
+    await expect(row, role).toHaveCount(1);
+    await expect(row, role).toContainText(title);
+    // The dashboard widget lists the next seven days.
+    await page.goto('/admin');
+    await expect(
+      page
+        .getByRole('region', { name: adminText('admin.calendar.title') })
+        .getByRole('link', { name: title }),
+      role,
+    ).toBeVisible();
+  }
+  // The refused publish (a red row with the block messages) needs a past due time, which the
+  // picker refuses: tests/int/calendar.int.test.ts CAL-I1 runs it through the real job queue.
+
+  // Custom views are public: without a session the calendar is the admin's 404, not drafts.
+  const context = await browser.newContext({ baseURL: APP_ORIGIN, locale: 'fa-IR' });
+  const visitor = await context.newPage();
+  // Without a session Payload's admin layout has streamed before the view runs, so the not-found
+  // view comes with a 200 (a soft 404); a signed-in editor gets the real 404 (T-AD3).
+  await visitor.goto(CALENDAR_PATH);
+  await expect(visitor.getByRole('heading', { level: 1 })).toHaveText(NOT_FOUND_HEADING);
+  await expect(visitor.locator('#content-calendar')).toHaveCount(0);
+  await context.close();
+});
+
+test('T-AD27 dashboard order: requests, calendar, SEO health; content gaps for admins only', async ({
+  page,
+}) => {
+  requireRoutes('contentCalendar');
+  const widgets = () =>
+    page
+      .locator('section[aria-labelledby]')
+      .evaluateAll((all) => all.map((s) => s.getAttribute('aria-labelledby')));
+  await adminAs(page, 'admin');
+  expect(await widgets()).toEqual(
+    expect.arrayContaining([
+      'bookings-today',
+      'content-calendar-widget',
+      'seo-health',
+      'content-gaps-summary',
+    ]),
+  );
+  const order = (await widgets()).filter((id) =>
+    ['bookings-today', 'content-calendar-widget', 'seo-health', 'content-gaps-summary'].includes(
+      id ?? '',
+    ),
+  );
+  expect(order).toEqual([
+    'bookings-today',
+    'content-calendar-widget',
+    'seo-health',
+    'content-gaps-summary',
+  ]);
+  await expect(
+    page
+      .getByRole('region', { name: adminText('admin.gaps.heading') })
+      .getByRole('link', { name: adminText('admin.gaps.open') }),
+  ).toHaveAttribute('href', '/admin/system-status#status-gaps');
+
+  await adminAs(page, 'editor');
+  await expect(page.getByRole('region', { name: adminText('admin.seo.heading') })).toBeVisible();
+  await expect(page.getByRole('region', { name: adminText('admin.gaps.heading') })).toHaveCount(0);
+});
+
+test('T-AD31 an editor adds a case: two photos, written consent, publish (admin guide)', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await adminAs(page, 'editor');
+  const name = faToken();
+  await uploadPhoto(page, `عکس قبل نمونهٔ ${name}`);
+  await uploadPhoto(page, `عکس بعد نمونهٔ ${name}`);
+  const title = `نمونهٔ آزمون ${name}`;
+
+  await page.goto('/admin/collections/cases/create');
+  await page.locator('#field-title').fill(title);
+  await page.locator('#field-service .rs__control').click();
+  await page.locator('.rs__option').first().click();
+  for (const [field, which] of [
+    ['before', 'قبل'],
+    ['after', 'بعد'],
+  ] as const) {
+    await page.locator(`#field-${field} .upload__listToggler`).click();
+    const drawer = page.locator('.list-drawer').last();
+    await drawer
+      .locator('tbody tr', { hasText: `عکس ${which} نمونهٔ ${name}` })
+      .locator('button')
+      .first()
+      .click();
+    await expect(drawer).toBeHidden();
+  }
+  // Without the consent box the publish is refused with the message the guide quotes.
+  await page.locator('#action-save').click();
+  await expect(
+    page.getByText('بدون تأیید رضایت کتبی بیمار، انتشار ممکن نیست.').first(),
+  ).toBeVisible();
+  await page.locator('#field-consentConfirmed').check();
+  const saved = page.waitForResponse(
+    (r) =>
+      new URL(r.url()).pathname.startsWith('/api/cases') &&
+      ['POST', 'PATCH'].includes(r.request().method()),
+  );
+  await page.locator('#action-save').click();
+  expect((await saved).ok()).toBe(true);
+  const found = await rest(
+    page,
+    'GET',
+    `/api/cases?depth=0&where[title][equals]=${encodeURIComponent(title)}`,
+  );
+  expect(found.body.docs).toEqual([
+    expect.objectContaining({ title, _status: 'published', consentConfirmed: true }),
+  ]);
+});
+
+test('T-AD32 an editor records an emergency outcome with a note', async ({ page }, testInfo) => {
+  const admin = await adminAs(page, 'admin');
+  const booking = await admin.create({
+    phone: uniquePhone(testInfo),
+    name: `اورژانس ${faToken()}`,
+    kind: 'emergency',
+    triage: ['swelling'],
+  });
+  const editor = await adminAs(page, 'editor');
+  await page.goto(`/admin/collections/bookings/${booking.id}`);
+  await page.locator('#field-emergencyOutcome .rs__control').click();
+  await page.locator('.rs__option', { hasText: 'واقعاً فوری بود' }).click();
+  await page.locator('#field-status .rs__control').click();
+  await page.locator('.rs__option', { hasText: 'تماس گرفته شد' }).click();
+  await page.locator('#field-adminNotes .array-field__add-row').first().click();
+  await page.locator('#field-adminNotes__0__text').fill('ورم صورت داشت؛ برای امروز ساعت ۱۷ آمد.');
+  const saved = page.waitForResponse(
+    (r) => r.request().method() === 'PATCH' && r.url().includes(`/api/bookings/${booking.id}`),
+  );
+  await page.locator('#action-save').click();
+  expect((await saved).status()).toBe(200);
+  const after = (await editor.read(booking.id)) as {
+    status: string;
+    emergencyOutcome: string;
+    adminNotes: Array<{ text: string }>;
+  };
+  expect(after).toMatchObject({ status: 'contacted', emergencyOutcome: 'truly_urgent' });
+  expect(after.adminNotes.map((n) => n.text)).toContain('ورم صورت داشت؛ برای امروز ساعت ۱۷ آمد.');
+});
+
+test('T-AD33 axe: the calendar view, the three new widgets, the checklist and the SERP preview', async ({
+  page,
+}) => {
+  requireRoutes('contentCalendar');
+  await adminAs(page, 'admin');
+  for (const id of ['content-calendar-widget', 'seo-health', 'content-gaps-summary']) {
+    await expectNoA11yViolations(page, { include: `section[aria-labelledby="${id}"]` });
+  }
+  await page.goto(CALENDAR_PATH);
+  await expectNoA11yViolations(page, { include: '#content-calendar' });
+  await page.goto('/admin/collections/articles/create');
+  for (const id of ['article-checklist-heading', 'serp-preview-heading']) {
+    // Payload renders a group's fields only once it nears the viewport.
+    if (id === 'serp-preview-heading') await page.locator('#field-seo').scrollIntoViewIfNeeded();
+    await expect(page.locator(`section[aria-labelledby="${id}"]`)).toBeVisible();
+    await expectNoA11yViolations(page, { include: `section[aria-labelledby="${id}"]` });
+  }
+});
+
+test('T-AD34 the dashboard, the calendar and an article form at three widths, light and dark', async ({
+  browser,
+}, testInfo) => {
+  test.setTimeout(180_000);
+  requireRoutes('contentCalendar');
+  for (const size of Object.keys(VIEWPORTS) as ViewportName[]) {
+    for (const theme of ['light', 'dark'] as const) {
+      const context = await browser.newContext({
+        ...VIEWPORTS[size],
+        baseURL: APP_ORIGIN,
+        locale: 'fa-IR',
+        timezoneId: 'Asia/Tehran',
+        colorScheme: theme,
+      });
+      const page = await context.newPage();
+      await restoreSession(page, 'editor');
+      await page.goto('/admin');
+      // As T-AD9: the first render may miss the emulated theme hint.
+      await page.reload();
+      await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await expect(
+        page.getByRole('region', { name: adminText('admin.seo.heading') }),
+      ).toBeVisible();
+      await captureTemplate(page, testInfo, 'admin-dashboard-editor', theme);
+      await page.goto(CALENDAR_PATH);
+      await expect(page.locator('#content-calendar')).toBeVisible();
+      await captureTemplate(page, testInfo, 'admin-calendar', theme);
+      await page.goto('/admin/collections/articles/create');
+      await expect(
+        page.locator('section[aria-labelledby="article-checklist-heading"]'),
+      ).toBeVisible();
+      await captureTemplate(page, testInfo, 'admin-article', theme);
+      await context.close();
+    }
+  }
 });

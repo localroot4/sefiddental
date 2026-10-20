@@ -17,8 +17,22 @@
   }
 }
 
+// Lexical parks its hidden block handle and link editor 10 000 px to the left. Under RTL that
+// offset widens the document, so the article form scrolled sideways; clip it at the editor.
+html[dir='rtl'] .rich-text-lexical {
+  overflow-x: clip;
+  // The block handle sits half outside the editor's left edge; keep it whole.
+  overflow-clip-margin: 24px;
+}
+
 // Payload draws the pagination chevrons for LTR; under RTL «بعدی» pointed back toward page 1.
 // `scale` composes with Payload's rotate transform instead of replacing it.
 html[dir='rtl'] .clickable-arrow .icon {
   scale: -1 1;
+}
+
+// H34, H36: the media preview sizes drawer names each size in English («Original», thumbnail, og,
+// card-sm…), on its cards and in its header; the preview images and their dimensions stay.
+.preview-sizes__sizeName {
+  display: none;
 }

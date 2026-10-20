@@ -11,6 +11,8 @@ import {
 import { globalHooks } from '@/hooks/compose';
 import { ADMIN_MESSAGES as M } from '@/i18n/fa-admin';
 import { setErrorAlertWindow } from '@/lib/log/requestError';
+import { toLatinDigits } from '@/lib/persianText';
+import { parseIranPhone } from '@/lib/phone';
 
 import { needsEnv, notifierTest } from './notifierAdmin';
 
@@ -145,7 +147,7 @@ export const Features: GlobalConfig = {
     {
       name: 'ga4MeasurementId',
       type: 'text',
-      label: 'شناسهٔ GA4',
+      label: 'شناسهٔ گوگل آنالیتیکس',
       validate: withRules(text, (value, { data }) => {
         if (value === null || value === undefined || value === '') {
           return data.ga4Enabled ? 'برای روشن کردن آنالیتیکس، شناسهٔ GA4 لازم است.' : true;
@@ -237,6 +239,7 @@ export const Notifier: GlobalConfig = {
           name: 'recipients',
           type: 'array',
           label: 'گیرندگان',
+          labels: { singular: 'گیرنده', plural: 'گیرندگان' },
           validate: withRules(array, requiredWhenEnabled('دست‌کم یک گیرنده لازم است.')),
           admin: { description: 'گیرندگان اعلان.' },
           fields: [{ name: 'email', type: 'email', label: 'ایمیل', required: true }],
@@ -257,7 +260,7 @@ export const Notifier: GlobalConfig = {
             checkbox,
             needsEnv((env) => env.telegram !== null, M['admin.notifier.needsTelegram']),
           ),
-          admin: { description: 'ارسال اعلان در تلگرام (بعداً).' },
+          admin: { description: 'ارسال اعلان نوبت در تلگرام.' },
         },
         {
           name: 'chatId',
@@ -282,12 +285,17 @@ export const Notifier: GlobalConfig = {
             checkbox,
             needsEnv((env) => env.farapayamak !== null, M['admin.notifier.needsSms']),
           ),
-          admin: { description: 'پیامک از طریق فراپیامک (بعداً).' },
+          admin: { description: 'ارسال اعلان نوبت با پیامک از طریق فراپیامک.' },
         },
         {
           name: 'senderNumber',
           type: 'text',
           label: 'شمارهٔ خط',
+          hooks: {
+            beforeValidate: [
+              ({ value }) => (typeof value === 'string' ? toLatinDigits(value.trim()) : value),
+            ],
+          },
           validate: withRules(text, requiredWhenEnabled('شمارهٔ خط ارسال لازم است.'), (value) =>
             value === null ||
             value === undefined ||
@@ -302,6 +310,7 @@ export const Notifier: GlobalConfig = {
           name: 'adminRecipients',
           type: 'array',
           label: 'گیرندگان مدیر',
+          labels: { singular: 'گیرندهٔ مدیر', plural: 'گیرندگان مدیر' },
           admin: { description: 'موبایل‌هایی که اعلان نوبت می‌گیرند.' },
           fields: [
             {
@@ -309,9 +318,21 @@ export const Notifier: GlobalConfig = {
               type: 'text',
               label: 'موبایل',
               required: true,
+              // As the clinic phones (Clinic.ts): any digits in, E.164 stored.
+              hooks: {
+                beforeValidate: [
+                  ({ value }) => {
+                    const parsed = parseIranPhone(value, { accept: 'mobile' });
+                    return parsed.ok ? parsed.e164 : value;
+                  },
+                ],
+              },
               validate: withRules(text, (value) =>
-                /^\+989\d{9}$/.test(String(value ?? '')) ? true : 'موبایل به شکل +989xxxxxxxxx.',
+                /^\+989\d{9}$/.test(String(value ?? ''))
+                  ? true
+                  : 'شمارهٔ موبایل معتبر نیست؛ مثل ۰۹۱۲۳۴۵۶۷۸۹.',
               ),
+              admin: { style: { direction: 'ltr' } },
             },
           ],
         },

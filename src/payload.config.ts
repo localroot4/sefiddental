@@ -7,9 +7,11 @@ import { buildConfig } from 'payload';
 import { payloadTotp } from 'payload-totp';
 
 import { canRunJobs } from './access/jobs';
+import { withScheduleBlockMessages } from './admin/schedulePublish';
 import { collections } from './collections';
 import { richTextEditor } from './fields/richText';
 import { globals } from './globals';
+import { adminText, PAYLOAD_FA_OVERRIDES } from './i18n/fa-admin';
 import { readEnv } from './lib/env';
 import { log } from './lib/log/logger';
 import { setErrorAlertSink } from './lib/log/requestError';
@@ -50,9 +52,19 @@ export default buildConfig({
         Logo: '/admin/components/Logo#Logo',
         Icon: '/admin/components/Icon#Icon',
       },
-      afterNavLinks: ['/admin/components/SystemStatusNavLink#SystemStatusNavLink'],
-      // Today's booking numbers above the dashboard (G15; not the experimental widgets API).
-      beforeDashboard: ['/admin/components/BookingsToday#BookingsToday'],
+      // After the groups (C12): the calendar for staff, then the status view for admins.
+      afterNavLinks: [
+        '/admin/components/CalendarNavLink#CalendarNavLink',
+        '/admin/components/SystemStatusNavLink#SystemStatusNavLink',
+      ],
+      // The dashboard in task order (H33; G15: not the experimental widgets API): today's
+      // requests, the content calendar, SEO health, then the content gaps for admins.
+      beforeDashboard: [
+        '/admin/components/BookingsToday#BookingsToday',
+        '/admin/components/ContentCalendar#ContentCalendar',
+        '/admin/components/SeoHealth#SeoHealth',
+        '/admin/components/ContentGapsSummary#ContentGapsSummary',
+      ],
       views: {
         systemStatus: {
           Component: '/admin/views/SystemStatus#SystemStatusView',
@@ -60,14 +72,33 @@ export default buildConfig({
           exact: true,
           meta: { title: 'وضعیت سیستم' },
         },
+        contentCalendar: {
+          Component: '/admin/views/EditorialCalendar#EditorialCalendar',
+          path: '/content-calendar',
+          exact: true,
+          meta: { title: adminText('admin.calendar.title') },
+        },
       },
+    },
+    // H10: the three QA widths; collections set their own preview URL (fields/factories.ts).
+    livePreview: {
+      breakpoints: [
+        { name: 'mobile', label: adminText('admin.preview.mobile'), width: 390, height: 844 },
+        { name: 'tablet', label: adminText('admin.preview.tablet'), width: 820, height: 1180 },
+        { name: 'desktop', label: adminText('admin.preview.desktop'), width: 1440, height: 900 },
+      ],
     },
     timezones: {
       supportedTimezones: [{ label: 'تهران', value: 'Asia/Tehran' }],
       defaultTimezone: 'Asia/Tehran',
     },
   },
-  i18n: { supportedLanguages: { fa }, fallbackLanguage: 'fa' },
+  // H34: Payload's Persian strings that still carry English words get Persian ones.
+  i18n: {
+    supportedLanguages: { fa },
+    fallbackLanguage: 'fa',
+    translations: { fa: PAYLOAD_FA_OVERRIDES },
+  },
   collections,
   globals,
   editor: richTextEditor,
@@ -78,6 +109,8 @@ export default buildConfig({
   db: databaseAdapter(srcDir),
   onInit: (payload) => {
     logPoolErrors(payload.db, (line) => log.warn(line));
+    // H12: a refused scheduled publish records the block messages for the calendar.
+    withScheduleBlockMessages(payload.config);
     // Error alerts reach the Notifier once Payload is up (src/lib/log/requestError.ts, R-13).
     setErrorAlertSink((alert) => notifier.notify(alert));
   },
@@ -121,5 +154,18 @@ export default buildConfig({
     }),
     // Must stay last: it wraps the access of every collection and global present when it runs.
     payloadTotp({ collection: 'users', forceSetup: true, totp: { issuer: 'Sefid Dental' } }),
+    // H34: the plugin's views have no title, so the tab read «Payload» (views only, no access).
+    (config) => {
+      const views = config.admin?.components?.views ?? {};
+      for (const [key, title] of [
+        ['SetupTOTP', adminText('admin.totp.setup')],
+        ['SetupTOTPBackslash', adminText('admin.totp.setup')],
+        ['VerifyTOTP', adminText('admin.totp.verify')],
+        ['VerifyTOTPBackslash', adminText('admin.totp.verify')],
+      ] as const) {
+        if (views[key]) views[key] = { ...views[key], meta: { title } };
+      }
+      return config;
+    },
   ],
 });

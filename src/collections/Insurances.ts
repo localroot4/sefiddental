@@ -11,7 +11,7 @@ export const Insurances: CollectionConfig = {
   slug: 'insurances',
   labels: { singular: 'بیمه', plural: 'بیمه‌ها' },
   admin: {
-    group: 'محتوا',
+    group: 'تنظیمات',
     useAsTitle: 'name',
     defaultColumns: ['name', 'featured', 'order', '_status'],
     hidden: hiddenForEditors,

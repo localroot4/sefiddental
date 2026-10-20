@@ -27,7 +27,7 @@ export const ADMIN_MESSAGES = {
   'admin.duplicates.preferredTime': 'زمان دلخواه',
   'admin.duplicates.sourceUrl': 'صفحهٔ ارسال',
   'admin.duplicates.triage': 'نشانه‌ها',
-  'admin.duplicates.ipHash': 'اثر IP',
+  'admin.duplicates.ipHash': 'اثر آی‌پی',
   'admin.duplicates.empty': 'درخواست تکراری‌ای از این شماره ثبت نشده است.',
   'admin.contact.label': 'تماس با بیمار',
   'admin.contact.call': 'تماس با بیمار',
@@ -115,6 +115,58 @@ export const ADMIN_MESSAGES = {
   'admin.today.notUrgent': 'سهم «فوری نبود» این ماه',
   'admin.today.noOutcome': 'هنوز نتیجه‌ای ثبت نشده است.',
   'admin.today.percent': '{n}٪',
+  'admin.today.openEmergency': 'فوری‌های باز',
+  'admin.today.openEmergencyNote': 'همهٔ روزها',
+  // Tier names on the booking list (the clinic's names, as on the public site)
+  'admin.tier.standard': 'معمولی',
+  'admin.tier.vip': 'VIP',
+  'admin.tier.cip': 'CIP',
+  // Jalali dates in lists and under date fields (H35)
+  'admin.date.hint': 'به تاریخ شمسی: {date}',
+  // Editorial calendar: the view, its nav link and the dashboard widget (H12, H13)
+  'admin.calendar.title': 'تقویم محتوا',
+  'admin.calendar.lead':
+    'انتشارهای زمان‌بندی‌شدهٔ ۶۰ روز آینده و مقاله‌های منتشرشدهٔ ۳۰ روز گذشته، روزبه‌روز.',
+  'admin.calendar.filter': 'نمایش تقویم',
+  'admin.calendar.kind.all': 'همه',
+  'admin.calendar.kind.scheduled': 'زمان‌بندی‌شده',
+  'admin.calendar.kind.published': 'منتشرشده',
+  'admin.calendar.kind.failed': 'ناموفق',
+  'admin.calendar.unpublish': 'لغو انتشار',
+  'admin.calendar.empty.all': 'در این بازه انتشاری نیست.',
+  'admin.calendar.empty.scheduled': 'در ۶۰ روز آینده انتشاری زمان‌بندی نشده است.',
+  'admin.calendar.empty.published': 'در ۳۰ روز گذشته مقاله‌ای منتشر نشده است.',
+  'admin.calendar.empty.failed': 'انتشار ناموفقی نیست.',
+  'admin.calendar.failedHeading': 'انتشارهای ناموفق',
+  'admin.calendar.failedHelp':
+    'این موارد در زمان خود منتشر نشدند. پیام هر ردیف می‌گوید چه چیزی را درست کنید؛ بعد سند را دوباره زمان‌بندی یا منتشر کنید.',
+  'admin.calendar.failedNoMessage': 'دلیل ثبت نشده است. سند را باز کنید و دوباره منتشر کنید.',
+  'admin.calendar.drafts': 'پیش‌نویس‌های مقاله',
+  'admin.calendar.draftsEmpty': 'پیش‌نویس مقاله‌ای نیست.',
+  'admin.calendar.untitled': 'بدون عنوان',
+  'admin.calendar.week': 'هفت روز آینده',
+  'admin.calendar.weekEmpty': 'در هفت روز آینده انتشاری زمان‌بندی نشده است.',
+  'admin.calendar.failedCount': '{n} انتشار ناموفق',
+  'admin.calendar.open': 'تقویم کامل',
+  // SEO health widget (H23, H33)
+  'admin.seo.heading': 'سلامت سئو',
+  'admin.seo.lead': 'صفحه‌های منتشرشده‌ای که در نتیجهٔ گوگل یا معرفی نویسنده ایراد دارند.',
+  'admin.seo.title': 'عنوان در گوگل بریده می‌شود (بیش از ۶۰ نویسه)',
+  'admin.seo.description': 'توضیح سئو خالی است یا بین ۱۲۰ تا ۱۶۰ نویسه نیست',
+  'admin.seo.byline': 'نویسنده یا بازبین پزشک دیگر منتشرشده نیست',
+  'admin.seo.allGood': 'ایرادی پیدا نشد.',
+  'admin.seo.more': 'و {n} مورد دیگر',
+  // Content gaps widget, admins only (H33)
+  'admin.gaps.heading': 'کمبودهای محتوا',
+  'admin.gaps.total': '{n} مورد باز',
+  'admin.gaps.none': 'کمبود بازی نیست.',
+  'admin.gaps.open': 'فهرست کامل در وضعیت سیستم',
+  // Live preview sizes (H10)
+  'admin.preview.mobile': 'موبایل',
+  'admin.preview.tablet': 'تبلت',
+  'admin.preview.desktop': 'دسکتاپ',
+  'admin.totp.setup': 'راه‌اندازی ورود دومرحله‌ای',
+  'admin.totp.verify': 'ورود دومرحله‌ای',
   // Notifier settings: validation, test action, status view
   'admin.notifier.needsSmtp':
     'برای ایمیل، تنظیمات SMTP روی سرور لازم است. از پشتیبانی فنی بخواهید آن را تنظیم کند.',
@@ -145,6 +197,37 @@ export const ADMIN_MESSAGES = {
 } as const;
 
 export type AdminMessageKey = keyof typeof ADMIN_MESSAGES;
+
+/**
+ * H34: Payload's own Persian strings that still carry English words (URL, API, Payload,
+ * Globals), merged over its `fa` translations by `i18n.translations.fa` in the config.
+ */
+export const PAYLOAD_FA_OVERRIDES = {
+  authentication: {
+    apiKey: 'کلید دسترسی',
+    checkYourEmailForPasswordReset:
+      'ایمیلی با پیوند بازنشانی رمز برایتان فرستاده شد. پوشهٔ هرزنامه را هم ببینید.',
+    enableAPIKey: 'فعال‌سازی کلید دسترسی',
+    generateNewAPIKey: 'ساخت کلید دسترسی تازه',
+    generatingNewAPIKeyWillInvalidate:
+      'با ساخت کلید تازه، کلید فعلی <1>باطل</1> می‌شود. ادامه می‌دهید؟',
+    newAPIKeyGenerated: 'کلید دسترسی تازه ساخته شد.',
+  },
+  error: { incorrectCollection: 'مجموعه نامعتبر است.' },
+  fields: {
+    chooseBetweenCustomTextOrDocument:
+      'یک نشانی سفارشی بنویسید یا به صفحهٔ دیگری از سایت پیوند دهید.',
+    customURL: 'نشانی سفارشی',
+    enterURL: 'نشانی را وارد کنید',
+  },
+  general: { globals: 'تنظیمات سراسری', payloadSettings: 'تنظیمات پنل' },
+  upload: { pasteURL: 'چسباندن نشانی' },
+  validation: {
+    // Payload's Persian reads «must not contain any»; the message is an empty state.
+    fieldHasNo: 'هنوز موردی در «{{label}}» ثبت نشده است.',
+    trueOrFalse: 'این فیلد فقط «درست» یا «نادرست» می‌پذیرد.',
+  },
+};
 
 /** The message with its {placeholders} filled in. */
 export function adminText(

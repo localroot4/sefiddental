@@ -252,7 +252,10 @@ export const Bookings: CollectionConfig = {
       type: 'text',
       label: 'سطح',
       maxLength: 30,
-      admin: { description: 'سطح انتخاب‌شده، مثل vip.' },
+      admin: {
+        description: 'سطح ترمیمی که بیمار در صفحهٔ خدمت انتخاب کرد.',
+        components: { Cell: '/admin/bookings/cells#TierCell' },
+      },
     },
     {
       name: 'doctor',
@@ -312,8 +315,8 @@ export const Bookings: CollectionConfig = {
         { label: 'تله', value: 'honeypot' },
         { label: 'ارسال خیلی سریع', value: 'too_fast' },
         { label: 'توکن نامعتبر', value: 'bad_token' },
-        { label: 'محدودیت IP', value: 'ip_rate' },
-        { label: 'محدودیت فوری IP', value: 'emergency_ip_rate' },
+        { label: 'محدودیت آی‌پی', value: 'ip_rate' },
+        { label: 'محدودیت فوری آی‌پی', value: 'emergency_ip_rate' },
         { label: 'بازگردانده‌شده', value: 'restored' },
         { label: 'اولویت فوری برداشته شد', value: 'emergency_priority_removed' },
         { label: 'ثبت دستی', value: 'manual' },
@@ -400,6 +403,7 @@ export const Bookings: CollectionConfig = {
       name: 'duplicateSubmissions',
       type: 'array',
       label: 'درخواست‌های تکراری',
+      labels: { singular: 'درخواست تکراری', plural: 'درخواست‌های تکراری' },
       access: { create: never, update: never },
       admin: {
         ...readOnlyField,
@@ -467,11 +471,16 @@ export const Bookings: CollectionConfig = {
       type: 'group',
       label: 'کمپین',
       admin: { ...noFilter, description: 'پارامترهای کمپین، اگر بود.' },
-      fields: ['source', 'medium', 'campaign', 'term', 'content'].map((name) => ({
-        name,
-        type: 'text' as const,
-        maxLength: 100,
-      })),
+      // H34: utm_source and the rest, under Persian names.
+      fields: (
+        [
+          ['source', 'منبع'],
+          ['medium', 'رسانه'],
+          ['campaign', 'نام کمپین'],
+          ['term', 'کلیدواژه'],
+          ['content', 'محتوا'],
+        ] as const
+      ).map(([name, label]) => ({ name, label, type: 'text' as const, maxLength: 100 })),
     },
     {
       name: 'device',
@@ -488,19 +497,19 @@ export const Bookings: CollectionConfig = {
     {
       name: 'ipHash',
       type: 'text',
-      label: 'اثر IP',
+      label: 'اثر آی‌پی',
       index: true,
       validate: (value: unknown) =>
         value === null ||
         value === undefined ||
         (typeof value === 'string' && /^[a-f0-9]{64}$/.test(value))
           ? true
-          : 'اثر IP نامعتبر است.',
+          : 'اثر آی‌پی نامعتبر است.',
       access: { read: isAdminField, update: never },
       admin: {
         readOnly: true,
         ...noFilter,
-        description: 'اثر یک‌طرفهٔ IP برای محدودیت‌ها. IP خام ذخیره نمی‌شود.',
+        description: 'اثر یک‌طرفهٔ آی‌پی برای محدودیت‌ها. خود آی‌پی ذخیره نمی‌شود.',
       },
     },
     sidHashField(),

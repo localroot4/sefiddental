@@ -1,0 +1,130 @@
+/*
+ * Editorial calendar, SEO health and content gaps (operate mode, H13, H33): Payload's theme
+ * tokens, so light and dark follow the admin; spacing in multiples of --base; logical
+ * properties for RTL; links at least 44px tall. A failed publish is an error, so its row uses
+ * the error tokens with body-colour text (AA in both themes); the panels reuse the bookings
+ * widget panel (bookings.module.css).
+ */
+
+/* Payload's `a:focus { outline: none }` outranks its own :focus-visible ring on links. */
+.link:focus-visible,
+.chip:focus-visible {
+  outline: var(--accessibility-outline);
+  outline-offset: var(--accessibility-outline-offset);
+}
+
+.lead {
+  margin: 0 0 var(--base);
+  color: var(--theme-elevation-650);
+}
+
+.subheading {
+  margin: var(--base) 0 calc(var(--base) * 0.5);
+  font-size: 1rem;
+}
+
+.list {
+  display: grid;
+  gap: calc(var(--base) * 0.25);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--base) * 0.25) calc(var(--base) * 0.5);
+  padding-inline: calc(var(--base) * 0.5);
+  border-radius: var(--style-radius-s);
+  background: var(--theme-elevation-50);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--theme-text);
+  font-weight: 600;
+}
+
+.meta {
+  color: var(--theme-elevation-650);
+  font-variant-numeric: tabular-nums;
+}
+
+.count {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.failed {
+  border-inline-start: 4px solid var(--theme-error-500);
+  background: var(--theme-error-100);
+}
+
+.message {
+  flex-basis: 100%;
+  margin: 0 0 calc(var(--base) * 0.5);
+}
+
+.alertLink {
+  color: var(--theme-error-750);
+}
+
+/* Calendar view: header, the failed block, the filter chips, then the days. */
+.root {
+  padding-block: calc(var(--base) * 1.5) var(--spacing-view-bottom, calc(var(--base) * 3));
+}
+
+.title {
+  margin: 0 0 calc(var(--base) * 0.25);
+}
+
+.section {
+  margin-block-end: calc(var(--base) * 1.5);
+}
+
+.heading {
+  margin: 0 0 calc(var(--base) * 0.5);
+  font-size: 1.15rem;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--base) * 0.5);
+  margin: 0 0 var(--base);
+  padding: 0;
+  list-style: none;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding-inline: var(--base);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: var(--style-radius-l, 999px);
+  color: var(--theme-text);
+  text-decoration: none;
+}
+
+.chip[aria-current='page'] {
+  border-color: var(--theme-text);
+  background: var(--theme-elevation-100);
+  font-weight: 600;
+}
+
+.kind {
+  padding-inline: calc(var(--base) * 0.4);
+  border-radius: var(--style-radius-s);
+  background: var(--theme-elevation-150);
+  font-size: 0.9em;
+}
+
+.empty {
+  margin: 0;
+  color: var(--theme-elevation-650);
+}

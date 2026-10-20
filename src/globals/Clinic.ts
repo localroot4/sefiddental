@@ -270,290 +270,331 @@ export const Clinic: GlobalConfig = {
     },
     beforeChange: [holidayDates],
   }),
+  // Unnamed tabs group the form by task (H32); they add no level to the stored data.
   fields: [
     {
-      name: 'nameFa',
-      type: 'text',
-      label: 'نام کلینیک',
-      required: true,
-      admin: { description: 'نام رسمی کلینیک، همان تابلو.' },
-    },
-    {
-      name: 'nameShortFa',
-      type: 'text',
-      label: 'نام کوتاه',
-      admin: { description: 'نام کوتاه، مثل «کلینیک سفید».' },
-    },
-    {
-      name: 'nameEn',
-      type: 'text',
-      label: 'نام لاتین',
-      validate: withRules(text, (value) =>
-        value === null || value === undefined || /^[\x20-\x7E]+$/.test(String(value))
-          ? true
-          : 'فقط حروف لاتین.',
-      ),
-      admin: { description: 'نام لاتین برای داده‌های ساخت‌یافته.', style: { direction: 'ltr' } },
-    },
-    {
-      name: 'tagline',
-      type: 'text',
-      label: 'شعار',
-      maxLength: 80,
-      admin: { description: 'شعار کلینیک. ادعای «اولین» فقط با تصمیم کلینیک (ردیف ۲۸ کمبودها).' },
-    },
-    {
-      name: 'taglineApproved',
-      type: 'checkbox',
-      label: 'شعار تأییدشده',
-      defaultValue: false,
-      admin: {
-        description:
-          'کلینیک مدرک ادعای شعار را داده یا نگه‌داشتن آن را به‌عنوان شعار پذیرفته است (ردیف ۲۸).',
-      },
-    },
-    {
-      name: 'contactHeadline',
-      type: 'text',
-      label: 'تیتر تماس',
-      maxLength: 60,
-      admin: { description: 'تیتر صفحهٔ آدرس و ساعات.' },
-    },
-    proseText('footerLine', 'معرفی کوتاه پانویس', {
-      maxLength: 120,
-      description: 'یک جملهٔ کوتاه زیر نام کلینیک در پانویس سایت، فقط با واقعیت‌های تأییدشده.',
-    }),
-    {
-      name: 'domain',
-      type: 'text',
-      label: 'دامنه',
-      required: true,
-      validate: withRules(text, (value) =>
-        /^(?=.{1,253}$)([a-z0-9-]+\.)+[a-z]{2,}$/.test(String(value ?? ''))
-          ? true
-          : 'فقط نام دامنه، بدون https و /.',
-      ),
-      admin: { description: 'دامنهٔ سایت، بدون https.', style: { direction: 'ltr' } },
-    },
-    {
-      name: 'address',
-      type: 'group',
-      label: 'نشانی',
-      fields: [
+      type: 'tabs',
+      tabs: [
         {
-          name: 'fullFa',
-          type: 'textarea',
-          label: 'نشانی کامل',
-          required: true,
-          maxLength: 200,
-          admin: { description: 'نشانی کامل همان‌طور که روی نقشه‌ها ثبت است.' },
+          label: 'هویت',
+          fields: [
+            {
+              name: 'nameFa',
+              type: 'text',
+              label: 'نام کلینیک',
+              required: true,
+              admin: { description: 'نام رسمی کلینیک، همان تابلو.' },
+            },
+            {
+              name: 'nameShortFa',
+              type: 'text',
+              label: 'نام کوتاه',
+              admin: { description: 'نام کوتاه، مثل «کلینیک سفید».' },
+            },
+            {
+              name: 'nameEn',
+              type: 'text',
+              label: 'نام لاتین',
+              validate: withRules(text, (value) =>
+                value === null || value === undefined || /^[\x20-\x7E]+$/.test(String(value))
+                  ? true
+                  : 'فقط حروف لاتین.',
+              ),
+              admin: {
+                description: 'نام لاتین برای داده‌های ساخت‌یافته.',
+                style: { direction: 'ltr' },
+              },
+            },
+            {
+              name: 'tagline',
+              type: 'text',
+              label: 'شعار',
+              maxLength: 80,
+              admin: {
+                description: 'شعار کلینیک. ادعای «اولین» فقط با تصمیم کلینیک (ردیف ۲۸ کمبودها).',
+              },
+            },
+            {
+              name: 'taglineApproved',
+              type: 'checkbox',
+              label: 'شعار تأییدشده',
+              defaultValue: false,
+              admin: {
+                description:
+                  'کلینیک مدرک ادعای شعار را داده یا نگه‌داشتن آن را به‌عنوان شعار پذیرفته است (ردیف ۲۸).',
+              },
+            },
+            {
+              name: 'contactHeadline',
+              type: 'text',
+              label: 'تیتر تماس',
+              maxLength: 60,
+              admin: { description: 'تیتر صفحهٔ آدرس و ساعات.' },
+            },
+            proseText('footerLine', 'معرفی کوتاه پانویس', {
+              maxLength: 120,
+              description:
+                'یک جملهٔ کوتاه زیر نام کلینیک در پانویس سایت، فقط با واقعیت‌های تأییدشده.',
+            }),
+            {
+              name: 'domain',
+              type: 'text',
+              label: 'دامنه',
+              required: true,
+              validate: withRules(text, (value) =>
+                /^(?=.{1,253}$)([a-z0-9-]+\.)+[a-z]{2,}$/.test(String(value ?? ''))
+                  ? true
+                  : 'فقط نام دامنه، بدون https و /.',
+              ),
+              admin: { description: 'دامنهٔ سایت، بدون https.', style: { direction: 'ltr' } },
+            },
+          ],
         },
         {
-          name: 'city',
-          type: 'text',
-          label: 'شهر',
-          required: true,
-          admin: { description: 'شهر.' },
-        },
-        { name: 'district', type: 'text', label: 'محله', admin: { description: 'محله.' } },
-        {
-          name: 'postalCode',
-          type: 'text',
-          label: 'کد پستی',
-          hooks: {
-            beforeValidate: [
-              ({ value }) =>
-                typeof value === 'string'
-                  ? toLatinDigits(value).replace(/[\s-]/g, '') || null
-                  : value,
-            ],
-          },
-          validate: withRules(text, (value) =>
-            value === null || value === undefined || /^\d{10}$/.test(String(value))
-              ? true
-              : 'کد پستی ده رقم است.',
-          ),
-          admin: { description: 'کد پستی ده‌رقمی.' },
-        },
-        {
-          name: 'lat',
-          type: 'number',
-          label: 'عرض جغرافیایی',
-          min: -90,
-          max: 90,
-          admin: { description: 'عرض جغرافیایی از نشان یا بلد.' },
-        },
-        {
-          name: 'lng',
-          type: 'number',
-          label: 'طول جغرافیایی',
-          min: -180,
-          max: 180,
-          admin: { description: 'طول جغرافیایی از نشان یا بلد.' },
-        },
-        {
-          name: 'accessNotes',
-          type: 'textarea',
-          label: 'دسترسی',
-          maxLength: 500,
-          admin: { description: 'پارکینگ، مترو، اتوبوس.' },
-        },
-      ],
-    },
-    {
-      name: 'phones',
-      type: 'group',
-      label: 'تلفن‌ها',
-      fields: [
-        phone(
-          'landline',
-          'تلفن ثابت',
-          'تلفن ثابت؛ با رقم فارسی یا انگلیسی وارد کنید، به شکل بین‌المللی ذخیره می‌شود.',
-          false,
-          true,
-        ),
-        phone('mobile', 'موبایل', 'موبایل کلینیک.', true),
-        phone('whatsapp', 'واتساپ', 'شمارهٔ واتساپ.', true),
-        {
-          name: 'whatsappVerified',
-          type: 'checkbox',
-          label: 'واتساپ تأییدشده',
-          defaultValue: false,
-          admin: { description: 'این شماره واتساپ دارد و پاسخ داده می‌شود (ردیف ۱۶ کمبودها).' },
-        },
-        phone('telegram', 'تلگرام', 'شمارهٔ تلگرام.', true),
-        {
-          name: 'telegramVerified',
-          type: 'checkbox',
-          label: 'تلگرام تأییدشده',
-          defaultValue: false,
-          admin: { description: 'شمارهٔ تلگرام تأیید شده است.' },
-        },
-      ],
-    },
-    {
-      name: 'reception',
-      type: 'group',
-      label: 'پذیرش',
-      fields: [
-        {
-          name: 'callbackMinutes',
-          type: 'number',
-          label: 'زمان تماس (دقیقه)',
-          required: true,
-          defaultValue: 10,
-          min: 1,
-          max: 120,
-          admin: { description: 'پذیرش معمولاً تا چند دقیقه پس از ثبت تماس می‌گیرد.' },
-        },
-        phone(
-          'callerNumber',
-          'شمارهٔ تماس‌گیرنده',
-          'شماره‌ای که پذیرش از آن تماس می‌گیرد. خالی بماند، این خط در پیام موفقیت پنهان است.',
-          false,
-        ),
-      ],
-    },
-    {
-      name: 'hours',
-      type: 'group',
-      label: 'ساعات کاری',
-      fields: [
-        {
-          name: 'note',
-          type: 'text',
-          label: 'توضیح',
-          maxLength: 80,
-          admin: { description: 'توضیح کوتاه ساعات، مثل «هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی».' },
-        },
-        weekly,
-        holidays,
-      ],
-    },
-    {
-      name: 'social',
-      type: 'group',
-      label: 'شبکه‌های اجتماعی',
-      fields: [
-        handle('instagram', 'اینستاگرام', 'نام کاربری اینستاگرام بدون @.'),
-        handle('telegramChannel', 'کانال تلگرام', 'کانال تلگرام، اگر هست.'),
-        handle('aparat', 'آپارات', 'کانال آپارات، اگر هست.'),
-      ],
-    },
-    {
-      name: 'maps',
-      type: 'group',
-      label: 'نقشه',
-      fields: [
-        mapUrl('googleMapsUrl', 'گوگل‌مپ'),
-        mapUrl('neshanUrl', 'نشان'),
-        mapUrl('baladUrl', 'بلد'),
-        mapUrl('wazeUrl', 'ویز'),
-        imageUpload('staticMap', 'تصویر نقشه', 'تصویر ثابت نقشه (بدون نقشهٔ گوگل).'),
-      ],
-    },
-    {
-      name: 'stats',
-      type: 'group',
-      label: 'آمار',
-      admin: {
-        description:
-          'عدد فقط وقتی در سایت نمایش داده می‌شود که «تأییدشده» تیک بخورد (ردیف ۱۵ کمبودها).',
-      },
-      fields: [
-        stat('yearsActive', 'سال‌های فعالیت'),
-        stat('specialistDentists', 'دندانپزشکان متخصص'),
-        stat('specialtyClinics', 'بخش‌های تخصصی'),
-        stat('insurers', 'بیمه‌ها'),
-      ],
-    },
-    {
-      name: 'legal',
-      type: 'group',
-      label: 'اطلاعات قانونی',
-      fields: [
-        {
-          name: 'licenseNumber',
-          type: 'text',
-          label: 'شمارهٔ پروانه',
-          admin: { description: 'شمارهٔ پروانهٔ کلینیک برای پانویس.' },
+          label: 'تماس و نشانی',
+          fields: [
+            {
+              name: 'address',
+              type: 'group',
+              label: 'نشانی',
+              fields: [
+                {
+                  name: 'fullFa',
+                  type: 'textarea',
+                  label: 'نشانی کامل',
+                  required: true,
+                  maxLength: 200,
+                  admin: { description: 'نشانی کامل همان‌طور که روی نقشه‌ها ثبت است.' },
+                },
+                {
+                  name: 'city',
+                  type: 'text',
+                  label: 'شهر',
+                  required: true,
+                  admin: { description: 'شهر.' },
+                },
+                { name: 'district', type: 'text', label: 'محله', admin: { description: 'محله.' } },
+                {
+                  name: 'postalCode',
+                  type: 'text',
+                  label: 'کد پستی',
+                  hooks: {
+                    beforeValidate: [
+                      ({ value }) =>
+                        typeof value === 'string'
+                          ? toLatinDigits(value).replace(/[\s-]/g, '') || null
+                          : value,
+                    ],
+                  },
+                  validate: withRules(text, (value) =>
+                    value === null || value === undefined || /^\d{10}$/.test(String(value))
+                      ? true
+                      : 'کد پستی ده رقم است.',
+                  ),
+                  admin: { description: 'کد پستی ده‌رقمی.' },
+                },
+                {
+                  name: 'lat',
+                  type: 'number',
+                  label: 'عرض جغرافیایی',
+                  min: -90,
+                  max: 90,
+                  admin: { description: 'عرض جغرافیایی از نشان یا بلد.' },
+                },
+                {
+                  name: 'lng',
+                  type: 'number',
+                  label: 'طول جغرافیایی',
+                  min: -180,
+                  max: 180,
+                  admin: { description: 'طول جغرافیایی از نشان یا بلد.' },
+                },
+                {
+                  name: 'accessNotes',
+                  type: 'textarea',
+                  label: 'دسترسی',
+                  maxLength: 500,
+                  admin: { description: 'پارکینگ، مترو، اتوبوس.' },
+                },
+              ],
+            },
+            {
+              name: 'phones',
+              type: 'group',
+              label: 'تلفن‌ها',
+              fields: [
+                phone(
+                  'landline',
+                  'تلفن ثابت',
+                  'تلفن ثابت؛ با رقم فارسی یا انگلیسی وارد کنید، به شکل بین‌المللی ذخیره می‌شود.',
+                  false,
+                  true,
+                ),
+                phone('mobile', 'موبایل', 'موبایل کلینیک.', true),
+                phone('whatsapp', 'واتساپ', 'شمارهٔ واتساپ.', true),
+                {
+                  name: 'whatsappVerified',
+                  type: 'checkbox',
+                  label: 'واتساپ تأییدشده',
+                  defaultValue: false,
+                  admin: {
+                    description: 'این شماره واتساپ دارد و پاسخ داده می‌شود (ردیف ۱۶ کمبودها).',
+                  },
+                },
+                phone('telegram', 'تلگرام', 'شمارهٔ تلگرام.', true),
+                {
+                  name: 'telegramVerified',
+                  type: 'checkbox',
+                  label: 'تلگرام تأییدشده',
+                  defaultValue: false,
+                  admin: { description: 'شمارهٔ تلگرام تأیید شده است.' },
+                },
+              ],
+            },
+            {
+              name: 'reception',
+              type: 'group',
+              label: 'پذیرش',
+              fields: [
+                {
+                  name: 'callbackMinutes',
+                  type: 'number',
+                  label: 'زمان تماس (دقیقه)',
+                  required: true,
+                  defaultValue: 10,
+                  min: 1,
+                  max: 120,
+                  admin: { description: 'پذیرش معمولاً تا چند دقیقه پس از ثبت تماس می‌گیرد.' },
+                },
+                phone(
+                  'callerNumber',
+                  'شمارهٔ تماس‌گیرنده',
+                  'شماره‌ای که پذیرش از آن تماس می‌گیرد. خالی بماند، این خط در پیام موفقیت پنهان است.',
+                  false,
+                ),
+              ],
+            },
+            {
+              name: 'social',
+              type: 'group',
+              label: 'شبکه‌های اجتماعی',
+              fields: [
+                handle('instagram', 'اینستاگرام', 'نام کاربری اینستاگرام بدون @.'),
+                handle('telegramChannel', 'کانال تلگرام', 'کانال تلگرام، اگر هست.'),
+                handle('aparat', 'آپارات', 'کانال آپارات، اگر هست.'),
+              ],
+            },
+            {
+              name: 'maps',
+              type: 'group',
+              label: 'نقشه',
+              fields: [
+                mapUrl('googleMapsUrl', 'گوگل‌مپ'),
+                mapUrl('neshanUrl', 'نشان'),
+                mapUrl('baladUrl', 'بلد'),
+                mapUrl('wazeUrl', 'ویز'),
+                imageUpload('staticMap', 'تصویر نقشه', 'تصویر ثابت نقشه (بدون نقشهٔ گوگل).'),
+              ],
+            },
+          ],
         },
         {
-          name: 'technicalSupervisor',
-          type: 'text',
-          label: 'مسئول فنی',
-          admin: { description: 'نام مسئول فنی برای پانویس.' },
-        },
-      ],
-    },
-    {
-      name: 'emergency',
-      type: 'group',
-      label: 'اورژانس',
-      fields: [
-        {
-          name: 'policy',
-          type: 'textarea',
-          label: 'سیاست نوبت فوری',
-          maxLength: 300,
-          admin: { description: 'سیاست نوبت فوری، بدون وعدهٔ نوبت قطعی.' },
-        },
-        {
-          name: 'nearby24hCenter',
-          type: 'textarea',
-          label: 'مرکز شبانه‌روزی نزدیک',
-          maxLength: 300,
-          admin: { description: 'مرکز شبانه‌روزی نزدیک برای ساعات تعطیل (ردیف ۳۱).' },
+          label: 'ساعات و تعطیلات',
+          fields: [
+            {
+              name: 'hours',
+              type: 'group',
+              label: 'ساعات کاری',
+              fields: [
+                {
+                  name: 'note',
+                  type: 'text',
+                  label: 'توضیح',
+                  maxLength: 80,
+                  admin: {
+                    description: 'توضیح کوتاه ساعات، مثل «هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی».',
+                  },
+                },
+                weekly,
+                holidays,
+              ],
+            },
+          ],
         },
         {
-          name: 'priorityPromiseConfirmed',
-          type: 'checkbox',
-          label: 'تماس زودتر تأییدشده',
-          defaultValue: false,
-          admin: {
-            description:
-              'کلینیک تأیید کرده درخواست‌های فوری در ساعت شروع کار زودتر تماس گرفته می‌شوند (ردیف ۱۹).',
-          },
+          label: 'اورژانس',
+          fields: [
+            {
+              name: 'emergency',
+              type: 'group',
+              label: 'اورژانس',
+              fields: [
+                {
+                  name: 'policy',
+                  type: 'textarea',
+                  label: 'سیاست نوبت فوری',
+                  maxLength: 300,
+                  admin: { description: 'سیاست نوبت فوری، بدون وعدهٔ نوبت قطعی.' },
+                },
+                {
+                  name: 'nearby24hCenter',
+                  type: 'textarea',
+                  label: 'مرکز شبانه‌روزی نزدیک',
+                  maxLength: 300,
+                  admin: { description: 'مرکز شبانه‌روزی نزدیک برای ساعات تعطیل (ردیف ۳۱).' },
+                },
+                {
+                  name: 'priorityPromiseConfirmed',
+                  type: 'checkbox',
+                  label: 'تماس زودتر تأییدشده',
+                  defaultValue: false,
+                  admin: {
+                    description:
+                      'کلینیک تأیید کرده درخواست‌های فوری در ساعت شروع کار زودتر تماس گرفته می‌شوند (ردیف ۱۹).',
+                  },
+                },
+              ],
+            },
+          ],
+        },
+        {
+          label: 'قانونی و آمار',
+          fields: [
+            {
+              name: 'legal',
+              type: 'group',
+              label: 'اطلاعات قانونی',
+              fields: [
+                {
+                  name: 'licenseNumber',
+                  type: 'text',
+                  label: 'شمارهٔ پروانه',
+                  admin: { description: 'شمارهٔ پروانهٔ کلینیک برای پانویس.' },
+                },
+                {
+                  name: 'technicalSupervisor',
+                  type: 'text',
+                  label: 'مسئول فنی',
+                  admin: { description: 'نام مسئول فنی برای پانویس.' },
+                },
+              ],
+            },
+            {
+              name: 'stats',
+              type: 'group',
+              label: 'آمار',
+              admin: {
+                description:
+                  'عدد فقط وقتی در سایت نمایش داده می‌شود که «تأییدشده» تیک بخورد (ردیف ۱۵ کمبودها).',
+              },
+              fields: [
+                stat('yearsActive', 'سال‌های فعالیت'),
+                stat('specialistDentists', 'دندانپزشکان متخصص'),
+                stat('specialtyClinics', 'بخش‌های تخصصی'),
+                stat('insurers', 'بیمه‌ها'),
+              ],
+            },
+          ],
         },
       ],
     },

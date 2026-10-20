@@ -115,7 +115,7 @@ export const AuditLog: CollectionConfig = {
       index: true,
       admin: { description: 'شناسهٔ درخواست برای پیدا کردن در گزارش‌ها.' },
     },
-    { name: 'ipHash', type: 'text', label: 'اثر IP' },
+    { name: 'ipHash', type: 'text', label: 'اثر آی‌پی' },
     {
       name: 'note',
       type: 'textarea',

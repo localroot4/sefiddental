@@ -23,7 +23,7 @@ export const FinancingOptions: CollectionConfig = {
   slug: 'financing-options',
   labels: { singular: 'گزینهٔ پرداخت', plural: 'گزینه‌های پرداخت' },
   admin: {
-    group: 'محتوا',
+    group: 'تنظیمات',
     useAsTitle: 'title',
     defaultColumns: ['title', 'provider', 'approvalStatus', 'enabled', '_status'],
     hidden: hiddenForEditors,

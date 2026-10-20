@@ -19,10 +19,13 @@ const WIDGET_COUNTS = [
   'suspiciousToday',
   'notUrgentMonth',
   'outcomeMonth',
+  'openEmergency',
 ] as const;
 type WidgetCounts = Record<(typeof WIDGET_COUNTS)[number], number | null>;
 
-const num = (n: number | null) => (n === null ? adminText('admin.unknown') : formatNumberFa(n));
+// A count that failed or never arrived is «نامشخص», never zero.
+const num = (n: number | null | undefined) =>
+  n === null || n === undefined ? adminText('admin.unknown') : formatNumberFa(n);
 
 /** Each figure opens a list that holds exactly the requests it counts (counts.ts). */
 function figureLinks(now: Date) {
@@ -34,7 +37,10 @@ function figureLinks(now: Date) {
       [...today, ...real, ...cond(2, 'kind', 'equals', ['emergency'])],
       'urgencyRank',
     ),
-    waiting: tabHref('new'),
+    // Every new request, as counted, most overdue first (H33); the «مهلت تماس» tab drops rows
+    // without a due time.
+    waiting: listHref(cond(0, 'status', 'equals', ['new']), 'callbackDueAt'),
+    openEmergency: tabHref('emergency'),
     suspiciousToday: listHref(
       [...today, ...cond(1, 'status', 'equals', ['suspicious'])],
       '-createdAt',
@@ -110,13 +116,28 @@ export function BookingsTodayBody({ counts, now }: { counts: WidgetCounts; now: 
         </a>
         <span className={styles.monthValue}>{notUrgentShare(counts)}</span>
       </p>
+      {/* Open emergencies of every day, so one from yesterday is not lost under «امروز». */}
+      <p className={styles.month}>
+        <a className={styles.orderLink} href={links.openEmergency}>
+          {adminText('admin.today.openEmergency')}
+        </a>
+        <span className={styles.figureNote}>{adminText('admin.today.openEmergencyNote')}</span>
+        <span
+          className={
+            counts.openEmergency ? `${styles.monthValue} ${styles.alert}` : styles.monthValue
+          }
+        >
+          {num(counts.openEmergency)}
+        </span>
+      </p>
     </section>
   );
 }
 
 /**
  * `beforeDashboard` (G15; not the experimental dashboard widgets API): today's requests for
- * TOTP-verified staff, counted from Tehran midnight, and this Jalali month's «فوری نبود» share.
+ * TOTP-verified staff, counted from Tehran midnight, this Jalali month's «فوری نبود» share and
+ * the open emergencies of every day (H33).
  * Counts only, so access is overridden after the role check.
  */
 export async function BookingsToday({ payload, user }: ServerProps) {

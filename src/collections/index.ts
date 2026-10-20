@@ -18,7 +18,11 @@ import { ArticleCategories, Tags } from './Taxonomies';
 import { Testimonials } from './Testimonials';
 import { Users } from './Users';
 
-/** Every collection of the site, in admin navigation order within each group (freeze section 6). */
+/**
+ * Every collection of the site, in admin navigation order (freeze section 6). Payload orders the
+ * groups by first appearance, so «تنظیمات» (insurances, financing) comes before «سیستم» (H32).
+ * No API tab anywhere: Payload has no per-role switch for it.
+ */
 export const collections: CollectionConfig[] = [
   Bookings,
   Pages,
@@ -29,14 +33,14 @@ export const collections: CollectionConfig[] = [
   Articles,
   ArticleCategories,
   Tags,
-  Insurances,
-  FinancingOptions,
   Media,
   Testimonials,
   Cases,
+  Insurances,
+  FinancingOptions,
   Redirects,
   EventsDaily,
   SmsThrottle,
   AuditLog,
   Users,
-];
+].map((collection) => ({ ...collection, admin: { ...collection.admin, hideAPIURL: true } }));
