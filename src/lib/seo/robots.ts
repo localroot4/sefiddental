@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 
 import type { ServerEnv } from '@/lib/env';
+import { toLatinDigits } from '@/lib/persianText';
 import { absoluteUrl } from '@/lib/seo/url';
 
 /*
@@ -26,19 +27,32 @@ function firstParam(params: SearchParamsInput, key: string): string | undefined 
   return typeof value === 'string' ? value : value?.[0];
 }
 
-const isPaginated = (path: string) => path === ARTICLES || ARTICLE_CATEGORY.test(path);
+/**
+ * `?page` of a paginated list (H3): an integer of 2 or more in ASCII, Persian or Arabic-Indic
+ * digits; the first value when repeated. Null otherwise (absent, 1, signs, decimals, spaces,
+ * past the safe integers): the list answers it with a 308 to its base URL.
+ */
+export function parsePageParam(raw: string | readonly string[] | null | undefined): number | null {
+  const value = typeof raw === 'string' ? raw : raw?.[0];
+  if (!value || !/^[0-9\u06F0-\u06F9\u0660-\u0669]+$/.test(value)) return null;
+  const page = Number(toLatinDigits(value));
+  return Number.isSafeInteger(page) && page >= 2 ? page : null;
+}
+
+/** Article lists with pages 2 and up: the hub, categories and tags (H3). */
+const isPaginated = (path: string) =>
+  path === ARTICLES || ARTICLE_CATEGORY.test(path) || ARTICLE_TAG.test(path);
 
 /**
  * Absolute canonical URL. Only paginated article lists keep a query (`page` when it is an integer
- * of 2 or more); every other key (utm_*, gclid, filters such as ?service=) is dropped.
+ * of 2 or more, parsePageParam); every other key (utm_*, gclid, filters such as ?service=) is
+ * dropped.
  */
 export function canonicalUrl(path: string, searchParams?: SearchParamsInput): string {
   const url = new URL(absoluteUrl(path));
   if (isPaginated(path)) {
-    const page = firstParam(searchParams, 'page');
-    if (page !== undefined && /^\d+$/.test(page) && Number(page) >= 2) {
-      url.searchParams.set('page', String(Number(page)));
-    }
+    const page = parsePageParam(firstParam(searchParams, 'page'));
+    if (page !== null) url.searchParams.set('page', String(page));
   }
   return url.href;
 }
@@ -48,21 +62,26 @@ export interface PageRobots {
   follow: boolean;
 }
 
-/** Meta robots of a page. Staging (ALLOW_INDEXING=false) is noindex, nofollow everywhere. */
+/**
+ * Meta robots of a page. Staging (ALLOW_INDEXING=false) is noindex, nofollow everywhere. Article
+ * lists count their published articles (`articleCount`, unknown counts as 0): the hub is noindex
+ * while empty (C25), a category below 5 (H4); a tag is always noindex.
+ */
 export function pageRobots(input: {
   path: string;
   allowIndexing: boolean;
   noindex?: boolean | null;
-  categoryPublishedCount?: number;
+  articleCount?: number;
 }): PageRobots {
   if (!input.allowIndexing) return { index: false, follow: false };
   const { path } = input;
-  if (input.noindex || path === BOOKING_SUCCESS || ARTICLE_TAG.test(path)) {
-    return { index: false, follow: true };
-  }
+  const count = input.articleCount ?? 0;
   if (
-    ARTICLE_CATEGORY.test(path) &&
-    (input.categoryPublishedCount ?? 0) < CATEGORY_INDEX_MIN_ARTICLES
+    input.noindex ||
+    path === BOOKING_SUCCESS ||
+    ARTICLE_TAG.test(path) ||
+    (path === ARTICLES && count < 1) ||
+    (ARTICLE_CATEGORY.test(path) && count < CATEGORY_INDEX_MIN_ARTICLES)
   ) {
     return { index: false, follow: true };
   }

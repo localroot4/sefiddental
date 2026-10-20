@@ -1,3 +1,17 @@
+import type {
+  Article,
+  BreadcrumbList,
+  Dentist,
+  FAQPage,
+  ItemList,
+  MedicalWebPage,
+  Physician,
+  Service,
+  VideoObject,
+  WebPage,
+  WebSite,
+} from 'schema-dts';
+
 import { readEnv } from '@/lib/env';
 import { zonedDateKey } from '@/lib/jalali';
 import { log } from '@/lib/log/logger';
@@ -7,7 +21,9 @@ import { absoluteUrl } from '@/lib/seo/url';
  * JSON-LD builders (spec 9.7) fed by typed inputs; the data lane maps Payload documents to them.
  * One @graph per script; nodes link by @id. A node with a missing required value or a
  * [[NEEDS_CLIENT marker is omitted, never emitted half-empty: outside production the builder
- * throws so the gap is fixed, in production it logs `jsonld_invalid` and returns null.
+ * throws so the gap is fixed, in production it logs `jsonld_invalid` and returns null. Every node
+ * literal `satisfies` its schema-dts type (H15), so the typecheck refuses a property schema.org
+ * does not define, offline; tests/e2e/structured-data.spec.ts checks the rendered graphs.
  */
 
 export type JsonLdNode = { '@type': string; '@id'?: string } & Record<string, unknown>;
@@ -18,7 +34,7 @@ export interface JsonLdGraph {
 
 export type Weekday = 'sat' | 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri';
 
-const SCHEMA_DAYS: Record<Weekday, string> = {
+const SCHEMA_DAYS = {
   sat: 'https://schema.org/Saturday',
   sun: 'https://schema.org/Sunday',
   mon: 'https://schema.org/Monday',
@@ -26,7 +42,7 @@ const SCHEMA_DAYS: Record<Weekday, string> = {
   wed: 'https://schema.org/Wednesday',
   thu: 'https://schema.org/Thursday',
   fri: 'https://schema.org/Friday',
-};
+} as const satisfies Record<Weekday, string>;
 
 const MARKER = '[[NEEDS_CLIENT';
 
@@ -118,7 +134,7 @@ export function dentistNode(clinic: ClinicJsonLdInput): JsonLdNode | null {
         streetAddress: clinic.address.street,
         addressLocality: clinic.address.locality,
         addressRegion: clinic.address.region,
-        postalCode: clinic.address.postalCode,
+        postalCode: clinic.address.postalCode ?? undefined,
         addressCountry: clinic.address.country,
       },
       geo: clinic.geo
@@ -131,10 +147,10 @@ export function dentistNode(clinic: ClinicJsonLdInput): JsonLdNode | null {
         closes: rule.close,
       })),
       sameAs: clinic.sameAs ? [...clinic.sameAs] : undefined,
-      hasMap: clinic.hasMap,
+      hasMap: clinic.hasMap ?? undefined,
       logo: absoluteUrl('/brand/favicon-512.png'),
-      image: absoluteUrl('/brand/og-preview.png'),
-    },
+      image: absoluteUrl('/brand/og/default.png'),
+    } satisfies Dentist,
     ['name', 'telephone', 'address', 'openingHoursSpecification'],
   );
 }
@@ -149,7 +165,7 @@ export function websiteNode(input: { name: string }): JsonLdNode | null {
       name: input.name,
       inLanguage: 'fa-IR',
       publisher: { '@id': dentistId() },
-    },
+    } satisfies WebSite,
     ['name'],
   );
 }
@@ -174,7 +190,7 @@ export function physicianNode(doctor: {
       identifier: doctor.councilNumber
         ? { '@type': 'PropertyValue', propertyID: 'نظام پزشکی', value: doctor.councilNumber }
         : undefined,
-    },
+    } satisfies Physician,
     ['name'],
   );
 }
@@ -197,8 +213,8 @@ export function serviceNode(service: {
       url,
       provider: { '@id': dentistId() },
       areaServed: service.areaServed ? [...service.areaServed] : undefined,
-      description: service.description,
-    },
+      description: service.description ?? undefined,
+    } satisfies Service,
     ['name', 'serviceType'],
   );
 }
@@ -219,7 +235,7 @@ export function faqPageNode(
         name: f.question,
         acceptedAnswer: { '@type': 'Answer', text: f.answer },
       })),
-    },
+    } satisfies FAQPage,
     ['mainEntity'],
   );
 }
@@ -238,7 +254,7 @@ export function breadcrumbNode(
         name: item.name,
         item: absoluteUrl(item.path),
       })),
-    },
+    } satisfies BreadcrumbList,
     ['itemListElement'],
   );
 }
@@ -249,37 +265,43 @@ export interface PersonRef {
 }
 
 /**
- * Article page: a MedicalWebPage (reviewedBy and lastReviewed belong to WebPage, spec C5) whose
- * mainEntity is the Article.
+ * Article page: a MedicalWebPage, or a plain WebPage for a non-medical article (C1); either
+ * carries reviewedBy and lastReviewed (WebPage properties, spec C5) and has the Article as its
+ * mainEntity. The author is a dentist with a url or a staff name without one.
  */
 export function articleNodes(article: {
   path: string;
   headline: string;
   description?: string | null;
   image?: string | null;
+  isMedical: boolean;
   datePublished: string;
+  /** contentUpdatedAt ?? publishedAt: the date the sitemap gives as lastmod (H16). */
   dateModified?: string | null;
   author: PersonRef;
   reviewer?: PersonRef | null;
+  /** The stored review instant; written as the Tehran calendar day. */
   lastReviewed?: string | null;
 }): [JsonLdNode, JsonLdNode] | null {
   const url = absoluteUrl(article.path);
-  const person = (p: PersonRef) => ({
-    '@type': 'Person',
-    name: p.name,
-    url: p.path ? absoluteUrl(p.path) : undefined,
-  });
+  const person = (p: PersonRef) =>
+    ({
+      '@type': 'Person',
+      name: p.name,
+      url: p.path ? absoluteUrl(p.path) : undefined,
+    }) as const;
   const page = finish(
     {
-      '@type': 'MedicalWebPage',
+      '@type': article.isMedical ? 'MedicalWebPage' : 'WebPage',
       '@id': `${url}#webpage`,
       url,
       name: article.headline,
       inLanguage: 'fa-IR',
+      isPartOf: { '@id': websiteId() },
       reviewedBy: article.reviewer ? person(article.reviewer) : undefined,
-      lastReviewed: article.lastReviewed,
+      lastReviewed: tehranDay(article.lastReviewed),
       mainEntity: { '@id': `${url}#article` },
-    },
+    } satisfies MedicalWebPage | WebPage,
     ['name'],
   );
   const node = finish(
@@ -287,7 +309,7 @@ export function articleNodes(article: {
       '@type': 'Article',
       '@id': `${url}#article`,
       headline: article.headline,
-      description: article.description,
+      description: article.description ?? undefined,
       image: article.image ? absoluteUrlOf(article.image) : undefined,
       datePublished: article.datePublished,
       dateModified: article.dateModified ?? article.datePublished,
@@ -295,11 +317,15 @@ export function articleNodes(article: {
       publisher: { '@id': dentistId() },
       mainEntityOfPage: { '@id': `${url}#webpage` },
       inLanguage: 'fa-IR',
-    },
+    } satisfies Article,
     ['headline', 'datePublished', 'author'],
   );
   return page && node ? [page, node] : null;
 }
+
+/** A schema.org Date: the Tehran calendar day of a stored instant (the reviewer picked a day). */
+const tehranDay = (instant: string | null | undefined) =>
+  instant ? zonedDateKey(new Date(instant)) : undefined;
 
 /**
  * A patient guide (templates C25, docs/seo/plan.md 4 has no guide row): a MedicalWebPage with the
@@ -322,7 +348,7 @@ export function guidePageNode(guide: {
     '@id': `${url}#webpage`,
     url,
     name: guide.name,
-    description: guide.description,
+    description: guide.description ?? undefined,
     inLanguage: 'fa-IR',
     isPartOf: { '@id': websiteId() },
     publisher: { '@id': dentistId() },
@@ -333,10 +359,9 @@ export function guidePageNode(guide: {
           url: guide.reviewer.path ? absoluteUrl(guide.reviewer.path) : undefined,
         }
       : undefined,
-    // A schema.org Date: the Tehran calendar day the reviewer picked (stored as UTC).
-    lastReviewed: guide.lastReviewed ? zonedDateKey(new Date(guide.lastReviewed)) : undefined,
-    dateModified: guide.dateModified,
-  });
+    lastReviewed: tehranDay(guide.lastReviewed),
+    dateModified: guide.dateModified ?? undefined,
+  } satisfies MedicalWebPage);
 }
 
 /** VideoObject of a testimonial; all five core fields or nothing (Google's set is unverified). */
@@ -365,9 +390,9 @@ export function videoNode(video: {
       thumbnailUrl: absoluteUrlOf(video.thumbnailUrl),
       uploadDate: video.uploadDate,
       contentUrl: absoluteUrlOf(video.contentUrl),
-      transcript: video.transcript,
+      transcript: video.transcript ?? undefined,
       inLanguage: 'fa-IR',
-    },
+    } satisfies VideoObject,
     ['name', 'description', 'thumbnailUrl', 'uploadDate', 'contentUrl'],
   );
 }
@@ -386,7 +411,7 @@ export function itemListNode(
         url: absoluteUrl(item.path),
         name: item.name,
       })),
-    },
+    } satisfies ItemList,
     ['itemListElement'],
   );
 }

@@ -1,11 +1,12 @@
 import type { ReactNode } from 'react';
 import { prerender } from 'react-dom/static';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { BOOKING_DIALOG_ID } from '@/components/chrome/ids';
 import { t } from '@/i18n/fa';
 import { getClinic, getFeatures } from '@/lib/data/globals';
 import { getPublished } from '@/lib/data/published';
+import { stubSiteEnv } from '@/lib/http/testEnv';
 import { log } from '@/lib/log/logger';
 import { readYaml } from '@/seed/sources';
 import { clinicYaml } from '@/seed/schemas';
@@ -32,11 +33,13 @@ async function html(node: ReactNode): Promise<string> {
 const count = (markup: string, pattern: RegExp) => markup.match(pattern)?.length ?? 0;
 
 beforeEach(() => {
+  stubSiteEnv();
   vi.mocked(log.warn).mockClear();
   vi.mocked(getClinic).mockResolvedValue(CLINIC as never);
   vi.mocked(getFeatures).mockResolvedValue({ id: 1, ...seeded.features } as never);
   vi.mocked(getPublished).mockResolvedValue([] as never);
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe('booking views (conversion.md 5, 5.4; freeze G7, G9)', () => {
   it('BV1 the dialog is named by its form heading and closes through its own button', async () => {
@@ -91,6 +94,10 @@ describe('booking views (conversion.md 5, 5.4; freeze G7, G9)', () => {
     expect(markup).toContain('data-booking-form="page"');
     expect(markup).not.toContain('data-booking-dialog');
     expect(markup).toMatch(/name="ts" value="v1\.page\.sig"/);
+    const ld = /<script type="application\/ld\+json">(.*?)<\/script>/.exec(markup)?.[1];
+    expect(JSON.parse(ld ?? '{}')['@graph']).toMatchObject([
+      { '@type': 'BreadcrumbList', itemListElement: [{ name: 'خانه' }, { name: 'رزرو نوبت' }] },
+    ]);
   });
 
   it('BV5 the success page focuses its heading without JavaScript and opens CTAs in a dialog', async () => {

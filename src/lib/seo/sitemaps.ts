@@ -8,7 +8,8 @@ import { type SitemapEntry, SITEMAP_HEADERS, sitemapIndexXml, urlsetXml } from '
 /*
  * Sitemap index plus one sitemap per collection group (spec 9.4). Published documents only,
  * read through the tagged readers, so a publish refreshes the files. A URL appears once: the hub
- * pages (services, dentists, articles) live in pages.xml.
+ * pages (services, dentists, articles) live in pages.xml. lastmod is `updatedAt`, except articles
+ * and their categories (H16): `updatedAt` moves on every save, an article's content date does not.
  */
 
 export const SITEMAP_NAMES = ['pages', 'services', 'doctors', 'articles'] as const;
@@ -22,11 +23,14 @@ interface Indexable {
   seo?: { noindex?: boolean | null } | null;
 }
 
-/** One entry when the document has a public path and its robots rule allows indexing. */
+/**
+ * One entry when the document has a public path and its robots rule allows indexing. Article
+ * lists pass their published article count; `lastmod` defaults to the document's `updatedAt`.
+ */
 function entry(
   collection: PathCollection,
   doc: Indexable,
-  categoryPublishedCount?: number,
+  list: { articleCount?: number; lastmod?: string | null } = {},
 ): SitemapEntry[] {
   const path = buildPath(collection, doc);
   if (path === null) return [];
@@ -34,18 +38,29 @@ function entry(
     path,
     allowIndexing: true,
     noindex: doc.seo?.noindex,
-    categoryPublishedCount,
+    articleCount: list.articleCount,
   });
-  return robots.index ? [{ loc: absoluteUrl(path), lastmod: doc.updatedAt }] : [];
+  return robots.index ? [{ loc: absoluteUrl(path), lastmod: list.lastmod ?? doc.updatedAt }] : [];
 }
+
+/** An article's content date: the JSON-LD dateModified of its page (H16). */
+export const articleLastmod = (doc: {
+  contentUpdatedAt?: string | null;
+  publishedAt?: string | null;
+  updatedAt: string;
+}) => doc.contentUpdatedAt ?? doc.publishedAt ?? doc.updatedAt;
 
 const idOf = (value: number | { id: number } | null | undefined) =>
   typeof value === 'object' && value !== null ? value.id : value;
 
 const LOADERS: Record<SitemapName, () => Promise<SitemapEntry[]>> = {
   async pages() {
-    const pages = await getPublished('pages', { sort: 'path' });
-    return pages.flatMap((doc) => entry('pages', doc));
+    const [pages, articles] = await Promise.all([
+      getPublished('pages', { sort: 'path' }),
+      getPublished('articles', { limit: 1 }),
+    ]);
+    // The articles hub is noindex while empty (C25); the count matters to that page only.
+    return pages.flatMap((doc) => entry('pages', doc, { articleCount: articles.length }));
   },
   async services() {
     const [categories, services] = await Promise.all([
@@ -69,17 +84,27 @@ const LOADERS: Record<SitemapName, () => Promise<SitemapEntry[]>> = {
       getPublished('articles', { sort: '-publishedAt' }),
       getPublished('article-categories', { sort: 'slug' }),
     ]);
-    const perCategory = new Map<number | null | undefined, number>();
+    const perCategory = new Map<number | null | undefined, { count: number; lastmod: string }>();
     for (const article of articles) {
       const id = idOf(article.category);
-      perCategory.set(id, (perCategory.get(id) ?? 0) + 1);
+      const lastmod = new Date(articleLastmod(article)).toISOString();
+      const seen = perCategory.get(id);
+      perCategory.set(id, {
+        count: (seen?.count ?? 0) + 1,
+        lastmod: seen && seen.lastmod > lastmod ? seen.lastmod : lastmod,
+      });
     }
-    // Categories enter at 5 published articles (ia.md 51); tags never do.
+    // Categories enter at 5 published articles (ia.md 51) with their newest article's date; tags
+    // never do.
     return [
-      ...articles.flatMap((doc) => entry('articles', doc)),
-      ...categories.flatMap((doc) =>
-        entry('article-categories', doc, perCategory.get(doc.id) ?? 0),
-      ),
+      ...articles.flatMap((doc) => entry('articles', doc, { lastmod: articleLastmod(doc) })),
+      ...categories.flatMap((doc) => {
+        const list = perCategory.get(doc.id);
+        return entry('article-categories', doc, {
+          articleCount: list?.count ?? 0,
+          lastmod: list?.lastmod,
+        });
+      }),
     ];
   },
 };

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import type { Clinic, SeoDefault } from '@/payload-types';
+import type { Clinic, Media, SeoDefault } from '@/payload-types';
 
 import { stubSiteEnv } from '@/lib/http/testEnv';
 
@@ -50,10 +50,19 @@ const seoGlobal = {
     id: 3,
     alt: 'نمای کلینیک',
     url: 'http://localhost:3000/api/media/file/og-1.webp',
-    width: 1200,
-    height: 630,
+    width: 2400,
+    height: 1600,
+    sizes: {
+      og: {
+        url: 'http://localhost:3000/api/media/file/og-1-1200x630.jpg',
+        width: 1200,
+        height: 630,
+      },
+    },
   },
 } as unknown as SeoDefault;
+// Payload's URL of the `og` size (H14), as the site renders it.
+const OG_PATH = '/api/media/file/og-1-1200x630.jpg';
 
 describe('site inputs from the globals', () => {
   beforeEach(() => stubSiteEnv());
@@ -86,19 +95,14 @@ describe('site inputs from the globals', () => {
     expect(mapped.hasMap).toBe('https://neshan.org/maps/places/x');
   });
 
-  it('SI3 seo-defaults: a relative OG image path with its size; no image without a size', async () => {
+  it('SI3 seo-defaults: the relative path of the og size with its dimensions; none without it', async () => {
     const { seoDefaultsFrom } = await import('./siteInputs');
     expect(seoDefaultsFrom(seoGlobal)).toEqual({
       siteName: 'کلینیک دندانپزشکی سفید',
       titleSuffix: ' | کلینیک دندانپزشکی سفید',
       shortTitleSuffix: ' | کلینیک سفید',
       defaultDescription: null,
-      defaultOgImage: {
-        url: '/api/media/file/og-1.webp',
-        width: 1200,
-        height: 630,
-        alt: 'نمای کلینیک',
-      },
+      defaultOgImage: { url: OG_PATH, width: 1200, height: 630, alt: 'نمای کلینیک' },
       gscVerification: null,
     });
     const noSize = { ...seoGlobal, defaultOgImage: 3 } as SeoDefault;
@@ -119,9 +123,26 @@ describe('site inputs from the globals', () => {
       title: 'دندانپزشکی دیجیتال جنوب تهران',
       description: 'توضیح',
       noindex: false,
-      image: { url: '/api/media/file/og-1.webp', width: 1200, height: 630, alt: 'نمای کلینیک' },
+      image: { url: OG_PATH, width: 1200, height: 630, alt: 'نمای کلینیک' },
     });
     expect(pageSeoFrom({ title: 'الف', image: 3 })?.image).toBeNull();
+  });
+
+  it('SI6 an image without the og size (smaller than 1200x630, or uploaded before the size existed) gives no OG image (C16)', async () => {
+    const { ogImageOf, pageSeoFrom } = await import('./siteInputs');
+    const media = seoGlobal.defaultOgImage as Media;
+    const small = { ...media, width: 800, height: 500, sizes: { og: { url: null } } } as Media;
+    const before = { ...media, sizes: {} } as Media;
+    expect(ogImageOf(small)).toBeNull();
+    expect(ogImageOf(before)).toBeNull();
+    expect(ogImageOf(media)).toEqual({
+      url: OG_PATH,
+      width: 1200,
+      height: 630,
+      alt: 'نمای کلینیک',
+    });
+    expect(ogImageOf(null)).toBeNull();
+    expect(pageSeoFrom({ image: small })?.image).toBeNull();
   });
 
   it('SI4 the globals cannot be read: the fallback renders and one error line is logged', async () => {
@@ -137,6 +158,6 @@ describe('site inputs from the globals', () => {
     expect(writes.join('')).toContain('site_inputs_unavailable');
 
     mocks.seo.mockResolvedValue(seoGlobal);
-    expect((await getSiteInputs()).seo.defaultOgImage?.url).toBe('/api/media/file/og-1.webp');
+    expect((await getSiteInputs()).seo.defaultOgImage?.url).toBe(OG_PATH);
   });
 });

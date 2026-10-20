@@ -1,0 +1,122 @@
+<!doctype html>
+<!--
+  Share card template (phase 6, H14): 1200x630, one per page type. scripts/og-cards.mjs opens this
+  file in Playwright's Chromium, writes each card's copy (src/i18n/fa-seo.ts) into #title and
+  #line, and saves design/brand/og/<card>.png. A real browser shapes the Persian text; nothing is
+  rendered on the host. Opened by hand, it shows the default card.
+-->
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <title>کارت اشتراک</title>
+    <style>
+      @font-face {
+        font-family: 'Vazirmatn';
+        src: url('../fonts/Vazirmatn%5Bwght%5D.woff2') format('woff2');
+        font-weight: 400 700;
+      }
+      @font-face {
+        font-family: 'Estedad';
+        src: url('../fonts/Estedad-Bold.woff2') format('woff2');
+        font-weight: 700;
+      }
+      /* design/tokens.css, light theme. */
+      :root {
+        --brand-logo: #00827a;
+        --brand-strong: #00655f;
+        --brand-soft: #ecf6f4;
+        --ink: #0a243f;
+        --ink-muted: #4a5c70;
+        --surface: #f7f8f7;
+        --line: #d9e0e0;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+      body {
+        position: relative;
+        background: var(--surface);
+        color: var(--ink);
+        font-family: 'Vazirmatn', sans-serif;
+        border-inline-start: 12px solid var(--brand-logo);
+      }
+      /* The logo split across the card: the mark on a soft brand field, the wordmark above the copy. */
+      .field {
+        position: absolute;
+        inset-block: 0;
+        inset-inline-end: 0;
+        inline-size: 320px;
+        display: grid;
+        place-items: center;
+        background: var(--brand-soft);
+      }
+      .field img {
+        block-size: 232px;
+      }
+      .text {
+        position: absolute;
+        inset-block: 64px 60px;
+        inset-inline: 76px 384px;
+        display: flex;
+        flex-direction: column;
+      }
+      .wordmark {
+        block-size: 56px;
+        align-self: flex-start;
+      }
+      .copy {
+        margin-block: auto;
+        display: grid;
+        gap: 22px;
+      }
+      #title {
+        font-family: 'Estedad', 'Vazirmatn', sans-serif;
+        font-weight: 700;
+        font-size: 64px;
+        line-height: 1.25;
+        text-wrap: balance;
+      }
+      /* Two lines at most for each: scripts/og-cards.mjs refuses a card whose copy needs more. */
+      #line {
+        font-weight: 500;
+        font-size: 32px;
+        line-height: 1.6;
+        color: var(--ink-muted);
+        text-wrap: balance;
+      }
+      .site {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        font-size: 26px;
+        font-weight: 600;
+        color: var(--brand-strong);
+      }
+      .site::before {
+        content: '';
+        inline-size: 48px;
+        block-size: 4px;
+        border-radius: 2px;
+        background: var(--brand-logo);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="field" aria-hidden="true"><img src="../brand/logo-mark.svg" alt="" /></div>
+    <main class="text">
+      <img class="wordmark" src="../brand/logo-wordmark.svg" alt="کلینیک دندانپزشکی سفید" />
+      <div class="copy">
+        <h1 id="title">کلینیک دندانپزشکی سفید</h1>
+        <p id="line">خانی‌آباد نو، جنوب تهران</p>
+      </div>
+      <p class="site"><span dir="ltr">sefiddental.ir</span></p>
+    </main>
+  </body>
+</html>

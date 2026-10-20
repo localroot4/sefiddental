@@ -66,7 +66,7 @@ describe('JSON-LD builders (spec 9.7)', () => {
         },
       ],
       logo: 'https://sefiddental.ir/brand/favicon-512.png',
-      image: 'https://sefiddental.ir/brand/og-preview.png',
+      image: 'https://sefiddental.ir/brand/og/default.png',
     });
   });
 
@@ -177,6 +177,7 @@ describe('JSON-LD builders (spec 9.7)', () => {
     const nodes = articleNodes({
       path: '/مقالات/نمونه',
       headline: 'مقالهٔ نمونه',
+      isMedical: true,
       datePublished: '2026-10-01',
       author: { name: 'نویسنده' },
       reviewer: { name: 'دکتر بازبین', path: '/پزشکان/دکتر-بازبین' },
@@ -281,6 +282,7 @@ describe('JSON-LD builders (spec 9.7)', () => {
       articleNodes({
         path: '/مقالات/ب',
         headline: 'ب',
+        isMedical: true,
         datePublished: '2026-10-01',
         author: { name: 'ن' },
       }),
@@ -325,5 +327,74 @@ describe('JSON-LD builders (spec 9.7)', () => {
       guidePageNode({ path: '/راهنمای-بیمار/x', name: 'متن [[NEEDS_CLIENT: نام]]' }),
     ).toBeNull();
     expect(guidePageNode({ path: '/راهنمای-بیمار/x', name: ' ' })).toBeNull();
+  });
+
+  it('J25 article page: part of the WebSite, reviewed on a Tehran day, a staff author without url', async () => {
+    const { articleNodes } = await load();
+    const url = abs(encodeURI('/مقالات/مراقبت-بعد-از-کشیدن-دندان'));
+    const [page, article] =
+      articleNodes({
+        path: '/مقالات/مراقبت-بعد-از-کشیدن-دندان',
+        headline: 'مراقبت بعد از کشیدن دندان',
+        description: null,
+        image: '/api/media/file/cover-1200x630.jpg',
+        isMedical: true,
+        datePublished: '2026-10-01T08:00:00.000Z',
+        dateModified: '2026-10-05T08:00:00.000Z',
+        author: { name: 'پذیرش کلینیک', path: null },
+        reviewer: { name: 'دکتر نام', path: '/پزشکان/دکتر-نام' },
+        // 00:30 on 15 October in Tehran is still 14 October in UTC.
+        lastReviewed: '2026-10-14T21:00:00.000Z',
+      }) ?? [];
+    expect(page).toStrictEqual({
+      '@type': 'MedicalWebPage',
+      '@id': `${url}#webpage`,
+      url,
+      name: 'مراقبت بعد از کشیدن دندان',
+      inLanguage: 'fa-IR',
+      isPartOf: { '@id': 'https://sefiddental.ir/#website' },
+      reviewedBy: {
+        '@type': 'Person',
+        name: 'دکتر نام',
+        url: abs(encodeURI('/پزشکان/دکتر-نام')),
+      },
+      lastReviewed: '2026-10-15',
+      mainEntity: { '@id': `${url}#article` },
+    });
+    expect(article).toStrictEqual({
+      '@type': 'Article',
+      '@id': `${url}#article`,
+      headline: 'مراقبت بعد از کشیدن دندان',
+      image: abs('/api/media/file/cover-1200x630.jpg'),
+      datePublished: '2026-10-01T08:00:00.000Z',
+      dateModified: '2026-10-05T08:00:00.000Z',
+      author: { '@type': 'Person', name: 'پذیرش کلینیک' },
+      publisher: { '@id': 'https://sefiddental.ir/#dentist' },
+      mainEntityOfPage: { '@id': `${url}#webpage` },
+      inLanguage: 'fa-IR',
+    });
+  });
+
+  it('J26 a non-medical article (insurance) sits in a WebPage that keeps reviewedBy (C1)', async () => {
+    const { articleNodes } = await load();
+    const [page, article] =
+      articleNodes({
+        path: '/مقالات/بیمه-تکمیلی',
+        headline: 'بیمهٔ تکمیلی و هزینهٔ دندانپزشکی',
+        isMedical: false,
+        datePublished: '2026-10-01',
+        author: { name: 'دکتر نام', path: '/پزشکان/دکتر-نام' },
+        reviewer: { name: 'دکتر نام', path: '/پزشکان/دکتر-نام' },
+        lastReviewed: '2026-10-02',
+      }) ?? [];
+    expect(page).toMatchObject({
+      '@type': 'WebPage',
+      reviewedBy: { '@type': 'Person', name: 'دکتر نام' },
+      lastReviewed: '2026-10-02',
+    });
+    expect(article).toMatchObject({
+      '@type': 'Article',
+      author: { '@type': 'Person', url: abs(encodeURI('/پزشکان/دکتر-نام')) },
+    });
   });
 });

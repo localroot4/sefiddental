@@ -26,6 +26,7 @@ function seed(): void {
     pages: [
       { key: 'home', updatedAt: at(1) },
       { key: 'services-hub', slug: 'خدمات', updatedAt: at(2) },
+      { key: 'articles', updatedAt: at(5) },
       { key: 'booking-success', slug: 'ثبت-شد', updatedAt: at(3) },
       { key: 'privacy', slug: 'حریم-خصوصی', updatedAt: at(4), seo: { noindex: true } },
     ],
@@ -35,6 +36,7 @@ function seed(): void {
     ],
     services: [{ slug: 'لمینت-سرامیکی', updatedAt: at(7) }],
     doctors: [{ slug: 'دکتر-نمونه', updatedAt: at(8) }],
+    // updatedAt moves on every save (a later non-content edit here); the content dates do not.
     articles: [
       ...Array.from({ length: 5 }, (_, i) => ({
         title: `مقاله ${i}`,
@@ -42,7 +44,8 @@ function seed(): void {
         excerpt: 'خلاصه & <نکته>',
         category: { id: 10 },
         publishedAt: at(10 + i),
-        updatedAt: at(10 + i),
+        contentUpdatedAt: i === 4 ? at(18) : null,
+        updatedAt: at(26),
       })),
       { title: 'تک', slug: 'تک', excerpt: 'x', category: 11, updatedAt: at(9) },
     ],
@@ -74,13 +77,13 @@ describe('sitemaps (spec 9.4)', () => {
     expect(locs(xml)).toEqual(
       ['pages', 'services', 'doctors', 'articles'].map((n) => `${SITE}/sitemaps/${n}.xml`),
     );
-    expect(xml).toContain(`<loc>${SITE}/sitemaps/articles.xml</loc><lastmod>${at(20)}</lastmod>`);
+    expect(xml).toContain(`<loc>${SITE}/sitemaps/articles.xml</loc><lastmod>${at(18)}</lastmod>`);
   });
 
   it('SM2 pages: indexable published pages only, absolute percent-encoded URLs, lastmod', async () => {
     const { sitemapResponse } = await import('./sitemaps');
     const xml = await (await sitemapResponse('pages')).text();
-    expect(locs(xml)).toEqual([`${SITE}/`, enc('/خدمات')]);
+    expect(locs(xml)).toEqual([`${SITE}/`, enc('/خدمات'), enc('/مقالات')]);
     expect(xml).toContain(`<loc>${enc('/خدمات')}</loc><lastmod>${at(2)}</lastmod>`);
     expect(xml).toContain('%D8%AE%D8%AF%D9%85%D8%A7%D8%AA');
   });
@@ -99,6 +102,28 @@ describe('sitemaps (spec 9.4)', () => {
     expect(locs(xml)).toHaveLength(7);
     expect(xml).not.toContain('برچسب');
     expect(mocks.calls.map((c) => c.collection)).not.toContain('tags');
+  });
+
+  it('SM6 articles: lastmod is contentUpdatedAt, else publishedAt (the JSON-LD dateModified), never a later save (H16)', async () => {
+    const { sitemapResponse } = await import('./sitemaps');
+    const xml = await (await sitemapResponse('articles')).text();
+    expect(xml).toContain(`<loc>${enc('/مقالات/مقاله-0')}</loc><lastmod>${at(10)}</lastmod>`);
+    expect(xml).toContain(`<loc>${enc('/مقالات/مقاله-4')}</loc><lastmod>${at(18)}</lastmod>`);
+    expect(xml).not.toContain(at(26));
+  });
+
+  it('SM7 an indexable category takes the lastmod of its newest article, not its own updatedAt', async () => {
+    const { sitemapResponse } = await import('./sitemaps');
+    const xml = await (await sitemapResponse('articles')).text();
+    expect(xml).toContain(`<loc>${enc('/مقالات/دسته/پر')}</loc><lastmod>${at(18)}</lastmod>`);
+    expect(xml).not.toContain(at(20));
+  });
+
+  it('SM8 the articles hub leaves pages.xml while no article is published (C25)', async () => {
+    const { sitemapResponse } = await import('./sitemaps');
+    mocks.rows.articles = [];
+    const xml = await (await sitemapResponse('pages')).text();
+    expect(locs(xml)).toEqual([`${SITE}/`, enc('/خدمات')]);
   });
 
   it('SM5 ALLOW_INDEXING=false: every child is an empty urlset and nothing is read', async () => {
@@ -129,11 +154,30 @@ describe('rss.xml (spec 9.6)', () => {
     expect(xml).toContain(`<atom:link href="${SITE}/rss.xml" rel="self"`);
     expect(xml).toContain('<description>خلاصه &amp; &lt;نکته&gt;</description>');
     expect(xml).toContain(`<pubDate>${new Date(at(10)).toUTCString()}</pubDate>`);
-    expect(xml).toContain(`<lastBuildDate>${new Date(at(14)).toUTCString()}</lastBuildDate>`);
+    // The newest content date of the feed (H16), not a later non-content save.
+    expect(xml).toContain(`<lastBuildDate>${new Date(at(18)).toUTCString()}</lastBuildDate>`);
     expect(mocks.calls.at(-1)).toEqual({
       collection: 'articles',
       query: { sort: '-publishedAt', limit: 20 },
     });
+  });
+
+  it('RS5 items: guid equals the link, unique, absolute, with an RFC 822 pubDate', async () => {
+    const { rssResponse } = await import('./rss');
+    const xml = await (await rssResponse()).text();
+    const items = [...xml.matchAll(/<item>(.*?)<\/item>/g)].map((m) => m[1]!);
+    expect(items).toHaveLength(6);
+    const field = (item: string, name: string) =>
+      new RegExp(`<${name}[^>]*>([^<]*)</${name}>`).exec(item)?.[1];
+    const links = items.map((item) => field(item, 'link'));
+    expect(items.map((item) => field(item, 'guid'))).toEqual(links);
+    expect(new Set(links).size).toBe(links.length);
+    for (const link of links) expect(link).toMatch(/^https:\/\/sefiddental\.ir\/%D9%85/);
+    for (const item of items) {
+      expect(field(item, 'pubDate')).toMatch(
+        /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/,
+      );
+    }
   });
 
   it('RS2 zero articles is a valid feed; the default description wins when set', async () => {

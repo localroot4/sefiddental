@@ -1,6 +1,7 @@
 // Copies generated public assets from their single sources; runs before `dev` and `build`.
 // Outputs are gitignored: design/ stays the one source of brand files and fonts.
 //   design/brand/*                         -> public/brand/
+//   design/brand/og/*.png                  -> public/brand/og/ (share cards, scripts/og-cards.mjs)
 //   design/fonts/*                         -> public/fonts/  (static 503 and 410 pages; next/font
 //                                             reads Vazirmatn-wght.woff2: no brackets in its URL)
 //   src/lib/system-pages/staticPage.ts     -> public/maintenance.html (platform serves it when Node is down)
@@ -12,6 +13,7 @@ import {
   cpSync,
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -30,7 +32,6 @@ const copies = [
     'favicon-192.png',
     'favicon-512.png',
     'apple-touch-icon.png',
-    'og-preview.png',
     'logo-mark.svg',
   ].map((name) => [from('design', 'brand', name), path.join(pub, 'brand', name)]),
   [
@@ -62,6 +63,12 @@ ico.writeUInt16LE(32, 12); // bits per pixel
 ico.writeUInt32LE(png.length, 14);
 ico.writeUInt32LE(ico.length, 18); // image offset
 writeFileSync(path.join(pub, 'favicon.ico'), Buffer.concat([ico, png]));
+
+// Share cards per page type (H14): the whole folder, so a removed card leaves no stale file.
+const cardsOut = path.join(pub, 'brand', 'og');
+rmSync(cardsOut, { recursive: true, force: true });
+cpSync(from('design', 'brand', 'og'), cardsOut, { recursive: true });
+const cards = readdirSync(cardsOut).length;
 
 const benchmarks = from('node_modules', 'detect-gpu', 'dist', 'benchmarks');
 if (!existsSync(benchmarks)) {
@@ -138,5 +145,5 @@ for (const file of heroPlaceholderFiles()) {
 }
 
 console.log(
-  `sync-public-assets: ${copies.length} brand and font files, favicon.ico, detect-gpu benchmarks, brand/icons.svg (${Object.keys(ICONS).length} icons), ${placeholders} hero placeholders written; maintenance.html and brand/lockup.svg ${maintenance}`,
+  `sync-public-assets: ${copies.length} brand and font files, ${cards} share cards, favicon.ico, detect-gpu benchmarks, brand/icons.svg (${Object.keys(ICONS).length} icons), ${placeholders} hero placeholders written; maintenance.html and brand/lockup.svg ${maintenance}`,
 );

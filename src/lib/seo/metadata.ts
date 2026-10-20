@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 
+import { ogCardCopy, type OgCard, SEO_MESSAGES } from '@/i18n/fa-seo';
 import { readEnv } from '@/lib/env';
+import { PAGE_PATHS } from '@/lib/paths';
+import { toPersianDigits } from '@/lib/persianText';
 import { canonicalUrl, pageRobots, type SearchParamsInput } from '@/lib/seo/robots';
 import { absoluteUrl } from '@/lib/seo/url';
 
@@ -11,7 +14,7 @@ import { absoluteUrl } from '@/lib/seo/url';
  */
 
 export interface OgImage {
-  /** Site path ('/brand/og-preview.png') or absolute URL. */
+  /** Site path ('/brand/og/default.png') or absolute URL. */
   url: string;
   width: number;
   height: number;
@@ -28,7 +31,16 @@ export interface SeoDefaults {
   gscVerification?: string | null;
 }
 
-export type PageKind = 'page' | 'article' | 'dentist' | 'home' | 'system';
+export type PageKind =
+  | 'page'
+  | 'article'
+  | 'dentist'
+  | 'home'
+  | 'system'
+  // Article lists (H3): the hub, a category and a tag, paginated.
+  | 'articles'
+  | 'articleCategory'
+  | 'tag';
 
 export interface PageSeoInput {
   /** Decoded site path, for example '/خدمات/لمینت-سرامیکی'. */
@@ -47,17 +59,51 @@ export interface PageSeoInput {
   image?: OgImage | null;
   publishedAt?: string | null;
   modifiedAt?: string | null;
-  /** Article categories: published article count (noindex below 5). */
-  categoryPublishedCount?: number;
+  /** Article lists: published articles listed (the hub is noindex at 0, a category below 5). */
+  articleCount?: number;
+  /** Article lists: the page from parsePageParam; 2 and up add «صفحهٔ N» and `?page=N`. */
+  page?: number | null;
+  /** Share card when the page has no image; by default the card of the path (ogCardFor). */
+  card?: OgCard;
 }
 
 export const HOME_TITLE = 'کلینیک دندانپزشکی سفید | دندانپزشکی دیجیتال جنوب تهران';
 
-export const FALLBACK_OG_IMAGE: OgImage = {
-  url: '/brand/og-preview.png',
-  width: 1200,
-  height: 630,
+/** A page type's share card (H14), rendered by scripts/og-cards.mjs and copied to public/brand/og. */
+export function ogCardImage(card: OgCard): OgImage {
+  return { url: `/brand/og/${card}.png`, width: 1200, height: 630, alt: ogCardCopy(card).title };
+}
+
+export const FALLBACK_OG_IMAGE: OgImage = ogCardImage('default');
+
+const PAGE_CARDS: Readonly<Record<string, OgCard>> = {
+  [PAGE_PATHS['services-hub']]: 'services-hub',
+  [PAGE_PATHS['dentists-hub']]: 'dentists-hub',
+  [PAGE_PATHS.cases]: 'cases',
+  [PAGE_PATHS.pricing]: 'pricing',
+  [PAGE_PATHS['guide-hub']]: 'guide-hub',
+  [PAGE_PATHS.emergency]: 'emergency',
+  [PAGE_PATHS.about]: 'about',
+  [PAGE_PATHS.address]: 'address',
+  [PAGE_PATHS.articles]: 'articles',
 };
+
+// First match wins: the category and tag prefixes come before the post prefix.
+const SECTION_CARDS: ReadonlyArray<readonly [string, OgCard]> = [
+  [`${PAGE_PATHS.articles}/دسته/`, 'articles'],
+  [`${PAGE_PATHS.articles}/برچسب/`, 'articles'],
+  [`${PAGE_PATHS.articles}/`, 'article'],
+  [`${PAGE_PATHS['services-hub']}/`, 'service'],
+  [`${PAGE_PATHS['dentists-hub']}/`, 'dentist'],
+  [`${PAGE_PATHS['guide-hub']}/`, 'guide'],
+];
+
+/** The share card of a site path: home, booking, privacy and system pages share `default`. */
+export function ogCardFor(path: string): OgCard {
+  return (
+    PAGE_CARDS[path] ?? SECTION_CARDS.find(([prefix]) => path.startsWith(prefix))?.[1] ?? 'default'
+  );
+}
 
 /** Favicon set from design/brand, copied to public/brand by the asset script (spec 5.2). */
 export const SITE_ICONS: NonNullable<Metadata['icons']> = {
@@ -111,7 +157,11 @@ export function buildSiteMetadata(seo: SeoDefaults): Metadata {
 /** Page metadata (spec 9.2): title rules per kind, canonical, robots, complete OG and Twitter. */
 export function buildMetadata(input: PageSeoInput, seo: SeoDefaults): Metadata {
   const env = readEnv();
-  const topic = input.seo?.title || input.title;
+  const page = input.page && input.page >= 2 ? input.page : null;
+  const pageSuffix = page
+    ? `، ${SEO_MESSAGES['seo.page'].replace('{n}', toPersianDigits(String(page)))}`
+    : '';
+  const topic = `${input.seo?.title || input.title}${pageSuffix}`;
   let title: Metadata['title'];
   let fullTitle: string;
   if (input.kind === 'home') {
@@ -120,6 +170,9 @@ export function buildMetadata(input: PageSeoInput, seo: SeoDefaults): Metadata {
     title = { absolute: fullTitle };
   } else if (input.kind === 'dentist') {
     fullTitle = `${topic}${seo.shortTitleSuffix}`;
+    title = { absolute: fullTitle };
+  } else if (input.kind === 'articleCategory' || input.kind === 'tag') {
+    fullTitle = `${topic} | ${SEO_MESSAGES['seo.articlesOf'].replace('{site}', seo.siteName)}`;
     title = { absolute: fullTitle };
   } else {
     fullTitle = `${topic}${seo.titleSuffix}`;
@@ -135,11 +188,18 @@ export function buildMetadata(input: PageSeoInput, seo: SeoDefaults): Metadata {
         path: input.path,
         allowIndexing: env.allowIndexing,
         noindex: input.seo?.noindex,
-        categoryPublishedCount: input.categoryPublishedCount,
+        articleCount: input.articleCount,
       });
-  const canonical = system ? undefined : canonicalUrl(input.path, input.searchParams);
+  // The page the title names is the page the canonical keeps.
+  const params = page ? { page: String(page) } : input.searchParams;
+  const canonical = system ? undefined : canonicalUrl(input.path, params);
+  const card = input.card ?? ogCardFor(input.path);
+  // Document image, else the page type's card; the global default image replaces only `default`.
   const image = ogImage(
-    input.seo?.image ?? input.image ?? seo.defaultOgImage ?? FALLBACK_OG_IMAGE,
+    input.seo?.image ??
+      input.image ??
+      (card === 'default' ? seo.defaultOgImage : null) ??
+      ogCardImage(card),
     seo.siteName,
   );
   const rss =

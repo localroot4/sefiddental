@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { DentistProfile } from '@/components/pages/DentistProfile';
-import { dentistName, mediaOf, portraitImage } from '@/components/pages/view';
+import { dentistName } from '@/components/pages/view';
 import { getDoctorBySlug } from '@/lib/data/content';
 import { buildPath } from '@/lib/paths';
 import { buildMetadata } from '@/lib/seo/metadata';
@@ -23,8 +23,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       path: buildPath('doctors', doctor) as string,
       // keyword map: «دکتر {نام}، {تخصص} | کلینیک سفید» (short suffix, kind dentist).
       title: `${dentistName(doctor.name)}، ${doctor.specialty}`,
-      seo: pageSeoFrom(doctor.seo),
-      image: portraitImage(mediaOf(doctor.photo)),
+      // H14: the photo's og size, not the portrait, unless the page names its own image.
+      seo: pageSeoFrom({ ...doctor.seo, image: doctor.seo?.image ?? doctor.photo }),
       kind: 'dentist',
     },
     seo,

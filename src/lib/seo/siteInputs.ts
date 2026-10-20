@@ -31,11 +31,21 @@ export const CLINIC: ClinicJsonLdInput = {
   ],
 };
 
-function ogImageFrom(media: SeoDefault['defaultOgImage']): OgImage | null {
+// The `og` image size (Media.ts, H14) until payload-types is regenerated with it.
+type OgSize = { url?: string | null; width?: number | null; height?: number | null };
+
+/**
+ * A media document as a share image: its `og` size (1200x630 JPEG around the focal point, H14).
+ * Null when the size is missing (an image smaller than 1200x630 both ways, or one uploaded before
+ * the size existed): the page then shares its type card (C16), never a wrongly sized file.
+ */
+export function ogImageOf(media: number | Media | null | undefined): OgImage | null {
   if (typeof media !== 'object' || media === null) return null;
-  const { url, width, height, alt } = media as Media;
-  const path = mediaPath(url);
-  return path && width && height ? { url: path, width, height, alt } : null;
+  const og = (media.sizes as { og?: OgSize } | null | undefined)?.og;
+  const path = mediaPath(og?.url);
+  return path && og?.width && og.height
+    ? { url: path, width: og.width, height: og.height, alt: media.alt }
+    : null;
 }
 
 /** A document's `seo` group (seoGroup fields) as buildMetadata reads it; the image as an OG image. */
@@ -52,7 +62,7 @@ export function pageSeoFrom(
 ): PageSeoInput['seo'] {
   if (!seo) return null;
   const { title, description, image, noindex } = seo;
-  return { title, description, noindex, image: ogImageFrom(image) };
+  return { title, description, noindex, image: ogImageOf(image) };
 }
 
 /** The seo-defaults global as the metadata helpers read it. */
@@ -62,7 +72,7 @@ export function seoDefaultsFrom(seo: SeoDefault): SeoDefaults {
     titleSuffix: seo.titleSuffix,
     shortTitleSuffix: seo.shortTitleSuffix,
     defaultDescription: seo.defaultDescription ?? null,
-    defaultOgImage: ogImageFrom(seo.defaultOgImage),
+    defaultOgImage: ogImageOf(seo.defaultOgImage),
     gscVerification: seo.gscVerification ?? null,
   };
 }

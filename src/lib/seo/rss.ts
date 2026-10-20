@@ -1,6 +1,7 @@
 import { getSeoDefaults } from '@/lib/data/globals';
 import { getPublished } from '@/lib/data/published';
 import { buildPath, PAGE_PATHS } from '@/lib/paths';
+import { articleLastmod } from '@/lib/seo/sitemaps';
 import { absoluteUrl } from '@/lib/seo/url';
 import { RSS_HEADERS, rssXml, type RssItem } from '@/lib/seo/xml';
 
@@ -19,8 +20,9 @@ export async function rssResponse(): Promise<Response> {
     const pubDate = doc.publishedAt ?? doc.updatedAt;
     return [{ title: doc.title, link: absoluteUrl(path), description: doc.excerpt, pubDate }];
   });
+  // The newest content date (H16), as the sitemap's lastmod.
   const newest = articles
-    .map((doc) => doc.updatedAt)
+    .map((doc) => new Date(articleLastmod(doc)).toISOString())
     .sort()
     .at(-1);
   const body = rssXml(

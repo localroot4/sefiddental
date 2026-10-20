@@ -43,6 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         image: doc.category.seo?.image ?? doc.category.heroMedia,
       }),
       kind: 'page',
+      card: 'service-category',
     },
     seo,
   );

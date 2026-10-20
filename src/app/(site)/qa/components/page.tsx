@@ -70,7 +70,7 @@ const SPLIT_WEEK: ClinicHours = {
 const SAMPLE_MEDIA = {
   id: 0,
   alt: t('ui.qa.photoBrand'),
-  url: '/brand/og-preview.png',
+  url: '/brand/og/default.png',
   width: 1200,
   height: 630,
   updatedAt: '2026-10-15T00:00:00.000Z',

@@ -1,3 +1,4 @@
+import { JsonLd } from '@/components/seo/JsonLd';
 import { DirectionsLinks } from '@/components/ui/Contact';
 import { HoursTable } from '@/components/ui/Hours';
 import { Breadcrumbs } from '@/components/ui/Navigation';
@@ -7,6 +8,7 @@ import { getClinic } from '@/lib/data/globals';
 import { getPublished } from '@/lib/data/published';
 import { hoursTableNote } from '@/lib/hoursState';
 import { PAGE_PATHS } from '@/lib/paths';
+import { breadcrumbNode, jsonLdGraph } from '@/lib/seo/jsonld';
 
 import { BookingForm } from './BookingForm';
 import type { BookingPageInputs } from './pageInputs';
@@ -34,11 +36,12 @@ export async function BookingPageView(props: {
   ]);
   const hours = toClinicHours(clinic);
   const { inputs } = props;
+  const trail = crumbs(props.title);
   return (
     <div data-page-type="booking" className="bg-warm-soft">
       <div className="mx-auto grid w-full max-w-content gap-6 px-gutter pt-4 pb-section md:pt-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:gap-x-12 lg:gap-y-8">
         <div className="grid gap-4 lg:col-span-2">
-          <Breadcrumbs items={crumbs(props.title)} />
+          <Breadcrumbs items={trail} />
           <h1 className="font-display text-display-2 font-bold">{props.title}</h1>
         </div>
         <BookingForm
@@ -79,6 +82,10 @@ export async function BookingPageView(props: {
           ) : null}
         </div>
       </div>
+      {/* H15: the booking page's trail in JSON-LD, as every other inner page. */}
+      <JsonLd
+        data={jsonLdGraph(breadcrumbNode(trail.map((c) => ({ name: c.label, path: c.href }))))}
+      />
     </div>
   );
 }

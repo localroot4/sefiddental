@@ -1,11 +1,12 @@
 // System and feed routes (deliverables 5 and 7; spec-platform 9.4-9.6, 11.1-11.3) on the running
 // artifact. Tests of routes Lane P is still building skip until their source file exists
 // (tests/helpers/pending.ts) and then run without an edit.
-import { expect, test } from '@playwright/test';
+import { expect, test, type APIRequestContext } from '@playwright/test';
 
 import { t } from '@/i18n/fa';
 
-import { requireRoutes } from '../../helpers/pending';
+import { jsonLdScripts, type JsonLdNode } from '../../helpers/jsonld';
+import { requireRoutes, routeExists } from '../../helpers/pending';
 import { APP_ORIGIN, INDEXING_ORIGIN } from '../../helpers/servers';
 import { findAll, parseXml, textOf } from '../../helpers/xml';
 
@@ -240,4 +241,212 @@ test('T-RT14 a Persian dynamic path renders from its ASCII folder; the folder it
   await expect(page.locator('html')).toHaveAttribute('lang', 'fa');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(t('notFound.heading'));
   await expect(page.locator('meta[name="robots"]').first()).toHaveAttribute('content', /noindex/);
+});
+
+// Phase 6 (H16, H18, C17, C25): the sitemaps list every published URL once with its content date,
+// and nothing else; the feed holds the newest published articles. Read on the ALLOW_INDEXING
+// server, whose sitemaps are not empty.
+
+/** Decoded site path of an absolute URL. */
+const sitePath = (url: string) => decodeURI(new URL(url).pathname);
+
+/** Every `<url>` of one child sitemap: decoded path, absolute loc and lastmod. */
+async function sitemapUrls(request: APIRequestContext, name: (typeof SITEMAP_CHILDREN)[number]) {
+  const response = await request.get(`${INDEXING_ORIGIN}/sitemaps/${name}.xml`);
+  expect(response.status(), name).toBe(200);
+  return findAll(parseXml(await response.text()), 'url').map((url) => {
+    const loc = textOf(url, 'loc') ?? '';
+    return { loc, path: sitePath(loc), lastmod: textOf(url, 'lastmod') };
+  });
+}
+
+/** Decoded site paths linked from a page (the hubs list what is published). */
+async function linkedPaths(request: APIRequestContext, path: string): Promise<string[]> {
+  const response = await request.get(`${INDEXING_ORIGIN}${encodeURI(path)}`);
+  expect(response.status(), path).toBe(200);
+  return [...(await response.text()).matchAll(/href="(\/[^"#?]*)/g)].map((m) => decodeURI(m[1]!));
+}
+
+/** The canonical href and meta robots of a page's HTML. */
+function headOf(html: string): { canonical?: string; robots?: string } {
+  return {
+    canonical: /<link rel="canonical" href="([^"]+)"/.exec(html)?.[1]?.replace(/&amp;/g, '&'),
+    robots: /<meta name="robots" content="([^"]+)"/.exec(html)?.[1],
+  };
+}
+
+interface PublishedArticle {
+  path: string;
+  dateModified: string;
+  category: string | undefined;
+}
+
+/**
+ * Every published article as the site shows it: the hub's pages walked until one lists no post
+ * (or answers the past-the-end redirect), then each post's Article dateModified and the category
+ * of its breadcrumb (H16: the date the sitemap must give).
+ */
+async function publishedArticles(request: APIRequestContext): Promise<PublishedArticle[]> {
+  const isPost = (p: string) => /^\/مقالات\/[^/]+$/.test(p) && !/\/(دسته|برچسب)$/.test(p);
+  const posts = new Set<string>();
+  for (let page = 1; page < 50; page++) {
+    const url = `${INDEXING_ORIGIN}${encodeURI('/مقالات')}${page > 1 ? `?page=${page}` : ''}`;
+    const response = await request.get(url, { maxRedirects: 0 });
+    if (response.status() !== 200) break;
+    const found = [...(await response.text()).matchAll(/href="(\/[^"#?]*)/g)]
+      .map((m) => decodeURI(m[1]!))
+      .filter(isPost);
+    if (found.length === 0) break;
+    for (const post of found) posts.add(post);
+  }
+  const articles: PublishedArticle[] = [];
+  for (const path of posts) {
+    const response = await request.get(`${INDEXING_ORIGIN}${encodeURI(path)}`);
+    expect(response.status(), path).toBe(200);
+    const nodes = jsonLdScripts(await response.text()).flatMap(
+      (script) => (script as { '@graph': JsonLdNode[] })['@graph'],
+    );
+    const article = nodes.find((n) => n['@type'] === 'Article');
+    const crumbs = nodes.find((n) => n['@type'] === 'BreadcrumbList')?.itemListElement as
+      Array<{ item: string }> | undefined;
+    expect(article, `${path}: Article JSON-LD`).toBeDefined();
+    articles.push({
+      path,
+      dateModified: String(article!.dateModified),
+      category: crumbs?.map((c) => sitePath(c.item)).find((p) => p.startsWith('/مقالات/دسته/')),
+    });
+  }
+  return articles;
+}
+
+const same = (a: string | null | undefined, b: string) =>
+  expect(Date.parse(a ?? ''), `${a} = ${b}`).toBe(Date.parse(b));
+
+test('T-RT15 every loc of every child sitemap is unique, answers 200, is self-canonical and indexable', async ({
+  request,
+}) => {
+  requireRoutes('sitemapIndex');
+  test.setTimeout(180_000);
+  const urls = (await Promise.all(SITEMAP_CHILDREN.map((n) => sitemapUrls(request, n)))).flat();
+  const locs = urls.map((u) => u.loc);
+  expect(new Set(locs).size, 'a loc in two places').toBe(locs.length);
+  // Pages of routes another lane is still building are listed (published) but not served yet.
+  const pending = [
+    ...(routeExists('cases') ? [] : ['/قبل-و-بعد']),
+    ...(routeExists('articlesHub') ? [] : ['/مقالات']),
+  ];
+  for (const { loc, path } of urls.filter((u) => !pending.includes(u.path))) {
+    expect(loc, 'absolute on the indexing origin').toMatch(new RegExp(`^${INDEXING_ORIGIN}/`));
+    const response = await request.get(loc, { maxRedirects: 0 });
+    expect(response.status(), path).toBe(200);
+    const head = headOf(await response.text());
+    // The home canonical has no trailing slash, the sitemap's does: the same URL once parsed.
+    expect(head.canonical && new URL(head.canonical).href, `${path}: self-canonical`).toBe(loc);
+    expect(head.robots ?? '', `${path}: indexable`).not.toMatch(/noindex/);
+  }
+});
+
+test('T-RT15b the sitemaps list every published document once and nothing else (C17, C25)', async ({
+  request,
+}) => {
+  requireRoutes('sitemapIndex', 'articlesHub', 'article', 'articleCategory', 'tag');
+  test.setTimeout(240_000);
+  const count = (list: Array<{ path: string }>, path: string) =>
+    list.filter((u) => u.path === path).length;
+
+  const hubLinks = async (hub: string) =>
+    [...new Set(await linkedPaths(request, hub))].filter((p) => p.startsWith(`${hub}/`));
+  // admin.spec.ts publishes articles meanwhile (H39): retry until one read of both sides agrees.
+  await expect(async () => {
+    const [pages, services, doctors, articles] = await Promise.all(
+      SITEMAP_CHILDREN.map((n) => sitemapUrls(request, n)),
+    );
+    for (const path of await hubLinks('/خدمات')) expect(count(services!, path), path).toBe(1);
+    for (const path of await hubLinks('/پزشکان')) expect(count(doctors!, path), path).toBe(1);
+    for (const path of await hubLinks('/راهنمای-بیمار')) expect(count(pages!, path), path).toBe(1);
+    expect(count(pages!, '/قبل-و-بعد'), '/قبل-و-بعد').toBe(1);
+
+    const published = await publishedArticles(request);
+    expect(published.length, 'the QA fixture publishes articles').toBeGreaterThan(0);
+    expect(count(pages!, '/مقالات'), 'the hub, listed while it has articles').toBe(1);
+    const posts = articles!.filter((u) => !u.path.startsWith('/مقالات/دسته/'));
+    // Exactly the published posts: a draft or an unpublished post is never listed.
+    expect(posts.map((u) => u.path).sort()).toEqual(published.map((a) => a.path).sort());
+
+    // Categories with 5 published articles or more, dated by their newest article; no tag.
+    const perCategory = new Map<string, string[]>();
+    for (const article of published) {
+      if (!article.category) continue;
+      perCategory.set(article.category, [
+        ...(perCategory.get(article.category) ?? []),
+        article.dateModified,
+      ]);
+    }
+    const listed = articles!.filter((u) => u.path.startsWith('/مقالات/دسته/'));
+    const expected = [...perCategory].filter(([, dates]) => dates.length >= 5);
+    expect(listed.map((u) => u.path).sort()).toEqual(expected.map(([path]) => path).sort());
+    for (const [path, dates] of expected) {
+      const newest = dates.reduce((a, b) => (Date.parse(a) >= Date.parse(b) ? a : b));
+      same(listed.find((u) => u.path === path)!.lastmod, newest);
+    }
+    const all = [...pages!, ...services!, ...doctors!, ...articles!];
+    expect(
+      all.filter((u) => u.path.includes('/برچسب/')),
+      'tags are never listed',
+    ).toEqual([]);
+  }).toPass({ timeout: 120_000 });
+});
+
+test('T-RT16 an article lastmod equals the dateModified of its page', async ({ request }) => {
+  requireRoutes('sitemapIndex', 'articlesHub', 'article');
+  test.setTimeout(180_000);
+  await expect(async () => {
+    const urls = await sitemapUrls(request, 'articles');
+    const published = await publishedArticles(request);
+    expect(published.length).toBeGreaterThan(0);
+    for (const article of published) {
+      same(urls.find((u) => u.path === article.path)?.lastmod, article.dateModified);
+    }
+  }).toPass({ timeout: 60_000 });
+});
+
+test('T-RT17 the feed: the newest published posts, unique permalinks to their canonical pages', async ({
+  request,
+}) => {
+  requireRoutes('rss', 'articlesHub', 'article');
+  test.setTimeout(180_000);
+  // The feed and the hub walk are two reads: a publish between them settles on a retry.
+  await expect(async () => {
+    const response = await request.get('/rss.xml');
+    expect(response.status()).toBe(200);
+    const rss = parseXml(await response.text());
+    expect(rss.attributes['xmlns:atom']).toBe('http://www.w3.org/2005/Atom');
+    expect(findAll(rss, 'atom:link')[0]?.attributes.href).toBe(`${APP_ORIGIN}/rss.xml`);
+    const items = findAll(rss, 'item').map((item) => ({
+      link: textOf(item, 'link') ?? '',
+      guid: textOf(item, 'guid') ?? '',
+      pubDate: textOf(item, 'pubDate') ?? '',
+    }));
+    expect(items.length, 'the QA fixture post at least').toBeGreaterThan(0);
+    expect(items.length).toBeLessThanOrEqual(20);
+    expect(new Set(items.map((i) => i.guid)).size).toBe(items.length);
+    const published = new Set((await publishedArticles(request)).map((a) => a.path));
+    const now = Date.now();
+    let previous = Infinity;
+    for (const item of items) {
+      expect(item.guid).toBe(item.link);
+      expect(item.link).toMatch(new RegExp(`^${APP_ORIGIN}/`));
+      expect(published, `${item.link} is a published post`).toContain(sitePath(item.link));
+      expect(item.pubDate).toMatch(
+        /^(Mon|Tue|Wed|Thu|Fri|Sat|Sun), \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/,
+      );
+      const date = Date.parse(item.pubDate);
+      expect(date, `${item.link}: not in the future`).toBeLessThanOrEqual(now);
+      expect(date, `${item.link}: newest first`).toBeLessThanOrEqual(previous);
+      previous = date;
+      const page = await request.get(item.link);
+      expect(page.status(), item.link).toBe(200);
+      expect(headOf(await page.text()).canonical, `${item.link}: canonical`).toBe(item.link);
+    }
+  }).toPass({ timeout: 60_000 });
 });

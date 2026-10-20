@@ -60,6 +60,7 @@ describe('sitemaps and RSS after seeding', () => {
       data: {
         ...service,
         id: undefined,
+        sources: [], // the copied rows keep their ids, which are primary keys
         key: `draft-${service.key}`,
         slug: uniqueSlug('پیش‌نویس'),
       } as never,
@@ -94,6 +95,25 @@ describe('sitemaps and RSS after seeding', () => {
       expect(res.headers.get('x-robots-tag')).toBe('noindex');
       expect(await res.text()).toContain('<urlset');
     }
+  });
+
+  it('PS7 no loc is in two child sitemaps; the articles hub is listed only with a published article (C25)', async () => {
+    const children = ['pages', 'services', 'doctors', 'articles'] as const;
+    const all = (
+      await Promise.all(
+        children.map(async (name) => {
+          const route = await import(`@/app/sitemaps/${name}.xml/route`);
+          return locs(await ((await route.GET()) as Response).text());
+        }),
+      )
+    ).flat();
+    expect(new Set(all).size).toBe(all.length);
+    // Other files publish articles in this database: compare with the live count, never zero.
+    const published = await payload.count({
+      collection: 'articles',
+      where: { _status: { equals: 'published' } },
+    });
+    expect(all.includes(site('/مقالات'))).toBe(published.totalDocs > 0);
   });
 
   it('PR1 no collection slug and no root endpoint takes a reserved /api name', async () => {

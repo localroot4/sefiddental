@@ -49,7 +49,7 @@ const HOLD_LOAD_MS = 5000;
  * mount early and the test would see it.
  */
 async function holdLoad(page: Page): Promise<void> {
-  await page.route('**/brand/og-preview.png?hold-load', async (route) => {
+  await page.route('**/brand/og/default.png?hold-load', async (route) => {
     await new Promise((resolve) => setTimeout(resolve, HOLD_LOAD_MS));
     await route.continue();
   });
@@ -58,7 +58,7 @@ async function holdLoad(page: Page): Promise<void> {
       const img = new Image();
       img.alt = '';
       img.hidden = true;
-      img.src = '/brand/og-preview.png?hold-load';
+      img.src = '/brand/og/default.png?hold-load';
       document.body.append(img);
     });
   });
