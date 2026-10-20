@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 
 import { describe, expect, it } from 'vitest';
 
-import { cpuMultiplierFor, lcpSpread, spreadTable, tbtGate } from './lhci.mjs';
+import { cpuMultiplierFor, lcpSpread, shiftCulprits, spreadTable, tbtGate } from './lhci.mjs';
 
 const matrix = [
   {
@@ -203,5 +203,20 @@ describe('lighthouserc.cjs', () => {
     expect(tier0Rest).toEqual(contentRest);
     expect(homeScript).toEqual(['error', { maxNumericValue: 215 * 1024 }]);
     expect(contentScript).toEqual(['error', { maxNumericValue: 150 * 1024 }]);
+  });
+});
+
+describe('shiftCulprits', () => {
+  it('LH-CLS names the moved elements of each run with a shift, for that URL only', () => {
+    const run = (url: string, items: { node?: { selector: string }; score: number }[]) => ({
+      requestedUrl: url,
+      audits: { 'layout-shifts': { details: { items } } },
+    });
+    const lhrs = [
+      run('https://x/?tier=0', [{ node: { selector: 'section.hero > h1' }, score: 0.5771 }]),
+      run('https://x/?tier=0', []),
+      run('https://x/other', [{ node: { selector: 'main' }, score: 0.2 }]),
+    ];
+    expect(shiftCulprits(lhrs, 'https://x/?tier=0')).toEqual(['section.hero > h1 0.577']);
   });
 });

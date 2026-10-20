@@ -200,6 +200,20 @@ function savedLhrs() {
     .map((name) => JSON.parse(readFileSync(path.join(lhciDir, name), 'utf8')));
 }
 
+/**
+ * The elements that moved in each run of `url` with a layout shift (pure, unit-tested): the CI
+ * report artifact cannot always be downloaded, so a CLS failure names its culprits in the log.
+ */
+export function shiftCulprits(lhrs, url) {
+  return lhrs
+    .filter((lhr) => lhr.requestedUrl === url || lhr.finalDisplayedUrl === url)
+    .map((lhr) => lhr.audits['layout-shifts']?.details?.items ?? [])
+    .filter((items) => items.length > 0)
+    .map((items) =>
+      items.map((i) => `${i.node?.selector ?? '?'} ${i.score?.toFixed(3)}`).join('; '),
+    );
+}
+
 /** One GitHub annotation per failed error-level assertion: CI logs are not always readable. */
 function annotateFailures(theme) {
   let results = [];
@@ -214,6 +228,10 @@ function annotateFailures(theme) {
     console.log(
       `::error title=lhci ${theme}::${r.url} ${what} ${r.name}: expected ${r.operator} ${r.expected}, got ${r.actual} (runs ${JSON.stringify(r.values)})`,
     );
+    if (r.auditId === 'cumulative-layout-shift') {
+      for (const line of shiftCulprits(savedLhrs(), r.url))
+        console.log(`lhci ${theme}: shifts ${line}`);
+    }
   }
 }
 
