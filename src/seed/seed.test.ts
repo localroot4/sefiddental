@@ -5,33 +5,56 @@ import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 
 import { ICONS } from '@/components/ui/icons';
+import { sourcesArray } from '@/fields/factories';
 import {
+  ARTICLE_RESERVED_SLUGS,
   BANNED_WORDS,
+  categoryTermRule,
+  codePoints,
   DEFAULT_TITLE_SUFFIX,
   descriptionRule,
+  headingsRule,
+  internalLinks,
+  linksRule,
   richProseRule,
+  slugRule,
   subtextRule,
   titleRule,
 } from '@/fields/validators';
 import { t } from '@/i18n/fa';
+import { isGuideKey, normalizePath } from '@/lib/paths';
 
-import { emptyFieldsPatch } from './run';
-import { clinicYaml, doctorsYaml, pagesYaml, servicesYaml } from './schemas';
+import { contains, emptyFieldsPatch } from './run';
+import {
+  articlesYaml,
+  clinicYaml,
+  doctorsYaml,
+  pagesYaml,
+  PUBLISHER_VALUES,
+  servicesYaml,
+} from './schemas';
 import { readYaml, SeedSourceError } from './sources';
 import {
   ACCENT_MAP,
   aliasRedirect,
+  articleBody,
+  articleData,
+  assertLinks,
   blockData,
   categoryData,
   checkedSlug,
+  dayOnly,
   financingData,
   globalsData,
   isSeedableTestimonial,
   isTemplateDoctor,
   lexicalFrom,
+  linkPaths,
   pageData,
   SeedDataError,
+  seedPaths,
   serviceData,
+  taxonomyData,
 } from './transforms';
 
 const ROOT = process.cwd();
@@ -183,6 +206,7 @@ describe('phase 4 seed copy (freeze F6, F7, F15, F17, F28)', () => {
   const services = readYaml(ROOT, 'docs/content/services.yaml', servicesYaml).data;
   const pages = readYaml(ROOT, 'src/seed/data/pages.yaml', pagesYaml).data.pages;
   const clinic = readYaml(ROOT, 'docs/content/clinic.yaml', clinicYaml).data;
+  const articles = readYaml(ROOT, 'src/seed/data/articles.yaml', articlesYaml).data;
   const home = pages.find((p) => p.key === 'home')!;
 
   it('SC1 home H1 is the F6 fallback; the slogan stays in a yaml comment only', () => {
@@ -214,6 +238,11 @@ describe('phase 4 seed copy (freeze F6, F7, F15, F17, F28)', () => {
       'type',
       'tone',
       'related',
+      // Phase 6: source titles and URLs are stored as published (H9); the rest are references.
+      'sources',
+      'reviewed_by',
+      'primary_service',
+      'tags',
     ]);
     const out: string[] = [];
     const walk = (value: unknown): void => {
@@ -225,6 +254,8 @@ describe('phase 4 seed copy (freeze F6, F7, F15, F17, F28)', () => {
     };
     walk(services);
     walk(pages);
+    // Top-level `tags` hold titles; an article's `tags` are slugs (skipped by key).
+    walk([articles.categories, articles.tags, articles.articles]);
     walk([clinic.footer_line_fa, clinic.seo?.default_description_fa, clinic.hours.note_fa]);
     return out.filter((text) => text !== 'TODO');
   }
@@ -250,6 +281,29 @@ describe('phase 4 seed copy (freeze F6, F7, F15, F17, F28)', () => {
     expect(text).not.toMatch(/\[\[NEEDS_CLIENT/);
     expect(text).not.toMatch(/(^|[\s«])ن?می [آ-ی]/); // missing ZWNJ after می
     expect(text).not.toMatch(/ (ها|های|هایی|تر|ترین)([\s.،؟»]|$)/); // missing ZWNJ before a suffix
+  });
+
+  it('SC13 every [text](/path) names a seeded page; link syntax only in content text', () => {
+    const doctors = readYaml(ROOT, 'content/data/doctors.yaml', doctorsYaml).data.doctors;
+    const known = seedPaths({
+      services: services.services,
+      pages,
+      articles: articles.articles,
+      doctors,
+    });
+    const content = [
+      ...services.services.flatMap((s) => s.body ?? []),
+      ...pages.flatMap((p) => p.blocks ?? []),
+      ...articles.articles.flatMap((a) => a.body),
+    ].flatMap((block) => (block.type === 'content' ? [block.text] : []));
+    for (const text of content) {
+      expect(() => assertLinks(text, known, 'yaml')).not.toThrow();
+      // `[x](https://…)` or `[x](/path#part)` is not link syntax and would show as typed.
+      expect((text.match(/\]\(/g) ?? []).length, text).toBe(linkPaths(text).length);
+    }
+    for (const text of seededCopy().filter((t) => !content.includes(t))) {
+      expect(text).not.toMatch(/\]\(/);
+    }
   });
 
   it('SC4 the restoration page fills every section the seed can (p04 acceptance)', () => {
@@ -322,5 +376,455 @@ describe('lexicalFrom (seed Markdown subset to Lexical JSON)', () => {
     expect(nodes[1]?.children).toEqual([expect.objectContaining({ text: 'بند یک ادامه' })]);
     expect(nodes[2]?.children).toHaveLength(2);
     expect(blockData({ type: 'content', text: 'متن' })).toMatchObject({ blockType: 'content' });
+  });
+});
+
+describe('seed links: [text](/path) (H29, C10)', () => {
+  const doc = { relationTo: 'services' as const, value: 7 };
+  const link = (p: string) => (normalizePath(p) === '/خدمات/ترمیم-دندان' ? doc : null);
+
+  it('LX2 a known path becomes an internal document link; the words around it keep their spaces', () => {
+    const tree = lexicalFrom(
+      'پیش از [ترمیم دندان](/خدمات/ترمیم-دندان) بخوانید.\n\n- مورد [ترمیم](/خدمات/ترمیم-دندان)',
+      link,
+    );
+    const [paragraph, list] = tree.root.children;
+    expect(paragraph?.children).toEqual([
+      expect.objectContaining({ type: 'text', text: 'پیش از ' }),
+      expect.objectContaining({
+        type: 'link',
+        version: 3,
+        id: expect.stringMatching(/^[0-9a-f]{24}$/),
+        fields: { linkType: 'internal', newTab: false, doc },
+        children: [expect.objectContaining({ type: 'text', text: 'ترمیم دندان' })],
+      }),
+      expect.objectContaining({ type: 'text', text: ' بخوانید.' }),
+    ]);
+    const item = (list?.children as { children: { type: string }[] }[])[0];
+    expect(item?.children.map((n) => n.type)).toEqual(['text', 'link']);
+    expect(linkPaths('[الف](/a) و [ب](/b) و [ج](https://x.ir) و [د](/c#d)')).toEqual(['/a', '/b']);
+  });
+
+  it('LX3 without a resolver, or before the target exists, only the link text stays', () => {
+    const plain = lexicalFrom('پیش از [ترمیم دندان](/خدمات/ترمیم-دندان) بخوانید.');
+    expect(plain.root.children[0]?.children).toEqual([
+      expect.objectContaining({ type: 'text', text: 'پیش از ترمیم دندان بخوانید.' }),
+    ]);
+    expect(lexicalFrom('[ب](/ناشناخته)', link).root.children[0]?.children).toEqual([
+      expect.objectContaining({ type: 'text', text: 'ب' }),
+    ]);
+    // Same input, same JSON (link ids included): a second run has nothing to write.
+    const twice = '[ترمیم](/خدمات/ترمیم-دندان) و [ترمیم](/خدمات/ترمیم-دندان)';
+    expect(lexicalFrom(twice, link)).toEqual(lexicalFrom(twice, link));
+    const [a, , b] = lexicalFrom(twice, link).root.children[0]!.children as { id?: string }[];
+    expect(a?.id).not.toBe(b?.id);
+  });
+
+  it('LX4 an unknown path stops the run with file:line', () => {
+    const known = new Set(['/خدمات/ترمیم-دندان']);
+    expect(() => assertLinks('[الف](/خدمات/ترمیم-دندان/)', known, 'f.yaml:3')).not.toThrow();
+    expect(() => assertLinks('[الف](/خدمات/نیست)', known, 'f.yaml:3')).toThrow(SeedDataError);
+    expect(() => assertLinks('[الف](/خدمات/نیست)', known, 'f.yaml:3')).toThrow(
+      /^f\.yaml:3: unknown link path "\/خدمات\/نیست"/,
+    );
+  });
+});
+
+const SOURCE = {
+  title: 'Tooth decay',
+  publisher: 'NHS' as const,
+  url: 'https://www.nhs.uk/conditions/tooth-decay/',
+  accessed_on: '2026-10-18',
+};
+
+describe('phase 6 seed sources (H26, H29, C5)', () => {
+  const minimal = (service: Record<string, unknown> = {}) => ({
+    categories: [{ key: 'c', title: 'دسته', slug: 'دسته', accent: 'warm', order: 1 }],
+    services: [
+      {
+        key: 's',
+        category: 'c',
+        nav_label: 'خدمت',
+        h1: 'خدمت',
+        seo_title: 'خدمت',
+        slug: 'خدمت',
+        booking_group: 'exam',
+        priority: 1,
+        search_terms: [],
+        price_from: null,
+        ...service,
+      },
+    ],
+  });
+
+  it('SS4 a source needs https, a listed publisher and a Gregorian day; reviewed_by takes only null', () => {
+    expect(servicesYaml.safeParse(minimal({ sources: [SOURCE], reviewed_by: null })).success).toBe(
+      true,
+    );
+    for (const bad of [
+      { url: 'http://www.nhs.uk/x' },
+      { url: 'www.nhs.uk/x' },
+      { publisher: 'WHO' },
+      { publisher: undefined },
+      { accessed_on: '2026/10/18' },
+      { accessed_on: '1405-07-26' },
+      { title: '' },
+    ]) {
+      const parsed = servicesYaml.safeParse(minimal({ sources: [{ ...SOURCE, ...bad }] }));
+      expect(parsed.success, JSON.stringify(bad)).toBe(false);
+    }
+    expect(servicesYaml.safeParse(minimal({ reviewed_by: 'dr-x' })).success).toBe(false);
+    const guide = { key: 'guide-aftercare', slug: 'x', title: 'ت', reviewed_by: null };
+    expect(pagesYaml.safeParse({ pages: [{ ...guide, sources: [SOURCE] }] }).success).toBe(true);
+    expect(
+      pagesYaml.safeParse({ pages: [{ ...guide, sources: [{ ...SOURCE, url: 'http://x.ir' }] }] })
+        .success,
+    ).toBe(false);
+    // The yaml publishers are the Payload select values (src/fields/factories.ts sourcesArray).
+    const publisher = sourcesArray().fields.find((f) => 'name' in f && f.name === 'publisher');
+    expect([...PUBLISHER_VALUES]).toEqual(
+      (publisher as { options: { value: string }[] }).options.map((o) => o.value),
+    );
+  });
+
+  it('SS5 `reviewed_by: null  # NEEDS_CLIENT …` is a marker at services.N.reviewed_by', () => {
+    writeFileSync(
+      path.join(tmp, 'marker.yaml'),
+      [
+        'categories:',
+        '  - {key: c, title: دسته, slug: دسته, accent: warm, order: 1}',
+        'services:',
+        '  - key: s',
+        '    category: c',
+        '    nav_label: خدمت',
+        '    h1: خدمت',
+        '    seo_title: خدمت',
+        '    slug: خدمت',
+        '    booking_group: exam',
+        '    priority: 1',
+        '    search_terms: []',
+        '    price_from: null',
+        '    reviewed_by: null  # NEEDS_CLIENT: reviewer dentist (gap 42)',
+        '',
+      ].join('\n'),
+    );
+    const { markers } = readYaml(tmp, 'marker.yaml', servicesYaml);
+    expect(markers).toEqual([
+      { file: 'marker.yaml', path: 'services.0.reviewed_by', kind: 'needs_client', line: 14 },
+    ]);
+  });
+
+  const ARTICLE = {
+    slug: 'مقاله-آزمون',
+    title: 'عنوان',
+    seo_title: 'عنوان',
+    seo_description: 'توضیح',
+    excerpt: 'خلاصه',
+    category: 'دسته',
+    primary_service: 'restoration',
+    is_medical: true,
+    body: [{ type: 'content', text: '## یک' }],
+  };
+  const file = (article: Record<string, unknown>) => ({
+    categories: [],
+    tags: [],
+    articles: [article],
+  });
+
+  it('SS6 articles.yaml: the repo file validates; unknown keys, ragged tables and an implicit service are refused', () => {
+    expect(readYaml(ROOT, 'src/seed/data/articles.yaml', articlesYaml).data.articles).toBeDefined();
+    expect(articlesYaml.safeParse(file(ARTICLE)).success).toBe(true);
+    expect(articlesYaml.safeParse(file({ ...ARTICLE, primary_service: null })).success).toBe(true);
+    // A misspelled key would be dropped without a word; strict entries stop the run instead.
+    expect(articlesYaml.safeParse(file({ ...ARTICLE, seo_topic: 'x' })).success).toBe(false);
+    const { primary_service: _omitted, ...implicit } = ARTICLE;
+    expect(articlesYaml.safeParse(file(implicit)).success).toBe(false);
+    expect(articlesYaml.safeParse(file({ ...ARTICLE, reviewed_by: 'dr-x' })).success).toBe(false);
+    const table = { type: 'table', caption: 'مقایسه', head: ['الف', 'ب'], rows: [['یک', 'دو']] };
+    const withTable = (t: Record<string, unknown>) => file({ ...ARTICLE, body: [t] });
+    expect(articlesYaml.safeParse(withTable(table)).success).toBe(true);
+    expect(articlesYaml.safeParse(withTable({ ...table, rows: [['یک']] })).success).toBe(false);
+    expect(
+      articlesYaml.safeParse(withTable({ ...table, head: ['تنها'], rows: [['یک']] })).success,
+    ).toBe(false);
+    expect(
+      articlesYaml.safeParse(withTable({ type: 'steps', items: [{ title: 'الف', text: 'ب' }] }))
+        .success,
+    ).toBe(false);
+  });
+});
+
+describe('phase 6 transforms (H29, H43)', () => {
+  const services = readYaml(ROOT, 'docs/content/services.yaml', servicesYaml).data.services;
+  const blocks = [
+    { type: 'content' as const, text: '## مقایسه\nمتن' },
+    { type: 'callout' as const, tone: 'warning' as const, text: 'هشدار' },
+    { type: 'table' as const, caption: 'جدول', head: ['الف', 'ب'], rows: [['یک', 'دو']] },
+  ];
+
+  it('ST7 an article body: content, callout and table blocks in one Lexical tree', () => {
+    const body = articleBody(blocks);
+    const nodes = body.root.children;
+    expect(nodes.map((n) => n.type)).toEqual(['heading', 'paragraph', 'block', 'block']);
+    expect(nodes[2]).toMatchObject({
+      version: 2,
+      format: '',
+      fields: { blockType: 'callout', blockName: '', tone: 'warning', text: 'هشدار' },
+    });
+    expect(nodes[3]).toMatchObject({
+      fields: {
+        blockType: 'table',
+        caption: 'جدول',
+        head: ['الف', 'ب'],
+        rows: [{ cells: ['یک', 'دو'] }],
+      },
+    });
+    expect((nodes[2]?.fields as { id: string }).id).toMatch(/^[0-9a-f]{24}$/);
+    expect(articleBody(blocks)).toEqual(body);
+  });
+
+  it('ST8 article, category and tag data; drafts carry no reviewer, review date, cover or author', () => {
+    const article = {
+      slug: 'لمینت-یا-کامپوزیت',
+      title: 'لمینت یا کامپوزیت؟',
+      seo_title: 'لمینت یا کامپوزیت',
+      seo_description: 'توضیح',
+      excerpt: 'خلاصهٔ كوتاه',
+      category: 'زیبایی-لبخند',
+      tags: ['لمینت'],
+      primary_service: 'ceramic-laminate',
+      is_medical: true,
+      body: blocks,
+      faqs: [{ question: 'پرسش؟', answer: 'پاسخ.' }],
+      sources: [SOURCE],
+      reviewed_by: null,
+      cover: null,
+      author: null,
+    };
+    const data = articleData(article, { category: 3, tags: [4], primaryService: 5 });
+    expect(data).toMatchObject({
+      title: 'لمینت یا کامپوزیت؟',
+      slug: 'لمینت-یا-کامپوزیت',
+      excerpt: 'خلاصهٔ کوتاه',
+      category: 3,
+      tags: [4],
+      primaryService: 5,
+      isMedical: true,
+      faqs: [{ question: 'پرسش؟', answer: 'پاسخ.' }],
+      sources: [
+        {
+          title: 'Tooth decay',
+          publisher: 'NHS',
+          url: SOURCE.url,
+          accessedOn: dayOnly('2026-10-18'),
+        },
+      ],
+      seo: { title: 'لمینت یا کامپوزیت', description: 'توضیح' },
+    });
+    expect(data.body).toEqual(articleBody(blocks));
+    for (const key of ['reviewer', 'reviewedAt', 'cover', 'authorDoctor', 'staffAuthorName']) {
+      expect(data).not.toHaveProperty(key);
+    }
+    expect(() =>
+      articleData(
+        { ...article, slug: 'لمینت یا کامپوزیت' },
+        { category: 3, tags: [], primaryService: null },
+      ),
+    ).toThrow(SeedDataError);
+    expect(
+      taxonomyData({ slug: 'زیبایی-لبخند', title: 'زیبایی لبخند', description: 'توضيح' }),
+    ).toEqual({
+      slug: 'زیبایی-لبخند',
+      title: 'زیبایی لبخند',
+      description: 'توضیح',
+    });
+    expect(taxonomyData({ slug: 'لمینت', title: 'لمینت' })).toEqual({
+      slug: 'لمینت',
+      title: 'لمینت',
+      description: null,
+    });
+  });
+
+  it("ST9 services and guides map sources; reviewed_by never becomes a key, so a sync keeps the admin's reviewer", () => {
+    const restoration = services.find((s) => s.key === 'restoration')!;
+    const data = serviceData({ ...restoration, sources: [SOURCE], reviewed_by: null }, 1, 10);
+    expect(data.sources).toEqual([
+      {
+        title: 'Tooth decay',
+        publisher: 'NHS',
+        url: SOURCE.url,
+        accessedOn: dayOnly('2026-10-18'),
+      },
+    ]);
+    expect(data).not.toHaveProperty('reviewedBy');
+    expect(serviceData({ ...restoration, sources: undefined }, 1, 10)).not.toHaveProperty(
+      'sources',
+    );
+    const guide = pageData({
+      key: 'guide-aftercare',
+      slug: 'مراقبت-بعد-از-درمان',
+      title: 'مراقبت',
+      sources: [SOURCE],
+      reviewed_by: null,
+    });
+    expect(guide.sources).toHaveLength(1);
+    expect(guide).not.toHaveProperty('reviewer');
+  });
+
+  it('ST10 fill: a Lexical value is one field; a filled field is never touched', () => {
+    const body = lexicalFrom('متن');
+    expect(
+      emptyFieldsPatch(
+        { body: null, seo: { description: 'از مدیر' } },
+        { body, seo: { description: 'از yaml', title: 'عنوان' } },
+      ),
+    ).toEqual({ body, seo: { title: 'عنوان' } });
+    expect(emptyFieldsPatch({ body: lexicalFrom('ویرایش مدیر') }, { body })).toEqual({});
+  });
+
+  it('ST11 sync writes only a changed document: the stored document contains the seed values', () => {
+    const stored = {
+      id: 1,
+      title: 'الف',
+      faqs: [{ id: 'x', question: 'پ', answer: 'ج' }],
+      seo: { title: null, noindex: false },
+      tags: [1, 2],
+    };
+    expect(
+      contains(stored, {
+        title: 'الف',
+        faqs: [{ question: 'پ', answer: 'ج' }],
+        seo: { title: null },
+        note: null,
+        tags: [1, 2],
+      }),
+    ).toBe(true);
+    expect(contains(stored, { title: 'ب' })).toBe(false);
+    expect(contains(stored, { faqs: [] })).toBe(false);
+    expect(contains(stored, { tags: [2, 1] })).toBe(false);
+    expect(contains(stored, { seo: { title: 'ع' } })).toBe(false);
+    expect(contains(undefined, { title: 'الف' })).toBe(false);
+  });
+});
+
+// shortcut: held until wave 1b writes the copy (the source sites are unreachable from the build
+// network); each copy lane removes `.skip` in the commit that adds its yaml.
+describe.skip('phase 6 copy checks (C10): red until the copy lanes write the yaml', () => {
+  const servicesFile = readYaml(ROOT, 'docs/content/services.yaml', servicesYaml).data;
+  const pages = readYaml(ROOT, 'src/seed/data/pages.yaml', pagesYaml).data.pages;
+  const doctors = readYaml(ROOT, 'content/data/doctors.yaml', doctorsYaml).data.doctors;
+  const articlesFile = readYaml(ROOT, 'src/seed/data/articles.yaml', articlesYaml).data;
+  const known = seedPaths({
+    services: servicesFile.services,
+    pages,
+    articles: articlesFile.articles,
+    doctors,
+  });
+
+  it.each(servicesFile.services.map((s) => [s.key, s] as const))(
+    'SC8 service %s: 5-8 FAQs, a source, a content block, search title and description',
+    (_, service) => {
+      const data = serviceData(service, 1, 10);
+      expect.soft(data.faqs.length, 'faqs').toBeGreaterThanOrEqual(5);
+      expect.soft(data.faqs.length, 'faqs').toBeLessThanOrEqual(8);
+      expect.soft(service.sources?.length ?? 0, 'sources').toBeGreaterThanOrEqual(1);
+      expect
+        .soft(
+          data.body.some((b) => b.blockType === 'content'),
+          'content block',
+        )
+        .toBe(true);
+      expect.soft(titleRule(data.seo.title, DEFAULT_TITLE_SUFFIX), 'seo_title').toBe(true);
+      expect.soft(descriptionRule(data.seo.description, true), 'seo_description').toBe(true);
+    },
+  );
+
+  it.each(pages.filter((p) => isGuideKey(p.key)).map((p) => [p.key, p] as const))(
+    'SC9 guide %s: a content block, a source, search title and description',
+    (_, page) => {
+      const data = pageData(page);
+      expect
+        .soft(
+          data.blocks.some((b) => b.blockType === 'content'),
+          'content block',
+        )
+        .toBe(true);
+      expect.soft(page.sources?.length ?? 0, 'sources').toBeGreaterThanOrEqual(1);
+      expect.soft(titleRule(data.seo.title, DEFAULT_TITLE_SUFFIX), 'seo_title').toBe(true);
+      expect.soft(descriptionRule(data.seo.description, true), 'seo_description').toBe(true);
+    },
+  );
+
+  it('SC10 articles.yaml holds the six articles of the keyword map', () => {
+    expect(articlesFile.articles).toHaveLength(6);
+  });
+
+  it.each(articlesFile.articles.map((a) => [a.slug, a] as const))(
+    'SC11 article %s: the publish checklist the yaml can meet',
+    (_, article) => {
+      // Links resolve to the target's natural key, so the rule can name the service and the guide.
+      const link = (p: string) => {
+        const target = known.get(normalizePath(p));
+        return target ? { relationTo: target.relationTo, value: target.key } : null;
+      };
+      const data = articleData(
+        article,
+        { category: 1, tags: [], primaryService: article.primary_service },
+        link,
+      );
+      expect.soft(codePoints(data.title), 'title').toBeLessThanOrEqual(90);
+      expect.soft(codePoints(data.excerpt), 'excerpt').toBeGreaterThanOrEqual(80);
+      expect.soft(codePoints(data.excerpt), 'excerpt').toBeLessThanOrEqual(220);
+      expect.soft(titleRule(data.seo.title, DEFAULT_TITLE_SUFFIX), 'seo_title').toBe(true);
+      expect.soft(descriptionRule(data.seo.description, true), 'seo_description').toBe(true);
+      expect.soft(slugRule(data.slug, 60, ARTICLE_RESERVED_SLUGS), 'slug').toBe(true);
+      expect.soft(headingsRule(data.body), 'two H2').toBe(true);
+      expect.soft(article.sources?.length ?? 0, 'sources').toBeGreaterThanOrEqual(1);
+      const targets = internalLinks(data.body).map((l) => ({
+        ...l,
+        title: String(l.id),
+        published: true,
+        guide: l.relationTo === 'pages' && isGuideKey(String(l.id)),
+      }));
+      const primary = article.primary_service
+        ? { id: article.primary_service, title: article.primary_service }
+        : null;
+      expect.soft(linksRule(targets, primary), 'links').toBe(true);
+      expect
+        .soft(
+          articlesFile.categories.map((c) => c.slug),
+          'category',
+        )
+        .toContain(article.category);
+      for (const tag of article.tags ?? []) {
+        expect
+          .soft(
+            articlesFile.tags.map((t) => t.slug),
+            'tags',
+          )
+          .toContain(tag);
+      }
+      if (article.primary_service) {
+        expect
+          .soft(
+            servicesFile.services.map((s) => s.key),
+            'primary_service',
+          )
+          .toContain(article.primary_service);
+      }
+    },
+  );
+
+  it('SC12 article categories are not named like a service (V-CATTERM); every slug is final', () => {
+    const terms = servicesFile.services.flatMap((s) =>
+      [s.nav_label, s.h1, s.search_terms[0]].filter((t): t is string => Boolean(t)),
+    );
+    for (const category of articlesFile.categories) {
+      expect(categoryTermRule(category.title, terms), category.slug).toBe(true);
+      expect(slugRule(taxonomyData(category).slug, 80), category.slug).toBe(true);
+    }
+    for (const tag of articlesFile.tags) {
+      expect(slugRule(taxonomyData(tag).slug, 80), tag.slug).toBe(true);
+    }
   });
 });

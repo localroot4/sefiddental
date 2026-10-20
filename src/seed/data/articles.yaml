@@ -1,0 +1,40 @@
+# Seed articles (phase 6, H29): six drafts mapped to docs/seo/keyword-map.md,
+# with their categories and tags. Schema: src/seed/schemas.ts articlesYaml
+# (strict: an unknown key stops the run). Checks: src/seed/seed.test.ts SC3,
+# SC10 to SC13. Every article seeds as a draft: the reviewer dentist (gap 42),
+# the cover photo and the author (gap 58) are client answers set in the admin.
+#
+# categories: one row each, natural key `slug` (final persianSlug form).
+#   slug, title (never a service name, V-CATTERM), description (optional)
+# tags: slug, title.
+# articles: one row each, natural key `slug` (max 60, not «دسته» or «برچسب»).
+#   slug, title (max 90), seo_title (topic only: with the site suffix max 60
+#   code points), seo_description (120 to 160), excerpt (80 to 220),
+#   category (a category slug), tags (tag slugs, optional),
+#   primary_service (a services.yaml key, or null for article 6),
+#   is_medical (true or false), body (blocks, below), faqs (optional:
+#   question, answer), sources (title, publisher, url, accessed_on),
+#   reviewed_by / cover / author: null with the marker comment, for example
+#     reviewed_by: null  # NEEDS_CLIENT: reviewer dentist (gap 42)
+#     cover: null  # NEEDS_CLIENT: cover photo (gap 58)
+#     author: null  # NEEDS_CLIENT: author dentist or staff name (gap 58)
+#
+# body blocks, in reading order:
+#   - type: content, text: Markdown subset: `## ` headings (at least two H2
+#     per article, they build the table of contents), `- ` lists, blank-line
+#     paragraphs, and `[link text](/site-path)` internal links. A link names a
+#     path a seed file gives a document (a service, a page or guide, an
+#     article, a dentist); an unknown path stops the seed. Each article links
+#     its primary service and at least one guide.
+#   - type: callout, tone: info | warning, text
+#   - type: table, caption, head: [2 to 4 headings], rows: [[one cell per
+#     heading], ...]
+# sources: publisher is one of ADA, AAPD, AAP, Cochrane, NHS, IADT, journal,
+# other; url starts with https://; accessed_on is the Gregorian day the page
+# was opened (YYYY-MM-DD). Cite a page only after opening it.
+#
+# A fact the clinic has not confirmed is left out of the copy; its gaps.md row
+# (59 to 63) is the record, not a marker here.
+categories: []
+tags: []
+articles: []

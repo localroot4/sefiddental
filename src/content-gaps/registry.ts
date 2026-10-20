@@ -2,6 +2,7 @@ import type { CollectionSlug, Payload, Where } from 'payload';
 
 import { MARKER } from '@/fields/validators';
 import { addDaysToKey, zonedDateKey } from '@/lib/jalali';
+import { isGuideKey, PAGE_KEYS } from '@/lib/paths';
 
 /**
  * Live content gaps for the System status view (spec-data 9.2, 9.3). No stored gap table:
@@ -146,6 +147,18 @@ function anyMatch(
   };
 }
 
+/**
+ * A client question no field answers (phase 6 rows 59, 61 to 63): the copy leaves the fact out.
+ * Open until the answer is in the copy and this entry and its gaps.md row are closed.
+ */
+function clientQuestion(id: string, gapRow: number, labelFa: string, target: GapTarget): GapEntry {
+  return { id, gapRow, kind: 'needs_client', labelFa, target, isOpen: async () => true };
+}
+
+const noValue = (field: string): Where => ({
+  or: [{ [field]: { exists: false } }, { [field]: { equals: '' } }],
+});
+
 export const GAP_REGISTRY: readonly GapEntry[] = [
   globalField('clinic.postalCode', 37, 'needs_client', 'کد پستی کلینیک', 'clinic', [
     'address.postalCode',
@@ -285,6 +298,56 @@ export const GAP_REGISTRY: readonly GapEntry[] = [
   anyMatch('services.reviewer', 42, 'missing_content', 'بازبین پزشکی خدمات', 'services', {
     and: [published, { reviewedBy: { exists: false } }],
   }),
+  anyMatch('guides.reviewer', 42, 'missing_content', 'بازبین پزشکی راهنماهای بیمار', 'pages', {
+    and: [{ key: { in: PAGE_KEYS.filter(isGuideKey) } }, { reviewer: { exists: false } }],
+  }),
+  // C1: every article, medical or not, publishes only with a reviewer.
+  anyMatch('articles.reviewer', 42, 'missing_content', 'بازبین پزشکی مقاله‌ها', 'articles', {
+    reviewer: { exists: false },
+  }),
+  anyMatch('articles.cover', 58, 'needs_client', 'تصویر شاخص مقاله‌ها', 'articles', {
+    cover: { exists: false },
+  }),
+  anyMatch(
+    'articles.author',
+    58,
+    'needs_client',
+    'نویسندهٔ مقاله‌ها: پزشک یا نام یکی از کارکنان',
+    'articles',
+    {
+      and: [{ authorDoctor: { exists: false } }, noValue('staffAuthorName')],
+    },
+  ),
+  clientQuestion(
+    'guides.sedation',
+    59,
+    'آیا کلینیک برای بیماران مضطرب داروی آرام‌بخش یا گاز آرام‌بخش دارد؟',
+    { type: 'collection', slug: 'pages' },
+  ),
+  anyMatch(
+    'tiers.materials',
+    60,
+    'needs_client',
+    'مواد روکش، لمینت، ایمپلنت و سطح‌های ترمیم و محل لابراتوار',
+    'service-tiers',
+    noValue('materials'),
+  ),
+  clientQuestion(
+    'guides.firstVisitDocuments',
+    61,
+    'مدارکی که بیمار برای اولین مراجعه همراه می‌آورد',
+    { type: 'collection', slug: 'pages' },
+  ),
+  clientQuestion('admin.authenticatorApp', 62, 'برنامهٔ رمز یک‌بارمصرف برای گوشی پذیرش', {
+    type: 'collection',
+    slug: 'users',
+  }),
+  clientQuestion(
+    'articles.insurerLines',
+    63,
+    'بیمه‌های تکمیلی طرف کار کلینیک، درمان‌ها و مدارک لازم',
+    { type: 'collection', slug: 'articles' },
+  ),
   globalField(
     'seo.defaultDescription',
     41,
@@ -297,7 +360,8 @@ export const GAP_REGISTRY: readonly GapEntry[] = [
 
 /**
  * Which registry entry answers each `# NEEDS_CLIENT` and `# verify` comment of the yaml sources
- * (keys: `file:path`). A test asserts every marker the seeder finds is listed here.
+ * (keys: `file:path`; a `*` segment matches any one segment). A test asserts every marker the
+ * seeder finds is listed here. Facts the copy leaves out get a gaps row, not a marker (H26).
  */
 export const YAML_MARKER_GAPS: Readonly<Record<string, string>> = {
   'docs/content/clinic.yaml:address.postal_code': 'clinic.postalCode',
@@ -313,7 +377,29 @@ export const YAML_MARKER_GAPS: Readonly<Record<string, string>> = {
   'docs/content/clinic.yaml:legal.license_number': 'clinic.legal',
   'docs/content/clinic.yaml:legal.technical_supervisor': 'clinic.legal',
   'docs/content/clinic.yaml:market.secondary_areas_fa': 'seo.secondaryAreas',
+  'docs/content/services.yaml:services.*.reviewed_by': 'services.reviewer',
+  'src/seed/data/pages.yaml:pages.*.reviewed_by': 'guides.reviewer',
+  'src/seed/data/articles.yaml:articles.*.reviewed_by': 'articles.reviewer',
+  'src/seed/data/articles.yaml:articles.*.cover': 'articles.cover',
+  'src/seed/data/articles.yaml:articles.*.author': 'articles.author',
 };
+
+/** The registry id of a yaml marker, or undefined when no key of YAML_MARKER_GAPS matches. */
+export function yamlMarkerGap(file: string, path: string): string | undefined {
+  const parts = path.split('.');
+  for (const [key, id] of Object.entries(YAML_MARKER_GAPS)) {
+    const [keyFile, keyPath = ''] = key.split(':');
+    const pattern = keyPath.split('.');
+    if (
+      keyFile === file &&
+      pattern.length === parts.length &&
+      pattern.every((segment, i) => segment === '*' || segment === parts[i])
+    ) {
+      return id;
+    }
+  }
+  return undefined;
+}
 
 /** Prose fields scanned for inline `[[NEEDS_CLIENT: …]]` markers (drafts included). */
 export const MARKER_FIELDS: Readonly<Partial<Record<CollectionSlug, readonly string[]>>> = {

@@ -37,6 +37,41 @@ const pageBlocks = z.array(
     z.object({ type: z.literal('faq'), items: faqs.min(1) }),
   ]),
 );
+/** Payload's publisher options (src/fields/factories.ts sourcesArray); a test keeps them equal. */
+export const PUBLISHER_VALUES = [
+  'ADA',
+  'AAPD',
+  'AAP',
+  'Cochrane',
+  'NHS',
+  'IADT',
+  'journal',
+  'other',
+] as const;
+/** H27: a source the copy lane opened, with its published title and the day it was read. */
+const source = z.object({
+  title: text,
+  publisher: z.enum(PUBLISHER_VALUES),
+  url: z.string().regex(/^https:\/\/[^\s/]+\.[^\s]+$/),
+  accessed_on: z.string().regex(/^20\d\d-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/),
+});
+const sources = z.array(source).max(20);
+/**
+ * H26: only null, with `# NEEDS_CLIENT: reviewer dentist (gap 42)` after it. The admin sets the
+ * reviewer in the panel; the seeder writes no key, so a sync never clears that choice.
+ */
+const pendingClientFact = z.null().optional();
+const table = z
+  .object({
+    type: z.literal('table'),
+    caption: text,
+    head: z.array(text).min(2).max(4),
+    rows: z.array(z.array(text)).min(1),
+  })
+  .refine((t) => t.rows.every((row) => row.length === t.head.length), {
+    message: 'every row needs one cell per heading',
+    path: ['rows'],
+  });
 const hhmm = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
 const weekday = z.enum(['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri']);
 
@@ -89,6 +124,8 @@ export const servicesYaml = z.object({
         body: serviceBlocks.optional(),
         faqs: faqs.optional(),
         related: z.array(key).max(3).optional(),
+        sources: sources.optional(),
+        reviewed_by: pendingClientFact,
         price_from: z.number().int().min(0).nullable(),
         emergency_link: z.boolean().optional(),
         scope_to_verify: z.string().optional(),
@@ -228,12 +265,47 @@ export const pagesYaml = z.object({
         /** Home only: section headings (Pages `sections`, keys checked by Payload). */
         sections: z.array(z.object({ key, heading: text, intro: text.optional() })).optional(),
         blocks: pageBlocks.optional(),
+        /** Guides (H29, C5): the body is `blocks` with a `faq` block; these two are new. */
+        sources: sources.optional(),
+        reviewed_by: pendingClientFact,
       }),
     )
     .min(1),
+});
+
+/**
+ * src/seed/data/articles.yaml (H29). Strict entries: a misspelled key stops the run instead of
+ * being dropped. Categories and tags are matched by slug; an article names them by slug.
+ */
+export const articlesYaml = z.object({
+  categories: z.array(z.strictObject({ slug: text, title: text, description: text.optional() })),
+  tags: z.array(z.strictObject({ slug: text, title: text })),
+  articles: z.array(
+    z.strictObject({
+      slug: text,
+      title: text,
+      /** The search-title topic; the site suffix is added (V-TITLE). */
+      seo_title: text,
+      seo_description: text,
+      excerpt: text,
+      category: text,
+      tags: z.array(text).max(8).optional(),
+      /** A services key, or null for an article without one (H21, article 6). */
+      primary_service: key.nullable(),
+      is_medical: z.boolean(),
+      body: z.array(z.discriminatedUnion('type', [content, callout, table])).min(1),
+      faqs: faqs.optional(),
+      sources: sources.optional(),
+      reviewed_by: pendingClientFact,
+      /** Gap 58: the cover photo and the author are client answers, set in the admin. */
+      cover: pendingClientFact,
+      author: pendingClientFact,
+    }),
+  ),
 });
 
 export type ServicesYaml = z.infer<typeof servicesYaml>;
 export type ClinicYaml = z.infer<typeof clinicYaml>;
 export type InsurancesYaml = z.infer<typeof insurancesYaml>;
 export type PagesYaml = z.infer<typeof pagesYaml>;
+export type ArticlesYaml = z.infer<typeof articlesYaml>;

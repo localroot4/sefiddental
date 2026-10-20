@@ -1,8 +1,11 @@
+import { createHash } from 'node:crypto';
+
 import { zonedWallTimeToInstant, type DateKey } from '@/lib/jalali';
+import { buildPath, normalizePath, type PathCollection } from '@/lib/paths';
 import { persianSlug } from '@/lib/persianSlug';
 import { normalizeLetters, normalizePersian, normalizeZwnj } from '@/lib/persianText';
 
-import type { ClinicYaml, InsurancesYaml, PagesYaml, ServicesYaml } from './schemas';
+import type { ArticlesYaml, ClinicYaml, InsurancesYaml, PagesYaml, ServicesYaml } from './schemas';
 
 /**
  * Pure yaml-to-document mappers (spec-data 8.3-8.5). Seeders only fix letters and ZWNJ (freeze
@@ -25,13 +28,55 @@ export class SeedDataError extends Error {}
 
 type Category = ServicesYaml['categories'][number];
 type Service = ServicesYaml['services'][number];
+type Article = ArticlesYaml['articles'][number];
 type Faq = { question: string; answer: string };
+type SourceYaml = NonNullable<Service['sources']>[number];
 type BlockYaml =
   NonNullable<Service['body']>[number] | NonNullable<PagesYaml['pages'][number]['blocks']>[number];
+type Id = number | string;
 
-const textNode = (text: string) => ({
+/** The collections the rich-text link drawer offers (src/fields/richText.ts LinkFeature). */
+export type LinkCollection = Extract<PathCollection, 'services' | 'pages' | 'articles' | 'doctors'>;
+export type LinkDoc = { relationTo: LinkCollection; value: Id };
+/** A seed link's target document, or null while it does not exist yet. */
+export type LinkResolver = (path: string) => LinkDoc | null;
+
+/** `[text](/path)`: a site path only; a query, fragment or other URL is not link syntax. */
+const LINK = /\[([^\]\n]+)\]\((\/[^)\s#?]*)\)/g;
+
+export const linkPaths = (text: string): string[] => [...text.matchAll(LINK)].map((m) => m[2]!);
+
+/** Stops the run on a link to a path no seeded document has (`where` is `file:line`). */
+export function assertLinks(text: string, known: { has(path: string): boolean }, where: string) {
+  const unknown = linkPaths(text).find((target) => !known.has(normalizePath(target)));
+  if (unknown !== undefined) throw new SeedDataError(`${where}: unknown link path "${unknown}".`);
+}
+
+/** Every public path a seed file gives a document, with the document's natural key. */
+export function seedPaths(files: {
+  services: readonly { key: string; slug: string }[];
+  pages: readonly { key: string; slug: string }[];
+  articles: readonly { slug: string }[];
+  doctors: readonly { slug: string }[];
+}): Map<string, { relationTo: LinkCollection; key: string }> {
+  const paths = new Map<string, { relationTo: LinkCollection; key: string }>();
+  const add = (relationTo: LinkCollection, key: string, path: string | null) => {
+    if (path) paths.set(normalizePath(path), { relationTo, key });
+  };
+  for (const s of files.services) add('services', s.key, buildPath('services', s));
+  for (const p of files.pages)
+    add('pages', p.key, buildPath('pages', { ...p, slug: p.slug || null }));
+  for (const a of files.articles) add('articles', a.slug, buildPath('articles', a));
+  for (const d of files.doctors) add('doctors', d.slug, buildPath('doctors', d));
+  return paths;
+}
+
+// Stable 24-hex ids (the Lexical node id format), so the same yaml gives the same JSON.
+const nodeId = (seed: string): string => createHash('sha1').update(seed).digest('hex').slice(0, 24);
+
+const textNode = (text: string, fix: (value: string) => string = fixText) => ({
   type: 'text',
-  text: fixText(text),
+  text: fix(text),
   format: 0,
   detail: 0,
   mode: 'normal',
@@ -49,24 +94,57 @@ const element = (type: string, children: LexicalNode[], extra: Record<string, un
   ...extra,
 });
 
+// Inline text keeps its edge spaces: they separate it from a link.
+const fixInline = (value: string): string => normalizeZwnj(normalizeLetters(value));
+
 /**
  * Lexical JSON from the Markdown subset of the seed copy: `## ` to `#### ` headings, `- ` bullet
- * lists, and paragraphs separated by a blank line (lines of one paragraph are joined).
+ * lists, and paragraphs separated by a blank line (lines of one paragraph are joined). In a
+ * paragraph or a list item, `[text](/path)` is an internal document link when `link` finds the
+ * document; without `link`, or before the target exists, only the text stays.
  */
-export function lexicalFrom(source: string) {
+export function lexicalFrom(source: string, link?: LinkResolver) {
   const children: LexicalNode[] = [];
   let paragraph: string[] = [];
   let list: string[] = [];
+  let links = 0;
+  const inline = (text: string): LexicalNode[] => {
+    const nodes: LexicalNode[] = [];
+    let plain = '';
+    let last = 0;
+    for (const match of text.matchAll(LINK)) {
+      plain += text.slice(last, match.index);
+      last = match.index + match[0].length;
+      const doc = link?.(match[2]!) ?? null;
+      if (!doc) {
+        plain += match[1];
+        continue;
+      }
+      if (plain) nodes.push(textNode(plain, fixInline));
+      plain = '';
+      links += 1;
+      nodes.push(
+        element('link', [textNode(match[1]!)], {
+          version: 3,
+          id: nodeId(`${links}|${match[2]}|${source}`),
+          fields: { linkType: 'internal', newTab: false, doc },
+        }),
+      );
+    }
+    plain += text.slice(last);
+    if (plain) nodes.push(textNode(plain, fixInline));
+    return nodes;
+  };
   const flush = () => {
     if (paragraph.length > 0)
       children.push(
-        element('paragraph', [textNode(paragraph.join(' '))], { textFormat: 0, textStyle: '' }),
+        element('paragraph', inline(paragraph.join(' ')), { textFormat: 0, textStyle: '' }),
       );
     if (list.length > 0)
       children.push(
         element(
           'list',
-          list.map((item, i) => element('listitem', [textNode(item)], { value: i + 1 })),
+          list.map((item, i) => element('listitem', inline(item), { value: i + 1 })),
           { listType: 'bullet', start: 1, tag: 'ul' },
         ),
       );
@@ -92,11 +170,23 @@ export function lexicalFrom(source: string) {
 const faqsData = (rows: readonly Faq[] | undefined) =>
   (rows ?? []).map((row) => ({ question: fixText(row.question), answer: fixText(row.answer) }));
 
+/** H27: source titles and URLs are stored as published, never normalized (H9). */
+const sourcesData = (rows: readonly SourceYaml[]) =>
+  rows.map((row) => ({
+    title: row.title.trim(),
+    publisher: row.publisher,
+    url: row.url,
+    accessedOn: dayOnly(row.accessed_on),
+  }));
+// A missing `sources` key writes no key, so a sync keeps what the admin entered.
+const sourcesField = (rows: readonly SourceYaml[] | undefined) =>
+  rows ? { sources: sourcesData(rows) } : {};
+
 /** One seed block to its Payload block (src/blocks). */
-export function blockData(block: BlockYaml) {
+export function blockData(block: BlockYaml, link?: LinkResolver) {
   switch (block.type) {
     case 'content':
-      return { blockType: 'content', body: lexicalFrom(block.text) };
+      return { blockType: 'content', body: lexicalFrom(block.text, link) };
     case 'callout':
       return { blockType: 'callout', tone: block.tone ?? 'info', text: fixText(block.text) };
     case 'steps':
@@ -139,7 +229,12 @@ export function checkedSlug(slug: string, where: string): string {
   return slug;
 }
 
-export function serviceData(service: Service, categoryId: number | string, order: number) {
+export function serviceData(
+  service: Service,
+  categoryId: number | string,
+  order: number,
+  link?: LinkResolver,
+) {
   return {
     key: service.key,
     category: categoryId,
@@ -158,8 +253,9 @@ export function serviceData(service: Service, categoryId: number | string, order
       recovery: opt(service.recovery),
     },
     priceFrom: service.price_from,
-    body: (service.body ?? []).map(blockData),
+    body: (service.body ?? []).map((block) => blockData(block, link)),
     faqs: faqsData(service.faqs),
+    ...sourcesField(service.sources),
     searchTerms: service.search_terms.map(fixText),
     internalNote: service.scope_to_verify ?? null,
     scopeVerified: !service.scope_to_verify,
@@ -329,7 +425,7 @@ export function insurerDifference(clinic: ClinicYaml, insurers: InsurancesYaml):
     : 'docs/content/clinic.yaml insurances.featured differs from content/data/insurances.yaml; the latter is seeded.';
 }
 
-export function pageData(page: PagesYaml['pages'][number]) {
+export function pageData(page: PagesYaml['pages'][number], link?: LinkResolver) {
   return {
     key: page.key,
     slug: page.slug === '' ? null : page.slug,
@@ -341,12 +437,68 @@ export function pageData(page: PagesYaml['pages'][number]) {
       heading: fixText(row.heading),
       intro: opt(row.intro),
     })),
-    blocks: (page.blocks ?? []).map(blockData),
+    blocks: (page.blocks ?? []).map((block) => blockData(block, link)),
+    ...sourcesField(page.sources),
     seo: {
       ...(page.seo_title ? { title: fixText(page.seo_title) } : {}),
       ...(page.seo_description ? { description: fixText(page.seo_description) } : {}),
       ...(page.noindex ? { noindex: true } : {}),
     },
+  };
+}
+
+/**
+ * An article body (H8, H29): content blocks become Lexical nodes and callouts and tables become
+ * Lexical `block` nodes (the article blocks of src/blocks/articleBlocks.ts), in yaml order.
+ */
+export function articleBody(blocks: Article['body'], link?: LinkResolver) {
+  const children = blocks.flatMap((block, index): LexicalNode[] => {
+    if (block.type === 'content') return lexicalFrom(block.text, link).root.children;
+    const fields =
+      block.type === 'callout'
+        ? { blockType: 'callout', tone: block.tone ?? 'info', text: fixText(block.text) }
+        : {
+            blockType: 'table',
+            caption: fixText(block.caption),
+            head: block.head.map(fixText),
+            rows: block.rows.map((cells) => ({ cells: cells.map(fixText) })),
+          };
+    const id = nodeId(`${index}|${JSON.stringify(fields)}`);
+    return [{ type: 'block', version: 2, format: '', fields: { id, blockName: '', ...fields } }];
+  });
+  return { root: element('root', children) };
+}
+
+/** Article categories and tags (natural key: the slug). */
+export function taxonomyData(row: { slug: string; title: string; description?: string }) {
+  return {
+    slug: checkedSlug(row.slug, `articles.yaml ${row.slug}`),
+    title: fixText(row.title),
+    description: opt(row.description),
+  };
+}
+
+/**
+ * An article draft (H29). Reviewer, review date, cover and author stay empty: they are client
+ * answers (gaps 42 and 58) that the admin sets.
+ */
+export function articleData(
+  article: Article,
+  refs: { category: Id; tags: Id[]; primaryService: Id | null },
+  link?: LinkResolver,
+) {
+  return {
+    title: fixText(article.title),
+    slug: checkedSlug(article.slug, `articles.yaml ${article.slug}`),
+    excerpt: fixText(article.excerpt),
+    body: articleBody(article.body, link),
+    category: refs.category,
+    tags: refs.tags,
+    primaryService: refs.primaryService,
+    isMedical: article.is_medical,
+    faqs: faqsData(article.faqs),
+    ...sourcesField(article.sources),
+    seo: { title: fixText(article.seo_title), description: fixText(article.seo_description) },
   };
 }
 

@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { clinicYaml, servicesYaml } from '@/seed/schemas';
+import { articlesYaml, clinicYaml, pagesYaml, servicesYaml } from '@/seed/schemas';
 import { readYaml } from '@/seed/sources';
 
 import {
@@ -11,7 +11,7 @@ import {
   GAP_KIND_HEADINGS,
   GAP_REGISTRY,
   getContentGaps,
-  YAML_MARKER_GAPS,
+  yamlMarkerGap,
 } from './registry';
 
 const ROOT = process.cwd();
@@ -22,10 +22,12 @@ describe('content-gap registry (spec-data 9.2)', () => {
     const markers = [
       ...readYaml(ROOT, 'docs/content/clinic.yaml', clinicYaml).markers,
       ...readYaml(ROOT, 'docs/content/services.yaml', servicesYaml).markers,
+      ...readYaml(ROOT, 'src/seed/data/pages.yaml', pagesYaml).markers,
+      ...readYaml(ROOT, 'src/seed/data/articles.yaml', articlesYaml).markers,
     ];
     expect(markers.length).toBeGreaterThan(0);
     for (const marker of markers) {
-      const id = YAML_MARKER_GAPS[`${marker.file}:${marker.path}`];
+      const id = yamlMarkerGap(marker.file, marker.path);
       expect(id, `${marker.file}:${marker.line} ${marker.path}`).toBeDefined();
       expect(ids.has(id as string)).toBe(true);
     }
@@ -38,6 +40,57 @@ describe('content-gap registry (spec-data 9.2)', () => {
       if (entry.gapRow !== null) expect(rows.has(entry.gapRow), entry.id).toBe(true);
     }
     expect(new Set(GAP_REGISTRY.map((e) => e.id)).size).toBe(GAP_REGISTRY.length);
+  });
+
+  it('CG5 a `*` in a marker key matches one path segment (H26 wildcard keys)', () => {
+    expect(yamlMarkerGap('docs/content/clinic.yaml', 'address.lat')).toBe('clinic.coordinates');
+    expect(yamlMarkerGap('docs/content/services.yaml', 'services.12.reviewed_by')).toBe(
+      'services.reviewer',
+    );
+    expect(yamlMarkerGap('src/seed/data/pages.yaml', 'pages.9.reviewed_by')).toBe(
+      'guides.reviewer',
+    );
+    expect(yamlMarkerGap('src/seed/data/articles.yaml', 'articles.0.reviewed_by')).toBe(
+      'articles.reviewer',
+    );
+    expect(yamlMarkerGap('src/seed/data/articles.yaml', 'articles.5.cover')).toBe('articles.cover');
+    expect(yamlMarkerGap('src/seed/data/articles.yaml', 'articles.5.author')).toBe(
+      'articles.author',
+    );
+    expect(yamlMarkerGap('docs/content/services.yaml', 'services.1.tiers.0.reviewed_by')).toBe(
+      undefined,
+    );
+    expect(yamlMarkerGap('docs/content/clinic.yaml', 'services.1.reviewed_by')).toBe(undefined);
+  });
+
+  it('CG6 the reviewer row 42 covers services, guides and articles; rows 58 to 63 have entries', async () => {
+    const ids = GAP_REGISTRY.map((entry) => entry.id);
+    for (const id of ['services.reviewer', 'guides.reviewer', 'articles.reviewer']) {
+      expect(GAP_REGISTRY.find((e) => e.id === id)?.gapRow, id).toBe(42);
+    }
+    const rows = new Set(GAP_REGISTRY.map((entry) => entry.gapRow));
+    for (const row of [58, 59, 60, 61, 62, 63]) expect(rows.has(row), String(row)).toBe(true);
+    expect(ids).toEqual(expect.arrayContaining(['articles.cover', 'articles.author']));
+    // A question with no field to fill stays open until its answer is in the copy.
+    const payload = {
+      findGlobal: async () => ({}),
+      count: async () => ({ totalDocs: 0 }),
+      find: async () => ({ docs: [] }),
+    };
+    const open = (await getContentGaps(payload as never)).groups.flatMap((g) => g.items);
+    const openRows = new Set(open.map((item) => item.gapRow));
+    for (const row of [59, 61, 62, 63]) expect(openRows.has(row), String(row)).toBe(true);
+    for (const id of [
+      'articles.cover',
+      'articles.author',
+      'articles.reviewer',
+      'tiers.materials',
+    ]) {
+      expect(
+        open.map((item) => item.id),
+        id,
+      ).not.toContain(id);
+    }
   });
 
   it('CG3 headings and admin URLs', () => {

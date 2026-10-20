@@ -56,9 +56,11 @@ Payload CMS 3.90 runs inside the same app at `/admin`, on PostgreSQL (production
    npm run seed
    ```
 
-   The default mode `create-only` adds missing records and fills empty fields. It never
-   overwrites. `npm run seed -- sync` overwrites records from the yaml files (refused when
-   `NODE_ENV=production`). `npm run seed -- dry-run` reports and writes nothing. Check the output
+   The default mode `create-only` adds missing records (and fills the empty fields of the four
+   globals). It never overwrites. `npm run seed -- fill` also fills the empty fields of existing
+   records, never overwrites a filled one, and leaves a reviewed document unchanged with a
+   warning. `npm run seed -- sync` writes the yaml values into every record that differs and
+   never unpublishes (refused when `NODE_ENV=production`). `npm run seed -- dry-run` reports and writes nothing. Check the output
    for the summary line that starts with `seed: mode:`. The npm scripts call the Payload CLI
    through `scripts/payload.mjs`, which reruns a command whose TypeScript loader stalls on a
    cold compile cache; never call `npx payload` directly.
@@ -118,7 +120,7 @@ npm run dev
 | `migrate` | Applies pending migrations to `DATABASE_URL` |
 | `migrate:create` | Writes a migration for the adapter that `DATABASE_URL` selects |
 | `migrate:status` | Lists applied and pending migrations |
-| `seed` | Imports the yaml content; mode `create-only` (default), `sync` or `dry-run`; `DB_PUSH` defaults to `false` |
+| `seed` | Imports the yaml content; mode `create-only` (default), `fill`, `sync` or `dry-run`; `DB_PUSH` defaults to `false` |
 | `reset-admin` | `npm run reset-admin -- <email>`: sets a random password that meets the policy, clears TOTP, unlocks the account and prints the password once. The recovery path without SMTP |
 | `db:e2e` | Rebuilds `.data/e2e.db`: a fresh SQLite file, migrated and seeded |
 
