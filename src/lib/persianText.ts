@@ -6,10 +6,11 @@
  * inserts a ZWNJ and never changes diacritics.
  */
 
-export const ZWNJ = '\u200C';
+import { DIGIT_ZERO_AR, DIGIT_ZERO_FA, toLatinDigits, toPersianDigits } from './digits';
 
-const DIGIT_ZERO_FA = 0x06f0;
-const DIGIT_ZERO_AR = 0x0660;
+export { formatNumberFa, toLatinDigits, toPersianDigits } from './digits';
+
+export const ZWNJ = '\u200C';
 
 // LRM, RLM, LRE..RLO, LRI..PDI, BOM, soft hyphen and tatweel (R-T2).
 const INVISIBLES = /[\u200E\u200F\u202A-\u202E\u2066-\u2069\uFEFF\u00AD\u0640]/g;
@@ -20,24 +21,6 @@ const PRESENTATION_FORMS = /[\uFB50-\uFDCF\uFE70-\uFEFC]/g;
 const ARABIC_SCRIPT = /\p{Script=Arabic}/u;
 const LETTER = /\p{L}/u;
 const LETTER_OR_MARK = /[\p{L}\p{M}]/u;
-
-/** ASCII and Arabic-Indic digits to Persian digits. */
-export function toPersianDigits(input: string): string {
-  return input.replace(/[0-9\u0660-\u0669]/g, (d) => {
-    const code = d.charCodeAt(0);
-    const value = code <= 0x39 ? code - 0x30 : code - DIGIT_ZERO_AR;
-    return String.fromCharCode(DIGIT_ZERO_FA + value);
-  });
-}
-
-/** Persian and Arabic-Indic digits to ASCII digits, for parsing. */
-export function toLatinDigits(input: string): string {
-  return input.replace(/[\u06F0-\u06F9\u0660-\u0669]/g, (d) => {
-    const code = d.charCodeAt(0);
-    const zero = code >= DIGIT_ZERO_FA ? DIGIT_ZERO_FA : DIGIT_ZERO_AR;
-    return String.fromCharCode(0x30 + code - zero);
-  });
-}
 
 /** Removes bidi controls, BOM, soft hyphen and tatweel. */
 export function stripInvisibles(input: string): string {
@@ -130,17 +113,4 @@ export function normalizePersian(input: string, options: NormalizePersianOptions
   text = convertDigits(text, digits);
   text = normalizeZwnj(text);
   return spacing === 'typography' ? fixPersianSpacing(text) : collapseSpaces(text);
-}
-
-// Built on first use: constructing it takes about 10 ms, and at module scope that ran during
-// hydration on every page whose client code imports this module.
-let numberFa: Intl.NumberFormat | null = null;
-
-/** Integer with Persian digits and the separator U+066C. */
-export function formatNumberFa(value: number): string {
-  if (!Number.isFinite(value)) {
-    throw new RangeError('formatNumberFa: the value is not a finite number');
-  }
-  numberFa ??= new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 0 });
-  return numberFa.format(value);
 }

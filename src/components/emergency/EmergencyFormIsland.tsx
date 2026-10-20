@@ -8,7 +8,7 @@ import { parseMobile } from '@/components/booking/phoneInput';
 import { renewFormSession } from '@/components/chrome/formSession';
 import type { FieldError, FieldErrors, Triage } from '@/lib/booking/request';
 import type { HoursStateName } from '@/lib/hoursState';
-import { toPersianDigits } from '@/lib/persianText';
+import { toPersianDigits } from '@/lib/digits';
 import { track } from '@/lib/track/track';
 
 const NAME_MAX = 80;

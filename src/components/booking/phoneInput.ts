@@ -1,4 +1,4 @@
-import { toLatinDigits, toPersianDigits } from '@/lib/persianText';
+import { toLatinDigits, toPersianDigits } from '@/lib/digits';
 
 /*
  * The browser twin of parseIranPhone(value, { accept: 'mobile' }) and maskPhone in src/lib/phone.ts.

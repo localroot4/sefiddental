@@ -11,7 +11,7 @@ import {
 
 import { cx } from '@/components/ui/cx';
 import type { ErrorType } from '@/lib/events/allowlist';
-import { toPersianDigits } from '@/lib/persianText';
+import { toPersianDigits } from '@/lib/digits';
 import { track } from '@/lib/track/track';
 
 import { getFormSession, renewFormSession } from '@/components/chrome/formSession';

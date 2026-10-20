@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from 'react';
 
-import { toPersianDigits } from '@/lib/persianText';
+import { toPersianDigits } from '@/lib/digits';
 import { track } from '@/lib/track/track';
 
 import { cx } from './cx';
