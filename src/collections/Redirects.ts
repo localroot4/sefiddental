@@ -1,31 +1,16 @@
 import type { CollectionConfig } from 'payload';
 
 import { adminAccess } from '@/access/presets';
+import { importRedirectsCsv } from '@/admin/redirects/importEndpoint';
 import { hiddenForEditors } from '@/access/roles';
 import { contentHooks } from '@/hooks/compose';
-import { flattenRedirect, normalizeRedirect, repointChains } from '@/hooks/redirects';
-
-const BLOCKED_PREFIXES = ['/admin', '/api', '/_next'];
-
-const fromRule = (value: unknown, { data }: { data: Record<string, unknown> }): true | string => {
-  if (typeof value !== 'string' || !value.startsWith('/')) return 'نشانی قدیمی باید با / شروع شود.';
-  if (value === '/') return 'صفحهٔ خانه را نمی‌توان منتقل کرد.';
-  if (value.includes('?')) return 'نشانی قدیمی بدون علامت سؤال و پارامتر وارد شود.';
-  if (BLOCKED_PREFIXES.some((p) => value === p || value.startsWith(`${p}/`))) {
-    return 'نشانی‌های سیستمی (admin، api، _next) را نمی‌توان منتقل کرد.';
-  }
-  if (typeof data.to === 'string' && data.to.split('#')[0] === value) return 'مبدأ و مقصد یکی است.';
-  return true;
-};
-
-const toRule = (value: unknown, { data }: { data: Record<string, unknown> }): true | string => {
-  if (data.statusCode === '410') return true;
-  if (typeof value !== 'string' || value === '') return 'مقصد را وارد کنید (به‌جز انتقال ۴۱۰).';
-  if (!value.startsWith('/') || value.startsWith('//')) {
-    return 'مقصد باید نشانی‌ای در همین سایت باشد و با / شروع شود.';
-  }
-  return true;
-};
+import {
+  flattenRedirect,
+  fromRule,
+  normalizeRedirect,
+  repointChains,
+  toRule,
+} from '@/hooks/redirects';
 
 /**
  * spec-data 2.13: a flat `from -> to` table, one indexed read per request. Admin only; the
@@ -41,10 +26,12 @@ export const Redirects: CollectionConfig = {
     defaultColumns: ['from', 'to', 'statusCode', 'active', 'source', 'hits', 'lastHitAt'],
     listSearchableFields: ['from', 'to'],
     hidden: hiddenForEditors,
+    components: { beforeListTable: ['/admin/redirects/ImportCsv#ImportCsv'] },
   },
   defaultSort: '-updatedAt',
   versions: true,
   ...adminAccess(),
+  endpoints: [{ path: '/import', method: 'post', handler: importRedirectsCsv }],
   hooks: contentHooks('redirects', {
     beforeValidate: [normalizeRedirect],
     beforeChange: [flattenRedirect],

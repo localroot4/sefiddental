@@ -133,7 +133,36 @@ export function publicPathHooks(collection: PathCollection) {
 // ---------------------------------------------------------------------------------------------
 // H-REDIRVALID: the redirects collection itself (spec-data 2.13).
 
-const LOOP_MESSAGE = 'این انتقال به خودش برمی‌گردد. مقصد دیگری انتخاب کنید.';
+const BLOCKED_PREFIXES = ['/admin', '/api', '/_next'];
+
+/** Field rules of `from` and `to`; the CSV import plans with the same words. */
+export const fromRule = (
+  value: unknown,
+  { data }: { data: Record<string, unknown> },
+): true | string => {
+  if (typeof value !== 'string' || !value.startsWith('/')) return 'نشانی قدیمی باید با / شروع شود.';
+  if (value === '/') return 'صفحهٔ خانه را نمی‌توان منتقل کرد.';
+  if (value.includes('?')) return 'نشانی قدیمی بدون علامت سؤال و پارامتر وارد شود.';
+  if (BLOCKED_PREFIXES.some((p) => value === p || value.startsWith(`${p}/`))) {
+    return 'نشانی‌های سیستمی (admin، api، _next) را نمی‌توان منتقل کرد.';
+  }
+  if (typeof data.to === 'string' && data.to.split('#')[0] === value) return 'مبدأ و مقصد یکی است.';
+  return true;
+};
+
+export const toRule = (
+  value: unknown,
+  { data }: { data: Record<string, unknown> },
+): true | string => {
+  if (data.statusCode === '410') return true;
+  if (typeof value !== 'string' || value === '') return 'مقصد را وارد کنید (به‌جز انتقال ۴۱۰).';
+  if (!value.startsWith('/') || value.startsWith('//')) {
+    return 'مقصد باید نشانی‌ای در همین سایت باشد و با / شروع شود.';
+  }
+  return true;
+};
+
+export const LOOP_MESSAGE = 'این انتقال به خودش برمی‌گردد. مقصد دیگری انتخاب کنید.';
 
 /** Splits '/path#fragment' and normalizes the path part; the fragment is kept as typed. */
 export function normalizeTarget(to: string): string {
@@ -143,6 +172,15 @@ export function normalizeTarget(to: string): string {
 }
 
 const targetPath = (to: string): string => normalizePath(to);
+
+/**
+ * The next hop's target, keeping the anchor of the one before when the next has none, as a
+ * browser keeps it across a 301 (H20: `/vip` keeps its tier anchor after a slug change).
+ */
+export function withFragment(next: string, before: string): string {
+  const hash = before.indexOf('#');
+  return next.includes('#') || hash === -1 ? next : `${next}${before.slice(hash)}`;
+}
 
 export const normalizeRedirect: CollectionBeforeValidateHook = ({ data }) => {
   if (!data) return data;
@@ -185,7 +223,7 @@ export const flattenRedirect: CollectionBeforeChangeHook = async ({
     const row = next.docs[0];
     if (!row || !row.to || row.id === originalDoc?.id) break;
     seen.add(path);
-    to = row.to;
+    to = withFragment(row.to, to);
   }
   return { ...data, to };
 };
@@ -197,7 +235,8 @@ export const repointChains: CollectionAfterChangeHook = async ({ doc, req }) => 
     collection: 'redirects',
     where: {
       and: [
-        { to: { equals: doc.from } },
+        // `like` is a contains match: the exact `from#…` test follows below.
+        { or: [{ to: { equals: doc.from } }, { to: { like: `${doc.from}#` } }] },
         { active: { equals: true } },
         { id: { not_equals: doc.id } },
       ],
@@ -207,8 +246,10 @@ export const repointChains: CollectionAfterChangeHook = async ({ doc, req }) => 
     req,
   });
   for (const row of pointing.docs) {
+    if (!row.to || targetPath(row.to) !== doc.from) continue;
     // A row that would now point at itself is switched off instead.
-    const data = targetPath(doc.to) === row.from ? { active: false } : { to: doc.to };
+    const data =
+      targetPath(doc.to) === row.from ? { active: false } : { to: withFragment(doc.to, row.to) };
     await req.payload.update({ collection: 'redirects', id: row.id, data, depth: 0, req });
   }
   return doc;
