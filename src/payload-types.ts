@@ -29,11 +29,11 @@ export interface Config {
     articles: Article;
     'article-categories': ArticleCategory;
     tags: Tag;
-    insurances: Insurance;
-    'financing-options': FinancingOption;
     media: Media;
     testimonials: Testimonial;
     cases: Case;
+    insurances: Insurance;
+    'financing-options': FinancingOption;
     redirects: Redirect;
     'events-daily': EventsDaily;
     'sms-throttle': SmsThrottle;
@@ -70,11 +70,11 @@ export interface Config {
     articles: ArticlesSelect<false> | ArticlesSelect<true>;
     'article-categories': ArticleCategoriesSelect<false> | ArticleCategoriesSelect<true>;
     tags: TagsSelect<false> | TagsSelect<true>;
-    insurances: InsurancesSelect<false> | InsurancesSelect<true>;
-    'financing-options': FinancingOptionsSelect<false> | FinancingOptionsSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
     testimonials: TestimonialsSelect<false> | TestimonialsSelect<true>;
     cases: CasesSelect<false> | CasesSelect<true>;
+    insurances: InsurancesSelect<false> | InsurancesSelect<true>;
+    'financing-options': FinancingOptionsSelect<false> | FinancingOptionsSelect<true>;
     redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'events-daily': EventsDailySelect<false> | EventsDailySelect<true>;
     'sms-throttle': SmsThrottleSelect<false> | SmsThrottleSelect<true>;
@@ -189,7 +189,7 @@ export interface Booking {
    */
   serviceKey?: string | null;
   /**
-   * سطح انتخاب‌شده، مثل vip.
+   * سطح ترمیمی که بیمار در صفحهٔ خدمت انتخاب کرد.
    */
   tier?: string | null;
   /**
@@ -295,7 +295,7 @@ export interface Booking {
    */
   device?: ('mobile' | 'tablet' | 'desktop' | 'unknown') | null;
   /**
-   * اثر یک‌طرفهٔ IP برای محدودیت‌ها. IP خام ذخیره نمی‌شود.
+   * اثر یک‌طرفهٔ آی‌پی برای محدودیت‌ها. خود آی‌پی ذخیره نمی‌شود.
    */
   ipHash?: string | null;
   sidHash?: string | null;
@@ -641,7 +641,7 @@ export interface ServiceCategory {
 export interface Media {
   id: number;
   /**
-   * متن جایگزین: آنچه در تصویر دیده می‌شود، به فارسی و کوتاه. برای ویدیو، عنوان ویدیو.
+   * متن جایگزین: آنچه در تصویر دیده می‌شود، به فارسی و کوتاه (۳ تا ۱۶۰ نویسه). برای ویدیو، عنوان ویدیو.
    */
   alt: string;
   /**
@@ -661,9 +661,9 @@ export interface Media {
    */
   blurDataURLPortrait?: string | null;
   seedSource?: string | null;
+  updatedAt: string;
   prefix?: string | null;
   _objectKey?: string | null;
-  updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
   url?: string | null;
@@ -860,6 +860,14 @@ export interface Media {
       filesize?: number | null;
       filename?: string | null;
     };
+    og?: {
+      url?: string | null;
+      width?: number | null;
+      height?: number | null;
+      mimeType?: string | null;
+      filesize?: number | null;
+      filename?: string | null;
+    };
   };
 }
 /**
@@ -964,6 +972,8 @@ export interface Doctor {
   _status?: ('draft' | 'published') | null;
 }
 /**
+ * مقاله‌های سلامت دهان و دندان. فهرست «پیش از انتشار» کنار هر مقاله شرط‌های انتشار را نشان می‌دهد؛ پس از نوشتن، مرحله را «منتظر بازبینی» بگذارید تا مدیر تأیید کند.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "articles".
  */
@@ -986,7 +996,7 @@ export interface Article {
    */
   cover: number | Media;
   /**
-   * متن مقاله. دست‌کم دو پیوند داخلی به صفحه‌های سایت بگذارید.
+   * متن مقاله با دست‌کم دو «تیتر ۲». به صفحهٔ خدمت اصلی و یکی از راهنماهای بیمار پیوند بدهید (پیوند داخلی، نه نشانی دستی).
    */
   body: {
     root: {
@@ -1012,15 +1022,15 @@ export interface Article {
    */
   tags?: (number | Tag)[] | null;
   /**
-   * خدمت اصلی که مقاله به آن پیوند می‌دهد و کادر انتهای مقاله را می‌سازد.
+   * خدمتی که مقاله به آن پیوند می‌دهد و کادر نوبت انتهای مقاله را می‌سازد. برای مقالهٔ پزشکی اجباری است.
    */
-  primaryService: number | Service;
+  primaryService?: (number | null) | Service;
   /**
-   * دو مقالهٔ مرتبط. خالی بماند، سیستم خودش پیدا می‌کند.
+   * تا دو مقالهٔ مرتبط. خالی بماند، سیستم مقاله‌های منتشرشده را به این ترتیب پیدا می‌کند: همان خدمت اصلی، همان دسته، برچسب مشترک، تازه‌ترها.
    */
   relatedArticles?: (number | Article)[] | null;
   /**
-   * نویسنده، اگر یکی از پزشکان است.
+   * نویسنده، اگر یکی از پزشکان است. فقط پزشکان منتشرشده در فهرست هستند.
    */
   authorDoctor?: (number | null) | Doctor;
   /**
@@ -1028,20 +1038,20 @@ export interface Article {
    */
   staffAuthorName?: string | null;
   /**
-   * مقاله ادعای پزشکی دارد. در این حالت بازبین و منبع اجباری است.
+   * مقاله دربارهٔ درمان، بیماری یا مراقبت است. در این حالت خدمت اصلی اجباری است. بازبینی و منبع برای همهٔ مقاله‌ها اجباری است.
    */
   isMedical?: boolean | null;
   /**
-   * دندانپزشکی که محتوای پزشکی را بازبینی کرده است.
+   * دندانپزشکی که متن را بازبینی کرده است. فقط مدیر هنگام تأیید آن را انتخاب می‌کند.
    */
   reviewer?: (number | null) | Doctor;
   /**
-   * تاریخ بازبینی پزشکی.
+   * تاریخ بازبینی پزشکی؛ مدیر هنگام تأیید پر می‌کند.
    */
   reviewedAt?: string | null;
   reviewedAt_tz?: SupportedTimezones;
   /**
-   * منابع علمی: ADA، AAPD، AAP، Cochrane، NHS یا مقالهٔ داوری‌شده.
+   * منابع علمی: ADA، AAPD، AAP، Cochrane، NHS، IADT یا مقالهٔ داوری‌شده. «سایر» فقط برای واقعیت غیردرمانی، مثل قانون بیمه.
    */
   sources?:
     | {
@@ -1088,7 +1098,7 @@ export interface Article {
    */
   contentUpdatedAt?: string | null;
   /**
-   * مرحلهٔ کار تحریریه. انتشار جدا از این مرحله است.
+   * نویسنده «منتظر بازبینی» می‌گذارد و فقط مدیر «تأییدشده» می‌کند. مقاله فقط پس از تأیید منتشر می‌شود. ویرایش متن مقالهٔ تأییدشده آن را به «منتظر بازبینی» برمی‌گرداند.
    */
   reviewState: 'writing' | 'in_review' | 'approved';
   seo: {
@@ -1155,6 +1165,8 @@ export interface ArticleCategory {
   deletedAt?: string | null;
 }
 /**
+ * برچسب‌ها مقاله‌های هم‌موضوع را کنار هم می‌آورند. صفحهٔ برچسب در گوگل نمایه نمی‌شود؛ برچسب تازه فقط وقتی بسازید که دست‌کم دو مقاله آن را دارند.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "tags".
  */
@@ -1195,6 +1207,8 @@ export interface Tag {
   deletedAt?: string | null;
 }
 /**
+ * عکس‌های قبل و بعد درمان، فقط با رضایت کتبی بیمار. دو عکس هر نمونه باید کادر، نور و بزرگنمایی یکسان داشته باشند.
+ *
  * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "cases".
  */
@@ -1478,7 +1492,7 @@ export interface Page {
       )[]
     | null;
   /**
-   * بازبین پزشکی این صفحه.
+   * بازبین پزشکی این صفحه. فقط پزشکان منتشرشده در فهرست هستند.
    */
   reviewer?: (number | null) | Doctor;
   /**
@@ -1525,6 +1539,69 @@ export interface Page {
   };
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
+}
+/**
+ * نظر بیمارانی که رضایت کتبی داده‌اند، به شکل ویدیو یا متن. ویدیو فقط از فایل خود کلینیک، نه پیوند به سایت دیگر.
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "testimonials".
+ */
+export interface Testimonial {
+  id: number;
+  /**
+   * نام کوچک یا حروف اول بیمار. نام کامل ننویسید.
+   */
+  patientLabel: string;
+  /**
+   * خدمتی که بیمار دربارهٔ آن صحبت می‌کند.
+   */
+  service?: (number | null) | Service;
+  /**
+   * نوع نظر.
+   */
+  type: 'video' | 'text';
+  /**
+   * فایل ویدیو (MP4 یا WebM). از سرویس بیرونی پیوند ندهید.
+   */
+  video?: (number | null) | Media;
+  /**
+   * تصویر پیش‌نمایش ویدیو.
+   */
+  poster?: (number | null) | Media;
+  /**
+   * جملهٔ بیمار، یک تا سه خط، بدون ویرایش معنا.
+   */
+  quote?: string | null;
+  /**
+   * خلاصهٔ گفته‌های ویدیو برای موتور جست‌وجو و کاربران بدون صدا.
+   */
+  transcriptSummary?: string | null;
+  /**
+   * تاریخ ضبط.
+   */
+  recordedAt?: string | null;
+  recordedAt_tz?: SupportedTimezones;
+  /**
+   * مدت ویدیو به ثانیه.
+   */
+  durationSeconds?: number | null;
+  /**
+   * رضایت کتبی بیمار برای انتشار گرفته شده و در پرونده است. بدون آن منتشر نمی‌شود.
+   */
+  consentConfirmed?: boolean | null;
+  /**
+   * در صفحهٔ خانه نمایش داده شود (حداکثر سه مورد).
+   */
+  showOnHome?: boolean | null;
+  /**
+   * ترتیب نمایش؛ عدد کوچک‌تر زودتر نمایش داده می‌شود.
+   */
+  order?: number | null;
+  seedKey?: string | null;
+  updatedAt: string;
+  createdAt: string;
+  deletedAt?: string | null;
   _status?: ('draft' | 'published') | null;
 }
 /**
@@ -1605,67 +1682,6 @@ export interface FinancingOption {
    * ترتیب نمایش؛ عدد کوچک‌تر زودتر نمایش داده می‌شود.
    */
   order?: number | null;
-  updatedAt: string;
-  createdAt: string;
-  deletedAt?: string | null;
-  _status?: ('draft' | 'published') | null;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "testimonials".
- */
-export interface Testimonial {
-  id: number;
-  /**
-   * نام کوچک یا حروف اول بیمار. نام کامل ننویسید.
-   */
-  patientLabel: string;
-  /**
-   * خدمتی که بیمار دربارهٔ آن صحبت می‌کند.
-   */
-  service?: (number | null) | Service;
-  /**
-   * نوع نظر.
-   */
-  type: 'video' | 'text';
-  /**
-   * فایل ویدیو (MP4 یا WebM). از سرویس بیرونی پیوند ندهید.
-   */
-  video?: (number | null) | Media;
-  /**
-   * تصویر پیش‌نمایش ویدیو.
-   */
-  poster?: (number | null) | Media;
-  /**
-   * جملهٔ بیمار، یک تا سه خط، بدون ویرایش معنا.
-   */
-  quote?: string | null;
-  /**
-   * خلاصهٔ گفته‌های ویدیو برای موتور جست‌وجو و کاربران بدون صدا.
-   */
-  transcriptSummary?: string | null;
-  /**
-   * تاریخ ضبط.
-   */
-  recordedAt?: string | null;
-  recordedAt_tz?: SupportedTimezones;
-  /**
-   * مدت ویدیو به ثانیه.
-   */
-  durationSeconds?: number | null;
-  /**
-   * رضایت کتبی بیمار برای انتشار گرفته شده و در پرونده است. بدون آن منتشر نمی‌شود.
-   */
-  consentConfirmed?: boolean | null;
-  /**
-   * در صفحهٔ خانه نمایش داده شود (حداکثر سه مورد).
-   */
-  showOnHome?: boolean | null;
-  /**
-   * ترتیب نمایش؛ عدد کوچک‌تر زودتر نمایش داده می‌شود.
-   */
-  order?: number | null;
-  seedKey?: string | null;
   updatedAt: string;
   createdAt: string;
   deletedAt?: string | null;
@@ -1998,14 +2014,6 @@ export interface PayloadLockedDocument {
         value: number | Tag;
       } | null)
     | ({
-        relationTo: 'insurances';
-        value: number | Insurance;
-      } | null)
-    | ({
-        relationTo: 'financing-options';
-        value: number | FinancingOption;
-      } | null)
-    | ({
         relationTo: 'media';
         value: number | Media;
       } | null)
@@ -2016,6 +2024,14 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'cases';
         value: number | Case;
+      } | null)
+    | ({
+        relationTo: 'insurances';
+        value: number | Insurance;
+      } | null)
+    | ({
+        relationTo: 'financing-options';
+        value: number | FinancingOption;
       } | null)
     | ({
         relationTo: 'redirects';
@@ -2526,42 +2542,6 @@ export interface TagsSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "insurances_select".
- */
-export interface InsurancesSelect<T extends boolean = true> {
-  name?: T;
-  logo?: T;
-  featured?: T;
-  order?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  deletedAt?: T;
-  _status?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "financing-options_select".
- */
-export interface FinancingOptionsSelect<T extends boolean = true> {
-  key?: T;
-  title?: T;
-  provider?: T;
-  maxAmountToman?: T;
-  whoApplies?: T;
-  surchargeNote?: T;
-  terms?: T;
-  approvalStatus?: T;
-  approvedOn?: T;
-  approvedOn_tz?: T;
-  enabled?: T;
-  order?: T;
-  updatedAt?: T;
-  createdAt?: T;
-  deletedAt?: T;
-  _status?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "media_select".
  */
 export interface MediaSelect<T extends boolean = true> {
@@ -2571,9 +2551,9 @@ export interface MediaSelect<T extends boolean = true> {
   blurDataURL?: T;
   blurDataURLPortrait?: T;
   seedSource?: T;
+  updatedAt?: T;
   prefix?: T;
   _objectKey?: T;
-  updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
   url?: T;
@@ -2818,6 +2798,16 @@ export interface MediaSelect<T extends boolean = true> {
               filesize?: T;
               filename?: T;
             };
+        og?:
+          | T
+          | {
+              url?: T;
+              width?: T;
+              height?: T;
+              mimeType?: T;
+              filesize?: T;
+              filename?: T;
+            };
       };
 }
 /**
@@ -2859,6 +2849,42 @@ export interface CasesSelect<T extends boolean = true> {
   featuredOnHome?: T;
   order?: T;
   sourceFolder?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "insurances_select".
+ */
+export interface InsurancesSelect<T extends boolean = true> {
+  name?: T;
+  logo?: T;
+  featured?: T;
+  order?: T;
+  updatedAt?: T;
+  createdAt?: T;
+  deletedAt?: T;
+  _status?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "financing-options_select".
+ */
+export interface FinancingOptionsSelect<T extends boolean = true> {
+  key?: T;
+  title?: T;
+  provider?: T;
+  maxAmountToman?: T;
+  whoApplies?: T;
+  surchargeNote?: T;
+  terms?: T;
+  approvalStatus?: T;
+  approvedOn?: T;
+  approvedOn_tz?: T;
+  enabled?: T;
+  order?: T;
   updatedAt?: T;
   createdAt?: T;
   deletedAt?: T;
@@ -3137,37 +3163,6 @@ export interface Clinic {
      */
     callerNumber?: string | null;
   };
-  hours: {
-    /**
-     * توضیح کوتاه ساعات، مثل «هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی».
-     */
-    note?: string | null;
-    /**
-     * برنامهٔ هفتگی. هر روز فقط در یک ردیف.
-     */
-    weekly: {
-      days: ('sat' | 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri')[];
-      open: string;
-      close: string;
-      id?: string | null;
-    }[];
-    /**
-     * تعطیلات رسمی و روزهای با ساعت متفاوت. تعطیلات هر سال را از تقویم رسمی وارد کنید. بدون ساعت یعنی تعطیل.
-     */
-    holidays?:
-      | {
-          dateJalali: string;
-          /**
-           * خودکار از تاریخ شمسی ساخته می‌شود.
-           */
-          date?: string | null;
-          labelFa: string;
-          open?: string | null;
-          close?: string | null;
-          id?: string | null;
-        }[]
-      | null;
-  };
   social?: {
     /**
      * نام کاربری اینستاگرام بدون @.
@@ -3204,6 +3199,61 @@ export interface Clinic {
      */
     staticMap?: (number | null) | Media;
   };
+  hours: {
+    /**
+     * توضیح کوتاه ساعات، مثل «هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی».
+     */
+    note?: string | null;
+    /**
+     * برنامهٔ هفتگی. هر روز فقط در یک ردیف.
+     */
+    weekly: {
+      days: ('sat' | 'sun' | 'mon' | 'tue' | 'wed' | 'thu' | 'fri')[];
+      open: string;
+      close: string;
+      id?: string | null;
+    }[];
+    /**
+     * تعطیلات رسمی و روزهای با ساعت متفاوت. تعطیلات هر سال را از تقویم رسمی وارد کنید. بدون ساعت یعنی تعطیل.
+     */
+    holidays?:
+      | {
+          dateJalali: string;
+          /**
+           * خودکار از تاریخ شمسی ساخته می‌شود.
+           */
+          date?: string | null;
+          labelFa: string;
+          open?: string | null;
+          close?: string | null;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  emergency?: {
+    /**
+     * سیاست نوبت فوری، بدون وعدهٔ نوبت قطعی.
+     */
+    policy?: string | null;
+    /**
+     * مرکز شبانه‌روزی نزدیک برای ساعات تعطیل (ردیف ۳۱).
+     */
+    nearby24hCenter?: string | null;
+    /**
+     * کلینیک تأیید کرده درخواست‌های فوری در ساعت شروع کار زودتر تماس گرفته می‌شوند (ردیف ۱۹).
+     */
+    priorityPromiseConfirmed?: boolean | null;
+  };
+  legal?: {
+    /**
+     * شمارهٔ پروانهٔ کلینیک برای پانویس.
+     */
+    licenseNumber?: string | null;
+    /**
+     * نام مسئول فنی برای پانویس.
+     */
+    technicalSupervisor?: string | null;
+  };
   /**
    * عدد فقط وقتی در سایت نمایش داده می‌شود که «تأییدشده» تیک بخورد (ردیف ۱۵ کمبودها).
    */
@@ -3224,30 +3274,6 @@ export interface Clinic {
       value?: number | null;
       verified?: boolean | null;
     };
-  };
-  legal?: {
-    /**
-     * شمارهٔ پروانهٔ کلینیک برای پانویس.
-     */
-    licenseNumber?: string | null;
-    /**
-     * نام مسئول فنی برای پانویس.
-     */
-    technicalSupervisor?: string | null;
-  };
-  emergency?: {
-    /**
-     * سیاست نوبت فوری، بدون وعدهٔ نوبت قطعی.
-     */
-    policy?: string | null;
-    /**
-     * مرکز شبانه‌روزی نزدیک برای ساعات تعطیل (ردیف ۳۱).
-     */
-    nearby24hCenter?: string | null;
-    /**
-     * کلینیک تأیید کرده درخواست‌های فوری در ساعت شروع کار زودتر تماس گرفته می‌شوند (ردیف ۱۹).
-     */
-    priorityPromiseConfirmed?: boolean | null;
   };
   updatedAt?: string | null;
   createdAt?: string | null;
@@ -3353,7 +3379,7 @@ export interface Notifier {
   };
   telegram?: {
     /**
-     * ارسال اعلان در تلگرام (بعداً).
+     * ارسال اعلان نوبت در تلگرام.
      */
     enabled?: boolean | null;
     /**
@@ -3363,7 +3389,7 @@ export interface Notifier {
   };
   sms?: {
     /**
-     * پیامک از طریق فراپیامک (بعداً).
+     * ارسال اعلان نوبت با پیامک از طریق فراپیامک.
      */
     enabled?: boolean | null;
     /**
@@ -3445,6 +3471,22 @@ export interface ClinicSelect<T extends boolean = true> {
         callbackMinutes?: T;
         callerNumber?: T;
       };
+  social?:
+    | T
+    | {
+        instagram?: T;
+        telegramChannel?: T;
+        aparat?: T;
+      };
+  maps?:
+    | T
+    | {
+        googleMapsUrl?: T;
+        neshanUrl?: T;
+        baladUrl?: T;
+        wazeUrl?: T;
+        staticMap?: T;
+      };
   hours?:
     | T
     | {
@@ -3468,21 +3510,18 @@ export interface ClinicSelect<T extends boolean = true> {
               id?: T;
             };
       };
-  social?:
+  emergency?:
     | T
     | {
-        instagram?: T;
-        telegramChannel?: T;
-        aparat?: T;
+        policy?: T;
+        nearby24hCenter?: T;
+        priorityPromiseConfirmed?: T;
       };
-  maps?:
+  legal?:
     | T
     | {
-        googleMapsUrl?: T;
-        neshanUrl?: T;
-        baladUrl?: T;
-        wazeUrl?: T;
-        staticMap?: T;
+        licenseNumber?: T;
+        technicalSupervisor?: T;
       };
   stats?:
     | T
@@ -3511,19 +3550,6 @@ export interface ClinicSelect<T extends boolean = true> {
               value?: T;
               verified?: T;
             };
-      };
-  legal?:
-    | T
-    | {
-        licenseNumber?: T;
-        technicalSupervisor?: T;
-      };
-  emergency?:
-    | T
-    | {
-        policy?: T;
-        nearby24hCenter?: T;
-        priorityPromiseConfirmed?: T;
       };
   updatedAt?: T;
   createdAt?: T;

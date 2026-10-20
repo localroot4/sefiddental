@@ -153,5 +153,7 @@ export default defineConfig([
     'playwright-report/**',
     'test-results/**',
     'blob-report/**',
+    // The cPanel package (scripts/package-cpanel.mjs): a built copy of the site.
+    'release/**',
   ]),
 ]);
