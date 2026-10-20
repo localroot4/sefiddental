@@ -228,9 +228,19 @@ justify; no italic for Persian; no fake bold; measure 62ch; headlines max
 Files: `design/brand/` (`logo-horizontal.svg`, `logo-lockup-no-latin.svg`
 for the header, `logo-mark.svg`, `logo-wordmark.svg`, `logo-latin.svg`,
 `favicon.svg` with a dark-mode media query, PNG favicons 32, 192, 512 and
-the 180 px Apple icon, `og-template.svg` with `{{title}}` and
-`{{description}}` slots and a rendered `og-preview.png`), and
+the 180 px Apple icon), `design/brand/og/` (the share cards, below) and
 `design/brand/3d/` (glTF of the mark, a diamond and the stylized molar).
+
+Share cards (phase 6, H14; they replace `og-template.svg` and
+`og-preview.png`): `design/og/card.html` is the one template.
+`node scripts/og-cards.mjs` renders it in Playwright's Chromium, so a real
+browser shapes the Persian text, into `design/brand/og/<card>.png` at
+1200x630: 15 cards, one per page type. Home, booking, privacy and the system
+pages share `default`; article categories and tags share `articles` (C31).
+The PNGs are committed and copied to `public/brand/og/`; nothing renders on
+the host. After a copy change in `src/i18n/fa-seo.ts` or a template change,
+run the script again and look at every PNG (letter joining, right-to-left
+order).
 
 Meaning (client): the teal mark is toothpaste on a toothbrush head; the
 long bar of the wordmark is the brush handle; four square diamonds.
@@ -293,7 +303,7 @@ themes. Reference implementation: `design/styleguide.html`.
 | Sticky bar | under 1024 px: «تماس» \| «واتساپ» \| «رزرو نوبت» (primary cell), 64 px plus safe-area; visibility rules in `docs/conversion.md` section 4 |
 | Closed-hours sheet | 28 px radius sheet from the bottom with hours and two actions |
 | Input | label above, help text, 12 px radius, 44 px height, line-strong border, focus ring; error text below with `aria-invalid` and `aria-describedby`; phone input is an LTR island with `inputmode="numeric"` |
-| Chips | native radios styled as 44 px pills in a fieldset with a legend; selected = brand-soft fill and brand border |
+| Chips | native radios styled as 44 px pills in a fieldset with a legend; selected = brand-soft fill and brand border. Article category chips (phase 6) are navigation links, not radios: the same 44 px pills in a `<nav>`, the current page's chip marked `aria-current="page"` with the brand-soft fill and brand border |
 | Booking form | per `docs/conversion.md` section 5; one component in two variants: full (booking page, dialog, booking blocks) and compact (home hero card: phone field plus the hidden fields); home has one of each, every other page one instance; ids prefixed per instance; success state with the drawn check; the compact success shows items 1-4 of `docs/conversion.md` 5.4 in place and keeps the card height (reserved min block size) |
 | Emergency form | per `docs/conversion.md` section 7; warning token, `tel:115` link |
 | Service card | title, one line, category icon, 20 px radius, hover lift 2 px |
@@ -307,7 +317,7 @@ themes. Reference implementation: `design/styleguide.html`.
 | Alerts and toast | info, success, warning, danger with the fill and `--color-on-fill` or white; toast for transient messages only |
 | Breadcrumb | parent path, truncated on phones to the parent with a mirrored chevron |
 | Pagination | numbers in Persian digits, diamonds as the active marker |
-| Article parts | table of contents, callout, sources list, author box, reviewer box, updated date, reading time |
+| Article parts | table of contents, callout, sources list, author box, reviewer box, updated date, reading time. Phase 6 as built: the author and reviewer boxes are `PersonBox` (`src/components/ui/Article.tsx`): a hairline-bordered card with the card radius, an optional 56 px round photo, a role caption, the name as a profile link with a 44 px hit area (plain text without a profile) and a Jalali date line (the reviewer's review date); two boxes side by side from 744 px. Share links: two 44 px outline pills with an icon (Telegram, WhatsApp), plain links with no script. Featured article card (hub page 1): a bordered raised card, from 744 px a 7/5 split with the 16:9 cover (the page's LCP) at the start side and the title, excerpt and date beside it; the whole card is one link |
 | Map block | static map image, four deep links (گوگل‌مپ، نشان، بلد، ویز) |
 | Footer | per `docs/ia.md` section 3; disclosures on phones; the playground on home |
 | Skeletons | shapes matching the final layout; shimmer only under `prefers-reduced-motion: no-preference` |

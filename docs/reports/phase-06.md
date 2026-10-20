@@ -66,3 +66,64 @@ medical copy under the copy rules; the source sites are blocked from the
 build network until the client allows them; new text reaching a live site
 that already runs needs the client's yes (a backup first, a fill-empty step
 off by default).
+
+## Integration I1 (2026-10-20, wave 1a)
+
+The six engineering lanes (MODEL, SEED, SEO, REDIRECTS, ADMIN, TEMPLATES step 1) were each
+reviewed by an independent reviewer and repaired before integration. Wave 1b (copy) has not run:
+the source sites (nhs.uk, ada.org, cochrane.org, pubmed, aapd.org, perio.org, mouthhealthy.org)
+still answer 403 from the build network, and a source is cited only after it is opened.
+
+Deviations recorded at I1:
+
+1. H25 is held for services. `src/collections/Services.ts` keeps the sources field without its
+   publish gate (a `shortcut:` comment names the line to add). With the gate on, every seeded
+   service is refused, so seeding, the int suites, `db:e2e`, the cPanel package and the editing
+   of the live services would all stop until the copy lands. The gate turns on in the commit that
+   adds the sources to `docs/content/services.yaml`. CT6 and SD12 (the gate's tests) and the C10
+   copy checks SC8 to SC12 are held with it (`skip`, with the same note). Guides and articles
+   keep their sources gate.
+2. Until the guide copy lands, the QA fixture gives the dental-fear and aftercare guides a sample
+   body and source (marked as sample text) when the seed has none, so they can publish on the
+   e2e database.
+3. `schema-dts` is 2.1.0 (current stable, with its `schema-dts-lib` types), not the 1.1.5 the
+   SEO lane proposed; the reviewer checked the builders against both.
+4. The save normalizer now writes Persian digits in the prose of articles, pages, services,
+   service categories, tiers and doctors, and pairs straight quotes in all prose. The first sync
+   after this rewrites such text once (phase 3 kept ASCII digits as typed).
+5. Admin (H33, H34): the allowlist adds VIP and CIP (the clinic's tier names, as on the public
+   site) and JPG and WebP. payload-totp's «Something went wrong» toast, its Google Authenticator
+   link and the live preview «Responsive» size stay English (C15). «فوری‌های باز» counts open
+   emergencies of every day, not only earlier days. The failed row of T-AD26 is proven at int
+   level (CAL-I1), because a failed job cannot be made from the browser. Only the TOTP setup page
+   is scanned for English. Media: the preview-size names are hidden; Payload's file-size units
+   and FileMeta's «Copy URL» tooltip stay English (no translation key). Help text of the
+   admin-only Clinic and Settings keeps technical tokens such as SMTP and GA4. Screen-reader
+   and hover labels that Payload, Lexical and sonner hard-code also stay English: the toast
+   region «Notifications alt+T» and «Close toast», a checkbox's title (its field name), a
+   drawer named by its slug, and the editor's toolbar and block handles («Add block», «Drag to
+   move», «Edit link»). T-AD21 skips exactly these; visible text is still checked. Arrays now
+   carry Persian row labels, Payload's upload fields with English labels (MIME type, URL) get
+   Persian ones, the TOTP views get Persian titles, and Payload's empty-array sentence, which
+   read «must not contain any», now says that nothing is recorded yet.
+6. Lexical's Persian heading label ships as `[SKIPPED]` and a feature's strings override the
+   config's translations, so `src/fields/richText.ts` sets «تیتر» on the heading feature itself.
+7. The seeder checks an unknown article category, tag or primary service after the earlier
+   steps have written (idempotent rows; a rerun after the fix completes). Only unknown link paths
+   stop the run before any write.
+8. Found while running the admin e2e for the first time, and fixed with this integration:
+   - The production build carries one copy of Payload per route bundle. When the admin page
+     started Payload, a ValidationError thrown by a hook reached the API route's formatter as a
+     foreign class and lost its field messages: an editor who closed a request without a note
+     saw «The following field is invalid: status» with no reason. A config `afterError` hook
+     (`src/hooks/errors.ts`) puts the public field messages back. It is the same bug for every
+     hook that refuses a save, so it was in phase 5 too; e2e passed there only when another
+     route started Payload first.
+   - Lexical parks its hidden block handle and link editor 10 000 px to the left. Under RTL
+     that made the article form 10 919 px wide; `custom.scss` clips it at the editor.
+   - Payload preselects «لغو انتشار» in the schedule drawer of a document that was never
+     published. The admin guide (wave 3) must say to choose «انتشار»; a guard is a wave 2
+     candidate.
+   - Without a session, a custom admin view (the calendar, the status view) shows the
+     not-found view with a 200, because the admin layout streams before the view runs. No data
+     is rendered; a signed-in editor gets a real 404.

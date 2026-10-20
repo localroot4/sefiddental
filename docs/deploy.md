@@ -896,6 +896,28 @@ Migrations run at the first request after the start. Rollback: the same steps
 with the previous zip, but only when that release has the same migrations
 (2.7: a down migration needs a backup and the client's confirmation).
 
+New seed content (phase 6, H43 with C8). A later release does not seed the
+live database again: `seed/` is copied on the first start only (3.1 step 5).
+New text in the seed files reaches a running site only by hand in the admin
+or through the seeder's fill mode, `npm run seed -- fill`. Fill creates
+missing records and fills empty fields. It never overwrites a filled field
+and leaves a document with a medical reviewer unchanged. Fill is off by
+default: nothing runs it at start or in the package. Before a fill, get the
+client's yes and back up `~/sefid-data` (3.5).
+
+The seeder reads `docs/content/*.yaml`, `content/data/*.yaml`, the media
+files under `content/` and `src/seed/data/*.yaml`. The package ships none of
+them: `scripts/package-cpanel.mjs` runs the seeder at build time from the
+repository root. A fill therefore runs in one of two ways:
+
+1. Ship those files with the release, then run the fill on the host.
+2. Run the fill on a downloaded copy of `~/sefid-data`, then upload it again:
+   stop the application, download the folder, run the fill on the copy from a
+   checkout of the released commit (`release.json`) with
+   `DATABASE_URL=file:<copy>/sefid.db`, `MEDIA_DIR=<copy>/media` and
+   `DB_PUSH=false`, upload `sefid.db` and `media/` again, then start the
+   application.
+
 ### 3.5 Backups
 
 Everything that cannot be rebuilt is in `~/sefid-data`: `sefid.db`, `media/`

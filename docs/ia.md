@@ -46,7 +46,7 @@ section 6 (A-J) plus K and L defined below.
 | `/آدرس` | آدرس و ساعات کاری | T-address | yes |
 | `/رزرو-نوبت` | رزرو نوبت | T-booking | yes; parameters canonicalize to the base URL |
 | `/رزرو-نوبت/ثبت-شد` | درخواست ثبت شد | T-booking-success | no; redirects without a flash |
-| `/مقالات` | مقالات | T-articles | yes; `?page=N` is self-canonical |
+| `/مقالات` | مقالات | T-articles | yes; `?page=N` is self-canonical; noindex, follow and out of `pages.xml` while no article is published (phase 6, C25) |
 | `/مقالات/{slug}` | one per article | T-article | yes |
 | `/مقالات/دسته/{slug}` | article category | T-articles | noindex, follow until the category has 5 published articles |
 | `/مقالات/برچسب/{slug}` | article tag | T-articles | noindex, follow |
@@ -225,7 +225,7 @@ card inside M and the booking block J), within the limit of two per family.
 | 7 | Dentists who perform it | F | hidden when none |
 | 8 | One testimonial | H | hidden when none |
 | 9 | FAQ (5-8) with sticky aside | I | `FAQPage` schema |
-| 10 | Related services and articles | C | 3 services, 2 articles |
+| 10 | Related services and articles | C | 3 services, 2 articles; always renders (phase 6, H24): its pricing link stays when nothing is related; heading «خدمات و مقاله‌های مرتبط», «خدمات مرتبط», «مقاله‌های مرتبط» or, with neither, «هزینه و خدمات دیگر» |
 | 11 | Booking block, service prefilled | J | |
 
 ### Other templates
@@ -235,7 +235,7 @@ card inside M and the booking block J), within the limit of two per family.
 | T-services-hub | compact hero (A) > bento of 5 groups (C) > full list by group with icons (K) > FAQ (I) > booking (J) |
 | T-category | compact hero (A) > its services (C) > short guide text (K) > FAQ (I) > booking (J) |
 | T-dentists-hub | compact hero (A) > dentist grid (F) > how the team works and sterilization standards (K) > booking (J) |
-| T-dentist | portrait split with name, specialty, council number (A) > fact row: degrees, years, memberships (B) > bio (K) > services performed (C) > cases (E) > articles authored or reviewed (K, list) > booking with the dentist noted (J) |
+| T-dentist | portrait split with name, specialty, council number (A) > fact row: degrees, years, memberships (B) > bio (K) > services performed (C) > cases (E) > articles authored or reviewed (K, list of up to 6, each with a role badge «نویسنده», «بازبین» or «نویسنده و بازبین») > booking with the dentist noted (J) |
 | T-cases | compact hero with the consent line (A) > filter chips (`?service=`) > grid of compare sliders, each with a secondary-style «رزرو نوبت» link (E) > one primary booking block (J) |
 | T-pricing | compact hero (A) > how pricing works (K) > restoration tiers summary (D; phase 5 decision G13: a radio per tier, none checked, one «رزرو نوبت» that carries the chosen tier) > insurers: the five featured by name under «همکاری با بیمه‌ها» (B; phase 5 decision G1 and freeze F31: no «سایر بیمه‌ها» or «طرف قرارداد» until gap 51 closes) > financing options when enabled (C) > FAQ (I) > booking (J) |
 | T-guide-hub | compact hero (A) > guide list (C) > booking (J) |
@@ -245,7 +245,7 @@ card inside M and the booking block J), within the limit of two per family.
 | T-address | NAP, hours, call, WhatsApp, directions next to the static map (A) > access notes (K) > booking form without a second map (J-form) |
 | T-booking | form with trust aside: address, hours, insurers, privacy line (L) |
 | T-booking-success | confirmation, callback line, save contact, directions, what to bring (L) |
-| T-articles | featured latest article (A) > category chips > article grid (C) > pagination |
+| T-articles | compact hero > category chips > featured latest article (A) > article grid (C) > pagination. Phase 6 as built: the featured card sits below a compact hero and the chips; 12 articles a page; on page 1 of the hub the newest of those 12 is the featured card; categories, tags and later pages have no featured card |
 | T-article | reading column with TOC, author and reviewer boxes, FAQ, sources (K) > primary service box > related articles (C) |
 | T-legal | reading column (K) |
 | T-system | 404, 500, 503: message, links to services, call button, «درد شدید دارید؟» on 404 |

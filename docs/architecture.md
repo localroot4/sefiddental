@@ -115,6 +115,19 @@ run on release; the previous release is kept for one-command rollback.
   letters and digits) used by Payload `beforeValidate` hooks; slugs editable
   in admin and unique per collection; a slug change writes a 301 into the
   `redirects` collection.
+- Old-URL import (phase 6, H19): `POST /api/redirects/import` serves a
+  TOTP-verified admin only and takes JSON only (a cross-site form cannot
+  send JSON without a preflight). The parser accepts a comma, a semicolon,
+  a Persian semicolon («؛») or a tab as the separator. A dry run returns
+  the plan and its sha256 digest and writes nothing. Apply plans again and
+  writes only when the digest still matches, so it writes the rows the
+  admin saw. Rows go through the collection's normal hooks with source
+  `import`, one at a time. SQLite has no transaction here: a failure stops
+  the run and names the line, and a rerun is idempotent (rows already
+  written come out `unchanged`). A CSV row is never written over a row
+  whose source is not `import`, such as the `/vip` alias or a slug-change
+  redirect (C27). Chain repointing and flattening keep a `#anchor` (H20),
+  so `/vip` keeps its tier anchor after a slug change.
 - Persian dynamic routes (phase 3 change): Next.js 16.4 never matches a
   dynamic segment under a Persian folder in a production build (it builds
   the route pattern from the raw Unicode folder name and tests it against
@@ -157,6 +170,16 @@ run on release; the previous release is kept for one-command rollback.
   fetch them from the `no-store` endpoint `/api/form-session`
   (`docs/conversion.md` section 6). The booking and emergency pages are
   dynamic (`no-store`). TTFB is measured on the chosen host.
+- Readers (phase 6, `src/lib/data/`): `getPublished` takes an optional
+  Payload `select` (typed with `TransformCollectionWithSelect`), so a list
+  reads only its card fields and keeps its cache entries small.
+  `getPublishedPage` is its paged sibling: it returns one page with
+  `totalPages` and `totalDocs` (the article lists, 12 a page). A read with
+  a depth above 0 over a `richText` field also carries the `col:` tags of
+  the editors' link and upload collections (services, articles, pages,
+  doctors, media), so a linked page's slug change refreshes it.
+  `getPublishedSlugs` keeps only the article categories and tags that have
+  a published article (H4), so the proxy answers the 404 for the others.
 
 ## 4. Data model (Payload collections and globals)
 
@@ -236,13 +259,43 @@ with zod; the forms also work as plain HTML posts.
   global; canonical, robots, OG and Twitter; `generateMetadata` per route.
 - JSON-LD builders: `Dentist` everywhere; `Physician` on dentist pages;
   `Service` on service pages; `FAQPage` where FAQs render; `BreadcrumbList`;
-  `Article` with `author`, `reviewedBy`, `dateModified`; `VideoObject` for
-  testimonials; `ItemList` on hubs. Unit-tested shapes.
-- `sitemap.xml` index per collection, `robots.txt`, RSS route for articles.
-- OG images with `next/og` (ImageResponse) and the Persian font.
-- Editorial validators in Payload: title and description length, Persian
-  slug, cover alt, reviewer required for medical content, sources required
-  when medical claims exist, at least two internal links.
+  `VideoObject` for testimonials; `ItemList` on hubs. Unit-tested shapes.
+- Article graph (phase 6, C1): the `Article` (author, `datePublished`,
+  `dateModified`) is the `mainEntity` of a `MedicalWebPage`, or of a plain
+  `WebPage` when the article is not medical (`isMedical` off). The page
+  node carries `reviewedBy` and `lastReviewed`.
+- `sitemap.xml` is an index of four sitemaps (pages, services, doctors,
+  articles); `robots.txt`; RSS route for articles.
+- Sitemap `lastmod` (phase 6, H16): an article takes `contentUpdatedAt`,
+  else `publishedAt`, the same date as its JSON-LD `dateModified`. An
+  indexable article category takes the date of its newest article. Every
+  other URL takes `updatedAt`. This is a recorded limitation: `updatedAt`
+  moves on every save, so it can be newer than the last real content
+  change.
+- Empty articles hub (phase 6, C25): while no article is published,
+  `/مقالات` is `noindex, follow` and stays out of `pages.xml`. A category
+  is indexable from 5 published articles; a tag never is.
+- Share cards (phase 6, H14): one 1200x630 PNG per page type, rendered
+  once by a real browser and committed (`docs/design/DESIGN.md` section
+  5), because `next/og` does not shape Persian. A page without its own
+  image shares its type's card. Nothing renders on the host.
+- Article publish gate (phase 6, H5 with C1; replaces the medical-only
+  reviewer rule): every article, medical or not, publishes only when an
+  admin set «تأییدشده» and it has a published reviewer dentist, a review
+  date, sources, at least two H2 headings and live internal links to a
+  service (the primary service when one is set) and a patient guide. A
+  medical article also needs a primary service. Only admins set the
+  reviewer, the review date and «تأییدشده». When an editor changes what
+  the dentist reviewed, an approved article returns to «منتظر بازبینی» in
+  the same save (`src/hooks/review.ts`). The reviewed content is the
+  title, the excerpt, the body text (blocks included), the body's link
+  targets, inline images and video files and posters, the FAQs and the
+  sources. Formatting and row ids are left out, so a re-save of the same
+  content keeps the approval. The other validators stay: title and
+  description length, Persian slug, cover alt.
+- Sources gates: guides and articles keep theirs. The services gate (H25)
+  is held until the wave 1b copy adds sources (`src/collections/Services.ts`
+  carries the `shortcut:` comment with the line to add).
 
 ## 7. Performance
 
@@ -312,6 +365,14 @@ with zod; the forms also work as plain HTML posts.
 - Structured JSON logs with a request id. `/api/health` endpoint. Admin
   "System status" view: Node version, database, queue depth, last cron run,
   last deploy SHA, media storage usage, failed jobs, open content gaps.
+- Admin dashboard and views (phase 6): the dashboard shows, in this order,
+  today's requests, the content calendar, SEO health and, for admins only,
+  the content gaps; each widget renders only for TOTP-verified staff.
+  `/admin/content-calendar` is a staff view for TOTP-verified users only;
+  anyone else gets the 404 of an unknown page. It lists failed publishes
+  first, then scheduled and recent publishes by Tehran day, then article
+  drafts by review state. Every collection and global hides the API tab
+  (H32), because Payload has no per-role switch for it.
 - Scheduled work (phase 3): one route, `GET /api/cron/tick`, called every
   minute by the host's cron with `Authorization: Bearer CRON_SECRET`. It
   runs Payload's schedules and job queue (scheduled publish now, the

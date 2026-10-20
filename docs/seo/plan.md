@@ -57,12 +57,15 @@ page and two articles. Every article links to one service page and one guide.
 | All pages | `Dentist` with name, address, geo, telephone, openingHoursSpecification, sameAs, logo, image |
 | Service | `Service` (provider = Dentist) plus `FAQPage` plus `BreadcrumbList` |
 | Dentist | `Physician` with medicalSpecialty, memberOf (the clinic), image and identifier (council number); never worksFor, which is a `Person` property while schema.org types `Physician` as an organization |
-| Blog post | `Article` with author (Person), reviewedBy, datePublished, dateModified, image; `FAQPage` when FAQs exist |
+| Blog post | `Article` with author (Person), datePublished, dateModified, image, as the mainEntity of a `MedicalWebPage`, or of a `WebPage` for a non-medical article (phase 6, C1); the page carries reviewedBy and lastReviewed; `FAQPage` when FAQs exist |
 | Gallery | `ImageGallery` or `ItemList` |
 | Testimonial sections (home, about, service pages) | `VideoObject` per video with transcript summary |
 
-Validate with Google's Rich Results Test when the network allows; otherwise
-with a schema validator in CI.
+Validation (phase 6, C4): the Schema Markup Validator (`validator.schema.org`)
+and the code tab of Google's Rich Results Test both take pasted HTML, so
+neither needs a public URL. Paste the rendered HTML of a page when the network
+reaches them. In CI, the `schema-dts` types in the JSON-LD builders and the
+e2e spec `tests/e2e/structured-data.spec.ts` check every template's graph.
 
 ## 5. Local SEO
 
@@ -91,8 +94,9 @@ with a schema validator in CI.
   sources list (ADA, AAPD, AAP, Cochrane, NHS, peer-reviewed journals), author
   box, reviewer box, updated date, one CTA.
 - Admin checklist blocks publishing until: title and description lengths are
-  right, slug is Persian and short, cover image has alt, reviewer is set,
-  at least two internal links, sources present when medical.
+  right, slug is Persian and short, cover image has alt, an admin approved
+  the article with a published reviewer dentist and a review date, two H2,
+  live links to a service and a guide, and sources (every article, C1).
 - Persian text normalizer on save: Arabic letters to Persian, ZWNJ fixes,
   Persian digits, quotation marks, spacing around punctuation.
 
