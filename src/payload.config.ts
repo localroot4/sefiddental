@@ -11,6 +11,7 @@ import { withScheduleBlockMessages } from './admin/schedulePublish';
 import { collections } from './collections';
 import { richTextEditor } from './fields/richText';
 import { globals } from './globals';
+import { keepValidationDetails } from './hooks/errors';
 import { adminText, PAYLOAD_FA_OVERRIDES } from './i18n/fa-admin';
 import { readEnv } from './lib/env';
 import { log } from './lib/log/logger';
@@ -107,6 +108,7 @@ export default buildConfig({
   // `notify` delivers the Notifier's messages (src/lib/notify, freeze G11).
   jobs: { access: { run: canRunJobs }, tasks: [notifyTask] },
   db: databaseAdapter(srcDir),
+  hooks: { afterError: [keepValidationDetails] },
   onInit: (payload) => {
     logPoolErrors(payload.db, (line) => log.warn(line));
     // H12: a refused scheduled publish records the block messages for the calendar.
