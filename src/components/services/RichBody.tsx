@@ -18,8 +18,8 @@ const PROSE =
  * A rich-text body block as server HTML: Payload's JSX converters without the inline styles the
  * CSP blocks (text align, indent, nested list items, strikethrough), the H2s carrying the ids of
  * the in-page nav, internal links on their public paths, and Latin words as LTR islands.
- * shortcut: uploads keep Payload's default converter and a linked document's later slug change
- * waits for the page's own revalidation; phase 6 adds the `col:` tags of the linked documents.
+ * shortcut: uploads keep Payload's default converter until TEMPLATES step 2. A linked document's
+ * slug change refreshes the page: the readers tag the link targets' collections (published.ts).
  */
 export function RichBody(props: {
   data: SerializedEditorState;
@@ -28,6 +28,9 @@ export function RichBody(props: {
 }) {
   const converters: JSXConvertersFunction = ({ defaultConverters }) => ({
     ...defaultConverters,
+    // shortcut: the article blocks (H8: callout, table, video) render nothing, not Payload's
+    // «unknown node»; TEMPLATES step 2 replaces these with their converters.
+    blocks: { callout: () => null, table: () => null, video: () => null },
     heading: ({ node, nodesToJSX }) => {
       const Tag = node.tag === 'h3' || node.tag === 'h4' ? node.tag : 'h2';
       return <Tag id={props.ids.get(node)}>{nodesToJSX({ nodes: node.children })}</Tag>;

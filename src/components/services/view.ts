@@ -102,6 +102,16 @@ export function relatedServices(
   return list.slice(0, MAX_RELATED);
 }
 
+/**
+ * Section 10's heading (docs/ia.md: related services and articles). The section always renders:
+ * every service links the pricing page (ia.md section 5), with or without related items (H24).
+ */
+export function relatedHeading(services: number, articles: number): string {
+  if (services && articles) return t('services.related.both');
+  if (services) return t('services.related.heading');
+  return articles ? t('services.related.articles') : t('services.related.none');
+}
+
 /** wa.me link with the prefill of conversion.md 8 (no personal data): the service's, else generic. */
 export function whatsappHref(e164: string, navLabel?: string): string {
   const text = navLabel

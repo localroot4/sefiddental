@@ -105,6 +105,18 @@ describe('populatedCollections', () => {
   it('PC3 depth 2 follows into the related collections', () => {
     expect(populatedCollections(fields.services, 2, fieldsOf)).toContain('cases');
   });
+
+  it('PC4 rich text populates its link and upload targets at depth 1, not at depth 0', () => {
+    const body = [{ type: 'richText' }];
+    expect(populatedCollections(body, 1, fieldsOf)).toEqual([
+      'articles',
+      'doctors',
+      'media',
+      'pages',
+      'services',
+    ]);
+    expect(populatedCollections(body, 0, fieldsOf)).toEqual([]);
+  });
 });
 
 describe('mediaPath (PAY 7.2)', () => {

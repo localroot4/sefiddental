@@ -16,7 +16,7 @@ import { TestimonialCard } from '@/components/ui/Testimonial';
 import { TextLink } from '@/components/ui/TextLink';
 import { EMERGENCY_PATH, t } from '@/i18n/fa';
 import { getServiceTree } from '@/lib/data/catalog';
-import { getCases, getDoctors, getTestimonials } from '@/lib/data/content';
+import { getArticlesForService, getCases, getDoctors, getTestimonials } from '@/lib/data/content';
 import { getClinic, getSeoDefaults } from '@/lib/data/globals';
 import { getPublished } from '@/lib/data/published';
 import { buildPath, PAGE_PATHS } from '@/lib/paths';
@@ -26,6 +26,7 @@ import type { Doctor, Service } from '@/payload-types';
 
 import { ltr } from '@/components/ui/ltr';
 import { HomeBookingPrefill } from '@/components/home/HomeBookingPrefill';
+import { ArticleList } from '@/components/pages/articleParts';
 
 import { RestorationTiers, TIERS_ANCHOR } from './RestorationTiers';
 import { RichBody } from './RichBody';
@@ -38,7 +39,14 @@ import {
   ServiceSection,
   type Tone,
 } from './sections';
-import { headingAnchors, relatedServices, serviceFacts, splitBody, whatsappHref } from './view';
+import {
+  headingAnchors,
+  relatedHeading,
+  relatedServices,
+  serviceFacts,
+  splitBody,
+  whatsappHref,
+} from './view';
 
 const idOf = (value: number | { id: number } | null | undefined): number | null =>
   typeof value === 'object' && value !== null ? value.id : (value ?? null);
@@ -49,15 +57,17 @@ const idOf = (value: number | { id: number } | null | undefined): number | null 
  * testimonial (H), FAQ (I), related services (C), booking (J).
  */
 export async function ServiceTemplate({ service }: { service: Service }) {
-  const [tree, clinic, seoDefaults, tiers, doctors, cases, testimonials] = await Promise.all([
-    getServiceTree(),
-    getClinic(),
-    getSeoDefaults(),
-    getPublished('service-tiers', { where: { service: { equals: service.id } }, sort: 'order' }),
-    getDoctors(),
-    getCases({ service: service.id }),
-    getTestimonials({ service: service.id }),
-  ]);
+  const [tree, clinic, seoDefaults, tiers, doctors, cases, testimonials, articles] =
+    await Promise.all([
+      getServiceTree(),
+      getClinic(),
+      getSeoDefaults(),
+      getPublished('service-tiers', { where: { service: { equals: service.id } }, sort: 'order' }),
+      getDoctors(),
+      getCases({ service: service.id }),
+      getTestimonials({ service: service.id }),
+      getArticlesForService(service.id),
+    ]);
   const path = buildPath('services', service) as string;
   const category = tree.find((c) => c.id === idOf(service.category)) ?? null;
   const booking = `${PAGE_PATHS.booking}?service=${encodeURIComponent(service.key)}`;
@@ -308,19 +318,21 @@ export async function ServiceTemplate({ service }: { service: Service }) {
           />
         )
       : null,
-    related.length
-      ? (tone) => (
-          <ServiceSection
-            id="related"
-            family="C"
-            title={t('services.related.heading')}
-            tone={tone}
-            action={
-              <TextLink standalone href={PAGE_PATHS['services-hub']} className="-ms-2">
-                {t('services.allServices')}
-              </TextLink>
-            }
-          >
+    // Section 10 always renders: the pricing link stays when nothing is related (H24).
+    (tone) => (
+      <ServiceSection
+        id="related"
+        family="C"
+        title={relatedHeading(related.length, articles.length)}
+        tone={tone}
+        action={
+          <TextLink standalone href={PAGE_PATHS['services-hub']} className="-ms-2">
+            {t('services.allServices')}
+          </TextLink>
+        }
+      >
+        <div className="grid gap-6">
+          {related.length ? (
             <ul className={FILL_GRID}>
               {related.map((item) => (
                 <li key={item.id}>
@@ -334,12 +346,14 @@ export async function ServiceTemplate({ service }: { service: Service }) {
                 </li>
               ))}
             </ul>
-            <TextLink standalone href={PAGE_PATHS.pricing} className="mt-6 -ms-2">
-              {t('services.pricing').replaceAll('{name}', service.navLabel)}
-            </TextLink>
-          </ServiceSection>
-        )
-      : null,
+          ) : null}
+          {articles.length ? <ArticleList articles={articles} headingLevel="h3" /> : null}
+          <TextLink standalone href={PAGE_PATHS.pricing} className="-ms-2 justify-self-start">
+            {t('services.pricing').replaceAll('{name}', service.navLabel)}
+          </TextLink>
+        </div>
+      </ServiceSection>
+    ),
   ];
 
   const facts = serviceFacts(service);

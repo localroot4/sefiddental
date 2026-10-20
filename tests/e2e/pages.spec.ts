@@ -14,7 +14,15 @@ const ABOUT = '/درباره-ما';
 const ADDRESS = '/آدرس';
 const GUIDES = '/راهنمای-بیمار';
 const GUIDE = '/راهنمای-بیمار/اولین-مراجعه';
-const ALL = [DENTISTS, DENTIST, ABOUT, ADDRESS, GUIDES, GUIDE];
+// Phase 6 templates from the QA fixture (H40): the article hub, a post, a category and a tag; the
+// post's comparison table must not widen the page at 320 px either (C21).
+const ARTICLES = [
+  '/مقالات',
+  '/مقالات/نمونه-آزمایشی-مقاله-کامل',
+  '/مقالات/دسته/نمونه-آزمایشی-دسته-الف',
+  '/مقالات/برچسب/نمونه-آزمایشی-برچسب',
+];
+const ALL = [DENTISTS, DENTIST, ABOUT, ADDRESS, GUIDES, GUIDE, ...ARTICLES];
 
 // hoursBadgeLabels() (src/i18n/fa-ui.ts): today's state, never in the server HTML (CC-6).
 // hoursSummary() (src/lib/hoursState.ts): the hours line with the holiday exception (freeze F14).
@@ -93,8 +101,15 @@ test('T-PG2 dentist profile: portrait split, council number LTR, filled sections
   only(testInfo, 'desktop-light', 'phone-light');
   await open(page, DENTIST);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('دکتر نمونهٔ آزمایشی');
-  // The fixture has a degree, a bio, two services and a case; articles arrive in phase 6.
-  expect(await sections(page)).toEqual(['facts', 'bio', 'services', 'cases', 'booking']);
+  // The fixture has a degree, a bio, two services, a case and the articles it wrote and reviewed.
+  expect(await sections(page)).toEqual([
+    'facts',
+    'bio',
+    'services',
+    'cases',
+    'articles',
+    'booking',
+  ]);
   // Stored as 0000000; shown in Persian digits inside the LTR island.
   const council = page.locator('main header bdi', { hasText: '۰۰۰۰۰۰۰' });
   await expect(council).toHaveAttribute('dir', 'ltr');
@@ -202,7 +217,7 @@ test('T-PG5 address: the live hours state arrives after load, never in the serve
   expect(await table.boundingBox()).toEqual(before);
 });
 
-test('T-PG6 guide hub: H1, the published guide card, no empty state, ItemList JSON-LD', async ({
+test('T-PG6 guide hub: H1, the published guide cards, no empty state, ItemList JSON-LD', async ({
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
@@ -215,8 +230,9 @@ test('T-PG6 guide hub: H1, the published guide card, no empty state, ItemList JS
   await expect(card).toHaveAttribute('href', GUIDE);
   await expect(page.getByText(/راهنماها پس از بازبینی دندانپزشک/)).toHaveCount(0);
   await expectCanonical(page, GUIDES);
+  // The fixture also publishes the real dental-fear and aftercare guides (H40).
   const [list] = ofType(await jsonLd(page), 'ItemList');
-  expect(list?.itemListElement).toHaveLength(1);
+  expect(list?.itemListElement).toHaveLength(3);
 });
 
 test('T-PG7 guide: reviewer and sources shown, TOC on desktop only, MedicalWebPage and FAQPage JSON-LD', async ({

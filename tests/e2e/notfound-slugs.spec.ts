@@ -20,8 +20,16 @@ test('T-NF1 an unknown slug under each Persian dynamic route answers the branded
   request,
 }) => {
   // Each row has at least one published slug on the e2e database (services from the seeder; the
-  // dentist and the guide from tests/fixtures/qa-seed.ts), so the proxy knows the set.
-  for (const prefix of ['/خدمات/', '/پزشکان/', '/راهنمای-بیمار/']) {
+  // dentist, the guide and the articles from tests/fixtures/qa-seed.ts), so the proxy knows the set.
+  // T-NF3 (phase 6): the post, category and tag rows too.
+  for (const prefix of [
+    '/خدمات/',
+    '/پزشکان/',
+    '/راهنمای-بیمار/',
+    '/مقالات/',
+    '/مقالات/دسته/',
+    '/مقالات/برچسب/',
+  ]) {
     const response = await request.get(encodeURI(`${prefix}no-such-slug-${Date.now()}`));
     expect(response.status(), prefix).toBe(404);
     const html = await response.text();
@@ -31,11 +39,14 @@ test('T-NF1 an unknown slug under each Persian dynamic route answers the branded
   }
 });
 
-// The fixture dentist and guide come from tests/fixtures/qa-seed.ts.
+// The fixture dentist, guide, post, category and tag come from tests/fixtures/qa-seed.ts.
 const KNOWN: Array<[path: string, page: string]> = [
   ['/خدمات/ترمیم-دندان', 'src/app/(site)/r/services/[slug]/page.tsx'],
   ['/پزشکان/دکتر-نمونه-آزمایشی', 'src/app/(site)/r/doctors/[slug]/page.tsx'],
   ['/راهنمای-بیمار/اولین-مراجعه', 'src/app/(site)/r/guides/[slug]/page.tsx'],
+  ['/مقالات/نمونه-آزمایشی-مقاله-کامل', 'src/app/(site)/r/articles/[slug]/page.tsx'],
+  ['/مقالات/دسته/نمونه-آزمایشی-دسته-الف', 'src/app/(site)/r/article-categories/[slug]/page.tsx'],
+  ['/مقالات/برچسب/نمونه-آزمایشی-برچسب', 'src/app/(site)/r/tags/[slug]/page.tsx'],
 ];
 
 for (const [url, page] of KNOWN) {

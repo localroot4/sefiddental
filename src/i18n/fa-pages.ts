@@ -24,6 +24,11 @@ export const PAGES_MESSAGES = {
   'pages.dentist.about': 'دربارهٔ {name}',
   'pages.dentist.services': 'خدمات {name}',
   'pages.dentist.cases': 'نمونه‌های قبل و بعد',
+  // Articles the dentist wrote or reviewed (docs/ia.md T-dentist), each with its role.
+  'pages.dentist.articles': 'مقاله‌های نوشته‌شده یا بازبینی‌شده',
+  'pages.dentist.role.author': 'نویسنده',
+  'pages.dentist.role.reviewer': 'بازبین',
+  'pages.dentist.role.both': 'نویسنده و بازبین',
   'pages.cases.all': 'همهٔ نمونه‌ها',
 
   // About.

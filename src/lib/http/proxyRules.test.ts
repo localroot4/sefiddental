@@ -9,6 +9,7 @@ import {
   normalizePath,
   PAGE_KEYS,
   PAGE_PATHS,
+  type PageKey,
   type PathCollection,
 } from '@/lib/paths';
 import {
@@ -229,16 +230,28 @@ describe('routeRewrite (Persian routes)', () => {
     expect(routeRewrite(`${PAGE_PATHS.about}/x`)).toBeNull();
   });
 
-  it('R9 route tree: no folder under (site) has a Persian name; phase 4 pages are in r/', () => {
+  it('R9 route tree: no folder under (site) has a Persian name; phase 4 and 6 pages are in r/', () => {
     const site = join(process.cwd(), 'src', 'app', '(site)');
     const folders = (dir: string): string[] =>
       readdirSync(dir, { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
         .flatMap((entry) => [entry.name, ...folders(join(dir, entry.name))]);
     expect(folders(site).filter((name) => /[^\x20-\x7e]/.test(name))).toEqual([]);
-    for (const key of ['services-hub', 'dentists-hub', 'guide-hub', 'about', 'address'] as const) {
+    const hubs: PageKey[] = [
+      'services-hub',
+      'dentists-hub',
+      'guide-hub',
+      'about',
+      'address',
+      'articles',
+    ];
+    for (const key of hubs) {
       const file = join(site, `${routeRewrite(PAGE_PATHS[key])}/page.tsx`);
       expect(existsSync(file), key).toBe(true);
+    }
+    // Phase 6: every dynamic row of the articles has its `[slug]` folder.
+    for (const folder of ['articles', 'article-categories', 'tags']) {
+      expect(existsSync(join(site, 'r', folder, '[slug]', 'page.tsx')), folder).toBe(true);
     }
   });
 });

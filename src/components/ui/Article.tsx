@@ -5,6 +5,7 @@ import { formatJalali } from '@/lib/jalali';
 import { toPersianDigits } from '@/lib/persianText';
 
 import { cx } from './cx';
+import { TextLink } from './TextLink';
 
 /**
  * Table of contents (family K): desktop only, sticky under the header; no TOC on phones and
@@ -110,5 +111,47 @@ export function SourceList(props: {
         ))}
       </ol>
     </section>
+  );
+}
+
+/**
+ * Author or reviewer box (DESIGN.md 7, article parts): the role, the name (a link to a dentist's
+ * profile; a staff author has none), an optional round photo and a Jalali date line.
+ */
+export function PersonBox(props: {
+  role: string;
+  name: string;
+  href?: string | null;
+  photo?: ReactNode;
+  date?: { label: string; value: string };
+  className?: string;
+}) {
+  const date = props.date ? new Date(props.date.value) : null;
+  return (
+    <div
+      className={cx('flex items-center gap-4 rounded-card border border-line p-4', props.className)}
+    >
+      {props.photo ? (
+        <span className="relative size-14 shrink-0 overflow-hidden rounded-pill bg-surface-sunken">
+          {props.photo}
+        </span>
+      ) : null}
+      <div className="grid min-w-0 text-small">
+        <span className="text-caption text-ink-muted">{props.role}</span>
+        {props.href ? (
+          <TextLink standalone href={props.href} className="-ms-2 justify-self-start">
+            {props.name}
+          </TextLink>
+        ) : (
+          <span className="flex min-h-target items-center font-semibold">{props.name}</span>
+        )}
+        {date && !Number.isNaN(date.getTime()) ? (
+          <span className="text-caption text-ink-muted">
+            {props.date!.label}{' '}
+            <time dateTime={date.toISOString()}>{formatJalali(date, 'd MMMM yyyy')}</time>
+          </span>
+        ) : null}
+      </div>
+    </div>
   );
 }

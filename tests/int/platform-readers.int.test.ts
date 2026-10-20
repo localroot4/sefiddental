@@ -64,6 +64,7 @@ async function service(categoryId: number, priority: number, order: number, draf
       bookingGroup: 'other',
       priority,
       order,
+      sources: [{ title: 'منبع آزمون', url: 'https://www.ada.org/resources', publisher: 'ADA' }],
       _status: draft ? 'draft' : 'published',
     },
     draft,
@@ -242,7 +243,8 @@ describe('platform readers (phase 4, freeze F9 and F10)', () => {
   });
 
   it('DR4 guides: published guide pages only, in key order; a hub slug never matches; a draft reviewer is hidden', async () => {
-    const reviewer = await doctor([], true);
+    // H23: a guide publishes with a published reviewer; the reader hides one set to draft later.
+    const reviewer = await doctor([]);
     const changes: Partial<Page> = {
       reviewer: reviewer.id,
       reviewedAt: '2026-10-01T00:00:00.000Z',
@@ -250,6 +252,7 @@ describe('platform readers (phase 4, freeze F9 and F10)', () => {
       _status: 'published',
     };
     await withPage('guide-dental-fear', changes, async (page) => {
+      await payload.update({ collection: 'doctors', id: reviewer.id, data: { _status: 'draft' } });
       const guides = await getGuides();
       expect(guides.every((g) => g.key.startsWith('guide-') && g._status === 'published')).toBe(
         true,

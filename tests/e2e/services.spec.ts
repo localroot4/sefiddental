@@ -203,6 +203,8 @@ test('T-SV4 every service renders only its filled sections, in docs/ia.md order'
     await open(page, path);
     const found = await sections(page);
     expect(found, path).toEqual(SERVICE_ORDER.filter((s) => found.includes(s)));
+    // Section 10 always renders: the pricing link needs no related item (H24).
+    expect(found, path).toContain('related');
     expect(found, path).toContain('booking');
   }
 });
@@ -225,13 +227,16 @@ test('T-SV6 empty sections stay hidden; the emergency link only where the servic
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
-  // Bleaching has no seeded body, facts or FAQ.
+  // Bleaching has no tiers, and the QA fixture links no case, dentist or testimonial to it.
   await open(page, '/خدمات/بلیچینگ-دندان');
-  for (const id of ['facts', 'tiers', 'about', 'steps', 'faq']) {
+  for (const id of ['tiers', 'cases', 'dentists', 'voice']) {
     await expect(page.locator(`[data-section="${id}"]`), id).toHaveCount(0);
   }
   await expect(page.locator('[data-section="booking"]')).toHaveCount(1);
-  expect(ofType(await jsonLd(page), 'FAQPage')).toHaveLength(0);
+  // FAQPage only with the FAQ section, one question per visible item.
+  const [faqPage] = ofType(await jsonLd(page), 'FAQPage');
+  const questions = await page.locator('[data-section="faq"] details').count();
+  expect((faqPage?.mainEntity as unknown[] | undefined)?.length ?? 0).toBe(questions);
   // The booking form's help text links the emergency page everywhere but home (freeze G10).
   await expect(
     page.locator(`main a[href="${EMERGENCY_PATH}"]:not([data-booking-form] a)`),

@@ -8,6 +8,7 @@ import {
   headingAnchors,
   paragraphs,
   priceFromFa,
+  relatedHeading,
   relatedServices,
   serviceFacts,
   splitBody,
@@ -102,5 +103,12 @@ describe('services view', () => {
     ]);
     expect(ids.get(a.root.children[0] as object)).toBe('سطح-ترمیم-2');
     expect(ids.size).toBe(3);
+  });
+
+  it('SE7 section 10 always renders (the pricing link); its heading names what it lists', () => {
+    expect(relatedHeading(3, 2)).toBe('خدمات و مقاله‌های مرتبط');
+    expect(relatedHeading(3, 0)).toBe('خدمات مرتبط');
+    expect(relatedHeading(0, 1)).toBe('مقاله‌های مرتبط');
+    expect(relatedHeading(0, 0)).toBe('هزینه و خدمات دیگر');
   });
 });

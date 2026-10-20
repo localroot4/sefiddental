@@ -1,7 +1,9 @@
 // e2e-only fixture (freeze F9): the client has published no dentist, guide, case or testimonial
 // yet, so their templates have no page to screenshot, scan or audit. This adds one of each on top
 // of the real seed, and enables one financing option (QA-FIN), every visible string it writes
-// starting «نمونهٔ آزمایشی». `npm run db:e2e` runs it after
+// starting «نمونهٔ آزمایشی». Phase 6 (H40, C28) adds the articles: two categories (A paginates,
+// B stays below the index threshold), an empty one, a tag, 14 published posts and a draft, and
+// publishes the two real guides with the sample reviewer. `npm run db:e2e` runs it after
 // the seeder; src/seed never does. Safe to repeat: it finds its own documents and updates them.
 // `payload run` passes no flags, so the database comes from DATABASE_URL like the seeder's.
 import { readFileSync } from 'node:fs';
@@ -13,8 +15,9 @@ import { getPayload, type Where } from 'payload';
 import sharp from 'sharp';
 
 import { readEnv } from '@/lib/env';
+import { toPersianDigits } from '@/lib/persianText';
 import { SEED_CONTEXT } from '@/seed/run';
-import { lexicalFrom } from '@/seed/transforms';
+import { lexicalFrom, type LinkDoc } from '@/seed/transforms';
 
 const MARK = 'نمونهٔ آزمایشی';
 const COUNCIL_NUMBER = '0000000';
@@ -131,6 +134,8 @@ const dentist = await upsert(
     photo: portrait,
     services: services.docs.map((s) => s.id),
     order: 10,
+    // The name plus the sample specialty runs past 60 with the suffix (V-TITLE, H6).
+    seo: { title: `دکتر ${MARK}` },
   },
 );
 
@@ -267,7 +272,274 @@ await payload.updateGlobal({
   context,
 });
 
+// Phase 6 (H40): the real dental-fear and aftercare guides, published with the sample reviewer,
+// so the guide hub lists three and the aftercare guide has a page to screenshot. Their copy comes
+// from the seeder (pages.yaml); a guide without its sources cannot pass the publish gate.
+for (const key of ['guide-dental-fear', 'guide-aftercare']) {
+  const page = await first(
+    payload.find({ collection: 'pages', where: { key: { equals: key } }, limit: 1, depth: 0 }),
+  );
+  if (!page) {
+    throw new Error(
+      `qa-fixture: the seeded ${key} page is missing. Run the seeder first (npm run seed).`,
+    );
+  }
+  // shortcut: until wave 1b writes the guide copy, a guide without sources gets a sample body and
+  // source so it can publish; drop this once pages.yaml carries both for these guides.
+  const sample = page.sources?.length
+    ? {}
+    : {
+        blocks: [
+          {
+            blockType: 'content',
+            body: lexicalFrom(
+              `## ${MARK}: بخش اول\n${MARK}: متن نمونهٔ راهنما.\n\n## ${MARK}: بخش دوم\n${MARK}: پایان متن نمونه.`,
+            ),
+          },
+        ],
+        sources: [
+          {
+            title: `${MARK}: منبع نمونه`,
+            publisher: 'other',
+            url: 'https://example.org/qa-fixture',
+          },
+        ],
+      };
+  try {
+    await payload.update({
+      collection: 'pages',
+      id: page.id,
+      data: {
+        ...sample,
+        reviewer: dentist.id,
+        reviewedAt: '2026-10-15T00:00:00.000Z',
+        _status: 'published',
+      } as never,
+      context,
+    });
+  } catch (err) {
+    const errors = (err as { data?: { errors?: { message: string }[] } }).data?.errors ?? [];
+    throw new Error(
+      `qa-fixture: the ${key} guide cannot publish (${errors.map((e) => e.message).join(' ') || (err as Error).message}). Its seed copy in src/seed/data/pages.yaml needs its body and sources first.`,
+    );
+  }
+}
+
+/** A noisy JPEG: a cover with a real photo's weight for Lighthouse (about 250 KB), no person. */
+const noisy = (width: number, height: number) => () =>
+  sharp({
+    create: {
+      width,
+      height,
+      channels: 3,
+      background: { r: 170, g: 180, b: 175 },
+      noise: { type: 'gaussian', mean: 160, sigma: 12 },
+    },
+  })
+    .jpeg({ quality: 80 })
+    .toBuffer();
+
+const cover = await media(
+  'qa-fixture/article-cover.jpg',
+  `${MARK}: جای تصویر شاخص مقاله`,
+  noisy(1600, 900),
+  'image/jpeg',
+);
+
+// C16: a cover below 1200x630 both ways has no og size, so its post shares the article card (T-OG3).
+const smallCover = await media(
+  'qa-fixture/article-cover-small.jpg',
+  `${MARK}: جای تصویر شاخص کوچک`,
+  grey(800, 450, 210),
+  'image/jpeg',
+);
+
+/** A category or a tag (no drafts), found by its slug. */
+async function taxonomy(collection: 'article-categories' | 'tags', slug: string, title: string) {
+  const found = await first(
+    payload.find({ collection, where: { slug: { equals: slug } }, limit: 1, depth: 0 }),
+  );
+  const data = { slug, title, description: `${MARK}: فهرست نمونه برای آزمودن قالب.` };
+  const doc = found
+    ? await payload.update({ collection, id: found.id, data, context })
+    : await payload.create({ collection, data, context });
+  return doc.id;
+}
+
+const categoryA = await taxonomy(
+  'article-categories',
+  'نمونه-آزمایشی-دسته-الف',
+  `${MARK}: دستهٔ الف`,
+);
+const categoryB = await taxonomy('article-categories', 'نمونه-آزمایشی-دسته-ب', `${MARK}: دستهٔ ب`);
+// No article: its page answers the 404 (H4, T-AR7).
+await taxonomy('article-categories', 'نمونه-آزمایشی-دسته-خالی', `${MARK}: دستهٔ خالی`);
+const qaTag = await taxonomy('tags', 'نمونه-آزمایشی-برچسب', `${MARK}: برچسب`);
+
+// Internal links of the bodies: the restoration service (every post's primary service) and the
+// published first-visit guide, so each post passes V-LINKS (H7 with C2).
+const restorationPath = `/خدمات/${restoration.slug}`;
+const linkTargets = new Map<string, LinkDoc>([
+  [restorationPath, { relationTo: 'services', value: restoration.id }],
+  [guide.path as string, { relationTo: 'pages', value: guide.id }],
+]);
+const link = (target: string) => linkTargets.get(target) ?? null;
+
+/** A Lexical block node of the article body (src/blocks/articleBlocks.ts), with a stable id. */
+const block = (id: string, fields: Record<string, unknown>) => ({
+  type: 'block',
+  version: 2,
+  format: '',
+  fields: { id, blockName: '', ...fields },
+});
+
+const shortBody = (n: string) =>
+  lexicalFrom(
+    `## ${MARK}: بخش اول ${n}\n${MARK}: متن کوتاه با پیوند به [ترمیم دندان](${restorationPath}) و [راهنمای اولین مراجعه](${guide.path}).\n\n## ${MARK}: بخش دوم ${n}\n${MARK}: پایان متن نمونه.`,
+    link,
+  );
+
+// The full post: every part of the template (cover, inline image, callout, table, video poster,
+// two FAQs, one source, the sample dentist as author and reviewer), the newest of all.
+const fullBody = lexicalFrom(
+  [
+    `## ${MARK}: ترمیم دندان چیست`,
+    `${MARK}: این بند فقط برای آزمودن قالب مقاله است. برای جزئیات به صفحهٔ [ترمیم دندان](${restorationPath}) بروید و پیش از نوبت [راهنمای اولین مراجعه](${guide.path}) را بخوانید.`,
+    '',
+    `## ${MARK}: مقایسهٔ سطح‌ها`,
+    `${MARK}: بند دوم پیش از جدول.`,
+    '',
+    `## ${MARK}: مراقبت بعد از درمان`,
+    `- ${MARK}: مورد اول`,
+    `- ${MARK}: مورد دوم`,
+  ].join('\n'),
+  link,
+);
+const fullChildren = fullBody.root.children as unknown[];
+fullChildren.splice(
+  2,
+  0,
+  {
+    type: 'upload',
+    version: 3,
+    format: '',
+    id: '6a0f00000000000000000001',
+    fields: {},
+    relationTo: 'media',
+    value: cover,
+  },
+  block('6a0f00000000000000000002', {
+    blockType: 'callout',
+    tone: 'info',
+    text: `${MARK}: نکتهٔ کوتاه داخل مقاله.`,
+  }),
+);
+fullChildren.splice(
+  6,
+  0,
+  block('6a0f00000000000000000003', {
+    blockType: 'table',
+    caption: `${MARK}: جدول مقایسه`,
+    head: ['سطح', 'دوام', 'هزینه'],
+    rows: [
+      { cells: ['معمولی', 'نمونهٔ یک', 'نمونهٔ دو'] },
+      { cells: ['VIP', 'نمونهٔ سه', 'نمونهٔ چهار'] },
+    ],
+  }),
+  block('6a0f00000000000000000004', {
+    blockType: 'video',
+    video: clip,
+    poster,
+    summary: `${MARK}: خلاصهٔ گفته‌های ویدیوی نمونه.`,
+  }),
+);
+
+const reviewed = {
+  primaryService: restoration.id,
+  authorDoctor: dentist.id,
+  isMedical: true,
+  reviewer: dentist.id,
+  reviewedAt: '2026-10-12T08:30:00.000Z',
+  reviewState: 'approved',
+  sources: [
+    { title: `${MARK}: منبع نمونه`, publisher: 'other', url: 'https://example.org/qa-fixture' },
+  ],
+};
+const DESCRIPTION = `${MARK}: توضیح جست‌وجوی این مقاله فقط برای آزمودن قالب است و طول آن در بازهٔ صد و بیست تا صد و شصت نویسهٔ توضیح گوگل می‌ماند.`;
+
+/** Create, or bring an earlier fixture article back to this content; `draft` keeps it unpublished. */
+async function article(slug: string, data: Record<string, unknown>, draft = false) {
+  const found = await first(
+    payload.find({ collection: 'articles', where: { slug: { equals: slug } }, limit: 1, depth: 0 }),
+  );
+  const values = { ...data, slug, _status: draft ? 'draft' : 'published' } as never;
+  const doc = found
+    ? await payload.update({ collection: 'articles', id: found.id, data: values, draft, context })
+    : await payload.create({ collection: 'articles', data: values, draft, context });
+  return doc.id;
+}
+
+const posts: number[] = [];
+posts.push(
+  await article('نمونه-آزمایشی-مقاله-کامل', {
+    ...reviewed,
+    title: `${MARK}: مقالهٔ کامل`,
+    excerpt: `${MARK}: این مقاله فقط برای آزمودن قالب مقاله است و همهٔ بخش‌های آن را دارد: فهرست، تصویر، نکته، جدول، ویدیو و پرسش‌ها.`,
+    cover,
+    body: fullBody,
+    category: categoryA,
+    tags: [qaTag],
+    faqs: [
+      { question: `${MARK}: پرسش اول؟`, answer: `${MARK}: پاسخ اول.` },
+      { question: `${MARK}: پرسش دوم؟`, answer: `${MARK}: پاسخ دوم.` },
+    ],
+    publishedAt: '2026-10-14T06:00:00.000Z',
+    contentUpdatedAt: '2026-10-16T06:00:00.000Z',
+    seo: { description: DESCRIPTION },
+  }),
+);
+// Twelve short posts in category A with the tag (C28), so the hub, A and the tag reach page 2.
+for (let i = 1; i <= 12; i++) {
+  const n = toPersianDigits(String(i));
+  posts.push(
+    await article(`نمونه-آزمایشی-مقاله-${n}`, {
+      ...reviewed,
+      title: `${MARK}: مقالهٔ کوتاه ${n}`,
+      excerpt: `${MARK}: خلاصهٔ مقالهٔ کوتاه ${n} که فقط برای آزمودن فهرست و صفحه‌بندی مقاله‌ها نوشته شده است.`,
+      cover,
+      body: shortBody(n),
+      category: categoryA,
+      tags: [qaTag],
+      publishedAt: `2026-09-${String(i + 10).padStart(2, '0')}T06:00:00.000Z`,
+      seo: { description: DESCRIPTION },
+    }),
+  );
+}
+posts.push(
+  await article('نمونه-آزمایشی-مقاله-دسته-ب', {
+    ...reviewed,
+    title: `${MARK}: مقالهٔ دستهٔ ب`,
+    excerpt: `${MARK}: تنها مقالهٔ دستهٔ ب؛ این دسته زیر پنج مقاله است و در گوگل نمایه نمی‌شود.`,
+    cover: smallCover,
+    body: shortBody('ب'),
+    category: categoryB,
+    publishedAt: '2026-09-01T06:00:00.000Z',
+    seo: { description: DESCRIPTION },
+  }),
+);
+// A draft: never listed, its URL answers the 404 (T-AR7).
+await article(
+  'نمونه-آزمایشی-پیش-نویس',
+  {
+    title: `${MARK}: پیش‌نویس`,
+    excerpt: `${MARK}: این پیش‌نویس هرگز در سایت دیده نمی‌شود و نشانی آن صفحهٔ پیدا نشد را نشان می‌دهد.`,
+    body: shortBody('پیش‌نویس'),
+    category: categoryA,
+  },
+  true,
+);
+
 // The e2e scripts grep this line: `payload run` can exit 0 before the script ran.
 payload.logger.info(
-  `qa-fixture: dentist /پزشکان/${dentist.slug}, guide ${guide.path}, case ${sample.id}, testimonial ${voice.id}, financing ${loan.key}`,
+  `qa-fixture: dentist /پزشکان/${dentist.slug}, guide ${guide.path}, case ${sample.id}, testimonial ${voice.id}, financing ${loan.key}, articles ${posts.length} published and 1 draft`,
 );

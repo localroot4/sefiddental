@@ -1,5 +1,6 @@
 import { JsonLd } from '@/components/seo/JsonLd';
 import { ltr } from '@/components/ui/ltr';
+import { Badge } from '@/components/ui/Badge';
 import { ButtonLink } from '@/components/ui/Button';
 import { ServiceCard } from '@/components/ui/Cards';
 import { CompareSlider } from '@/components/ui/CompareSlider';
@@ -12,13 +13,14 @@ import { Picture } from '@/components/ui/Picture';
 import { TextLink } from '@/components/ui/TextLink';
 import { t } from '@/i18n/fa';
 import { getServiceTree } from '@/lib/data/catalog';
-import { getCases, getDoctorBySlug } from '@/lib/data/content';
+import { getArticlesForDoctor, getCases, getDoctorBySlug } from '@/lib/data/content';
 import { getClinic } from '@/lib/data/globals';
 import { buildPath, PAGE_PATHS } from '@/lib/paths';
 import { toPersianDigits } from '@/lib/persianText';
 import { telHref } from '@/lib/phone';
 import { breadcrumbNode, jsonLdGraph, physicianNode } from '@/lib/seo/jsonld';
 
+import { articlePath } from './articleParts';
 import { Alternating, Band, PageBooking } from './parts';
 import { dentistFacts, dentistName, mediaOf, paragraphs, portraitImage, withName } from './view';
 
@@ -27,13 +29,15 @@ type Doctor = NonNullable<Awaited<ReturnType<typeof getDoctorBySlug>>>;
 /**
  * T-dentist (docs/ia.md): the portrait split (A) with the council number as an LTR island, the
  * credentials (B), the bio (K), the services the dentist performs (C), their published cases (E),
- * booking (J). Empty sections stay hidden. Articles they wrote or reviewed arrive with phase 6.
+ * the articles they wrote or reviewed with the role (K list, H24), booking (J). Empty sections
+ * stay hidden.
  */
 export async function DentistProfile({ doctor }: { doctor: Doctor }) {
-  const [clinic, tree, cases] = await Promise.all([
+  const [clinic, tree, cases, articles] = await Promise.all([
     getClinic(),
     getServiceTree(),
     getCases({ doctor: doctor.id, limit: 3 }),
+    getArticlesForDoctor(doctor.id),
   ]);
   const name = dentistName(doctor.name);
   const path = buildPath('doctors', doctor) as string;
@@ -213,6 +217,25 @@ export async function DentistProfile({ doctor }: { doctor: Doctor }) {
                             </span>
                           </figcaption>
                         </figure>
+                      </li>
+                    ))}
+                  </ul>
+                </Band>
+              )
+            : null,
+          articles.length
+            ? (tone) => (
+                <Band id="articles" family="K" title={t('pages.dentist.articles')} tone={tone}>
+                  <ul className="grid max-w-measure divide-y divide-line border-y border-line">
+                    {articles.map((article) => (
+                      <li
+                        key={article.id}
+                        className="flex flex-wrap items-center justify-between gap-x-4 py-2"
+                      >
+                        <TextLink standalone href={articlePath(article)} className="-ms-2">
+                          {ltr(article.title)}
+                        </TextLink>
+                        <Badge>{t(`pages.dentist.role.${article.role}`)}</Badge>
                       </li>
                     ))}
                   </ul>

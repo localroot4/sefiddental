@@ -1,10 +1,20 @@
 import type { Where } from 'payload';
 
-import type { Case, Doctor, Page, Service, Testimonial } from '@/payload-types';
+import { doctorArticles, pickRelated } from '@/components/pages/related';
+import type {
+  Article,
+  ArticleCategory,
+  Case,
+  Doctor,
+  Page,
+  Service,
+  Tag,
+  Testimonial,
+} from '@/payload-types';
 
 import { isGuideKey, normalizePath, PAGE_KEYS } from '@/lib/paths';
 
-import { getPublished } from './published';
+import { getPublished, getPublishedPage, type PublishedDoc } from './published';
 
 /*
  * Published readers of the people and proof templates (dentists, guides, cases, testimonials).
@@ -127,4 +137,137 @@ export async function getTestimonials(filter: ListFilter = {}): Promise<Publishe
     depth: 1,
   });
   return testimonials.map((doc) => ({ ...doc, service: published(doc.service) }));
+}
+
+/** The cards of the article lists (H3): 12 a page on the hub, a category and a tag. */
+export const ARTICLES_PER_PAGE = 12;
+
+// A card's fields: the lists never carry a body (small cache entries); depth 1 fills the cover.
+const CARD = {
+  title: true,
+  slug: true,
+  excerpt: true,
+  cover: true,
+  publishedAt: true,
+  contentUpdatedAt: true,
+  readingTime: true,
+} as const;
+
+export type ArticleCard = PublishedDoc<'articles', typeof CARD>;
+
+const NEWEST = ['-publishedAt', '-createdAt'];
+
+const idOf = (value: number | { id: number }): number =>
+  typeof value === 'object' ? value.id : value;
+
+const cards = (where: Where, limit: number) =>
+  getPublished('articles', { where, sort: NEWEST, limit, depth: 1, select: CARD });
+
+/** One page of published article cards, newest first: all, one category or one tag (H3). */
+export function getArticlesPage(query: {
+  page: number;
+  category?: number;
+  tag?: number;
+  perPage?: number;
+}) {
+  const where: Where[] = [];
+  if (query.category !== undefined) where.push({ category: { equals: query.category } });
+  if (query.tag !== undefined) where.push({ tags: { in: [query.tag] } });
+  return getPublishedPage('articles', {
+    where: where.length > 0 ? { and: where } : undefined,
+    sort: NEWEST,
+    depth: 1,
+    select: CARD,
+    limit: query.perPage ?? ARTICLES_PER_PAGE,
+    page: query.page,
+  });
+}
+
+/** The category chips of the article lists: categories with a published article, by title (H4). */
+export async function getArticleCategories(): Promise<ArticleCategory[]> {
+  const docs = await getPublished('articles', { select: { category: true } });
+  // A deleted category leaves its articles with none (ON DELETE SET NULL).
+  const ids = [
+    ...new Set(docs.flatMap((doc) => (doc.category == null ? [] : [idOf(doc.category)]))),
+  ];
+  if (ids.length === 0) return [];
+  return getPublished('article-categories', { where: { id: { in: ids } }, sort: 'title' });
+}
+
+/** A category or a tag by the `[slug]` route param, or null. */
+export async function getTaxonomyBySlug<C extends 'article-categories' | 'tags'>(
+  collection: C,
+  param: string,
+) {
+  const [doc] = await getPublished(collection, {
+    where: { slug: { equals: slugOf(param) } },
+    limit: 1,
+  });
+  return doc ?? null;
+}
+
+export type PublishedArticle = Omit<
+  Article,
+  'category' | 'tags' | 'primaryService' | 'authorDoctor' | 'reviewer'
+> & {
+  category: ArticleCategory | null;
+  tags: Tag[];
+  primaryService: Service | null;
+  authorDoctor: Doctor | null;
+  reviewer: Doctor | null;
+};
+
+const populated = <T>(value: number | T | null | undefined): T | null =>
+  typeof value === 'object' && value !== null ? value : null;
+
+/** One published article by the `[slug]` route param, relations populated (drafts as null). */
+export async function getArticleBySlug(param: string): Promise<PublishedArticle | null> {
+  const [doc] = await getPublished('articles', {
+    where: { slug: { equals: slugOf(param) } },
+    limit: 1,
+    depth: 1,
+  });
+  if (!doc) return null;
+  return {
+    ...doc,
+    category: populated(doc.category),
+    tags: (doc.tags ?? []).flatMap((tag) => populated(tag) ?? []),
+    primaryService: published(doc.primaryService),
+    authorDoctor: published(doc.authorDoctor),
+    reviewer: published(doc.reviewer),
+  };
+}
+
+/**
+ * A post's two related articles (H24): the editor's published picks, then the same primary
+ * service, the same category, shared tags, each newest first, never the post itself.
+ */
+export async function getRelatedArticles(article: PublishedArticle): Promise<ArticleCard[]> {
+  const notSelf: Where = { id: { not_equals: article.id } };
+  const manual = (article.relatedArticles ?? []).map(idOf);
+  const tags = article.tags.map((tag) => tag.id);
+  // Enough per rule to find two new ones past the picks and the earlier rules' repeats.
+  const rule = (where: Where | null) =>
+    where ? cards({ and: [where, notSelf] }, 4) : Promise.resolve([]);
+  const lists = await Promise.all([
+    rule(manual.length ? { id: { in: manual } } : null),
+    rule(article.primaryService ? { primaryService: { equals: article.primaryService.id } } : null),
+    rule(article.category ? { category: { equals: article.category.id } } : null),
+    rule(tags.length ? { tags: { in: tags } } : null),
+  ]);
+  return pickRelated(article.id, manual, lists);
+}
+
+/** A service page's articles (H24): the two newest whose primary service it is. */
+export function getArticlesForService(serviceId: number, limit = 2): Promise<ArticleCard[]> {
+  return cards({ primaryService: { equals: serviceId } }, limit);
+}
+
+/** A dentist page's articles (H24): authored or reviewed, each once with its role, newest first. */
+export async function getArticlesForDoctor(doctorId: number, limit = 6) {
+  const [authored, reviewed] = await Promise.all([
+    cards({ authorDoctor: { equals: doctorId } }, limit),
+    cards({ reviewer: { equals: doctorId } }, limit),
+  ]);
+  return doctorArticles(authored, reviewed, limit);
 }

@@ -88,6 +88,7 @@ export async function publishedService(payload: Payload, slug = uniqueSlug('خد
       slug,
       bookingGroup: 'other',
       priority: 3,
+      sources: [{ title: 'منبع آزمون', url: 'https://www.ada.org/resources', publisher: 'ADA' }],
       _status: 'published',
     },
   });

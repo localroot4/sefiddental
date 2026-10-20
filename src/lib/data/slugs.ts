@@ -32,6 +32,22 @@ export async function getPublishedSlugs(): Promise<Record<DynamicRouteKey, strin
       doc.slug && !doc.standalone ? [normalizePath(`/${doc.slug}`).slice(1)] : [],
     );
   };
+  // H4: a category or tag without a published article has no page, so its slug answers the 404.
+  const used = await payload.find({
+    collection: 'articles',
+    where: { _status: { equals: 'published' } },
+    depth: 0,
+    pagination: false,
+    select: { category: true, tags: true },
+  });
+  const idOf = (value: number | { id: number }) => (typeof value === 'object' ? value.id : value);
+  // A deleted category leaves its articles with none (ON DELETE SET NULL).
+  const categoryIds = [
+    ...new Set(used.docs.flatMap((doc) => (doc.category == null ? [] : [idOf(doc.category)]))),
+  ];
+  const tagIds = [...new Set(used.docs.flatMap((doc) => (doc.tags ?? []).map(idOf)))];
+  const usedOnly = async (collection: CollectionSlug, ids: number[]) =>
+    ids.length > 0 ? slugsOf(collection, { id: { in: ids } }) : [];
   const [services, categories, doctors, guides, articles, articleCategories, tags] =
     await Promise.all([
       slugsOf('services'),
@@ -39,8 +55,8 @@ export async function getPublishedSlugs(): Promise<Record<DynamicRouteKey, strin
       slugsOf('doctors'),
       slugsOf('pages', { key: { in: GUIDE_KEYS } }),
       slugsOf('articles'),
-      slugsOf('article-categories'),
-      slugsOf('tags'),
+      usedOnly('article-categories', categoryIds),
+      usedOnly('tags', tagIds),
     ]);
   return {
     services: [...services, ...categories],

@@ -63,4 +63,20 @@ describe('services rich text', () => {
     );
     expect(ltr('ترمیم دندان')).toBe('ترمیم دندان');
   });
+
+  it("SE11 an article block never prints Payload's «unknown node» (its converter waits for step 2)", () => {
+    const data = lexicalFrom('## بخش\nمتن');
+    const root = data.root as unknown as { children: unknown[] };
+    for (const blockType of ['callout', 'table', 'video']) {
+      root.children.push({
+        type: 'block',
+        version: 2,
+        format: '',
+        fields: { id: blockType, blockType },
+      });
+    }
+    const html = renderToStaticMarkup(<RichBody data={data as never} ids={new Map()} />);
+    expect(html).not.toContain('unknown node');
+    expect(html).toContain('متن');
+  });
 });
