@@ -44,10 +44,16 @@ export function editorialAccess(options: { scheduled?: boolean } = {}): Preset {
   );
 }
 
-/** Admin only (pages, redirects). */
-export function adminAccess(options: { scheduled?: boolean } = {}): Preset {
+/** Admin only (pages, redirects); `editorsRead` lets editors read, never write (H7: pages). */
+export function adminAccess(options: { scheduled?: boolean; editorsRead?: boolean } = {}): Preset {
   return withSchedule(
-    { read: isAdmin, create: isAdmin, update: isAdmin, delete: isAdmin, readVersions: isAdmin },
+    {
+      read: options.editorsRead ? isStaff : isAdmin,
+      create: isAdmin,
+      update: isAdmin,
+      delete: isAdmin,
+      readVersions: isAdmin,
+    },
     Boolean(options.scheduled),
   );
 }

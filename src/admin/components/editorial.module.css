@@ -1,0 +1,120 @@
+/*
+ * Editorial helpers in the admin (operate mode, H11): Payload's theme tokens only, so light and
+ * dark follow the admin; spacing in multiples of --base; logical properties for RTL. Green marks
+ * a passed rule, red a rule that blocks publishing, the warning tokens a hint that never blocks;
+ * every state is also written in words.
+ */
+
+.panel {
+  display: grid;
+  gap: calc(var(--base) * 0.5);
+  margin-block: calc(var(--base) * 0.5) var(--base);
+}
+
+.heading {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.lead,
+.count {
+  margin: 0;
+  color: var(--theme-elevation-650);
+}
+
+.list {
+  display: grid;
+  gap: calc(var(--base) * 0.4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.item {
+  display: grid;
+  gap: calc(var(--base) * 0.15);
+  padding-block: calc(var(--base) * 0.35);
+  padding-inline: calc(var(--base) * 0.5);
+  border-inline-start: 3px solid var(--theme-elevation-250);
+  border-radius: var(--style-radius-s);
+  background: var(--theme-elevation-50);
+}
+
+.item[data-state='pass'] {
+  border-inline-start-color: var(--theme-success-500);
+}
+
+.item[data-state='fail'] {
+  border-inline-start-color: var(--theme-error-500);
+}
+
+.label {
+  font-weight: 600;
+}
+
+.result {
+  color: var(--theme-elevation-800);
+}
+
+.item[data-state='pass'] .result {
+  color: var(--theme-success-750);
+}
+
+.item[data-state='fail'] .result {
+  color: var(--theme-error-750);
+}
+
+.warning {
+  color: var(--theme-warning-800);
+}
+
+.manual {
+  margin: 0;
+  padding-inline-start: calc(var(--base) * 1.25);
+  color: var(--theme-elevation-800);
+}
+
+.manual li + li {
+  margin-block-start: calc(var(--base) * 0.25);
+}
+
+/* The result as Google lists it: path, title, description. */
+.serp {
+  display: grid;
+  gap: calc(var(--base) * 0.2);
+  padding: calc(var(--base) * 0.75);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-elevation-0);
+  overflow-wrap: anywhere;
+}
+
+.path {
+  color: var(--theme-elevation-650);
+  font-size: 0.9em;
+}
+
+.title {
+  color: var(--theme-text);
+  font-size: 1.15rem;
+  line-height: 1.5;
+}
+
+.description {
+  color: var(--theme-elevation-800);
+  line-height: 1.7;
+}
+
+.meter {
+  margin: 0;
+  color: var(--theme-elevation-800);
+}
+
+.meter[data-state='long'] {
+  color: var(--theme-error-750);
+}
+
+.meter[data-state='short'] {
+  color: var(--theme-warning-800);
+}

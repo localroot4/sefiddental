@@ -6,24 +6,29 @@ import type {
   GroupField,
   NumberField,
   PayloadRequest,
+  RelationshipField,
   TextareaField,
   TextField,
+  UIField,
   UploadField,
   Validate,
 } from 'payload';
-import { text, textarea } from 'payload/shared';
+import { relationship, richText, text, textarea } from 'payload/shared';
 
 import { isAdminField } from '@/access/roles';
 import { persianSlug } from '@/lib/persianSlug';
 
 import {
-  DEFAULT_SHORT_TITLE_SUFFIX,
-  DEFAULT_TITLE_SUFFIX,
   descriptionRule,
+  effectiveTitleRule,
+  lexicalNodeRule,
   proseRule,
+  publishedDoctorRule,
   type Rule,
   slugRule,
-  titleRule,
+  type SuffixKey,
+  SUFFIXES,
+  topicOf,
 } from './validators';
 
 /** Field factories shared by the collections (spec-data 5.4). */
@@ -118,12 +123,17 @@ export function withRules(base: unknown, ...rules: FieldRule[]): Validate {
 
 const prose: FieldRule = (value) => proseRule(value);
 
+/** Payload's rich-text check with Lexical's English node errors in Persian (V-NODE). */
+export const persianRichText: FieldRule = async (value, options) =>
+  lexicalNodeRule(await (richText as unknown as FieldRule)(value, options));
+
 /** Text with the marker and banned-word checks after Payload's own checks (V-MARKER, V-BANNED). */
 export function proseText(
   name: string,
   label: string,
   options: Partial<Pick<TextField, 'required' | 'maxLength' | 'minLength' | 'index'>> & {
     hasMany?: boolean;
+    minRows?: number;
     maxRows?: number;
     description?: string;
   } = {},
@@ -169,6 +179,8 @@ interface SlugOptions {
   unique?: boolean;
   description?: string;
   access?: TextField['access'];
+  /** Slugs this collection may not take, beside the system ones (H1: article prefixes). */
+  reserved?: readonly string[];
 }
 
 /**
@@ -190,7 +202,8 @@ export function slugField(options: SlugOptions): TextField {
     const merged = { ...(originalDoc as Data | undefined), ...(siblingData as Data) };
     if (options.nullableWhen?.(merged)) return null;
     const source = sourceOf(siblingData as Data) ?? sourceOf(originalDoc as Data | undefined);
-    const built = source ? persianSlug(source) : '';
+    // H2: a slug built from a long title is cut at a hyphen within the field max.
+    const built = source ? persianSlug(source, { maxLength: max }) : '';
     return built || null;
   };
   return {
@@ -208,7 +221,7 @@ export function slugField(options: SlugOptions): TextField {
     },
     validate: ((value: unknown, { data }: { data: Data }) => {
       if (!value && options.nullableWhen?.(data)) return true;
-      return slugRule(typeof value === 'string' ? value : null, max);
+      return slugRule(typeof value === 'string' ? value : null, max, options.reserved);
     }) as Validate,
     access: options.access,
     admin: {
@@ -307,10 +320,9 @@ export function imageUpload(
   };
 }
 
-type SuffixKey = 'titleSuffix' | 'shortTitleSuffix';
-
 async function titleSuffix(req: PayloadRequest, key: SuffixKey): Promise<string> {
-  const fallback = key === 'titleSuffix' ? DEFAULT_TITLE_SUFFIX : DEFAULT_SHORT_TITLE_SUFFIX;
+  const fallback = SUFFIXES[key];
+  if (key === 'articleCategory') return fallback;
   try {
     const seo = await req.payload.findGlobal({ slug: 'seo-defaults', depth: 0, req });
     return (seo as Partial<Record<SuffixKey, string | null>>)[key] || fallback;
@@ -319,11 +331,16 @@ async function titleSuffix(req: PayloadRequest, key: SuffixKey): Promise<string>
   }
 }
 
-/** The SEO group of every public document (spec-data 5.2). */
+/**
+ * The SEO group of every public document (spec-data 5.2). `topic` lists the title templates of
+ * the page (topicOf): V-TITLE then checks the title Google shows when `seo.title` is empty (H6),
+ * and the SERP preview (H11) shows it.
+ */
 export function seoGroup(
-  options: { suffix?: SuffixKey; descriptionRequired?: boolean } = {},
+  options: { suffix?: SuffixKey; descriptionRequired?: boolean; topic?: readonly string[] } = {},
 ): GroupField {
   const suffix = options.suffix ?? 'titleSuffix';
+  const topic = options.topic ?? [];
   const noindex: CheckboxField = {
     name: 'noindex',
     type: 'checkbox',
@@ -343,17 +360,14 @@ export function seoGroup(
         label: 'عنوان سئو',
         validate: (async (
           value: unknown,
-          { req, event }: { req: PayloadRequest; event?: string },
+          { req, event, data }: { req: PayloadRequest; event?: string; data?: Data },
         ) => {
-          if (typeof value !== 'string' || value === '') return true;
-          // The two default suffixes have the same length as the live ones; read them on submit.
-          const used =
-            event === 'submit'
-              ? await titleSuffix(req, suffix)
-              : suffix === 'titleSuffix'
-                ? DEFAULT_TITLE_SUFFIX
-                : DEFAULT_SHORT_TITLE_SUFFIX;
-          const title = titleRule(value, used);
+          const seoTitle = typeof value === 'string' ? value : '';
+          const pageTopic = topicOf(topic, data ?? {});
+          if (!seoTitle && !pageTopic) return true;
+          // The default suffixes have the same length as the live ones; read them on submit.
+          const used = event === 'submit' ? await titleSuffix(req, suffix) : SUFFIXES[suffix];
+          const title = effectiveTitleRule(seoTitle, pageTopic, used);
           return title === true ? proseRule(value) : title;
         }) as Validate,
         admin: {
@@ -384,7 +398,92 @@ export function seoGroup(
         'تصویر اشتراک‌گذاری. خالی بماند، تصویر صفحه یا تصویر پیش‌فرض استفاده می‌شود.',
       ),
       noindex,
+      serpPreview(topic, suffix),
     ],
+  };
+}
+
+/** H11: the Google result as the editor types (admin only; no column). */
+function serpPreview(topic: readonly string[], suffix: SuffixKey): UIField {
+  return {
+    name: 'serpPreview',
+    type: 'ui',
+    label: 'پیش‌نمایش در گوگل',
+    admin: {
+      components: {
+        Field: {
+          path: '/admin/components/SerpPreview#SerpPreview',
+          clientProps: { topic: [...topic], suffix },
+        },
+      },
+    },
+  };
+}
+
+const idOf = (value: unknown): unknown =>
+  typeof value === 'object' && value !== null ? (value as { id?: unknown }).id : value;
+
+/**
+ * H23: a dentist that the public author or reviewer box can show, so only published ones. The
+ * picker lists published dentists; on publish an unpublished one gets a message with the fix
+ * before Payload's own (generic) filter check.
+ */
+export function publishedDoctorField(
+  name: string,
+  label: string,
+  role: 'reviewer' | 'author',
+  description: string,
+  ...rules: FieldRule[]
+): RelationshipField {
+  const rest = withRules(relationship, ...rules) as unknown as FieldRule;
+  return {
+    name,
+    type: 'relationship',
+    relationTo: 'doctors',
+    label,
+    filterOptions: { _status: { equals: 'published' } },
+    validate: (async (value: unknown, options: RuleOptions) => {
+      if (value && options.event === 'submit') {
+        const doctor = await options.req.payload.findByID({
+          collection: 'doctors',
+          id: idOf(value) as number,
+          depth: 0,
+          disableErrors: true,
+          select: { _status: true },
+          req: options.req,
+        });
+        const own = publishedDoctorRule(role, doctor?._status === 'published');
+        if (own !== true) return own;
+      }
+      return rest(value, options);
+    }) as unknown as Validate,
+    admin: { description },
+  };
+}
+
+/** H35: the Jalali list cell (ADMIN builds it, plan 2.1). */
+export const JALALI_CELL = '/admin/components/JalaliDateCell#JalaliDateCell';
+
+/** H35: the chosen date in Jalali under a Gregorian picker. */
+export const JALALI_HINT = '/admin/components/JalaliDateCell#JalaliDateHint';
+
+/**
+ * H35: Payload's own `updatedAt` column (same name, type and index, so no schema change) with the
+ * Jalali cell; Payload adds its default only when a collection does not declare one.
+ */
+export const jalaliUpdatedAt: DateField = {
+  name: 'updatedAt',
+  type: 'date',
+  label: 'آخرین ویرایش',
+  index: true,
+  admin: { hidden: true, disableBulkEdit: true, components: { Cell: JALALI_CELL } },
+};
+
+/** H10: the admin's live preview opens the server-side draft route of the document. */
+export function livePreview(collection: string) {
+  return {
+    url: ({ data }: { data?: { id?: unknown } }) =>
+      `/api/preview?collection=${collection}&id=${encodeURIComponent(String(data?.id ?? ''))}`,
   };
 }
 

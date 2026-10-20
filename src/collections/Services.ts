@@ -9,6 +9,7 @@ import {
   faqsArray,
   imageUpload,
   keyField,
+  livePreview,
   orderField,
   proseText,
   proseTextarea,
@@ -30,6 +31,7 @@ export const Services: CollectionConfig = {
     defaultColumns: ['navLabel', 'category', 'slug', 'priority', '_status', 'updatedAt'],
     listSearchableFields: ['navLabel', 'h1', 'key', 'slug'],
     hidden: hiddenForEditors,
+    livePreview: livePreview('services'),
   },
   defaultSort: ['category', 'priority', 'order'],
   versions: { drafts: { schedulePublish: { timeFormat: 'HH:mm', timeIntervals: 15 } } },
@@ -48,7 +50,15 @@ export const Services: CollectionConfig = {
         'facts.recovery',
         'faqs.*.question',
         'faqs.*.answer',
+        // H9: body block prose (content, steps, callout) and the SEO texts.
+        'body.*.body',
+        'body.*.items.*.title',
+        'body.*.items.*.text',
+        'body.*.text',
+        'seo.title',
+        'seo.description',
       ],
+      persianDigits: true,
     },
     beforeValidate: [sharedServiceSlug('service-categories')],
   }),
@@ -176,6 +186,10 @@ export const Services: CollectionConfig = {
       defaultValue: true,
       admin: { description: 'این صفحه ادعای پزشکی دارد و به منبع و بازبین نیاز دارد.' },
     },
+    // shortcut: H25 (a medical service publishes with sources) waits for the wave 1b copy: the
+    // source sites are unreachable from the build network, and the gate would turn every seeded
+    // service into a refusal. Add `validate: withRules(array, (value, { data }) =>
+    // sourcesRule(data.isMedical, value))` in the commit that adds the sources to services.yaml.
     sourcesArray(),
     {
       name: 'searchTerms',
@@ -219,6 +233,6 @@ export const Services: CollectionConfig = {
       defaultSort: 'order',
       admin: { description: 'سطح‌های این خدمت (فقط ترمیم دندان).' },
     },
-    seoGroup(),
+    seoGroup({ topic: ['{h1}'] }),
   ],
 };

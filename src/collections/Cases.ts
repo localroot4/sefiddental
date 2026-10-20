@@ -2,7 +2,14 @@ import type { CollectionConfig } from 'payload';
 import { checkbox, upload } from 'payload/shared';
 
 import { editorialAccess } from '@/access/presets';
-import { imageUpload, orderField, proseText, proseTextarea, withRules } from '@/fields/factories';
+import {
+  imageUpload,
+  jalaliUpdatedAt,
+  orderField,
+  proseText,
+  proseTextarea,
+  withRules,
+} from '@/fields/factories';
 import { homeFlag } from '@/fields/homeLimit';
 import { consentRule, pairRule } from '@/fields/validators';
 import { contentHooks } from '@/hooks/compose';
@@ -14,7 +21,17 @@ export const Cases: CollectionConfig = {
   admin: {
     group: 'بیماران و نظرات',
     useAsTitle: 'title',
-    defaultColumns: ['title', 'service', 'consentConfirmed', 'featuredOnHome', '_status', 'order'],
+    description:
+      'عکس‌های قبل و بعد درمان، فقط با رضایت کتبی بیمار. دو عکس هر نمونه باید کادر، نور و بزرگنمایی یکسان داشته باشند.',
+    defaultColumns: [
+      'title',
+      'service',
+      'consentConfirmed',
+      'featuredOnHome',
+      '_status',
+      'order',
+      'updatedAt',
+    ],
   },
   defaultSort: 'order',
   versions: { drafts: { schedulePublish: { timeFormat: 'HH:mm', timeIntervals: 15 } } },
@@ -95,5 +112,6 @@ export const Cases: CollectionConfig = {
         description: 'پوشهٔ منبع در مخزن (برای ورود خودکار).',
       },
     },
+    jalaliUpdatedAt,
   ],
 };

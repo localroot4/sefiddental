@@ -11,8 +11,14 @@ vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), unstable_cache: (fn: unkn
 let payload: Payload;
 const ROOT = process.cwd();
 
+const SOURCE = { title: 'منبع آزمون', url: 'https://www.ada.org/resources', publisher: 'ADA' };
+
 /** Publishing a new service with this body; resolves to the Payload error message or 'ok'. */
-async function publishService(categoryId: number, text: string): Promise<string> {
+async function publishService(
+  categoryId: number,
+  text: string,
+  extra: Record<string, unknown> = { sources: [SOURCE] },
+): Promise<string> {
   const key = uniqueKey('gate');
   try {
     await payload.create({
@@ -26,8 +32,9 @@ async function publishService(categoryId: number, text: string): Promise<string>
         bookingGroup: 'other',
         priority: 3,
         body: [{ blockType: 'content', body: lexicalFrom(text) }],
+        ...extra,
         _status: 'published',
-      },
+      } as never,
     });
     return 'ok';
   } catch (err) {
@@ -182,5 +189,81 @@ describe('phase 4 content model (freeze F7, F17; the seeded restoration page)', 
         },
       }),
     ).rejects.toMatchObject({ data: { errors: [{ message: 'هر بخش فقط یک بار می‌آید.' }] } });
+  });
+
+  // Held with H25 until the wave 1b copy adds the sources (src/collections/Services.ts).
+  it.skip('CT6 a medical service publishes only with sources; a non-medical one without (H25)', async () => {
+    const category = (
+      await payload.find({
+        collection: 'service-categories',
+        where: { key: { equals: 'restorative' } },
+        limit: 1,
+      })
+    ).docs[0]!;
+    expect(await publishService(category.id, 'ترمیم دندان در یک جلسه', {})).toBe(
+      'دست‌کم یک منبع علمی اضافه کنید.',
+    );
+    expect(await publishService(category.id, 'ترمیم دندان در یک جلسه', { isMedical: false })).toBe(
+      'ok',
+    );
+  });
+
+  it('CT7 service body blocks and the SEO texts are normalized on save (H9, C32)', async () => {
+    const category = (
+      await payload.find({
+        collection: 'service-categories',
+        where: { key: { equals: 'restorative' } },
+        limit: 1,
+      })
+    ).docs[0]!;
+    const service = await payload.create({
+      collection: 'services',
+      draft: true,
+      data: {
+        key: uniqueKey('norm'),
+        category: category.id,
+        navLabel: 'نرمال',
+        h1: 'نرمال',
+        slug: uniqueSlug('نرمال'),
+        bookingGroup: 'other',
+        priority: 3,
+        body: [
+          {
+            blockType: 'content',
+            // Raw editor JSON: the seed's own text fixes must not do the hook's work here.
+            body: {
+              root: {
+                type: 'root',
+                version: 1,
+                direction: 'rtl',
+                format: '',
+                indent: 0,
+                children: [
+                  {
+                    type: 'paragraph',
+                    version: 1,
+                    direction: 'rtl',
+                    format: '',
+                    indent: 0,
+                    children: [
+                      { type: 'text', version: 1, text: 'درمان در 2 جلسه با ', format: 0 },
+                      { type: 'text', version: 1, text: '"كامپوزيت"', format: 1 },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+          { blockType: 'callout', tone: 'info', text: 'نكته 3' },
+        ],
+        seo: { title: 'ترميم دندان', description: 'توضيح' },
+        _status: 'draft',
+      } as never,
+    });
+    const body = JSON.stringify(service.body);
+    expect(body).toContain('"text":"درمان در ۲ جلسه با "');
+    expect(body).toContain('"text":"«کامپوزیت»"');
+    expect(service.body?.[1]).toMatchObject({ text: 'نکته ۳' });
+    expect(service.seo).toMatchObject({ title: 'ترمیم دندان', description: 'توضیح' });
   });
 });

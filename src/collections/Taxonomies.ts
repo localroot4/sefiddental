@@ -3,7 +3,14 @@ import { text } from 'payload/shared';
 
 import { taxonomyAccess } from '@/access/presets';
 import { hiddenForEditors } from '@/access/roles';
-import { proseText, proseTextarea, seoGroup, slugField, withRules } from '@/fields/factories';
+import {
+  jalaliUpdatedAt,
+  proseText,
+  proseTextarea,
+  seoGroup,
+  slugField,
+  withRules,
+} from '@/fields/factories';
 import { categoryTermRule } from '@/fields/validators';
 import { contentHooks } from '@/hooks/compose';
 
@@ -29,7 +36,7 @@ export const ArticleCategories: CollectionConfig = {
   ...taxonomyAccess(),
   hooks: contentHooks('article-categories', {
     path: 'article-categories',
-    normalize: { prose: ['title', 'description'] },
+    normalize: { prose: ['title', 'description', 'seo.title', 'seo.description'] },
   }),
   fields: [
     {
@@ -56,7 +63,8 @@ export const ArticleCategories: CollectionConfig = {
     },
     slugField({ source: 'title', description: 'بخش آخر نشانی.' }),
     description,
-    seoGroup(),
+    seoGroup({ suffix: 'articleCategory', topic: ['{title}'] }),
+    jalaliUpdatedAt,
   ],
 };
 
@@ -64,12 +72,21 @@ export const Tags: CollectionConfig = {
   slug: 'tags',
   labels: { singular: 'برچسب', plural: 'برچسب‌ها' },
   ...shared,
+  admin: {
+    ...shared.admin,
+    description:
+      'برچسب‌ها مقاله‌های هم‌موضوع را کنار هم می‌آورند. صفحهٔ برچسب در گوگل نمایه نمی‌شود؛ برچسب تازه فقط وقتی بسازید که دست‌کم دو مقاله آن را دارند.',
+  },
   ...taxonomyAccess({ editorsWrite: true }),
-  hooks: contentHooks('tags', { path: 'tags', normalize: { prose: ['title', 'description'] } }),
+  hooks: contentHooks('tags', {
+    path: 'tags',
+    normalize: { prose: ['title', 'description', 'seo.title', 'seo.description'] },
+  }),
   fields: [
     proseText('title', 'نام برچسب', { required: true, maxLength: 60, description: 'نام برچسب.' }),
     slugField({ source: 'title', description: 'بخش آخر نشانی.' }),
     description,
-    seoGroup(),
+    seoGroup({ topic: ['{title}'] }),
+    jalaliUpdatedAt,
   ],
 };

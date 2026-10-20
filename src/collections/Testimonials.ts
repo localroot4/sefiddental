@@ -2,7 +2,14 @@ import type { CollectionConfig } from 'payload';
 import { checkbox, textarea, upload } from 'payload/shared';
 
 import { editorialAccess } from '@/access/presets';
-import { dayOnlyDate, imageUpload, orderField, proseText, withRules } from '@/fields/factories';
+import {
+  dayOnlyDate,
+  imageUpload,
+  jalaliUpdatedAt,
+  orderField,
+  proseText,
+  withRules,
+} from '@/fields/factories';
 import { homeFlag } from '@/fields/homeLimit';
 import { consentRule, proseRule } from '@/fields/validators';
 import { contentHooks } from '@/hooks/compose';
@@ -19,7 +26,17 @@ export const Testimonials: CollectionConfig = {
   admin: {
     group: 'بیماران و نظرات',
     useAsTitle: 'patientLabel',
-    defaultColumns: ['patientLabel', 'service', 'type', 'consentConfirmed', '_status', 'order'],
+    description:
+      'نظر بیمارانی که رضایت کتبی داده‌اند، به شکل ویدیو یا متن. ویدیو فقط از فایل خود کلینیک، نه پیوند به سایت دیگر.',
+    defaultColumns: [
+      'patientLabel',
+      'service',
+      'type',
+      'consentConfirmed',
+      '_status',
+      'order',
+      'updatedAt',
+    ],
   },
   defaultSort: 'order',
   versions: { drafts: { schedulePublish: { timeFormat: 'HH:mm', timeIntervals: 15 } } },
@@ -138,5 +155,6 @@ export const Testimonials: CollectionConfig = {
       unique: true,
       admin: { hidden: true },
     },
+    jalaliUpdatedAt,
   ],
 };

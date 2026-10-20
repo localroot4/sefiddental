@@ -58,3 +58,35 @@ describe('media file handler', () => {
     expect(await ask(missingLocalFileIs404, 'none.jpg')).toBeUndefined();
   });
 });
+
+describe('media config (H14a, H36)', () => {
+  it('MC1 the og size: 1200x630 JPEG, quality 82, cropped (focal point), no enlargement', async () => {
+    const { IMAGE_SIZES, Media } = await loadMedia({ MEDIA_DIR: os.tmpdir() });
+    expect(IMAGE_SIZES.find((size) => size.name === 'og')).toMatchObject({
+      width: 1200,
+      height: 630,
+      formatOptions: { format: 'jpeg', options: { quality: 82 } },
+    });
+    expect(Media.upload).toMatchObject({ focalPoint: true });
+    vi.unstubAllEnvs();
+  });
+
+  it('MC2 alt text: Persian, not a file name, with the message that names the fix', async () => {
+    const { Media } = await loadMedia({ MEDIA_DIR: os.tmpdir() });
+    const alt = Media.fields.find((f) => 'name' in f && f.name === 'alt') as {
+      validate: (value: unknown, options: object) => Promise<unknown>;
+    };
+    const options = {
+      req: { t: (key: string) => key, payload: { config: { defaultMaxTextLength: 40000 } } },
+      required: true,
+    };
+    expect(await alt.validate('IMG_1234', options)).toBe(
+      'متن جایگزین نام فایل است. آنچه در تصویر دیده می‌شود را به فارسی بنویسید.',
+    );
+    expect(await alt.validate('smiling patient', options)).toBe(
+      'متن جایگزین را به فارسی بنویسید: آنچه در تصویر دیده می‌شود.',
+    );
+    expect(await alt.validate('لبخند بیمار پس از ترمیم', options)).toBe(true);
+    vi.unstubAllEnvs();
+  });
+});

@@ -1,5 +1,5 @@
 import type { CollectionConfig } from 'payload';
-import { array, relationship, textarea, upload } from 'payload/shared';
+import { array, date, textarea, upload } from 'payload/shared';
 
 import { adminAccess } from '@/access/presets';
 import { hiddenForEditors } from '@/access/roles';
@@ -7,14 +7,22 @@ import { PAGE_BLOCKS } from '@/blocks';
 import {
   dayOnlyDate,
   imageUpload,
+  livePreview,
   proseText,
   proseTextarea,
+  publishedDoctorField,
   seoGroup,
   slugField,
   sourcesArray,
   withRules,
 } from '@/fields/factories';
-import { proseRule, reviewerRule, sourcesRule, subtextRule } from '@/fields/validators';
+import {
+  proseRule,
+  reviewedAtRule,
+  reviewerRule,
+  sourcesRule,
+  subtextRule,
+} from '@/fields/validators';
 import { pagePath } from '@/hooks/computed';
 import { contentHooks } from '@/hooks/compose';
 import { CONTENT_MESSAGES } from '@/i18n/fa-content';
@@ -98,7 +106,9 @@ export const Pages: CollectionConfig = {
     group: 'محتوا',
     useAsTitle: 'title',
     defaultColumns: ['title', 'key', 'path', '_status', 'updatedAt'],
+    // H7: editors read pages (the link drawer lists the guides) but never see them in the nav.
     hidden: hiddenForEditors,
+    livePreview: livePreview('pages'),
   },
   defaultSort: 'path',
   versions: {
@@ -107,11 +117,29 @@ export const Pages: CollectionConfig = {
       schedulePublish: { timeFormat: 'HH:mm', timeIntervals: 15 },
     },
   },
-  ...adminAccess({ scheduled: true }),
+  ...adminAccess({ scheduled: true, editorsRead: true }),
   hooks: contentHooks('pages', {
     path: 'pages',
     normalize: {
-      prose: ['title', 'lead', 'hero.subtext', 'sections.*.heading', 'sections.*.intro'],
+      prose: [
+        'title',
+        'lead',
+        'hero.subtext',
+        'sections.*.heading',
+        'sections.*.intro',
+        // H9: block prose (content body, steps, FAQ, facts, callout) and the SEO texts.
+        'blocks.*.body',
+        'blocks.*.items.*.title',
+        'blocks.*.items.*.text',
+        'blocks.*.items.*.question',
+        'blocks.*.items.*.answer',
+        'blocks.*.items.*.label',
+        'blocks.*.items.*.value',
+        'blocks.*.text',
+        'seo.title',
+        'seo.description',
+      ],
+      persianDigits: true,
     },
     beforeChange: [pagePath],
   }),
@@ -240,17 +268,23 @@ export const Pages: CollectionConfig = {
       admin: { description: 'بخش‌های محتوایی صفحه به ترتیب نمایش.' },
     },
     {
-      name: 'reviewer',
-      type: 'relationship',
-      relationTo: 'doctors',
-      label: 'بازبین پزشکی',
-      validate: withRules(relationship, (value, { data }) =>
-        reviewerRule(needsMedicalReview(data as KeyData), value, data.reviewedAt),
+      ...publishedDoctorField(
+        'reviewer',
+        'بازبین پزشکی',
+        'reviewer',
+        'بازبین پزشکی این صفحه. فقط پزشکان منتشرشده در فهرست هستند.',
+        (value, { data }) => reviewerRule(needsMedicalReview(data as KeyData), value),
       ),
-      admin: { condition: guideOnly, description: 'بازبین پزشکی این صفحه.' },
+      admin: {
+        condition: guideOnly,
+        description: 'بازبین پزشکی این صفحه. فقط پزشکان منتشرشده در فهرست هستند.',
+      },
     },
     {
       ...dayOnlyDate('reviewedAt', 'تاریخ بازبینی', 'تاریخ بازبینی.'),
+      validate: withRules(date, (value, { data }) =>
+        reviewedAtRule(needsMedicalReview(data as KeyData), value),
+      ),
       admin: {
         condition: guideOnly,
         date: { pickerAppearance: 'dayOnly' },
@@ -264,6 +298,6 @@ export const Pages: CollectionConfig = {
       ),
       admin: { condition: guideOnly, description: 'منابع علمی این صفحه.' },
     },
-    seoGroup(),
+    seoGroup({ topic: ['{title}'] }),
   ],
 };

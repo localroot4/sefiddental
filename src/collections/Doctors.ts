@@ -6,6 +6,7 @@ import { hiddenForEditors } from '@/access/roles';
 import { specialtyRule } from '@/fields/validators';
 import {
   imageUpload,
+  livePreview,
   orderField,
   proseText,
   proseTextarea,
@@ -29,6 +30,7 @@ export const Doctors: CollectionConfig = {
     defaultColumns: ['name', 'specialty', 'councilNumber', '_status', 'order'],
     listSearchableFields: ['name', 'councilNumber', 'slug'],
     hidden: hiddenForEditors,
+    livePreview: livePreview('doctors'),
   },
   defaultSort: 'order',
   versions: { drafts: { schedulePublish: { timeFormat: 'HH:mm', timeIntervals: 15 } } },
@@ -36,7 +38,11 @@ export const Doctors: CollectionConfig = {
   ...taxonomyAccess({ scheduled: true }),
   hooks: contentHooks('doctors', {
     path: 'doctors',
-    normalize: { names: ['name'], prose: ['specialty', 'bio', 'degrees', 'memberships'] },
+    normalize: {
+      names: ['name'],
+      prose: ['specialty', 'bio', 'degrees', 'memberships', 'seo.title', 'seo.description'],
+      persianDigits: true,
+    },
   }),
   fields: [
     proseText('name', 'نام', {
@@ -157,6 +163,7 @@ export const Doctors: CollectionConfig = {
       on: 'doctor',
       admin: { description: 'نمونه‌های قبل و بعد این پزشک.' },
     },
-    seoGroup({ suffix: 'shortTitleSuffix' }),
+    // The dentist page title: «دکتر نام، تخصص» (src/app/(site)/r/doctors/[slug]/page.tsx).
+    seoGroup({ suffix: 'shortTitleSuffix', topic: ['دکتر {name}، {specialty}', 'دکتر {name}'] }),
   ],
 };

@@ -43,6 +43,108 @@ describe('H-NORM (spec-data 6.2)', () => {
   });
 });
 
+describe('H-NORM rich text and prose rules (H9, C32)', () => {
+  const text = (value: string, format = 0) => ({ type: 'text', text: value, format });
+  const para = (...children: unknown[]) => ({ type: 'paragraph', children });
+  const state = (...children: unknown[]) => ({ root: { type: 'root', children } });
+  type Kid = Record<string, unknown> & { children: Kid[]; fields?: unknown };
+  const kids = (value: unknown): Kid[] => (value as { root: { children: Kid[] } }).root.children;
+  const texts = (value: unknown): string[] => {
+    const out: string[] = [];
+    const visit = (n: unknown) => {
+      if (typeof n !== 'object' || n === null) return;
+      const node = n as { text?: unknown; children?: unknown; root?: unknown };
+      if (typeof node.text === 'string') out.push(node.text);
+      if (node.root) visit(node.root);
+      if (Array.isArray(node.children)) node.children.forEach(visit);
+    };
+    visit(value);
+    return out;
+  };
+
+  it('HN3 rich text: spacing at formatting boundaries kept, ZWNJ, letters and digits across nodes', () => {
+    const body = state(
+      para(text('متن '), text('پررنگ', 1), text(' ادامه')),
+      para(text('می\u200C'), text('شود', 1), text(' علي و كد 2 جلسه، گاز CO'), text('2')),
+      para({
+        type: 'link',
+        fields: { linkType: 'internal', doc: { relationTo: 'pages', value: 12 } },
+        children: [text('راهنماي '), text('"مراقبت"')],
+      }),
+    );
+    const out = normalizeData({ body }, { prose: ['body'], persianDigits: true });
+    expect(texts(out.body)).toEqual([
+      'متن ',
+      'پررنگ',
+      ' ادامه',
+      'می\u200C',
+      'شود',
+      ' علی و کد ۲ جلسه، گاز CO',
+      '2',
+      'راهنمای ',
+      '«مراقبت»',
+    ]);
+    // Node shape, formats and link fields are untouched.
+    expect(kids(out.body)[0]?.children[1]).toEqual({ type: 'text', text: 'پررنگ', format: 1 });
+    expect(kids(out.body)[2]?.fields).toEqual(kids(body)[2]?.fields);
+    expect(normalizeData(out, { prose: ['body'], persianDigits: true })).toEqual(out);
+    // The input is not mutated.
+    expect(texts(body)[5]).toBe(' علي و كد 2 جلسه، گاز CO');
+  });
+
+  it('HN4 article block fields are prose; ids, slugs and options are not', () => {
+    const body = state(
+      {
+        type: 'block',
+        fields: {
+          id: '65a1',
+          blockType: 'table',
+          blockName: '',
+          caption: 'مقايسه  "دو" روش',
+          head: ['روش', 'دوره 2'],
+          rows: [{ id: 'r1', cells: ['لمينت', '10 سال'] }],
+        },
+      },
+      {
+        type: 'block',
+        fields: { id: '65a2', blockType: 'video', video: 3, poster: 4, summary: 'خلاصه 3 دقيقه' },
+      },
+    );
+    const out = normalizeData({ body }, { prose: ['body'], persianDigits: true });
+    expect(kids(out.body)[0]?.fields).toEqual({
+      id: '65a1',
+      blockType: 'table',
+      blockName: '',
+      caption: 'مقایسه «دو» روش',
+      head: ['روش', 'دوره ۲'],
+      rows: [{ id: 'r1', cells: ['لمینت', '۱۰ سال'] }],
+    });
+    expect(kids(out.body)[1]?.fields).toMatchObject({ video: 3, summary: 'خلاصه ۳ دقیقه' });
+  });
+
+  it('HN5 the prose digit rule only where the spec asks (C32); quote pairs always', () => {
+    const data = { title: 'ساعت 10 و "نکته"' };
+    expect(normalizeData(data, { prose: ['title'] }).title).toBe('ساعت 10 و «نکته»');
+    expect(normalizeData(data, { prose: ['title'], persianDigits: true }).title).toBe(
+      'ساعت ۱۰ و «نکته»',
+    );
+    const blocks = {
+      blocks: [
+        { blockType: 'content', body: state(para(text('دو  جلسه 2'))) },
+        { blockType: 'steps', items: [{ title: 'گام 1', text: 'متن' }] },
+        { blockType: 'callout', tone: 'info', text: 'نكته' },
+      ],
+    };
+    const out = normalizeData(blocks, {
+      prose: ['blocks.*.body', 'blocks.*.items.*.title', 'blocks.*.text'],
+      persianDigits: true,
+    });
+    expect(texts(out.blocks[0]?.body)).toEqual(['دو جلسه ۲']);
+    expect(out.blocks[1]).toEqual({ blockType: 'steps', items: [{ title: 'گام ۱', text: 'متن' }] });
+    expect(out.blocks[2]).toEqual({ blockType: 'callout', tone: 'info', text: 'نکته' });
+  });
+});
+
 describe('H-AUDIT helpers (spec-data 6.5)', () => {
   it('AU1 changed field paths without values; timestamps and populated depth ignored', () => {
     const before = {

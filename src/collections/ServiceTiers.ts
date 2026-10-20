@@ -21,7 +21,7 @@ export const ServiceTiers: CollectionConfig = {
   trash: true,
   ...taxonomyAccess(),
   hooks: contentHooks('service-tiers', {
-    normalize: { prose: ['name', 'description', 'materials', 'highlights'] },
+    normalize: { prose: ['name', 'description', 'materials', 'highlights'], persianDigits: true },
   }),
   fields: [
     {

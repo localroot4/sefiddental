@@ -35,7 +35,18 @@ export const ServiceCategories: CollectionConfig = {
   hooks: contentHooks('service-categories', {
     path: 'service-categories',
     normalize: {
-      prose: ['title', 'h1', 'navLabel', 'summary', 'intro', 'faqs.*.question', 'faqs.*.answer'],
+      prose: [
+        'title',
+        'h1',
+        'navLabel',
+        'summary',
+        'intro',
+        'faqs.*.question',
+        'faqs.*.answer',
+        'seo.title',
+        'seo.description',
+      ],
+      persianDigits: true,
     },
     beforeValidate: [sharedServiceSlug('services')],
   }),
@@ -128,6 +139,6 @@ export const ServiceCategories: CollectionConfig = {
       defaultSort: 'order',
       admin: { description: 'خدمات این دسته.' },
     },
-    seoGroup(),
+    seoGroup({ topic: ['{h1}', '{title}'] }),
   ],
 };

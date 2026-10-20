@@ -1,7 +1,12 @@
 import type { Block } from 'payload';
-import { richText } from 'payload/shared';
 
-import { faqsArray, proseText, proseTextarea, withRules } from '@/fields/factories';
+import {
+  faqsArray,
+  persianRichText,
+  proseText,
+  proseTextarea,
+  withRules,
+} from '@/fields/factories';
 import { richProseRule } from '@/fields/validators';
 
 /** Page and service body blocks (spec-data 5.5). Slugs are camelCase (spec-data P15). */
@@ -15,7 +20,7 @@ export const ContentBlock: Block = {
       type: 'richText',
       label: 'متن',
       required: true,
-      validate: withRules(richText, richProseRule),
+      validate: withRules(persianRichText, richProseRule),
     },
   ],
 };

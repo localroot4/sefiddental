@@ -8,8 +8,11 @@ import type {
   PayloadRequest,
   UploadConfig,
 } from 'payload';
+import { text } from 'payload/shared';
 
 import { hasRole, isStaff } from '@/access/roles';
+import { jalaliUpdatedAt, withRules } from '@/fields/factories';
+import { altRule } from '@/fields/validators';
 import { contentHooks } from '@/hooks/compose';
 import {
   blurPlaceholders,
@@ -131,6 +134,14 @@ export const IMAGE_SIZES: ImageSize[] = [
   ...pair('p1080', { width: 1080, height: 1350 }),
   ...pair('s640', { width: 640, height: 640 }),
   ...pair('s1080', { width: 1080, height: 1080 }),
+  // H14a: the share image, cropped around the focal point; JPEG for every social crawler.
+  {
+    name: 'og',
+    width: 1200,
+    height: 630,
+    formatOptions: { format: 'jpeg', options: { quality: 82 } },
+    admin: listHidden,
+  },
 ];
 
 /**
@@ -201,16 +212,20 @@ export const Media: CollectionConfig = {
     },
   },
   fields: [
+    // H34: Payload's upload fields whose labels are English literals; merged by name, no schema change.
+    { name: 'mimeType', type: 'text', label: 'نوع فایل' },
+    { name: 'thumbnailURL', type: 'text', label: 'نشانی پیش‌نمایش' },
+    { name: 'url', type: 'text', label: 'نشانی فایل' },
     {
       name: 'alt',
       type: 'text',
       label: 'متن جایگزین',
       required: true,
-      minLength: 3,
-      maxLength: 160,
+      // V-ALT (H6): 3 to 160 code points, Persian, not a file name; one message per fix.
+      validate: withRules(text, altRule),
       admin: {
         description:
-          'متن جایگزین: آنچه در تصویر دیده می‌شود، به فارسی و کوتاه. برای ویدیو، عنوان ویدیو.',
+          'متن جایگزین: آنچه در تصویر دیده می‌شود، به فارسی و کوتاه (۳ تا ۱۶۰ نویسه). برای ویدیو، عنوان ویدیو.',
       },
     },
     {
@@ -244,5 +259,6 @@ export const Media: CollectionConfig = {
       admin: { readOnly: true, disableListColumn: true, description: 'پیش‌نمایش محو برش ۴:۵.' },
     },
     { name: 'seedSource', type: 'text', unique: true, admin: { hidden: true } },
+    jalaliUpdatedAt,
   ],
 };

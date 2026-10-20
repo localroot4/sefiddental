@@ -34,6 +34,8 @@ const EDITOR_READS: CollectionSlug[] = [
   'articles',
   'article-categories',
   'tags',
+  // H7: the link drawer lists the guides; pages stay out of the editor's navigation.
+  'pages',
   'testimonials',
   'cases',
   'insurances',
@@ -73,7 +75,7 @@ describe('access matrix', () => {
     }
   });
 
-  it('AC2 editors read their collections and the pickers; never pages, redirects or system logs', async () => {
+  it('AC2 editors read their collections, the pickers and pages; never redirects or system logs', async () => {
     for (const collection of COLLECTIONS) {
       expect(await allowed(read(collection, editor)), collection).toBe(
         EDITOR_READS.includes(collection),
@@ -191,5 +193,37 @@ describe('access matrix', () => {
       user: editor,
     });
     expect(updated.role).toBe('editor');
+  });
+
+  it('AC7 editors read pages but never create, change or delete one (H7)', async () => {
+    const asEditor = { overrideAccess: false, user: editor } as const;
+    const page = (await payload.find({ collection: 'pages', limit: 1, depth: 0, ...asEditor }))
+      .docs[0];
+    expect(
+      await allowed(() =>
+        payload.create({
+          collection: 'pages',
+          data: { key: 'privacy', title: 'x' } as never,
+          draft: true,
+          ...asEditor,
+        }),
+      ),
+    ).toBe(false);
+    if (page) {
+      expect(
+        await allowed(() =>
+          payload.update({
+            collection: 'pages',
+            id: page.id,
+            data: { title: 'تغییر ویراستار' },
+            draft: true,
+            ...asEditor,
+          }),
+        ),
+      ).toBe(false);
+      expect(
+        await allowed(() => payload.delete({ collection: 'pages', id: page.id, ...asEditor })),
+      ).toBe(false);
+    }
   });
 });

@@ -52,9 +52,9 @@ export function normalizeLetters(input: string): string {
     .replace(/\u0643/g, '\u06A9');
 }
 
-const isArabicLetterOrMark = (c: string | undefined): boolean =>
+export const isArabicLetterOrMark = (c: string | undefined): boolean =>
   c !== undefined && ARABIC_SCRIPT.test(c) && LETTER_OR_MARK.test(c);
-const isArabicLetter = (c: string | undefined): boolean =>
+export const isArabicLetter = (c: string | undefined): boolean =>
   c !== undefined && ARABIC_SCRIPT.test(c) && LETTER.test(c);
 
 /**
