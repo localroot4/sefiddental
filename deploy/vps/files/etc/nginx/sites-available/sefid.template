@@ -155,7 +155,9 @@ server {
         if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
         proxy_pass http://sefid_app;
     }
-    location /admin {
+    # The admin (ADMIN_ROUTE in src/lib/paths.ts): its server functions post here. /admin is an
+    # ordinary unknown path and falls under location /.
+    location /giris {
         client_max_body_size 10m;
         if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
         proxy_pass http://sefid_app;
