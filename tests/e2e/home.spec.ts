@@ -35,7 +35,7 @@ async function ready(page: Page): Promise<void> {
 }
 
 /** The element of the current LCP candidate (the last buffered entry). */
-async function lcp(page: Page): Promise<{ tag: string; id: string; hero: boolean }> {
+async function lcp(page: Page): Promise<{ tag: string; id: string; hero: boolean; what: string }> {
   return page.evaluate(
     () =>
       new Promise((resolve) => {
@@ -46,6 +46,8 @@ async function lcp(page: Page): Promise<{ tag: string; id: string; hero: boolean
             tag: el?.tagName ?? '',
             id: el?.id ?? '',
             hero: Boolean(el?.closest('[data-home-section="hero"]')),
+            // Names the element in a failure message: tag, classes and the start of its text.
+            what: el ? `${el.tagName}.${el.className} "${el.textContent?.slice(0, 40)}"` : 'none',
           });
         }).observe({ type: 'largest-contentful-paint', buffered: true });
       }),
@@ -181,7 +183,7 @@ test('T-HOME4 LCP: a scrim text element under 744 px, the hero photo from 744 px
     await ready(page);
     await page.waitForTimeout(500);
     const element = await lcp(page);
-    const at = `${width}x${height}`;
+    const at = `${width}x${height}: ${element.what}`;
     expect(element.hero, at).toBe(true);
     if (kind === 'img') expect(element.tag, at).toBe('IMG');
     else expect(['hero-h1', 'hero-sub'], at).toContain(element.id);
