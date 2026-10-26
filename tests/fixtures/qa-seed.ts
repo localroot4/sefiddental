@@ -284,37 +284,11 @@ for (const key of ['guide-dental-fear', 'guide-aftercare']) {
       `qa-fixture: the seeded ${key} page is missing. Run the seeder first (npm run seed).`,
     );
   }
-  // shortcut: until wave 1b writes the guide copy, a guide without sources gets a sample body and
-  // source so it can publish; drop this once pages.yaml carries both for these guides.
-  const sample = page.sources?.length
-    ? {}
-    : {
-        blocks: [
-          {
-            blockType: 'content',
-            body: lexicalFrom(
-              `## ${MARK}: بخش اول\n${MARK}: متن نمونهٔ راهنما.\n\n## ${MARK}: بخش دوم\n${MARK}: پایان متن نمونه.`,
-            ),
-          },
-        ],
-        sources: [
-          {
-            title: `${MARK}: منبع نمونه`,
-            publisher: 'other',
-            url: 'https://example.org/qa-fixture',
-          },
-        ],
-      };
   try {
     await payload.update({
       collection: 'pages',
       id: page.id,
-      data: {
-        ...sample,
-        reviewer: dentist.id,
-        reviewedAt: '2026-10-15T00:00:00.000Z',
-        _status: 'published',
-      } as never,
+      data: { reviewer: dentist.id, reviewedAt: '2026-10-15T00:00:00.000Z', _status: 'published' },
       context,
     });
   } catch (err) {
