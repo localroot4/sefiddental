@@ -392,10 +392,11 @@ jobs:
           media2="$RUNNER_TEMP/seed-media-2"
           mkdir -p "$media" "$media2"
           copy_media() {
-            tar -C "$1" -czf "$RUNNER_TEMP/seed-media.tgz" .
-            # --no-overwrite-dir: the media folder keeps its mode (0750), not the archive's.
+            # The archive lists the folder's contents without a "./" entry, so the media folder
+            # keeps its mode (0750). GNU tar refuses --no-overwrite-dir with --skip-old-files.
+            tar -C "$1" -czf "$RUNNER_TEMP/seed-media.tgz" --null --no-recursion -T <(cd "$1" && find . -mindepth 1 -printf '%P\0')
             # shellcheck disable=SC2016 # expands on the server
-            remote 'sudo -u sefid tar -xzf - -C /var/lib/sefid/media --skip-old-files --no-overwrite-dir && echo "media files on the server: $(sudo find /var/lib/sefid/media -type f | wc -l)"' < "$RUNNER_TEMP/seed-media.tgz"
+            remote 'sudo -u sefid tar -xzf - -C /var/lib/sefid/media --skip-old-files && echo "media files on the server: $(sudo find /var/lib/sefid/media -type f | wc -l)"' < "$RUNNER_TEMP/seed-media.tgz"
           }
           summary() {
             grep -q 'seed: mode' "$1" || { echo "::error::The seeder printed no summary line ($2)."; exit 1; }
