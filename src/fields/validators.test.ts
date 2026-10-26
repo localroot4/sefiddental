@@ -170,6 +170,11 @@ describe('editorial validators (spec-data 5.3): one pass, one fail, exact messag
     expect(bannedRule('الف — ب')).toBe(
       'خط تیرهٔ بلند (—) مجاز نیست؛ از ویرگول، دونقطه یا جملهٔ تازه استفاده کنید.',
     );
+    // Two words that only touch across a space are not the banned word.
+    expect(bannedRule('مقدار بیشتر اثر بهتری ندارد')).toBe(true);
+    expect(bannedRule('ارزان ترین روکش')).toBe(
+      'واژهٔ «ارزان‌ترین» در متن مجاز نیست. یک واقعیت قابل‌بررسی جایش بنویسید.',
+    );
   });
 
   it('V-RICH (F17) markers and banned words inside rich text block publishing', () => {

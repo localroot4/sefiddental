@@ -144,15 +144,21 @@ export function markerRule(value: unknown): Rule {
 
 export const BANNED_WORDS = ['بهترین', 'بی‌نظیر', 'تضمینی', '۱۰۰٪ بدون درد', 'ارزان‌ترین', 'معجزه'];
 
-// Spaces and ZWNJ removed, so «بی نظیر», «بینظیر» and «بی‌نظیر» all match.
-const squash = (text: string): string =>
-  normalizePersian(text, { digits: 'fa' }).replace(/%/g, '٪').replace(/[\s‌]/g, '');
+const normalize = (text: string): string =>
+  normalizePersian(text, { digits: 'fa' }).replace(/%/g, '٪');
+
+// Spaces and ZWNJ allowed between letters, so «بی نظیر», «بینظیر» and «بی‌نظیر» all match; a
+// letter right after the word makes it another word («اثر بهتری ندارد» is not «بهترین»).
+const BANNED_PATTERNS = BANNED_WORDS.map((word) => {
+  const letters = [...normalize(word).replace(/[\s‌]/g, '')];
+  return [word, new RegExp(`${letters.join('[\\s‌]*')}(?!\\p{L})`, 'u')] as const;
+});
 
 /** V-BANNED: banned claims (compared after normalization) and the em dash. */
 export function bannedRule(value: unknown): Rule {
   if (typeof value !== 'string' || value === '') return true;
-  const text = squash(value);
-  const word = BANNED_WORDS.find((w) => text.includes(squash(w)));
+  const text = normalize(value);
+  const word = BANNED_PATTERNS.find(([, pattern]) => pattern.test(text))?.[0];
   if (word) return `واژهٔ «${word}» در متن مجاز نیست. یک واقعیت قابل‌بررسی جایش بنویسید.`;
   if (value.includes('—')) {
     return 'خط تیرهٔ بلند (—) مجاز نیست؛ از ویرگول، دونقطه یا جملهٔ تازه استفاده کنید.';
