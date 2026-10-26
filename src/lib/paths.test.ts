@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildPath, hubPath, isGuideKey, normalizePath, PAGE_KEYS, PAGE_PATHS } from './paths';
+import {
+  ADMIN_ROUTE,
+  buildPath,
+  hubPath,
+  isGuideKey,
+  normalizePath,
+  PAGE_KEYS,
+  PAGE_PATHS,
+} from './paths';
 
 describe('normalizePath', () => {
   it.each([
@@ -23,6 +31,18 @@ describe('normalizePath', () => {
     for (const input of ['/%', '/%%%', '/a%zz', '/خدمات/%D9', ...Object.values(PAGE_PATHS)]) {
       const once = normalizePath(input);
       expect(normalizePath(once)).toBe(once);
+    }
+  });
+});
+
+describe('ADMIN_ROUTE', () => {
+  it('A1 is /giris, already normalized; no page path sits under it or under the old /admin', () => {
+    expect(ADMIN_ROUTE).toBe('/giris');
+    expect(normalizePath(ADMIN_ROUTE)).toBe(ADMIN_ROUTE);
+    for (const path of Object.values(PAGE_PATHS)) {
+      for (const prefix of [ADMIN_ROUTE, '/admin']) {
+        expect(path === prefix || path.startsWith(`${prefix}/`), path).toBe(false);
+      }
     }
   });
 });

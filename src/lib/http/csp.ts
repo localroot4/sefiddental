@@ -130,7 +130,7 @@ export function buildCsp(input: {
       ['object-src', "'none'"],
       ['base-uri', "'none'"],
       ['form-action', "'self'"],
-      // Live preview (phase 4) frames public pages from /admin only while the draft cookie is set.
+      // Live preview (phase 4) frames public pages from the admin only while the draft cookie is set.
       ['frame-ancestors', draft ? "'self'" : "'none'"],
       ...tail,
     ]),

@@ -278,7 +278,7 @@ Request handling:
 | `MAINTENANCE_MODE` | no (default `off`) | no | `on`: public requests get the 503 maintenance response (2.12). |
 | `MAINTENANCE_RETRY_AFTER` | no (default `900`) | no | `Retry-After` seconds on the maintenance response. |
 | `CSP_MODE` | no (default `enforce`) | no | CSP of public pages. Keep `enforce`. |
-| `CSP_ADMIN_MODE` | no (default `enforce`) | no | CSP of `/admin`. Keep `enforce`; `report-only` is a debugging switch. |
+| `CSP_ADMIN_MODE` | no (default `enforce`) | no | CSP of `/giris`. Keep `enforce`; `report-only` is a debugging switch. |
 | `QA_ROUTES` | never set | no | `1` enables `/qa/*` (CI and local QA only). It also lets any client move the server's opening-hours clock with the `x-qa-hours-at` request header, which changes the callback line and the stored `callbackDueAt` of real bookings. Never set it in production; there the System status view shows it red. |
 | `LOG_LEVEL` | no (default `info`) | no | `fatal`, `error`, `warn`, `info`, `debug` or `trace`. Production: `info`. |
 
@@ -423,11 +423,14 @@ Node must also set the static set.
    path except `api/media` and static files. So nginx refuses an oversized
    body first, and only the paths that need a large body get one.
 
+   The admin is at `/giris` (`ADMIN_ROUTE` in `src/lib/paths.ts`); `/admin` is
+   an ordinary 404. The nginx location and the client steps use `/giris`.
+
    | Paths | `client_max_body_size` | Why |
    |---|---|---|
    | every path not listed below (server block), `/رزرو-نوبت` and `/اورژانس` included | `32k` | Public pages take no body; the two form pages answer 413 above 16 KiB. |
    | `/api/booking`, `/api/emergency`, `/api/events`, `/api/csp-report` | `32k` | The handlers answer 413 above 16 KiB (the events beacon above 2 KB). They sit under `/api/`, so they need their own location. |
-   | `/admin`, every other path under `/api/` | `10m` | Admin server functions post under `/admin`, Payload REST and sign-in under `/api/`. Above 10 MB the proxy would cut the body without an error; nginx answers 413 instead. |
+   | `/giris`, every other path under `/api/` | `10m` | Admin server functions post under `/giris`, Payload REST and sign-in under `/api/`. Above 10 MB the proxy would cut the body without an error; nginx answers 413 instead. |
    | `/api/media` | `64m` | Payload accepts uploads up to that size (`requestSizeLimit` in `src/payload.config.ts`); the nginx default of 1 MB rejects most images. |
 
    nginx (untested). A regex location wins over the `/api/` prefix, and the
@@ -450,7 +453,7 @@ Node must also set the static set.
            if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
            proxy_pass http://127.0.0.1:3000;
        }
-       location /admin {
+       location /giris {
            client_max_body_size 10m;
            if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
            proxy_pass http://127.0.0.1:3000;
@@ -465,9 +468,9 @@ Node must also set the static set.
    ```
 
    Remaining risk (finding 11): an unauthenticated POST of up to 10 MB to
-   `/admin` or any `/api/` path still sits in the proxy's memory before the
+   `/giris` or any `/api/` path still sits in the proxy's memory before the
    route answers. About 200 such POSTs in parallel hold 2 GB. To lower the
-   `10m`, first log `$content_length` of `/admin` and `/api/` POSTs on
+   `10m`, first log `$content_length` of `/giris` and `/api/` POSTs on
    staging during normal admin work. Then lower the nginx cap and
    `experimental.proxyClientMaxBodySize` together, with a margin.
 
@@ -500,9 +503,9 @@ Node must also set the static set.
    visitor shares the unknown key (2.4), and `Host` becomes the upstream
    name, which breaks the canonical redirect.
 
-5. Answer 400 for an invalid percent-escape under `/api` and `/admin`; Next
+5. Answer 400 for an invalid percent-escape under `/api` and `/giris`; Next
    answers a bare 500 first (SEC-S9). nginx (untested), inside every `/api`
-   and `/admin` location (item 3 shows all four):
+   and `/giris` location (item 3 shows all four):
 
    ```nginx
    if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
@@ -684,7 +687,7 @@ The file keeps the secret out of the crontab and the process list.
 In a container (for example Supercronic in the image), send the same request;
 the secret comes from the container environment.
 
-Check: the admin view «وضعیت سیستم» (`/admin/system-status`) shows the last
+Check: the admin view «وضعیت سیستم» (`/giris/system-status`) shows the last
 cron run less than two minutes ago.
 
 Verified on 2026-10-14 against the local standalone build: 401 without the
@@ -792,7 +795,7 @@ once per process. Turn off: `MAINTENANCE_MODE=off` and restart.
 | Public pages | 503, the static maintenance page, `Retry-After: MAINTENANCE_RETRY_AFTER` |
 | Public API | 503, JSON `{"status":"maintenance"}` |
 | `/api/health` | works; the body shows `"maintenance":true` |
-| `/admin`, sign-in, API calls with an admin session | work |
+| `/giris`, sign-in, API calls with an admin session | work |
 | Media files, `/_next/static`, fonts | work |
 | `/api/cron/tick` | 503: scheduled publishing and jobs wait |
 
@@ -980,7 +983,7 @@ action at a time, in this order:
    (section 4). Wait for its TTL.
 6. `cert`. It stops with a clear message while the name does not resolve to
    the server, so it never spends the Let's Encrypt rate limits.
-7. `status`. Then the client signs in at `https://new.sefiddental.ir/admin`
+7. `status`. Then the client signs in at `https://new.sefiddental.ir/giris`
    with the temporary password, sets up the TOTP code, changes the password,
    and opens «وضعیت سیستم». Every row of «پیکربندی» must be green except
    «ارسال ایمیل»: it stays red while no SMTP server is set (3.9).
@@ -1216,7 +1219,7 @@ packages: a red or slow `vps-smoke` can come from there (3.9).
 16. پنل DNS دامنهٔ `sefiddental.ir` را باز کنید. یک رکورد A بسازید: نام `new` و مقدار `2.144.23.111`. به رکوردهای دیگر دست نزنید.
 17. به استودیو خبر دهید. استودیو گواهی HTTPS را می‌گیرد.
 18. استودیو یک گذرواژهٔ موقت برای حساب مدیر، با تماس تلفنی به شما می‌گوید.
-19. نشانی `https://new.sefiddental.ir/admin` را باز کنید. با ایمیل خود و گذرواژهٔ موقت وارد شوید.
+19. نشانی `https://new.sefiddental.ir/giris` را باز کنید. با ایمیل خود و گذرواژهٔ موقت وارد شوید.
 20. کد دومرحله‌ای (TOTP) را با یک برنامهٔ Authenticator در گوشی راه بیندازید.
 21. گذرواژه را عوض کنید: دست‌کم ۱۲ نویسه، بدون بخش اول ایمیل. گذرواژهٔ تازه را به هیچ‌کس نگویید.
 22. در پنل مدیریت، «وضعیت سیستم» را باز کنید. از بخش «پیکربندی» عکس بگیرید و برای استودیو بفرستید.
@@ -1540,7 +1543,7 @@ loader that throws on a second `listen()` and `boot()` end to end).
    work over HTTPS only.
 4. Start the application. Open `https://sefiddental.ir/api/health`: it
    answers `{"status":"ok", ...}` with the release's `version`.
-5. Open `/admin` and create the first admin. Then remove `ALLOW_FIRST_USER`
+5. Open `/giris` and create the first admin. Then remove `ALLOW_FIRST_USER`
    and restart.
 6. Cron Jobs: every minute (`* * * * *`):
 
@@ -1624,7 +1627,7 @@ admin out and voids pending form tokens; it does not lose data.
 12. در «Domains» گزینهٔ «Force HTTPS Redirect» را روشن کنید.
 13. به «Setup Node.js App» برگردید. «Start App» را بزنید.
 14. نشانی `https://sefiddental.ir/api/health` را باز کنید. باید عبارت `"status":"ok"` را ببینید.
-15. نشانی `https://sefiddental.ir/admin` را باز کنید. حساب مدیر را با ایمیل کلینیک و یک گذرواژهٔ قوی بسازید.
+15. نشانی `https://sefiddental.ir/giris` را باز کنید. حساب مدیر را با ایمیل کلینیک و یک گذرواژهٔ قوی بسازید.
 16. در «Setup Node.js App» متغیر `ALLOW_FIRST_USER` را پاک کنید. «Save» و بعد «Restart» را بزنید.
 17. در «Cron Jobs» یک کار با زمان‌بندی «Once Per Minute» بسازید. دستور بخش 7.3 بند ۶ را در آن بگذارید.
 18. در پنل مدیریت سایت، «وضعیت سیستم» را باز کنید. از بخش «پیکربندی» عکس بگیرید و برای استودیو بفرستید.

@@ -10,6 +10,7 @@ import { Logo } from '@/admin/components/Logo';
 import { SystemStatusNavLink } from '@/admin/components/SystemStatusNavLink';
 
 import { parseEnv } from '@/lib/env';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 import styles from './SystemStatus.module.css';
 import { SystemStatusBody } from './SystemStatusBody';
@@ -87,7 +88,7 @@ const healthy: SystemStatusData = {
             id: 'clinic.postalCode',
             gapRow: 12,
             labelFa: 'کد پستی کلینیک',
-            adminUrl: '/admin/globals/clinic',
+            adminUrl: `${ADMIN_ROUTE}/globals/clinic`,
             fieldPath: 'address.postalCode',
           },
         ],
@@ -100,7 +101,7 @@ const healthy: SystemStatusData = {
             id: 'marker:services:4:intro',
             gapRow: null,
             labelFa: 'علامت NEEDS_CLIENT در «intro»',
-            adminUrl: '/admin/collections/services/4',
+            adminUrl: `${ADMIN_ROUTE}/collections/services/4`,
             fieldPath: 'intro',
           },
         ],
@@ -172,9 +173,9 @@ describe('System status view body (spec 13.3, freeze 29)', () => {
   });
 
   it('SS3 content gaps link to the admin field; markers carry the field path, never a value', () => {
-    expect(html).toContain('<a href="/admin/globals/clinic">کد پستی کلینیک</a>');
+    expect(html).toContain(`<a href="${ADMIN_ROUTE}/globals/clinic">کد پستی کلینیک</a>`);
     expect(html).toContain('ردیف ۱۲ فهرست کمبودها');
-    expect(html).toContain('<a href="/admin/collections/services/4">');
+    expect(html).toContain(`<a href="${ADMIN_ROUTE}/collections/services/4">`);
     expect(html).toContain('intro</bdi>');
   });
 
@@ -315,7 +316,7 @@ describe('System status data', () => {
 describe('admin nav link and graphics', () => {
   it('NL1 the nav link renders for an admin only', () => {
     expect(renderToStaticMarkup(<SystemStatusNavLink {...navProps(admin)} />)).toContain(
-      'href="/admin/system-status"',
+      `href="${ADMIN_ROUTE}/system-status"`,
     );
     const editor = { id: 2, role: 'editor' };
     expect(renderToStaticMarkup(<SystemStatusNavLink {...navProps(editor)} />)).toBe('');

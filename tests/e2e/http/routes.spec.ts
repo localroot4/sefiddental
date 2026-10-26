@@ -4,6 +4,7 @@
 import { expect, test, type APIRequestContext } from '@playwright/test';
 
 import { t } from '@/i18n/fa';
+import { ADMIN_ROUTE, PAGE_PATHS } from '@/lib/paths';
 
 import { jsonLdScripts, type JsonLdNode } from '../../helpers/jsonld';
 import { requireRoutes, routeExists } from '../../helpers/pending';
@@ -203,6 +204,8 @@ test.describe('robots.txt switches with ALLOW_INDEXING at run time (decision 39)
     expect(text).toMatch(/^Disallow: \/$/m);
     expect(text).not.toMatch(/^Allow:/m);
     expect(text).not.toMatch(/^Sitemap:/im);
+    expect(text).not.toContain(ADMIN_ROUTE);
+    expect(text).not.toContain('/admin');
   });
 
   test('T-RT13 the same artifact with ALLOW_INDEXING=true allows the site and names the sitemap', async ({
@@ -213,8 +216,10 @@ test.describe('robots.txt switches with ALLOW_INDEXING at run time (decision 39)
     const text = await response.text();
     expect(text).toMatch(/^Allow: \/$/m);
     expect(text).toMatch(/^Allow: \/api\/media\/file\/$/m);
-    expect(text).toMatch(/^Disallow: \/admin$/m);
     expect(text).toMatch(/^Disallow: \/api\/$/m);
+    // The admin answers X-Robots-Tag noindex (headers.spec.ts T-HD8); robots.txt never names it.
+    expect(text).not.toContain(ADMIN_ROUTE);
+    expect(text).not.toContain('/admin');
     expect(text).not.toMatch(/^Disallow: \/$/m);
     expect(text).toMatch(new RegExp(`^Sitemap: ${INDEXING_ORIGIN}/sitemap\\.xml$`, 'im'));
   });
@@ -449,4 +454,53 @@ test('T-RT17 the feed: the newest published posts, unique permalinks to their ca
       expect(headOf(await page.text()).canonical, `${item.link}: canonical`).toBe(item.link);
     }
   }).toPass({ timeout: 60_000 });
+});
+
+test('T-RT18 no public output names the admin route: feeds, page HTML, JSON-LD and every chunk', async ({
+  page,
+  request,
+}) => {
+  requireRoutes('sitemapIndex', 'rss', 'booking');
+  // The admin is found only by its path (src/lib/paths.ts ADMIN_ROUTE): a public file or script
+  // that names it would undo the move away from /admin.
+  for (const url of [
+    '/robots.txt',
+    `${INDEXING_ORIGIN}/robots.txt`,
+    `${INDEXING_ORIGIN}/sitemap.xml`,
+    ...SITEMAP_CHILDREN.map((name) => `${INDEXING_ORIGIN}/sitemaps/${name}.xml`),
+    '/rss.xml',
+  ]) {
+    expect(await (await request.get(url)).text(), url).not.toContain(ADMIN_ROUTE);
+  }
+  // Every same-origin response of the browser: documents, build chunks loaded at once or later,
+  // styles and API answers.
+  const bodies: Array<Promise<[string, string]>> = [];
+  page.on('response', (response) => {
+    const url = new URL(response.url());
+    if (url.origin !== APP_ORIGIN || (response.status() >= 300 && response.status() < 400)) return;
+    bodies.push(
+      response.text().then(
+        (text): [string, string] => [url.pathname, text],
+        (): [string, string] => [url.pathname, ''],
+      ),
+    );
+  });
+  for (const path of [
+    '/',
+    PAGE_PATHS.booking,
+    PAGE_PATHS['services-hub'],
+    '/admin',
+    `/no-such-page-${Date.now()}`,
+  ]) {
+    await page.goto(encodeURI(path));
+    await page.waitForLoadState('load');
+    // The canvas chunk and the overlay load after `load`; give them time to arrive.
+    await page.waitForTimeout(1500);
+  }
+  const seen = await Promise.all(bodies);
+  const scripts = seen.filter(
+    ([path]) => path.startsWith('/_next/static/') && path.endsWith('.js'),
+  );
+  expect(scripts.length, 'build chunks checked').toBeGreaterThan(3);
+  for (const [path, text] of seen) expect(text, path).not.toContain(ADMIN_ROUTE);
 });

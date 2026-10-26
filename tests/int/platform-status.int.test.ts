@@ -6,6 +6,7 @@ import type { ReactElement } from 'react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import type { SystemStatusData } from '@/admin/views/systemStatusData';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 import { getTestPayload, type StaffUser, staffUsers } from './helpers';
 
@@ -65,7 +66,7 @@ describe('System status view access and contents', () => {
     expect(data.gaps).not.toBeNull();
     for (const group of data.gaps!.groups) {
       for (const item of group.items)
-        expect(item.adminUrl).toMatch(/^\/admin\/(globals|collections)\//);
+        expect(item.adminUrl).toMatch(new RegExp(`^${ADMIN_ROUTE}/(globals|collections)/`));
     }
     // No secret reaches the view: settings are flags, never values.
     const serialized = JSON.stringify(data);

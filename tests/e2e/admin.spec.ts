@@ -16,7 +16,7 @@ import { cond, listHref, tabHref } from '@/admin/bookings/tabs';
 import { CALENDAR_PATH } from '@/admin/calendar';
 import { t } from '@/i18n/fa';
 import { adminText } from '@/i18n/fa-admin';
-import { buildPath } from '@/lib/paths';
+import { ADMIN_ROUTE, buildPath } from '@/lib/paths';
 import { persianSlug } from '@/lib/persianSlug';
 import { toPersianDigits } from '@/lib/persianText';
 
@@ -38,14 +38,14 @@ const NOT_FOUND_HEADING = 'موردی یافت نشد';
 
 /** Admin areas an editor must never open (acceptance; DATA 5.1; freeze 29). */
 const ADMIN_ONLY_VIEWS = [
-  '/admin/globals/clinic',
-  '/admin/globals/seo-defaults',
-  '/admin/globals/features',
-  '/admin/globals/notifier',
-  '/admin/globals/system-state',
-  '/admin/collections/users',
-  '/admin/collections/redirects',
-  '/admin/system-status',
+  `${ADMIN_ROUTE}/globals/clinic`,
+  `${ADMIN_ROUTE}/globals/seo-defaults`,
+  `${ADMIN_ROUTE}/globals/features`,
+  `${ADMIN_ROUTE}/globals/notifier`,
+  `${ADMIN_ROUTE}/globals/system-state`,
+  `${ADMIN_ROUTE}/collections/users`,
+  `${ADMIN_ROUTE}/collections/redirects`,
+  `${ADMIN_ROUTE}/system-status`,
 ] as const;
 
 async function restoreSession(page: Page, role: 'admin' | 'editor'): Promise<void> {
@@ -73,8 +73,8 @@ test('T-AD1 MFA: a fresh admin is forced through TOTP setup; the next sign-in as
   await expectPersianRtl(page);
 
   await page.context().clearCookies();
-  await page.goto('/admin');
-  await expect(page).toHaveURL(/\/admin\/login/);
+  await page.goto(ADMIN_ROUTE);
+  await expect(page).toHaveURL(new RegExp(`${ADMIN_ROUTE}/login`));
 
   expect(await signInToAdmin(page, admin)).toBe('verified');
   await expectPersianRtl(page);
@@ -90,11 +90,11 @@ test('T-AD2 an editor enrolls TOTP on the first sign-in', async ({ page }) => {
 
 test('T-AD2b the editor navigation has no admin-only entry', async ({ page }) => {
   await restoreSession(page, 'editor');
-  await page.goto('/admin');
+  await page.goto(ADMIN_ROUTE);
   const hrefs = await page
-    .locator('a[href^="/admin/"]')
+    .locator(`a[href^="${ADMIN_ROUTE}/"]`)
     .evaluateAll((links) => links.map((a) => a.getAttribute('href') ?? ''));
-  expect(hrefs).toContain('/admin/collections/tags');
+  expect(hrefs).toContain(`${ADMIN_ROUTE}/collections/tags`);
   for (const view of ADMIN_ONLY_VIEWS) {
     expect(hrefs.filter((href) => href.startsWith(view))).toEqual([]);
   }
@@ -111,7 +111,7 @@ test('T-AD3 an editor gets the not-found view on every admin-only area', async (
 
 test('T-AD4 an editor gets 403 from REST on globals and redirects', async ({ page }) => {
   await restoreSession(page, 'editor');
-  await page.goto('/admin');
+  await page.goto(ADMIN_ROUTE);
   // Positive control: the editor's session works for what editors may read.
   expect(await restStatus(page, '/api/tags?limit=1')).toBe(200);
   for (const path of ['/api/globals/clinic', '/api/globals/features', '/api/redirects']) {
@@ -123,7 +123,7 @@ test('T-AD5 an admin opens the same areas (control for T-AD3)', async ({ page })
   await restoreSession(page, 'admin');
   // system-state is hidden for everyone (freeze 18); the status view has its own test.
   const views = ADMIN_ONLY_VIEWS.filter(
-    (v) => v !== '/admin/globals/system-state' && v !== '/admin/system-status',
+    (v) => v !== `${ADMIN_ROUTE}/globals/system-state` && v !== `${ADMIN_ROUTE}/system-status`,
   );
   for (const view of views) {
     const response = await page.goto(view);
@@ -135,7 +135,7 @@ test('T-AD5 an admin opens the same areas (control for T-AD3)', async ({ page })
 test('T-AD6 an admin opens the System status view', async ({ page }) => {
   requireRoutes('statusView');
   await restoreSession(page, 'admin');
-  const response = await page.goto('/admin/system-status');
+  const response = await page.goto(`${ADMIN_ROUTE}/system-status`);
   expect(response?.status()).toBe(200);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('وضعیت سیستم');
 });
@@ -151,7 +151,7 @@ test.describe('slug change in the admin', () => {
     page,
   }) => {
     await restoreSession(page, 'admin');
-    await page.goto('/admin/collections/tags/create');
+    await page.goto(`${ADMIN_ROUTE}/collections/tags/create`);
     await page.locator('#field-title').fill(`برچسب آزمون ${suffix}`);
     await page.locator('#field-slug').fill(oldSlug);
     const created = page.waitForResponse(
@@ -159,7 +159,7 @@ test.describe('slug change in the admin', () => {
     );
     await page.locator('#action-save').click();
     expect((await created).status()).toBe(201);
-    await page.waitForURL(/\/admin\/collections\/tags\/\d+/);
+    await page.waitForURL(new RegExp(`${ADMIN_ROUTE}/collections/tags/\\d+`));
 
     await page.locator('#field-slug').fill(newSlug);
     const updated = page.waitForResponse(
@@ -208,7 +208,7 @@ test('T-AD9 admin login and dashboard screenshots at three widths, light and dar
         colorScheme: theme,
       });
       const page = await context.newPage();
-      await page.goto('/admin/login');
+      await page.goto(`${ADMIN_ROUTE}/login`);
       // Payload renders the theme from Sec-CH-Prefers-Color-Scheme. Headless Chromium sends the
       // emulated value only after it has seen Accept-CH once (its Critical-CH retry carried none),
       // so the first render here is light even in dark: load the page once more.
@@ -218,9 +218,11 @@ test('T-AD9 admin login and dashboard screenshots at three widths, light and dar
       await captureTemplate(page, testInfo, 'admin-login', theme);
 
       await restoreSession(page, 'admin');
-      await page.goto('/admin');
-      await expect(page).toHaveURL(/\/admin\/?$/);
-      await expect(page.locator('a[href="/admin/collections/tags"]').first()).toBeAttached();
+      await page.goto(ADMIN_ROUTE);
+      await expect(page).toHaveURL(new RegExp(`${ADMIN_ROUTE}/?$`));
+      await expect(
+        page.locator(`a[href="${ADMIN_ROUTE}/collections/tags"]`).first(),
+      ).toBeAttached();
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
       await captureTemplate(page, testInfo, 'admin-dashboard', theme);
       await context.close();
@@ -236,7 +238,7 @@ type QaBooking = { id: number; phone: string; phoneNational: string };
 /** Opens the admin as `role` and returns a REST helper bound to that session. */
 async function adminAs(page: Page, role: 'admin' | 'editor') {
   await restoreSession(page, role);
-  await page.goto('/admin');
+  await page.goto(ADMIN_ROUTE);
   return {
     create: async (data: Record<string, unknown>): Promise<QaBooking> => {
       const { status, body } = await page.evaluate(async (row) => {
@@ -259,7 +261,7 @@ async function adminAs(page: Page, role: 'admin' | 'editor') {
 }
 
 const token = (label: string) => `${label}${Date.now().toString(36)}`;
-const listOf = (search: string, href = '/admin/collections/bookings?') =>
+const listOf = (search: string, href = `${ADMIN_ROUTE}/collections/bookings?`) =>
   `${href}${href.endsWith('?') ? '' : '&'}search=${encodeURIComponent(search)}`;
 const tabs = (page: Page) => page.getByRole('navigation', { name: adminText('admin.tabs.nav') });
 const row = (page: Page, text: string) => page.locator('tbody tr', { hasText: text });
@@ -348,7 +350,7 @@ test('T-AD12 an editor closes a request only with a note; the history note names
     status: 'contacted',
   });
   const editor = await adminAs(page, 'editor');
-  await page.goto(`/admin/collections/bookings/${booking.id}`);
+  await page.goto(`${ADMIN_ROUTE}/collections/bookings/${booking.id}`);
   await page.locator('#field-status .rs__control').click();
   await page.locator('.rs__option', { hasText: 'انجام شد' }).click();
   await page.locator('#action-save').click();
@@ -489,7 +491,7 @@ test('T-AD16 the dashboard shows today’s numbers to admins and editors, linked
 
 test('T-AD17 the notifier test action answers per channel (all off in e2e)', async ({ page }) => {
   await adminAs(page, 'admin');
-  await page.goto('/admin/globals/notifier');
+  await page.goto(`${ADMIN_ROUTE}/globals/notifier`);
   await page.locator('#notifier-test').click();
   await expect(page.getByText('ایمیل: خاموش. تلگرام: خاموش. پیامک: خاموش.')).toBeVisible();
   // Editors get the 404 of the hidden global (admin-notify.md 7).
@@ -510,7 +512,7 @@ test('T-AD18 axe: the booking tabs, a booking’s contact block and the dashboar
   await expectNoA11yViolations(page, {
     include: `nav[aria-label="${adminText('admin.tabs.nav')}"]`,
   });
-  await page.goto(`/admin/collections/bookings/${booking.id}`);
+  await page.goto(`${ADMIN_ROUTE}/collections/bookings/${booking.id}`);
   await expect(page.locator(`a[href="tel:${booking.phone}"]`)).toBeVisible();
   await expectNoA11yViolations(page, { include: `a[href="tel:${booking.phone}"]` });
 });
@@ -539,7 +541,7 @@ test('T-AD19 bookings list and a booking at three widths, light and dark', async
       const first = page.locator('tbody tr a[href*="/collections/bookings/"]').first();
       if ((await first.count()) > 0) {
         await first.click();
-        await page.waitForURL(/\/admin\/collections\/bookings\/\d+/);
+        await page.waitForURL(new RegExp(`${ADMIN_ROUTE}/collections/bookings/\\d+`));
         await captureTemplate(page, testInfo, 'admin-booking', theme);
       }
       await context.close();
@@ -704,32 +706,36 @@ test('T-AD21 an editor reads no English: dashboard, lists, forms, a document eac
   await adminAs(page, 'editor');
   await expectPersianOnly(page, 'dashboard');
   for (const slug of EDITOR_COLLECTIONS) {
-    await page.goto(`/admin/collections/${slug}`);
+    await page.goto(`${ADMIN_ROUTE}/collections/${slug}`);
     await expectPersianOnly(page, `${slug} list`);
     const first = page.locator(`tbody tr a[href*="/collections/${slug}/"]`).first();
     if ((await first.count()) > 0) {
       await page.goto((await first.getAttribute('href')) ?? '');
       await expectPersianOnly(page, `${slug} document`);
     }
-    await page.goto(`/admin/collections/${slug}/create`);
+    await page.goto(`${ADMIN_ROUTE}/collections/${slug}/create`);
     await expectPersianOnly(page, `${slug} create`);
     // C15: the empty state of a search with no result.
-    await page.goto(`/admin/collections/${slug}?search=${encodeURIComponent('واژه‌ای‌که‌نیست')}`);
+    await page.goto(
+      `${ADMIN_ROUTE}/collections/${slug}?search=${encodeURIComponent('واژه‌ای‌که‌نیست')}`,
+    );
     await expectPersianOnly(page, `${slug} empty search`);
   }
   // The media preview sizes drawer names every size in English unless custom.scss hides it.
-  await page.goto(`/admin/collections/media/${await uploadPhoto(page, `عکس نمونهٔ ${faToken()}`)}`);
+  await page.goto(
+    `${ADMIN_ROUTE}/collections/media/${await uploadPhoto(page, `عکس نمونهٔ ${faToken()}`)}`,
+  );
   await page.locator('.file-field__previewSizes').click();
   await expect(page.locator('.preview-sizes')).toBeVisible();
   await expectPersianOnly(page, 'media preview sizes');
-  await page.goto('/admin/account');
+  await page.goto(`${ADMIN_ROUTE}/account`);
   await expectPersianOnly(page, 'account');
   for (const view of [CALENDAR_PATH, `${CALENDAR_PATH}?kind=failed`]) {
     await page.goto(view);
     await expectPersianOnly(page, view);
   }
   // C15: a refused publish shows the block messages in the toast and under the fields.
-  await page.goto('/admin/collections/articles/create');
+  await page.goto(`${ADMIN_ROUTE}/collections/articles/create`);
   await page.locator('#field-title').fill(`مقالهٔ ناقص ${faToken()}`);
   await page.locator('#action-save').click();
   await expect(page.locator('.payload-toast-container li').first()).toBeVisible();
@@ -750,12 +756,12 @@ test('T-AD21b the sign-in and TOTP setup pages are Persian too', async ({ browse
   // One more sign-in POST for this file (seven of the ten allowed in 15 minutes).
   const context = await browser.newContext({ baseURL: APP_ORIGIN, locale: 'fa-IR' });
   const visitor = await context.newPage();
-  await visitor.goto('/admin/login');
+  await visitor.goto(`${ADMIN_ROUTE}/login`);
   await expectPersianOnly(visitor, 'login');
   await visitor.locator('#field-email').fill(email);
   await visitor.locator('#field-password').fill(password);
   await visitor.locator('form button[type="submit"]').click();
-  await visitor.waitForURL(/\/admin\/setup-totp(\?|$)/);
+  await visitor.waitForURL(new RegExp(`${ADMIN_ROUTE}/setup-totp(\\?|$)`));
   await expectPersianOnly(visitor, 'setup-totp');
   await context.close();
   expect((await rest(page, 'DELETE', `/api/users/${created.body.doc.id}`)).status).toBe(200);
@@ -797,7 +803,7 @@ test('T-AD22 navigation by daily task; the calendar link after the groups (H32, 
   const adminLinks = await linkOrder();
   expect(adminLinks.slice(-2)).toEqual(['nav-content-calendar', 'nav-system-status']);
   // H32: no API tab on a document, for admins either (Payload has no per-role switch).
-  await page.goto('/admin/collections/tags');
+  await page.goto(`${ADMIN_ROUTE}/collections/tags`);
   const tag = page.locator('tbody tr a[href*="/collections/tags/"]').first();
   await page.goto((await tag.getAttribute('href')) ?? '');
   await expect(page.locator('.doc-tabs')).toBeVisible();
@@ -825,7 +831,7 @@ test('T-AD26 a scheduled publish shows on its day in the calendar, for the edito
   const id = draft.body.doc.id as number;
 
   // Payload's own scheduler: the publish menu, a day three days ahead, the first free time.
-  await page.goto(`/admin/collections/articles/${id}`);
+  await page.goto(`${ADMIN_ROUTE}/collections/articles/${id}`);
   await page.locator('#action-save-popup button').first().click();
   await page.locator('#schedule-publish').click();
   const drawer = page.locator('.schedule-publish');
@@ -854,12 +860,12 @@ test('T-AD26 a scheduled publish shows on its day in the calendar, for the edito
     await page.goto(`${CALENDAR_PATH}?kind=scheduled`);
     // The draft also sits in the drafts list; the dated row carries the kind.
     const row = page
-      .locator(`#content-calendar li:has(a[href="/admin/collections/articles/${id}"])`)
+      .locator(`#content-calendar li:has(a[href="${ADMIN_ROUTE}/collections/articles/${id}"])`)
       .filter({ hasText: adminText('admin.calendar.kind.scheduled') });
     await expect(row, role).toHaveCount(1);
     await expect(row, role).toContainText(title);
     // The dashboard widget lists the next seven days.
-    await page.goto('/admin');
+    await page.goto(ADMIN_ROUTE);
     await expect(
       page
         .getByRole('region', { name: adminText('admin.calendar.title') })
@@ -913,7 +919,7 @@ test('T-AD27 dashboard order: requests, calendar, SEO health; content gaps for a
     page
       .getByRole('region', { name: adminText('admin.gaps.heading') })
       .getByRole('link', { name: adminText('admin.gaps.open') }),
-  ).toHaveAttribute('href', '/admin/system-status#status-gaps');
+  ).toHaveAttribute('href', `${ADMIN_ROUTE}/system-status#status-gaps`);
 
   await adminAs(page, 'editor');
   await expect(page.getByRole('region', { name: adminText('admin.seo.heading') })).toBeVisible();
@@ -930,7 +936,7 @@ test('T-AD31 an editor adds a case: two photos, written consent, publish (admin 
   await uploadPhoto(page, `عکس بعد نمونهٔ ${name}`);
   const title = `نمونهٔ آزمون ${name}`;
 
-  await page.goto('/admin/collections/cases/create');
+  await page.goto(`${ADMIN_ROUTE}/collections/cases/create`);
   await page.locator('#field-title').fill(title);
   await page.locator('#field-service .rs__control').click();
   await page.locator('.rs__option').first().click();
@@ -979,7 +985,7 @@ test('T-AD32 an editor records an emergency outcome with a note', async ({ page 
     triage: ['swelling'],
   });
   const editor = await adminAs(page, 'editor');
-  await page.goto(`/admin/collections/bookings/${booking.id}`);
+  await page.goto(`${ADMIN_ROUTE}/collections/bookings/${booking.id}`);
   await page.locator('#field-emergencyOutcome .rs__control').click();
   await page.locator('.rs__option', { hasText: 'واقعاً فوری بود' }).click();
   await page.locator('#field-status .rs__control').click();
@@ -1010,7 +1016,7 @@ test('T-AD33 axe: the calendar view, the three new widgets, the checklist and th
   }
   await page.goto(CALENDAR_PATH);
   await expectNoA11yViolations(page, { include: '#content-calendar' });
-  await page.goto('/admin/collections/articles/create');
+  await page.goto(`${ADMIN_ROUTE}/collections/articles/create`);
   for (const id of ['article-checklist-heading', 'serp-preview-heading']) {
     // Payload renders a group's fields only once it nears the viewport.
     if (id === 'serp-preview-heading') await page.locator('#field-seo').scrollIntoViewIfNeeded();
@@ -1035,7 +1041,7 @@ test('T-AD34 the dashboard, the calendar and an article form at three widths, li
       });
       const page = await context.newPage();
       await restoreSession(page, 'editor');
-      await page.goto('/admin');
+      await page.goto(ADMIN_ROUTE);
       // As T-AD9: the first render may miss the emulated theme hint.
       await page.reload();
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
@@ -1046,7 +1052,7 @@ test('T-AD34 the dashboard, the calendar and an article form at three widths, li
       await page.goto(CALENDAR_PATH);
       await expect(page.locator('#content-calendar')).toBeVisible();
       await captureTemplate(page, testInfo, 'admin-calendar', theme);
-      await page.goto('/admin/collections/articles/create');
+      await page.goto(`${ADMIN_ROUTE}/collections/articles/create`);
       await expect(
         page.locator('section[aria-labelledby="article-checklist-heading"]'),
       ).toBeVisible();

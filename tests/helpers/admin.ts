@@ -1,6 +1,6 @@
 // Admin sign-in for e2e, including the TOTP step of payload-totp (freeze decision 9). With
-// `forceSetup: true` the first sign-in of an account goes to /admin/setup-totp (enrollment);
-// every later sign-in goes to /admin/verify-totp. Codes come from otpauth with the plugin's
+// `forceSetup: true` the first sign-in of an account goes to <ADMIN_ROUTE>/setup-totp
+// (enrollment); every later sign-in goes to <ADMIN_ROUTE>/verify-totp. Codes come from otpauth with the plugin's
 // parameters, so the spec never reads a phone.
 import { chmodSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -8,6 +8,8 @@ import path from 'node:path';
 import type { Page } from '@playwright/test';
 import { Secret, TOTP } from 'otpauth';
 import { z } from 'zod';
+
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 import { E2E_TOTP_FILE, type E2eAccount } from './users';
 
@@ -54,18 +56,20 @@ async function enterCode(page: Page, secret: string): Promise<void> {
 export type AdminSignIn = 'enrolled' | 'verified';
 
 /**
- * Signs in through /admin/login and completes the TOTP step. Returns 'enrolled' when this
+ * Signs in through <ADMIN_ROUTE>/login and completes the TOTP step. Returns 'enrolled' when this
  * sign-in set TOTP up, 'verified' when the account already had it. Ends on the dashboard.
  */
 export async function signInToAdmin(page: Page, account: E2eAccount): Promise<AdminSignIn> {
-  await page.goto('/admin/login');
+  await page.goto(`${ADMIN_ROUTE}/login`);
   await page.locator('#field-email').fill(account.email);
   await page.locator('#field-password').fill(account.password);
   await page.locator('form button[type="submit"]').click();
-  await page.waitForURL((url) => /^\/admin\/(setup|verify)-totp$/.test(url.pathname));
+  await page.waitForURL((url) =>
+    [`${ADMIN_ROUTE}/setup-totp`, `${ADMIN_ROUTE}/verify-totp`].includes(url.pathname),
+  );
 
   let step: AdminSignIn;
-  if (new URL(page.url()).pathname === '/admin/setup-totp') {
+  if (new URL(page.url()).pathname === `${ADMIN_ROUTE}/setup-totp`) {
     const secret = await page.locator('input[name="secret"]').inputValue();
     saveSecret(account.email, secret);
     await enterCode(page, secret);
@@ -80,6 +84,6 @@ export async function signInToAdmin(page: Page, account: E2eAccount): Promise<Ad
     await enterCode(page, secret);
     step = 'verified';
   }
-  await page.waitForURL((url) => /^\/admin\/?$/.test(url.pathname));
+  await page.waitForURL((url) => url.pathname.replace(/\/$/, '') === ADMIN_ROUTE);
   return step;
 }

@@ -89,8 +89,9 @@ export function pageRobots(input: {
 }
 
 /**
- * robots.txt content (spec 9.5): everything disallowed unless ALLOW_INDEXING; then the admin and
- * the API are blocked, Payload's media files stay crawlable unless media lives on another origin.
+ * robots.txt content (spec 9.5): everything disallowed unless ALLOW_INDEXING; then the API is
+ * blocked, Payload's media files stay crawlable unless media lives on another origin. The admin is
+ * never named here (a public file would reveal its path): it answers X-Robots-Tag noindex instead.
  */
 export function robotsTxt(
   env: Pick<ServerEnv, 'allowIndexing' | 'mediaPublicOrigin'>,
@@ -100,7 +101,7 @@ export function robotsTxt(
     rules: {
       userAgent: '*',
       allow: env.mediaPublicOrigin ? ['/'] : ['/', '/api/media/file/'],
-      disallow: ['/admin', '/api/'],
+      disallow: ['/api/'],
     },
     sitemap: absoluteUrl('/sitemap.xml'),
   };

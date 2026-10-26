@@ -6,6 +6,8 @@
 // docs/deploy.md has the reverse proxy set the static set on every response.
 import { expect, test, type APIResponse } from '@playwright/test';
 
+import { ADMIN_ROUTE } from '@/lib/paths';
+
 import { requireRoutes } from '../../helpers/pending';
 
 const STATIC_SET: Record<string, string> = {
@@ -162,9 +164,9 @@ test('T-HD7b HTML and JSON on paths the proxy skips cannot be framed (CSP-3)', a
 test('T-HD8 admin HTML: static set, nonce scripts, never unsafe-eval, DENY, noindex', async ({
   request,
 }) => {
-  const response = await request.get('/admin/login');
+  const response = await request.get(`${ADMIN_ROUTE}/login`);
   expect(response.status()).toBe(200);
-  expectStaticSet(response, '/admin/login');
+  expectStaticSet(response, `${ADMIN_ROUTE}/login`);
   const headers = response.headers();
   // CSP_ADMIN_MODE defaults to enforce since integration B (zero admin violations).
   const csp = headers['content-security-policy'] ?? '';
@@ -181,4 +183,39 @@ test('T-HD9 feeds: robots.txt carries the static set and the API policy', async 
   expectStaticSet(response, '/robots.txt');
   expect(response.headers()['content-security-policy']).toBe(API_CSP);
   expect(response.headers()['x-frame-options']).toBe('DENY');
+});
+
+test('T-HD10 the old /admin paths answer exactly like an unknown path: branded 404, no redirect', async ({
+  request,
+}) => {
+  // Every header, with the per-response nonce, request id and date masked.
+  const shape = (response: APIResponse) =>
+    Object.entries(response.headers())
+      .filter(([name]) => name !== 'date' && name !== 'content-length')
+      .map(([name, value]) => [
+        name,
+        value.replace(/'nonce-[^']+'/g, 'NONCE').replace(/^[0-9a-f-]{36}$/, 'ID'),
+      ])
+      .sort();
+  const title = (html: string) => /<title>([^<]*)<\/title>/.exec(html)?.[1];
+  const heading = (html: string) => /<h1\b[^>]*>(.*?)<\/h1>/s.exec(html)?.[1];
+  const unknown = await request.get(`/no-such-page-${Date.now()}`, { maxRedirects: 0 });
+  const unknownHtml = await unknown.text();
+  expect(unknown.status()).toBe(404);
+  expect(heading(unknownHtml)).toBeTruthy();
+  for (const path of [
+    '/admin',
+    '/admin/login',
+    '/admin/create-first-user',
+    '/admin/collections/users',
+  ]) {
+    const response = await request.get(path, { maxRedirects: 0 });
+    const html = await response.text();
+    expect(response.status(), path).toBe(404);
+    expect(response.headers()['location'], path).toBeUndefined();
+    expect(shape(response), path).toEqual(shape(unknown));
+    expect(title(html), path).toBe(title(unknownHtml));
+    expect(heading(html), path).toBe(heading(unknownHtml));
+    expect(html, path).not.toContain(ADMIN_ROUTE);
+  }
 });

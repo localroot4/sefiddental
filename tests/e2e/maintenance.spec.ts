@@ -2,6 +2,8 @@
 // playwright.config.ts starts on E2E_PORT + 1 with MAINTENANCE_MODE=on.
 import { expect, test } from '@playwright/test';
 
+import { ADMIN_ROUTE } from '@/lib/paths';
+
 import { requireRoutes } from '../helpers/pending';
 import { MAINTENANCE_ORIGIN } from '../helpers/servers';
 
@@ -25,6 +27,6 @@ test.describe('maintenance mode', () => {
     expect(api.status()).toBe(503);
     expect(await api.json()).toEqual({ status: 'maintenance' });
     expect((await request.get('/api/health')).status()).toBe(200);
-    expect((await request.get('/admin/login')).status()).toBe(200);
+    expect((await request.get(`${ADMIN_ROUTE}/login`)).status()).toBe(200);
   });
 });

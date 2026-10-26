@@ -90,7 +90,7 @@ describe('buildCsp public pages (spec 7.2)', () => {
     expect(d.get('report-to')).toEqual(['csp']);
   });
 
-  it('CSP4 draft cookie lets /admin frame the page (live preview)', () => {
+  it('CSP4 draft cookie lets the admin frame the page (live preview)', () => {
     expect(directives(page(testEnv(), { draft: true }).value).get('frame-ancestors')).toEqual([
       "'self'",
     ]);

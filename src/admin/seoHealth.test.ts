@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { ADMIN_ROUTE } from '@/lib/paths';
+
 import { loadSeoHealth, seoProblems, seoSpecOf, type SeoSpec } from './seoHealth';
 
 // The collection configs read the environment while their modules load.
@@ -87,14 +89,19 @@ describe('SEO health (H23, H33)', () => {
     expect(report).toEqual({
       title: [],
       description: [
-        { collection: 'articles', id: 1, title: 'بی‌توضیح', href: '/admin/collections/articles/1' },
+        {
+          collection: 'articles',
+          id: 1,
+          title: 'بی‌توضیح',
+          href: `${ADMIN_ROUTE}/collections/articles/1`,
+        },
       ],
       byline: [
         {
           collection: 'articles',
           id: 2,
           title: 'بازبین رفته',
-          href: '/admin/collections/articles/2',
+          href: `${ADMIN_ROUTE}/collections/articles/2`,
         },
       ],
     });

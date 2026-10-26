@@ -9,6 +9,7 @@ import { loadCalendar } from '@/admin/calendar';
 import { adminServerFunctions } from '@/admin/schedulePublish';
 import { adminText } from '@/i18n/fa-admin';
 import { runCronTick } from '@/lib/http/cron';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 import { getTestPayload, type StaffUser, staffUsers, unique } from './helpers';
 
@@ -52,7 +53,7 @@ describe('editorial calendar on the job queue', () => {
     expect(items.find((i) => i.id === String(later.id))).toMatchObject({
       kind: 'scheduled',
       title: later.title,
-      href: `/admin/collections/articles/${later.id}`,
+      href: `${ADMIN_ROUTE}/collections/articles/${later.id}`,
     });
     const failed = items.find((i) => i.id === String(broken.id));
     expect(failed).toMatchObject({ kind: 'failed', title: broken.title });

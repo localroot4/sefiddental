@@ -1,4 +1,5 @@
 import type { AdminMessageKey } from '@/i18n/fa-admin';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 /**
  * The booking list's views (freeze G15, D-2): shared link tabs, not per-user query presets. A
@@ -18,7 +19,7 @@ interface BookingTab {
   where: readonly Pair[];
 }
 
-const BOOKINGS_LIST_PATH = '/admin/collections/bookings';
+const BOOKINGS_LIST_PATH = `${ADMIN_ROUTE}/collections/bookings`;
 
 type Operator = 'equals' | 'in' | 'not_in' | 'exists' | 'greater_than_equal';
 

@@ -51,7 +51,7 @@ section 6 (A-J) plus K and L defined below.
 | `/مقالات/دسته/{slug}` | article category | T-articles | noindex, follow until the category has 5 published articles |
 | `/مقالات/برچسب/{slug}` | article tag | T-articles | noindex, follow |
 | `/حریم-خصوصی` | حریم خصوصی | T-legal | yes |
-| `/admin` | admin | Payload | blocked in robots |
+| `/giris` (`ADMIN_ROUTE`) | admin | Payload | not in robots.txt (a public file would name it); `X-Robots-Tag: noindex, nofollow` on every admin response. `/admin` is an ordinary unknown path (404) |
 | `/api/health` | health | system | no |
 
 URL rules:

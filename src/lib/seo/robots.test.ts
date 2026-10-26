@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { stubSiteEnv } from '@/lib/http/testEnv';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 const load = () => import('@/lib/seo/robots');
 const LAMINATE =
@@ -141,10 +142,11 @@ describe('robotsTxt (spec 9.5)', () => {
     });
   });
 
-  it('RT2 indexing on: admin and API blocked, media files allowed, sitemap absolute', async () => {
+  it('RT2 indexing on: API blocked, media files allowed, sitemap absolute, no admin path', async () => {
     const { robotsTxt } = await load();
-    expect(robotsTxt({ allowIndexing: true, mediaPublicOrigin: null })).toEqual({
-      rules: { userAgent: '*', allow: ['/', '/api/media/file/'], disallow: ['/admin', '/api/'] },
+    const on = robotsTxt({ allowIndexing: true, mediaPublicOrigin: null });
+    expect(on).toEqual({
+      rules: { userAgent: '*', allow: ['/', '/api/media/file/'], disallow: ['/api/'] },
       sitemap: 'https://sefiddental.ir/sitemap.xml',
     });
     expect(
@@ -152,7 +154,9 @@ describe('robotsTxt (spec 9.5)', () => {
     ).toEqual({
       userAgent: '*',
       allow: ['/'],
-      disallow: ['/admin', '/api/'],
+      disallow: ['/api/'],
     });
+    // The admin answers X-Robots-Tag noindex; naming it in a public file would reveal it.
+    for (const path of [ADMIN_ROUTE, '/admin']) expect(JSON.stringify(on)).not.toContain(path);
   });
 });

@@ -1,5 +1,5 @@
 import type { PathKind } from '@/lib/http/classify';
-import { PAGE_PATHS, type PageKey } from '@/lib/paths';
+import { ADMIN_ROUTE, PAGE_PATHS, type PageKey } from '@/lib/paths';
 
 /*
  * Path rules of the proxy. Every `pathname` argument is the routed form, normalizePath() output
@@ -8,7 +8,7 @@ import { PAGE_PATHS, type PageKey } from '@/lib/paths';
  */
 
 /** Payload's first-user screen and endpoint: closed for every method unless ALLOW_FIRST_USER. */
-const FIRST_USER_PATHS = new Set(['/admin/create-first-user', '/api/users/first-register']);
+const FIRST_USER_PATHS = new Set([`${ADMIN_ROUTE}/create-first-user`, '/api/users/first-register']);
 
 /**
  * Payload's e-mail verification endpoint. Verification is off, so every call is a 500 with an

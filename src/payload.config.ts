@@ -14,6 +14,7 @@ import { globals } from './globals';
 import { keepValidationDetails } from './hooks/errors';
 import { adminText, PAYLOAD_FA_OVERRIDES } from './i18n/fa-admin';
 import { readEnv } from './lib/env';
+import { ADMIN_ROUTE } from './lib/paths';
 import { log } from './lib/log/logger';
 import { setErrorAlertSink } from './lib/log/requestError';
 import { limitedSharp } from './lib/media/limitedSharp';
@@ -34,6 +35,8 @@ export default buildConfig({
   // The site's pino logger: JSON lines, redaction, 4xx errors at warn (Lane P, spec 12.1).
   logger: log,
   graphQL: { disable: true },
+  // The admin's own links, redirects, TOTP views and the import map folder follow routes.admin.
+  routes: { admin: ADMIN_ROUTE },
   admin: {
     user: 'users',
     avatar: 'default',

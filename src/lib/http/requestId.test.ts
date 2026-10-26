@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { requestIdFrom, sanitizeRequestHeaders } from '@/lib/http/requestId';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
@@ -33,7 +34,7 @@ describe('sanitizeRequestHeaders', () => {
       'content-security-policy': "script-src 'nonce-evil'",
       'content-security-policy-report-only': "script-src 'nonce-evil'",
       'x-sefid-form-sid': 'forged-sid',
-      'x-pathname': '/admin',
+      'x-pathname': ADMIN_ROUTE,
       'x-request-id': '<script>',
       'x-internal-token': 'guess',
       cookie: 'payload-token=abc',

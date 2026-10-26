@@ -3,6 +3,7 @@
 import { expect, test } from '@playwright/test';
 
 import { t } from '@/i18n/fa';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 import { watchConsoleErrors } from '../helpers/console';
 
@@ -16,9 +17,11 @@ test('T-SM1 home renders with lang fa and dir rtl, without console errors', asyn
   expect(consoleErrors()).toEqual([]);
 });
 
-test('T-SM2 admin login page renders in Persian, right to left', async ({ page }) => {
-  const response = await page.goto('/admin/login');
+test('T-SM2 the admin route shows the sign-in, in Persian, right to left', async ({ page }) => {
+  const response = await page.goto(ADMIN_ROUTE);
   expect(response?.status()).toBe(200);
+  // Payload sends a signed-out visitor on to the sign-in view from the streamed page.
+  await expect(page).toHaveURL((url) => url.pathname === `${ADMIN_ROUTE}/login`);
   // The login form renders on the client (the server HTML of the view has an empty body).
   await expect(page.locator('#field-email')).toBeVisible();
   await expect(page.locator('#field-password')).toBeVisible();

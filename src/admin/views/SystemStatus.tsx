@@ -14,7 +14,7 @@ import { collectSystemStatus } from './systemStatusData';
 // passed the TOTP code may see the status; everyone else gets the same 404 as an unknown page.
 const verifiedAdmin = totpAccess(({ req }: { req: PayloadRequest }) => hasRole(req.user, 'admin'));
 
-/** `/admin/system-status` (freeze 29): admin only, inside Payload's default template and nav. */
+/** `<ADMIN_ROUTE>/system-status` (freeze 29): admin only, inside Payload's default template and nav. */
 export async function SystemStatusView(props: AdminViewServerProps) {
   const { initPageResult, params, searchParams, user } = props;
   const { req } = initPageResult;

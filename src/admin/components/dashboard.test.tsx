@@ -8,6 +8,7 @@ import type { CalendarItem } from '@/admin/calendar';
 import { EditorialCalendar } from '@/admin/views/EditorialCalendar';
 import type { ContentGapsReport } from '@/content-gaps/registry';
 import { adminText } from '@/i18n/fa-admin';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 import { BookingsTodayBody } from './BookingsToday';
 import { CalendarNavLink } from './CalendarNavLink';
@@ -51,7 +52,7 @@ const item = (
   collection: 'articles',
   id: title,
   title,
-  href: `/admin/collections/articles/${title}`,
+  href: `${ADMIN_ROUTE}/collections/articles/${title}`,
   ...extra,
 });
 
@@ -107,10 +108,10 @@ describe('editorial calendar UI (H12, H13)', () => {
     expect(html).toContain('>تقویم محتوا</h2>');
     expect(text(html)).toContain('۱ انتشار ناموفق');
     expect(hrefs(html)).toEqual([
-      '/admin/content-calendar?kind=failed',
-      '/admin/collections/articles/لغو',
-      '/admin/collections/articles/زمان‌بندی‌شده',
-      '/admin/content-calendar',
+      `${ADMIN_ROUTE}/content-calendar?kind=failed`,
+      `${ADMIN_ROUTE}/collections/articles/لغو`,
+      `${ADMIN_ROUTE}/collections/articles/زمان‌بندی‌شده`,
+      `${ADMIN_ROUTE}/content-calendar`,
     ]);
     expect(latin(html)).toEqual([]);
     const quiet = renderToStaticMarkup(<ContentCalendarBody items={[]} now={NOW} />);
@@ -185,7 +186,7 @@ describe('SEO health and content gaps (H33)', () => {
       collection: 'articles',
       id,
       title: `مقالهٔ ${id}`,
-      href: `/admin/collections/articles/${id}`,
+      href: `${ADMIN_ROUTE}/collections/articles/${id}`,
     });
     const html = renderToStaticMarkup(
       <SeoHealthBody
@@ -196,7 +197,9 @@ describe('SEO health and content gaps (H33)', () => {
     expect(text(html)).toContain('توضیح سئو خالی است');
     expect(text(html)).not.toContain('بیش از ۶۰ نویسه');
     expect(text(html)).toContain('و ۲ مورد دیگر');
-    expect(hrefs(html)).toEqual([1, 2, 3, 9].map((id) => `/admin/collections/articles/${id}`));
+    expect(hrefs(html)).toEqual(
+      [1, 2, 3, 9].map((id) => `${ADMIN_ROUTE}/collections/articles/${id}`),
+    );
     expect(latin(html)).toEqual([]);
     const clear = { title: [], description: [], byline: [] };
     expect(text(renderToStaticMarkup(<SeoHealthBody report={clear} />))).toContain(
@@ -219,7 +222,7 @@ describe('SEO health and content gaps (H33)', () => {
     const html = renderToStaticMarkup(<ContentGapsSummaryBody report={report} />);
     expect(text(html)).toContain('۳ مورد باز');
     expect(text(html)).toContain('منتظر اطلاعات کلینیک');
-    expect(hrefs(html)).toEqual(['/admin/system-status#status-gaps']);
+    expect(hrefs(html)).toEqual([`${ADMIN_ROUTE}/system-status#status-gaps`]);
     expect(text(renderToStaticMarkup(<ContentGapsSummaryBody report={null} />))).toContain(
       'نامشخص',
     );
@@ -265,10 +268,10 @@ describe('SEO health and content gaps (H33)', () => {
     const editor = dashboardProps(payload, { ...EDITOR, _strategy: 'totp' });
     const seo = renderToStaticMarkup((await SeoHealth(editor))!);
     expect(text(seo)).toContain(adminText('admin.seo.description'));
-    expect(hrefs(seo)).toContain('/admin/collections/articles/9');
+    expect(hrefs(seo)).toContain(`${ADMIN_ROUTE}/collections/articles/9`);
     const calendar = renderToStaticMarkup((await ContentCalendar(editor))!);
     expect(text(calendar)).toContain('مقالهٔ زمان‌بندی‌شده');
-    expect(hrefs(calendar)).toContain('/admin/collections/articles/7');
+    expect(hrefs(calendar)).toContain(`${ADMIN_ROUTE}/collections/articles/7`);
     // The editor's navigation hides services, so neither widget reads them; an admin's does not.
     const read = () => payload.find.mock.calls.map(([args]) => args.collection);
     expect(read()).not.toContain('services');
@@ -303,7 +306,7 @@ describe('SEO health and content gaps (H33)', () => {
     expect(CalendarNavLink({ user: { role: 'editor' } } as never)).not.toBeNull();
     expect(CalendarNavLink({ user: null } as never)).toBeNull();
     const html = renderToStaticMarkup(CalendarNavLink({ user: { role: 'admin' } } as never)!);
-    expect(hrefs(html)).toEqual(['/admin/content-calendar']);
+    expect(hrefs(html)).toEqual([`${ADMIN_ROUTE}/content-calendar`]);
     expect(text(html)).toContain('تقویم محتوا');
   });
 });

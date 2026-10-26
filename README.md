@@ -2,7 +2,9 @@
 
 Custom Persian (RTL) website for کلینیک دندانپزشکی سفید, a digital dental clinic in south Tehran.
 Next.js 16.4 serves light, SEO-first content pages and a quality-tiered WebGL scroll experience on home.
-Payload CMS 3.92 runs inside the same app at `/admin`, on PostgreSQL (production) or SQLite (tests, local).
+Payload CMS 3.92 runs inside the same app at `/giris`, on PostgreSQL (production) or SQLite (tests, local).
+The admin path is `ADMIN_ROUTE` in `src/lib/paths.ts`; `/admin` answers the site's 404 like any
+unknown path, and no public file (robots.txt, sitemaps, pages, scripts) names the admin path.
 
 ## Prerequisites
 
@@ -67,11 +69,11 @@ Payload CMS 3.92 runs inside the same app at `/admin`, on PostgreSQL (production
 
 5. Create the first admin.
    1. Start the app with `npm run dev`.
-   2. Open `http://localhost:3000/admin/create-first-user` and create the account. The password
+   2. Open `http://localhost:3000/giris/create-first-user` and create the account. The password
       needs at least 12 characters and must not contain the part of the email before `@`. The
       first account is always an admin.
-   3. Enroll TOTP on `/admin/setup-totp`: scan the QR code with an authenticator app and enter a
-      code. Every later sign-in asks for a code on `/admin/verify-totp`.
+   3. Enroll TOTP on `/giris/setup-totp`: scan the QR code with an authenticator app and enter a
+      code. Every later sign-in asks for a code on `/giris/verify-totp`.
    4. Set `ALLOW_FIRST_USER=false` in `.env` (or delete the line) and restart `npm run dev`. The
       first-user screen and `POST /api/users/first-register` then answer 404.
 
@@ -83,7 +85,7 @@ Payload CMS 3.92 runs inside the same app at `/admin`, on PostgreSQL (production
 npm run dev
 ```
 
-- Site: `http://localhost:3000`. Admin: `/admin`. System status: `/admin/system-status`.
+- Site: `http://localhost:3000`. Admin: `/giris`. System status: `/giris/system-status`.
   Health: `/api/health`.
 - On home, `?debug=1` shows the developer overlay (fps, tier, DPR, memory) and `?tier=0` to
   `?tier=3` fixes the quality tier.
@@ -116,7 +118,7 @@ npm run dev
 | `ci:local` | The local CI chain: lint, format, types, knip, bidi check, tests, time zones, build, prerender check, `db:e2e`, e2e, bundle, Lighthouse |
 | `payload` | The Payload CLI |
 | `generate:types` | Writes `src/payload-types.ts` |
-| `generate:importmap` | Writes `src/app/(payload)/admin/importMap.js` |
+| `generate:importmap` | Writes `src/app/(payload)/giris/importMap.js` |
 | `migrate` | Applies pending migrations to `DATABASE_URL` |
 | `migrate:create` | Writes a migration for the adapter that `DATABASE_URL` selects |
 | `migrate:status` | Lists applied and pending migrations |
@@ -207,7 +209,7 @@ commit. The CI drift step fails when one is stale.
 | File | Command | When |
 |---|---|---|
 | `src/payload-types.ts` | `npm run generate:types` | After a change to a collection, global, field or block |
-| `src/app/(payload)/admin/importMap.js` | `npm run generate:importmap` | After adding, moving or removing a custom admin component |
+| `src/app/(payload)/giris/importMap.js` | `npm run generate:importmap` | After adding, moving or removing a custom admin component |
 | `src/migrations/postgres/`, `src/migrations/sqlite/` | `npm run migrate:create -- <name>`, once per adapter | After any schema change |
 
 Each adapter has its own migration folder, and `DATABASE_URL` selects the adapter. A shell value
@@ -233,7 +235,7 @@ and `prebuild`), `next-env.d.ts`, `.next/`, `.data/`, `media/`.
 | Path | Contents |
 |---|---|
 | `src/app/(site)/` | Public site: layout, home, branded 404 and 500, `r/` (Persian dynamic routes), `qa/` (Lighthouse and screenshot targets, only with `QA_ROUTES=1`), `api/` (health, events, cron, CSP reports, form session, internal proxy calls) |
-| `src/app/(payload)/` | Payload admin at `/admin` and the Payload API (generated, plus `custom.scss`) |
+| `src/app/(payload)/` | Payload admin at `/giris` (folder `giris/`, named after `ADMIN_ROUTE`) and the Payload API at `/api` (generated, plus `custom.scss`) |
 | `src/app/` | Also: `robots.ts`, `sitemap.xml/`, `sitemaps/`, `rss.xml/`, `global-not-found.tsx` |
 | `src/collections/` | Payload collections: content, bookings, media, users, redirects, system |
 | `src/globals/` | Payload globals: clinic facts and site settings |

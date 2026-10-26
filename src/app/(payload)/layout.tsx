@@ -8,7 +8,8 @@ import React from 'react';
 
 import { adminServerFunctions } from '@/admin/schedulePublish';
 import { Vazirmatn } from '@/lib/fonts';
-import { importMap } from './admin/importMap.js';
+// A static import path cannot use ADMIN_ROUTE (src/lib/paths.ts); the folder name follows it.
+import { importMap } from './giris/importMap.js';
 import './custom.scss';
 
 type Args = {

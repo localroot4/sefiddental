@@ -14,6 +14,7 @@ import {
 import { widgetRead } from '@/admin/widgets';
 import { adminText, type AdminMessageKey } from '@/i18n/fa-admin';
 import { dayLabel, formatJalali, formatTimeFa } from '@/lib/jalali';
+import { ADMIN_ROUTE } from '@/lib/paths';
 import { formatNumberFa } from '@/lib/persianText';
 
 import styles from './dashboard.module.css';
@@ -93,7 +94,7 @@ export function ContentCalendarBody({ items, now }: { items: CalendarItem[] | nu
 }
 
 /**
- * The `/admin/content-calendar` view's content (H13): failed publishes on top, the filter, the
+ * The content calendar view's content (H13): failed publishes on top, the filter, the
  * agenda by Tehran day, then article drafts by review state. Presentational.
  */
 export function CalendarAgenda({
@@ -181,7 +182,10 @@ export function CalendarAgenda({
               <ul className={styles.list}>
                 {state.docs.map((doc) => (
                   <li key={String(doc.id)} className={styles.item}>
-                    <a className={styles.link} href={`/admin/collections/articles/${doc.id}`}>
+                    <a
+                      className={styles.link}
+                      href={`${ADMIN_ROUTE}/collections/articles/${doc.id}`}
+                    >
                       {doc.title}
                     </a>
                   </li>

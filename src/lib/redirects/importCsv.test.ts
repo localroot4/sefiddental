@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import { ADMIN_ROUTE } from '@/lib/paths';
+
 import {
   type ExistingRedirect,
   parseCsv,
@@ -13,6 +15,8 @@ import {
 } from './importCsv';
 
 const LIVE = new Set(['/', '/خدمات', '/پزشکان', '/مقالات', '/خدمات/ترمیم-دندان']);
+
+const SYSTEM_PATH_NOTE = `نشانی‌های سیستمی (${ADMIN_ROUTE.slice(1)}، api، _next) را نمی‌توان منتقل کرد.`;
 
 function context(over: Partial<PlanContext> = {}): PlanContext {
   return {
@@ -118,7 +122,7 @@ describe('planImport (dry run and apply decide the same rows)', () => {
       [7, '/old/gone-fa', null, '410', 'new'],
       [8, '/old/page?id=7', '/خدمات', '301', 'refused'],
       [9, 'https://other.example/x', '/خدمات', '301', 'refused'],
-      [10, '/admin/old', '/خدمات', '301', 'refused'],
+      [10, '/api/old', '/خدمات', '301', 'refused'],
       [11, '/vip', '/خدمات', '301', 'refused'],
       [12, '/خدمات', '/پزشکان', '301', 'refused'],
       [13, '/old/dup', '/خدمات', '301', 'new'],
@@ -137,7 +141,7 @@ describe('planImport (dry run and apply decide the same rows)', () => {
     );
     expect(plan.rows.find((r) => r.line === 8)?.manual).toBe(true);
     expect(note(9)).toBe('دامنهٔ other.example در فهرست دامنه‌های سایت قبلی نیست.');
-    expect(note(10)).toBe('نشانی‌های سیستمی (admin، api، _next) را نمی‌توان منتقل کرد.');
+    expect(note(10)).toBe(SYSTEM_PATH_NOTE);
     expect(note(11)).toBe(
       'برای این نشانی یک تغییر مسیر دیگر (نه از فایل) ثبت شده است. آن را در همین فهرست ویرایش کنید.',
     );
@@ -152,6 +156,18 @@ describe('planImport (dry run and apply decide the same rows)', () => {
     expect(note(21)).toBe('کد انتقال فقط ۳۰۱ یا ۴۱۰ است.');
     for (const line of [2, 3, 4, 5, 6, 7, 13, 17, 18])
       expect(note(line), String(line)).toBeUndefined();
+  });
+
+  it('IC5b the admin route is a system path, as source and as destination; the old /admin is an ordinary old URL now', () => {
+    const plan = planImport(
+      `${ADMIN_ROUTE}/x,/خدمات\n/admin/x,/خدمات\n/old,${ADMIN_ROUTE}`,
+      context(),
+    );
+    expect(plan.rows.map((r) => [r.from, r.outcome, r.note])).toEqual([
+      [`${ADMIN_ROUTE}/x`, 'refused', SYSTEM_PATH_NOTE],
+      ['/admin/x', 'new', undefined],
+      ['/old', 'refused', 'مقصد نمی‌تواند نشانی سیستمی باشد.'],
+    ]);
   });
 
   it('IC6 a rerun against what the first run wrote is all unchanged; a new target is an update', () => {

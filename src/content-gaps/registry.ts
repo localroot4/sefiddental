@@ -2,7 +2,7 @@ import type { CollectionSlug, Payload, Where } from 'payload';
 
 import { MARKER } from '@/fields/validators';
 import { addDaysToKey, zonedDateKey } from '@/lib/jalali';
-import { isGuideKey, PAGE_KEYS } from '@/lib/paths';
+import { ADMIN_ROUTE, isGuideKey, PAGE_KEYS } from '@/lib/paths';
 
 /**
  * Live content gaps for the System status view (spec-data 9.2, 9.3). No stored gap table:
@@ -452,10 +452,10 @@ export interface ContentGapsReport {
 }
 
 export function adminUrlOf(target: GapTarget): string {
-  if (target.type === 'global') return `/admin/globals/${target.slug}`;
+  if (target.type === 'global') return `${ADMIN_ROUTE}/globals/${target.slug}`;
   return target.id === undefined
-    ? `/admin/collections/${target.slug}`
-    : `/admin/collections/${target.slug}/${target.id}`;
+    ? `${ADMIN_ROUTE}/collections/${target.slug}`
+    : `${ADMIN_ROUTE}/collections/${target.slug}/${target.id}`;
 }
 
 async function markerItems(payload: Payload): Promise<OpenGapItem[]> {

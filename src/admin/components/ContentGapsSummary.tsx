@@ -7,6 +7,7 @@ import { isVerifiedStaff } from '@/admin/bookings/counts';
 import { type ContentGapsReport, getContentGaps } from '@/content-gaps/registry';
 import { widgetRead } from '@/admin/widgets';
 import { adminText } from '@/i18n/fa-admin';
+import { ADMIN_ROUTE } from '@/lib/paths';
 import { formatNumberFa } from '@/lib/persianText';
 
 import styles from './dashboard.module.css';
@@ -37,7 +38,11 @@ export function ContentGapsSummaryBody({ report }: { report: ContentGapsReport |
           </ul>
         </>
       )}
-      <Link className={styles.link} href="/admin/system-status#status-gaps" prefetch={false}>
+      <Link
+        className={styles.link}
+        href={`${ADMIN_ROUTE}/system-status#status-gaps`}
+        prefetch={false}
+      >
         {adminText('admin.gaps.open')}
       </Link>
     </section>

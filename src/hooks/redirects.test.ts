@@ -2,7 +2,9 @@
 // anchor, so a slug change of that path must keep the alias one hop and keep the anchor.
 import { describe, expect, it, vi } from 'vitest';
 
-import { flattenRedirect, repointChains } from './redirects';
+import { ADMIN_ROUTE } from '@/lib/paths';
+
+import { flattenRedirect, repointChains, toRule } from './redirects';
 
 type Row = { id: number; from: string; to: string | null; active: boolean; statusCode?: string };
 
@@ -90,5 +92,17 @@ describe('H20 fragments in redirect chains', () => {
     await expect(
       flatten({ data: { from: '/c', to: '/a' }, collection, req: loop.req }),
     ).rejects.toThrow();
+  });
+});
+
+describe('H-REDIRVALID toRule', () => {
+  it('RH7 the admin route is never a destination; the old /admin is an ordinary one', () => {
+    const rule = (to: string) => toRule(to, { data: { statusCode: '301' } });
+    const refused = 'مقصد نمی‌تواند نشانی سیستمی باشد.';
+    expect(rule(ADMIN_ROUTE)).toBe(refused);
+    expect(rule(`${ADMIN_ROUTE}/login`)).toBe(refused);
+    expect(rule(`${ADMIN_ROUTE.toUpperCase()}#x`)).toBe(refused);
+    expect(rule('/admin')).toBe(true);
+    expect(rule(`${ADMIN_ROUTE}-x`)).toBe(true);
   });
 });

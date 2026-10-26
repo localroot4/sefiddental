@@ -2,13 +2,14 @@ import type { CollectionSlug, Payload } from 'payload';
 
 import { adminText } from '@/i18n/fa-admin';
 import { type DateKey, zonedDateKey } from '@/lib/jalali';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 /**
  * The editorial calendar (H12, H13): Payload's own `schedulePublish` jobs plus the articles
  * published lately, grouped by Tehran day. A failed publish stays listed until its document is
  * published, so the block message is never lost.
  */
-export const CALENDAR_PATH = '/admin/content-calendar';
+export const CALENDAR_PATH = `${ADMIN_ROUTE}/content-calendar`;
 export const DAYS_AHEAD = 60;
 export const DAYS_BACK = 30;
 const DAY_MS = 86_400_000;
@@ -51,7 +52,7 @@ export type DocKey = `${string}:${string}`;
 export const docKey = (collection: string, id: unknown): DocKey => `${collection}:${String(id)}`;
 
 const href = (collection: string, id: unknown) =>
-  `/admin/collections/${collection}/${encodeURIComponent(String(id))}`;
+  `${ADMIN_ROUTE}/collections/${collection}/${encodeURIComponent(String(id))}`;
 
 /** The job's block message (src/admin/schedulePublish.ts); an English line becomes a Persian one. */
 export function failureMessage(error: unknown): string {

@@ -3,6 +3,7 @@ import { BOOKING_GROUP_OPTIONS } from '@/fields/factories';
 import { NOTIFY_MESSAGES, type NotifyMessageKey } from '@/i18n/fa-notify';
 import { formatJalali, formatTimeFa } from '@/lib/jalali';
 import { scrubPhones } from '@/lib/log/redact';
+import { ADMIN_ROUTE } from '@/lib/paths';
 import { toPersianDigits } from '@/lib/persianText';
 import { maskPhoneInline } from '@/lib/phone';
 
@@ -63,7 +64,9 @@ export function renderBooking(
     msg('notify.line.createdAt', { value: when(booking.createdAt) }),
     msg('notify.line.callbackDue', { value: when(booking.callbackDueAt) }),
     msg('notify.line.phone', { value: masked(booking.phone) }),
-    msg('notify.line.link', { value: `${siteUrl}/admin/collections/bookings/${booking.id}` }),
+    msg('notify.line.link', {
+      value: `${siteUrl}${ADMIN_ROUTE}/collections/bookings/${booking.id}`,
+    }),
   ];
   if (requestId) lines.push(msg('notify.line.requestId', { value: requestId }));
   return {
@@ -80,7 +83,7 @@ export function renderEvent(
 ): RenderedMessage {
   switch (event.type) {
     case 'ip_spike': {
-      const link = `${siteUrl}/admin/collections/bookings?where[status][equals]=suspicious`;
+      const link = `${siteUrl}${ADMIN_ROUTE}/collections/bookings?where[status][equals]=suspicious`;
       const text = msg('notify.spike.text', {
         link,
         addresses: fa(event.addresses ?? 1),
@@ -94,7 +97,7 @@ export function renderEvent(
         limit: fa(event.limit),
         held: fa(event.held),
         since: when(event.since),
-        link: `${siteUrl}/admin/collections/bookings`,
+        link: `${siteUrl}${ADMIN_ROUTE}/collections/bookings`,
       };
       const subject = msg('notify.budget.subject', vars);
       return { subject, text: msg('notify.budget.text', vars), sms: subject };
@@ -104,7 +107,7 @@ export function renderEvent(
       const text = msg('notify.error.text', {
         count: fa(event.count),
         requestId: event.requestId ?? msg('notify.value.unknown'),
-        link: `${siteUrl}/admin/system-status`,
+        link: `${siteUrl}${ADMIN_ROUTE}/system-status`,
       });
       return { subject, text, sms: subject };
     }

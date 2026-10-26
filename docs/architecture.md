@@ -9,7 +9,7 @@ this file in the same commit.
 | Layer | Choice | Notes |
 |---|---|---|
 | Framework | Next.js 16.4.3 with React 19.3.0, App Router, TypeScript 5.9.3 strict, on Node.js 22 (22.23.4 or later) | Server components by default; client islands only where behaviour needs JavaScript, and for WebGL. TypeScript 5.9.3 is the version verified with Payload 3.92.0 and the lint toolchain |
-| CMS | Payload CMS 3.92.0 inside the same Next.js app, admin at `/admin`, locale `fa`, RTL | Collections, drafts and versions, scheduled publish, access control, media with sharp, live preview |
+| CMS | Payload CMS 3.92.0 inside the same Next.js app, admin at `/giris` (`ADMIN_ROUTE` in `src/lib/paths.ts`; `/admin` is an ordinary 404), locale `fa`, RTL | Collections, drafts and versions, scheduled publish, access control, media with sharp, live preview |
 | Database | PostgreSQL (Payload Postgres adapter) on a PaaS or a VPS; Payload's SQLite adapter on cPanel paths (C2) | The data model is identical; the adapter is an environment setting, and the confirmed hosting path (section 2) sets it |
 | Styling | Tailwind CSS 4.3.3 with `@theme` tokens from `design/tokens.css`; CSS modules for complex scenes | one token file, no ad-hoc colors |
 | UI motion | CSS transitions on transform and opacity with the motion tokens of `design/tokens.css`; native `<dialog>`, `<details>` and the Popover API | no motion library (phase 4: the JavaScript headroom, 10 KiB on content pages and 19.5 KiB on home, leaves no room for one); zero motion under `prefers-reduced-motion` |
@@ -384,7 +384,7 @@ with zod; the forms also work as plain HTML posts.
 - Admin dashboard and views (phase 6): the dashboard shows, in this order,
   today's requests, the content calendar, SEO health and, for admins only,
   the content gaps; each widget renders only for TOTP-verified staff.
-  `/admin/content-calendar` is a staff view for TOTP-verified users only;
+  `/giris/content-calendar` is a staff view for TOTP-verified users only;
   anyone else gets the 404 of an unknown page. It lists failed publishes
   first, then scheduled and recent publishes by Tehran day, then article
   drafts by review state. Every collection and global hides the API tab

@@ -138,7 +138,8 @@ export default defineConfig([
     // never edited, so they keep Payload's own style.
     'src/payload-types.ts',
     'src/payload-generated-schema.ts',
-    'src/app/(payload)/admin/importMap.js',
+    // The admin route folder; a config file cannot import ADMIN_ROUTE (src/lib/paths.ts).
+    'src/app/(payload)/giris/importMap.js',
     'src/migrations/**',
     // Read-only sources, generated assets and tool output.
     'design/**',

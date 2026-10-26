@@ -1,10 +1,19 @@
-import { normalizeLetters } from '@/lib/persianText';
+// Relative, not '@/': next.config.ts imports this file, and Next's config loader resolves the
+// alias against the wrong folder in a nested import.
+import { normalizeLetters } from './persianText';
 
 /**
  * Public paths of documents (spec-data 2.8a, 6.4) and the one path normalizer shared by the
  * redirects collection, the proxy and the routes. Dependency-free apart from persianText, so the
  * proxy can import it.
  */
+
+/**
+ * Where Payload's admin is mounted: payload.config `routes.admin` and the route folder
+ * `src/app/(payload)/giris/`. Every admin URL derives from it. Lowercase ASCII, so it is its own
+ * normalizePath() form. Never in public output: robots.txt, sitemaps, public pages and scripts.
+ */
+export const ADMIN_ROUTE = '/giris';
 
 /**
  * decode (malformed %XX kept as is, never throws), NFC, normalizeLetters, drop query and

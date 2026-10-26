@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  ADMIN_ROUTE,
   buildPath,
   isGuideKey,
   normalizePath,
@@ -30,20 +31,23 @@ describe('isFirstUserPath (decision 41, freeze A1)', () => {
     '/api/users/first%2dregister',
     '/api/users/FIRST-REGISTER',
     '/api/users//first-register//',
-    '/admin/create-first-user',
-    '/admin/create-first-user/',
-    '/admin/create%2Dfirst-user',
-    '/Admin/Create-First-User',
+    `${ADMIN_ROUTE}/create-first-user`,
+    `${ADMIN_ROUTE}/create-first-user/`,
+    `${ADMIN_ROUTE}/create%2Dfirst-user`,
+    `${ADMIN_ROUTE.toUpperCase()}/Create-First-User`,
   ])('F1 %s is blocked after normalizePath', (raw) => {
     expect(isFirstUserPath(normalizePath(raw))).toBe(true);
   });
 
-  it.each(['/admin/login', '/api/users/first%E0register', '/api/users', '/admin'])(
-    'F2 %s is not a first-user path',
-    (raw) => {
-      expect(isFirstUserPath(normalizePath(raw))).toBe(false);
-    },
-  );
+  it.each([
+    `${ADMIN_ROUTE}/login`,
+    '/api/users/first%E0register',
+    '/api/users',
+    ADMIN_ROUTE,
+    '/admin/create-first-user',
+  ])('F2 %s is not a first-user path', (raw) => {
+    expect(isFirstUserPath(normalizePath(raw))).toBe(false);
+  });
 });
 
 describe('isAuthLimitedPath (decision 41, freeze A1)', () => {
@@ -69,7 +73,7 @@ describe('isAuthLimitedPath (decision 41, freeze A1)', () => {
 describe('maintenanceBypass (spec X17)', () => {
   it('M1 health, admin pages, signed-in API calls and sign-in pass', () => {
     expect(maintenanceBypass('api', '/api/health', false)).toBe(true);
-    expect(maintenanceBypass('admin', '/admin', false)).toBe(true);
+    expect(maintenanceBypass('admin', ADMIN_ROUTE, false)).toBe(true);
     expect(maintenanceBypass('api', '/api/users/me', true)).toBe(true);
     expect(maintenanceBypass('api', '/api/users/login', false)).toBe(true);
     expect(maintenanceBypass('api', '/api/verify-totp', false)).toBe(true);

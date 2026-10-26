@@ -3,6 +3,7 @@ import { describe, expect, it, vi, type Mock } from 'vitest';
 
 import { NOTIFY_MESSAGES } from '@/i18n/fa-notify';
 import { createLogger, log } from '@/lib/log/logger';
+import { ADMIN_ROUTE } from '@/lib/paths';
 import { scrubPhones } from '@/lib/log/redact';
 
 import { readyChannels, sendMail, sendTelegram } from './drivers';
@@ -298,7 +299,7 @@ describe('messages (D-4)', () => {
     expect(message.subject).toBe('درخواست فوری تازه #۴۲');
     // An LTR isolate: the groups keep their order inside the Persian line.
     expect(message.text).toContain('شماره: \u2066۰۹۱۲\u00A0***\u00A0۶۷۸۹\u2069');
-    expect(message.text).toContain('https://sefiddental.ir/admin/collections/bookings/42');
+    expect(message.text).toContain(`https://sefiddental.ir${ADMIN_ROUTE}/collections/bookings/42`);
     expect(message.text).toContain('شناسهٔ پیگیری: req-n-0001');
     expect(message.text).toContain('گروه خدمت: ایمپلنت');
     expect(message.text).toContain('زمان دلخواه: عصر');
@@ -321,6 +322,9 @@ describe('messages (D-4)', () => {
     );
     expect(spike.text).not.toContain('abcd1234');
     expect(spike.text).toContain('شمار این نشانی‌ها در ۴۵ دقیقهٔ گذشته: ۳.');
+    expect(spike.text).toContain(
+      `https://sefiddental.ir${ADMIN_ROUTE}/collections/bookings?where[status][equals]=suspicious`,
+    );
     const budget = renderEvent(
       { type: 'budget', channel: 'telegram', held: 12, since: BOOKING.createdAt, limit: 20 },
       ENV.siteUrl,
@@ -330,13 +334,14 @@ describe('messages (D-4)', () => {
     expect(budget.text).toContain('از ۲۱ مهر ۱۴۰۵، ساعت ۱۱:۳۰ تا این لحظه ۱۲ درخواست');
     // No promise of a later alert: it comes only if another request is held after the hour.
     expect(budget.text).not.toContain('هشدار بعدی');
-    expect(budget.text).toContain('https://sefiddental.ir/admin/collections/bookings');
+    expect(budget.text).toContain(`https://sefiddental.ir${ADMIN_ROUTE}/collections/bookings`);
     const error = renderEvent(
       { type: 'error', signature: 's', routePath: '/x/09123456789', errName: 'E', count: 3 },
       ENV.siteUrl,
     );
     expect(error.subject).not.toContain('09123456789');
     expect(error.text).toContain('تعداد تکرار: ۳');
+    expect(error.text).toContain(`https://sefiddental.ir${ADMIN_ROUTE}/system-status`);
   });
 
   it('NT-COPY the notification strings follow the copy rules', () => {

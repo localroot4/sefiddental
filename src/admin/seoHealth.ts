@@ -7,6 +7,7 @@ import {
   SUFFIXES,
   topicOf,
 } from '@/fields/validators';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 /**
  * The dashboard's «سلامت سئو» (H23, H33): published, indexable documents whose Google result or
@@ -126,7 +127,7 @@ export async function loadSeoHealth(
           collection,
           id: doc.id as number | string,
           title: String(doc[titleField] ?? doc.id),
-          href: `/admin/collections/${collection}/${encodeURIComponent(String(doc.id))}`,
+          href: `${ADMIN_ROUTE}/collections/${collection}/${encodeURIComponent(String(doc.id))}`,
         });
       }
     }

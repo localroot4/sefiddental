@@ -22,7 +22,7 @@ function reviewStates(props: AdminViewServerProps): Array<{ value: string; label
 }
 
 /**
- * `/admin/content-calendar` (H13): TOTP-verified staff only; everyone else gets the same 404 as
+ * `<ADMIN_ROUTE>/content-calendar` (H13): TOTP-verified staff only; everyone else gets the same 404 as
  * an unknown page (custom views are public by default). Lists what the viewer's navigation shows.
  */
 export async function EditorialCalendar(props: AdminViewServerProps) {

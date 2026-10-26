@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { ADMIN_ROUTE } from '@/lib/paths';
 import { articlesYaml, clinicYaml, pagesYaml, servicesYaml } from '@/seed/schemas';
 import { readYaml } from '@/seed/sources';
 
@@ -100,11 +101,13 @@ describe('content-gap registry (spec-data 9.2)', () => {
       missing_content: 'محتوای ناقص',
       marker_in_text: 'علامت NEEDS_CLIENT در متن',
     });
-    expect(adminUrlOf({ type: 'global', slug: 'clinic' })).toBe('/admin/globals/clinic');
+    expect(adminUrlOf({ type: 'global', slug: 'clinic' })).toBe(`${ADMIN_ROUTE}/globals/clinic`);
     expect(adminUrlOf({ type: 'collection', slug: 'services', id: 4 })).toBe(
-      '/admin/collections/services/4',
+      `${ADMIN_ROUTE}/collections/services/4`,
     );
-    expect(adminUrlOf({ type: 'collection', slug: 'doctors' })).toBe('/admin/collections/doctors');
+    expect(adminUrlOf({ type: 'collection', slug: 'doctors' })).toBe(
+      `${ADMIN_ROUTE}/collections/doctors`,
+    );
   });
 
   it('CG4 groups follow the kind order, empty groups are left out, markers name the field', async () => {
@@ -127,7 +130,10 @@ describe('content-gap registry (spec-data 9.2)', () => {
     ]);
     expect(report.total).toBe(report.groups.reduce((n, g) => n + g.items.length, 0));
     const marker = report.groups.at(-1)?.items[0];
-    expect(marker).toMatchObject({ fieldPath: 'tagline', adminUrl: '/admin/globals/clinic' });
+    expect(marker).toMatchObject({
+      fieldPath: 'tagline',
+      adminUrl: `${ADMIN_ROUTE}/globals/clinic`,
+    });
     expect(JSON.stringify(report)).not.toContain('[[NEEDS_CLIENT: y]]');
     const verification = report.groups
       .find((g) => g.kind === 'needs_verification')

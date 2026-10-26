@@ -4,6 +4,7 @@ import type { PathKind } from '@/lib/http/classify';
 import { API_CSP, buildCsp } from '@/lib/http/csp';
 import { securityHeaders } from '@/lib/http/securityHeaders';
 import { testEnv } from '@/lib/http/testEnv';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 function headersFor(
   kind: PathKind,
@@ -61,11 +62,11 @@ describe('securityHeaders (spec 7.1)', () => {
 
   it('H3 draft cookie: SAMEORIGIN for live preview', () => {
     expect(headersFor('page', '/', { draft: true }).get('x-frame-options')).toBe('SAMEORIGIN');
-    expect(headersFor('admin', '/admin', { draft: true }).get('x-frame-options')).toBe('DENY');
+    expect(headersFor('admin', ADMIN_ROUTE, { draft: true }).get('x-frame-options')).toBe('DENY');
   });
 
   it('H4 admin', () => {
-    const h = headersFor('admin', '/admin');
+    const h = headersFor('admin', ADMIN_ROUTE);
     expect(h.get('content-security-policy')).toContain("style-src 'self' 'unsafe-inline'");
     expect(h.get('x-robots-tag')).toBe('noindex, nofollow');
     expect(h.get('cross-origin-opener-policy')).toBe('same-origin');

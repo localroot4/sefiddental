@@ -6,6 +6,8 @@ import path from 'node:path';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { ADMIN_ROUTE } from '@/lib/paths';
+
 const require = createRequire(import.meta.url);
 const boot = require('./boot.cjs') as {
   loadSecrets: (env: Record<string, string | undefined>, dir: string) => void;
@@ -108,7 +110,7 @@ describe('cPanel start-up (docs/deploy.md section 7)', () => {
     });
     expect(await get('/api/internal/proxy-config')).toBe(204);
     expect(await get('/')).toBe(404);
-    expect(await get('/admin')).toBe(404);
+    expect(await get(ADMIN_ROUTE)).toBe(404);
   });
 });
 

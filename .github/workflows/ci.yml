@@ -115,6 +115,7 @@ jobs:
       - name: Create the e2e database
         run: psql postgres://postgres:postgres@localhost:5432/postgres -c 'CREATE DATABASE sefid_e2e'
 
+      # The import map sits in the admin route folder: its name follows ADMIN_ROUTE (src/lib/paths.ts).
       - name: Generated files match the config (types, import map, migrations on both adapters)
         run: |
           mkdir -p .data
@@ -122,10 +123,10 @@ jobs:
           DATABASE_URL="$INT_DATABASE_URL" npm run generate:importmap
           DATABASE_URL="$INT_DATABASE_URL" npm run migrate:create -- --skip-empty
           DATABASE_URL=file:./.data/drift.db npm run migrate:create -- --skip-empty
-          drift="$(git status --porcelain -- src/payload-types.ts 'src/app/(payload)/admin/importMap.js' src/migrations)"
+          drift="$(git status --porcelain -- src/payload-types.ts 'src/app/(payload)/giris/importMap.js' src/migrations)"
           if [ -n "$drift" ]; then
             echo "$drift"
-            git diff -- src/payload-types.ts 'src/app/(payload)/admin/importMap.js'
+            git diff -- src/payload-types.ts 'src/app/(payload)/giris/importMap.js'
             echo "::error::Generated files are stale: run generate:types, generate:importmap and migrate:create, then commit."
             exit 1
           fi

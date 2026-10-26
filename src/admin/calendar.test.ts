@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { adminText } from '@/i18n/fa-admin';
+import { ADMIN_ROUTE } from '@/lib/paths';
 
 import {
   docKey,
@@ -39,7 +40,7 @@ describe('editorial calendar (H12, H13)', () => {
         collection: 'articles',
         id: '1',
         title: 'مقالهٔ یک',
-        href: '/admin/collections/articles/1',
+        href: `${ADMIN_ROUTE}/collections/articles/1`,
         unpublish: false,
       },
     ]);
@@ -89,7 +90,7 @@ describe('editorial calendar (H12, H13)', () => {
       NOW,
     );
     expect(items.map((i) => [i.kind, i.title, i.href])).toEqual([
-      ['published', 'تازه', '/admin/collections/articles/5'],
+      ['published', 'تازه', `${ADMIN_ROUTE}/collections/articles/5`],
     ]);
   });
 

@@ -3,6 +3,8 @@ import type { NextConfig } from 'next';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { ADMIN_ROUTE } from './src/lib/paths';
+
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Headers that never depend on the route or on runtime env. Route-dependent headers (CSP,
@@ -103,7 +105,7 @@ export default {
     const rules = payloadHeaders ? await payloadHeaders() : [];
     return rules.map((rule) =>
       rule.source === '/:path*' && rule.headers.some((h) => h.key === 'Critical-CH')
-        ? { ...rule, source: '/admin/:path*' }
+        ? { ...rule, source: `${ADMIN_ROUTE}/:path*` }
         : rule,
     );
   },

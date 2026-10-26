@@ -4,6 +4,8 @@ import { NextRequest, type NextFetchEvent } from 'next/server';
 const ev = { waitUntil: () => undefined } as unknown as NextFetchEvent;
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { ADMIN_ROUTE } from '@/lib/paths';
+
 // next@16.4.0 ships the matcher helper as unstable_doesMiddlewareMatch; the docs at the tag
 // name it unstable_doesProxyMatch, which the package does not export.
 
@@ -41,7 +43,7 @@ describe('proxy', () => {
     const { config } = await loadProxy();
     const runs = (url: string) => unstable_doesMiddlewareMatch({ config, url });
     expect(runs('/')).toBe(true);
-    expect(runs('/admin/login')).toBe(true);
+    expect(runs(`${ADMIN_ROUTE}/login`)).toBe(true);
     expect(runs('/api/users/login')).toBe(true);
     expect(runs('/api/media/file/photo.webp')).toBe(false);
     expect(runs('/_next/static/chunks/app.js')).toBe(false);
@@ -53,7 +55,7 @@ describe('proxy', () => {
   it('PX2 first-user routes return 404 unless ALLOW_FIRST_USER=true', async () => {
     const blocked = await loadProxy({ ALLOW_FIRST_USER: 'false' });
     const page = await blocked.proxy(
-      new NextRequest('http://localhost/admin/create-first-user'),
+      new NextRequest(`http://localhost${ADMIN_ROUTE}/create-first-user`),
       ev,
     );
     expect(page.status).toBe(404);
@@ -65,7 +67,7 @@ describe('proxy', () => {
 
     const allowed = await loadProxy({ ALLOW_FIRST_USER: 'true' });
     const open = await allowed.proxy(
-      new NextRequest('http://localhost/admin/create-first-user'),
+      new NextRequest(`http://localhost${ADMIN_ROUTE}/create-first-user`),
       ev,
     );
     expect(open.headers.get('x-middleware-next')).toBe('1');
@@ -80,14 +82,14 @@ describe('proxy', () => {
       ['POST', '/api/users/FIRST-REGISTER'],
       ['POST', '/api/users//first-register//'],
       ['GET', '/api/users/first-register'],
-      ['GET', '/admin/create-first-user/'],
-      ['GET', '/admin/create%2Dfirst-user'],
-      ['GET', '/Admin/Create-First-User'],
+      ['GET', `${ADMIN_ROUTE}/create-first-user/`],
+      ['GET', `${ADMIN_ROUTE}/create%2Dfirst-user`],
+      ['GET', `${ADMIN_ROUTE.toUpperCase()}/Create-First-User`],
     ] as const) {
       const res = await proxy(new NextRequest(`http://localhost${path}`, { method }), ev);
       expect(res.status, `${method} ${path}`).toBe(404);
     }
-    const login = await proxy(new NextRequest('http://localhost/admin/login'), ev);
+    const login = await proxy(new NextRequest(`http://localhost${ADMIN_ROUTE}/login`), ev);
     expect(login.headers.get('x-middleware-next')).toBe('1');
     const malformed = await proxy(
       new NextRequest('http://localhost/api/users/first%E0register'),
@@ -98,13 +100,17 @@ describe('proxy', () => {
 
   it('PX3 admin requests carry x-pathname; client copies of proxy headers are dropped', async () => {
     const { proxy } = await loadProxy();
-    const admin = await proxy(new NextRequest('http://localhost/admin/setup-totp'), ev);
-    expect(admin.headers.get('x-middleware-request-x-pathname')).toBe('/admin/setup-totp');
+    const admin = await proxy(new NextRequest(`http://localhost${ADMIN_ROUTE}/setup-totp`), ev);
+    expect(admin.headers.get('x-middleware-request-x-pathname')).toBe(`${ADMIN_ROUTE}/setup-totp`);
     expect(admin.headers.get('x-request-id')).toMatch(/^[0-9a-f-]{36}$/);
 
     const site = await proxy(
       new NextRequest('http://localhost/', {
-        headers: { 'x-pathname': '/admin', 'x-nonce': 'forged', 'x-request-id': 'forged-id-123' },
+        headers: {
+          'x-pathname': ADMIN_ROUTE,
+          'x-nonce': 'forged',
+          'x-request-id': 'forged-id-123',
+        },
       }),
       ev,
     );
@@ -140,7 +146,7 @@ describe('proxy', () => {
     );
     expect(limited.status).toBe(429);
     expect(Number(limited.headers.get('retry-after'))).toBeGreaterThan(0);
-    const page = await proxy(new NextRequest('http://localhost/admin/login'), ev);
+    const page = await proxy(new NextRequest(`http://localhost${ADMIN_ROUTE}/login`), ev);
     expect(page.headers.get('x-middleware-next')).toBe('1');
   });
 
@@ -164,8 +170,33 @@ describe('proxy', () => {
     expect(page.headers.get('retry-after')).toBe('900');
     const health = await proxy(new NextRequest('http://localhost/api/health'), ev);
     expect(health.headers.get('x-middleware-next')).toBe('1');
-    const admin = await proxy(new NextRequest('http://localhost/admin'), ev);
+    const admin = await proxy(new NextRequest(`http://localhost${ADMIN_ROUTE}`), ev);
     expect(admin.headers.get('x-middleware-next')).toBe('1');
+    // The old mount point is an ordinary page: the 503 like any other.
+    expect((await proxy(new NextRequest('http://localhost/admin'), ev)).status).toBe(503);
+  });
+
+  it('PX16 the old /admin paths get exactly the treatment of an unknown page', async () => {
+    const { proxy } = await loadProxy({ ALLOW_FIRST_USER: 'false' });
+    // Header names and values, with the per-request nonce and request id masked.
+    const shape = (res: Response) =>
+      [...res.headers.entries()]
+        .map(([name, value]) => [
+          name,
+          value
+            .replace(/'nonce-[^']+'/g, 'NONCE')
+            .replace(/^[A-Za-z0-9+/=]{20,}$/, 'NONCE')
+            .replace(/^[0-9a-f-]{36}$/, 'ID'),
+        ])
+        .sort();
+    const unknown = await proxy(new NextRequest('http://localhost/no-such-page'), ev);
+    expect(unknown.headers.get('x-middleware-next')).toBe('1');
+    for (const path of ['/admin', '/admin/login', '/admin/create-first-user', '/admin/x/y']) {
+      const res = await proxy(new NextRequest(`http://localhost${path}`), ev);
+      expect(res.status, path).toBe(unknown.status);
+      expect(shape(res), path).toEqual(shape(unknown));
+      expect(res.headers.get('x-middleware-request-x-pathname'), path).toBeNull();
+    }
   });
 
   it('PX9 redirect rows from the proxy config answer before the canonical step', async () => {

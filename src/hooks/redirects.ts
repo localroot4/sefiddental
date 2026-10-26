@@ -7,7 +7,14 @@ import type {
 } from 'payload';
 import { ValidationError } from 'payload';
 
-import { buildPath, hubPath, normalizePath, type PathCollection, type PathDoc } from '@/lib/paths';
+import {
+  ADMIN_ROUTE,
+  buildPath,
+  hubPath,
+  normalizePath,
+  type PathCollection,
+  type PathDoc,
+} from '@/lib/paths';
 
 import { ctx } from './context';
 
@@ -133,7 +140,7 @@ export function publicPathHooks(collection: PathCollection) {
 // ---------------------------------------------------------------------------------------------
 // H-REDIRVALID: the redirects collection itself (spec-data 2.13).
 
-const BLOCKED_PREFIXES = ['/admin', '/api', '/_next'];
+const BLOCKED_PREFIXES = [ADMIN_ROUTE, '/api', '/_next'];
 
 /** Field rules of `from` and `to`; the CSV import plans with the same words. */
 export const fromRule = (
@@ -144,7 +151,7 @@ export const fromRule = (
   if (value === '/') return 'صفحهٔ خانه را نمی‌توان منتقل کرد.';
   if (value.includes('?')) return 'نشانی قدیمی بدون علامت سؤال و پارامتر وارد شود.';
   if (BLOCKED_PREFIXES.some((p) => value === p || value.startsWith(`${p}/`))) {
-    return 'نشانی‌های سیستمی (admin، api، _next) را نمی‌توان منتقل کرد.';
+    return `نشانی‌های سیستمی (${ADMIN_ROUTE.slice(1)}، api، _next) را نمی‌توان منتقل کرد.`;
   }
   if (typeof data.to === 'string' && data.to.split('#')[0] === value) return 'مبدأ و مقصد یکی است.';
   return true;
@@ -158,6 +165,11 @@ export const toRule = (
   if (typeof value !== 'string' || value === '') return 'مقصد را وارد کنید (به‌جز انتقال ۴۱۰).';
   if (!value.startsWith('/') || value.startsWith('//')) {
     return 'مقصد باید نشانی‌ای در همین سایت باشد و با / شروع شود.';
+  }
+  // A public Location header must never name the admin path; the message does not name it either.
+  const target = normalizePath(value);
+  if (target === ADMIN_ROUTE || target.startsWith(`${ADMIN_ROUTE}/`)) {
+    return 'مقصد نمی‌تواند نشانی سیستمی باشد.';
   }
   return true;
 };
