@@ -121,7 +121,8 @@ npm run dev
 | `migrate:create` | Writes a migration for the adapter that `DATABASE_URL` selects |
 | `migrate:status` | Lists applied and pending migrations |
 | `seed` | Imports the yaml content; mode `create-only` (default), `fill`, `sync` or `dry-run`; `DB_PUSH` defaults to `false` |
-| `reset-admin` | `npm run reset-admin -- <email>`: sets a random password that meets the policy, clears TOTP, unlocks the account and prints the password once. The recovery path without SMTP |
+| `reset-admin` | `npm run reset-admin -- <email>`: sets a random password that meets the policy, clears TOTP, unlocks the account and prints the password once. With `ADMIN_PASSWORD` set, that becomes the password and nothing prints it (the workflow "Server", `docs/deploy.md` 3.4). The recovery path without SMTP |
+| `first-admin` | Creates the first admin from `ADMIN_EMAIL` and `ADMIN_PASSWORD` when no account exists; prints the e-mail and `created` or `skipped: users exist`. The workflow "Server" runs it (`docs/deploy.md` 3.4) |
 | `db:e2e` | Rebuilds `.data/e2e.db`: a fresh SQLite file, migrated and seeded |
 
 ## Tests
@@ -281,4 +282,4 @@ Read docs/prompts/00-master.md completely, then execute docs/prompts/04-core-pag
 Replace the phase file for later phases. Each phase ends with a report in
 `docs/reports/phase-NN.md`, screenshots in `docs/qa/phase-NN/` and updated content gaps in
 `docs/content/gaps.md`. The client approves a phase before the next one starts. The newest report
-gives the current state; the deploy pipeline waits for the hosting decision in `docs/deploy.md`.
+gives the current state; the release pipeline is the workflow "Server" (`docs/deploy.md` section 3).

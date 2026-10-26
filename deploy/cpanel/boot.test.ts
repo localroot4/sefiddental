@@ -28,7 +28,7 @@ afterEach(() => {
 });
 const tmp = () => mkdtempSync(path.join(tmpdir(), 'cpanel-boot-'));
 
-describe('cPanel start-up (docs/deploy.md section 3)', () => {
+describe('cPanel start-up (docs/deploy.md section 7)', () => {
   it('CB1 generates each missing secret once, 0600, and keeps a value the panel set', () => {
     const dir = tmp();
     const env: Record<string, string | undefined> = { CRON_SECRET: 'from-the-panel' };

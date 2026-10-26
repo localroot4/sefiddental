@@ -1,9 +1,8 @@
 # Deploy
 
-Date: 2026-10-14. Status: the hosting path waits for the client (gap 32, brief
-decision 21). Sections 1, 2, 5 and 6 apply now. Section 3 is a placeholder until
-the client approves a priced path. Section 4 is the client's checklist, in
-Persian.
+Date: 2026-10-26. Status: the site runs on the clinic's own VPS (1.2,
+section 3). Every section applies now. Section 4 is the client's checklist, in
+Persian. Section 7 keeps the former cPanel path for reference.
 
 Audience: engineers who build, release and operate the site (English), and the
 clinic (section 4, Persian).
@@ -12,28 +11,30 @@ Contents:
 
 1. Status and decision record
 2. Runtime contract for any host
-3. Chosen-path steps (blocked by gap 32)
+3. Chosen path: own VPS
 4. کارهای شما (client checklist)
 5. Rollback
 6. Restore runbook
+7. Former path: shared cPanel host (kept for reference)
 
 ## 1. Status and decision record
 
 ### 1.1 Status
 
-- Hosting path: C2, a shared cPanel or DirectAdmin "Node.js" host that the
-  client bought on 2026-10-18 (1.2). Release procedure: section 3. The limits
-  of 1.3 are accepted.
+- Hosting path: the clinic's own VPS, Ubuntu Server 26.04 LTS in Tehran at
+  `2.144.23.111`, bought on 2026-10-26 (1.2). Release procedure: section 3.
+  It replaces the shared cPanel host (section 7).
+- Phase: preview at `https://new.sefiddental.ir`, not indexed.
+  `sefiddental.ir` stays at the old host until the client approves the
+  switch (3.7).
 - Built and green: the app runs on environment-driven configuration (database
   adapter, media storage, base URL), so the same artifact runs on any path in
   this file. CI runs on GitHub Actions on every push.
-- Release artifact: the workflow "Package for cPanel" (run by hand) builds the
-  package of 3.1 and attaches `sefid-cpanel.zip` to the release
-  `cpanel-latest`. There is no automatic deploy: the host has no SSH access
-  known to the studio, so the zip is uploaded by hand (3.3, 3.4).
-- Not verified yet: the host's Node versions, its glibc, the proxy headers its
-  web server passes (2.4) and its memory limit. The first release checks them
-  (3.3 step 7).
+- Release: the workflow "Server" (`.github/workflows/server.yml`) runs every
+  action on the server over SSH from GitHub Actions (3.4). Nobody needs a
+  shell on the server.
+- Not verified yet: nothing has run on the server, and the smoke test
+  `vps-smoke` (3.8) has not run yet. Open items: 3.9.
 
 ### 1.2 Decision record
 
@@ -43,7 +44,8 @@ Contents:
 | 2026-10-13 | The host answered: it does not support Node.js. | C2 at the current host is rejected. The client offered to buy a Node host. |
 | 2026-10-13 | Hosting evaluation: Liara, ArvanCloud, shared cPanel "Node.js hosts", C1 (sources: Liara docs and CLI repositories on GitHub, Payload and Next.js docs at the pinned tags). | Recommend path A on Liara (1.4). ArvanCloud is second. C1 only if the client's WHM gives root SSH (1.5). Do not buy a shared cPanel "Node.js host" (1.3). |
 | 2026-10-13 | Brief decision 21. | No deploy code until the client approves a priced path. |
-| 2026-10-18 | The client bought a shared cPanel or DirectAdmin "Node.js" host and asked to put the site on it. Node version, database and SSH access unknown. | Path C2 with a package built for the panel's loader (section 3): SQLite in a data folder outside the release, secrets generated on the host, a loopback listener for the internal calls, the zip uploaded by hand. The risks of 1.3 are accepted. |
+| 2026-10-18 | The client bought a shared cPanel or DirectAdmin "Node.js" host and asked to put the site on it. Node version, database and SSH access unknown. | Path C2 with a package built for the panel's loader (section 7): SQLite in a data folder outside the release, secrets generated on the host, a loopback listener for the internal calls, the zip uploaded by hand. The risks of 1.3 are accepted. |
+| 2026-10-26 | The client bought an Ubuntu Server 26.04 LTS VPS (a cloud VM in Tehran, public IPv4 `2.144.23.111`) as the production host. Outbound SSH from the studio is blocked. Several services block Iranian addresses. | Own VPS (section 3), replacing C2: GitHub Actions runs every action over SSH (workflow "Server"); PostgreSQL, nginx and certbot from the Ubuntu archive; each release carries its own Node runtime; preview at `new.sefiddental.ir` until the client approves the switch. The cPanel path stays documented in section 7. |
 
 ### 1.3 Why a shared cPanel "Node.js host" does not qualify
 
@@ -773,6 +775,12 @@ rm -f "$file"
 - The last 200 warn and error lines since the start also show in the admin
   view «وضعیت سیستم».
 - The platform keeps stdout (Liara: 7, 30 or 60 days by bundle).
+- On the VPS (section 3), nginx also writes `/var/log/nginx/sefid.access.log`.
+  It keeps the client address without its last part (IPv4 /24, IPv6 /48), so
+  a form request never stays tied to a whole IP address: the privacy page
+  promises that. nginx's error log keeps the full client address of a request
+  that failed at the app (the app down or restarting). Ubuntu's logrotate
+  keeps both 14 days (open item 3.9).
 
 ### 2.12 Maintenance mode
 
@@ -795,185 +803,465 @@ Verified on 2026-10-14 against the local standalone build: the home page and
 the cron tick answered 503, `/api/health` answered 200 with
 `"maintenance":true`.
 
-## 3. Chosen path: a shared cPanel or DirectAdmin "Node.js" host (C2)
+## 3. Chosen path: own VPS
 
-On 2026-10-18 the client bought a shared host with a Node.js selector
-(decision record, 1.2). This section is the release procedure for that host.
-It accepts the limits of 1.3: no staging, no health-gated release, no
-rollback beyond re-uploading the previous package, SQLite instead of
-PostgreSQL, and one memory limit for the whole account.
+On 2026-10-26 the client bought a VPS (decision record, 1.2). It replaces the
+shared cPanel host, which section 7 keeps for reference. This path meets the
+runtime contract of section 2: PostgreSQL, one long-running process behind
+nginx, a release gated on `/api/health` with an automatic switch back, a
+cron timer and nightly backups.
 
-### 3.1 How the package runs on the host
-
-`node scripts/package-cpanel.mjs` (after `npm run build`, or the workflow
-"Package for cPanel") writes `release/sefid-cpanel-<sha>.zip`. Its root is the
-panel's "Application root":
-
-| Path | What it is |
+| Item | Value |
 |---|---|
-| `app.cjs`, `boot.cjs` | Startup file (`deploy/cpanel/`). CommonJS: the panel's loader (Phusion Passenger or LiteSpeed lsnode) `require()`s it. |
-| `server/` | Next's standalone server with `public/` and `.next/static/`. No `node_modules` sits in the root: the Node selector reserves that name for its own environment. |
-| `seed/` | A migrated and seeded SQLite database with its media, copied to the data folder on the first start only. |
-| `package.json`, `release.json` | A minimal manifest (no dependencies; never run "NPM Install") and the commit and build time. |
+| Server | Ubuntu Server 26.04 LTS, amd64, a cloud VM in Tehran |
+| Address | `2.144.23.111`, host name `sefid-prod-1` |
+| Size | Assumed 2 vCPU, 4 GB RAM, 80 GB NVMe. The provision report prints the real values. |
+| Access | SSH as `deploy` with one ed25519 key, from GitHub Actions only |
+| Server code | `deploy/vps/` (`provision.sh`, the files it installs, `server.env`, `known_hosts`) |
+| Workflow | `.github/workflows/server.yml` ("Server") |
+| Phase | Preview: `https://new.sefiddental.ir`, `ALLOW_INDEXING=false`. `sefiddental.ir` stays at the old host until the client approves the switch (3.7). |
 
-At start `boot.cjs`:
+### 3.1 How it works
 
-1. Stops with a clear line when Node is older than 22.18.
-2. Uses the data folder `~/sefid-data` (`SEFID_DATA_DIR` overrides it), outside
-   the release, mode 0700. A new release never touches it.
-3. Takes each secret of 2.3 from the panel's environment, else from
-   `~/sefid-data/secrets.json` (0600), which the first start creates with
-   48 random bytes per value. It writes `~/sefid-data/cron-secret` (0600) for
-   the cron job. Values are never printed.
-4. Fills the defaults of this host type unless the panel sets them:
-   `DATABASE_URL=file:~/sefid-data/sefid.db`, `MEDIA_DIR=~/sefid-data/media`,
-   `DB_PUSH=false`, `TRUST_PROXY_HEADERS=true`, `TRUSTED_PROXY_HOPS=1`,
-   `TZ=UTC`, `NEXT_TELEMETRY_DISABLED=1`, `GIT_SHA` and `BUILD_TIME` from
-   `release.json`.
-5. On the first start only, copies `seed/sefid.db` and `seed/media/` into the
-   data folder (an existing database is never overwritten).
-6. Opens a second HTTP server on a free loopback port and sets
-   `INTERNAL_ORIGIN` to it. The panel's loader takes the app's first
-   `listen()` (public traffic arrives on its socket, not on a TCP port), so the
-   proxy's calls to `/api/internal/*` need their own listener. It serves those
-   paths only (404 for anything else) and listens through `net.Server`'s
-   `listen`, which the loaders leave alone.
-7. Gives Next's requests `X-Forwarded-Proto: https` when the panel's web
-   server sent none. Without the header Next fills in `http`, and the
-   canonical redirect would send every visitor to the same https URL again
-   and again. The panel forces HTTPS itself (3.3 step 3); a header the web
-   server does send is kept.
-8. Imports `server/server.js`. Pending migrations run when Payload first
-   starts (2.7, `prodMigrations` of the SQLite adapter).
+```text
+GitHub runner (ubuntu-24.04), workflow "Server"      Server (Ubuntu 26.04)
+  build as CI, release tarball  --- ssh (deploy) ---> ~/incoming/sefid-<id>.tar.gz
+  migrate, seed, first-admin    --- ssh tunnel  ----> 127.0.0.1:5432 PostgreSQL
+                                                      sefid-release: /srv/sefid/releases/<id>
+                                                      sefid.service: node on localhost:3000
+Visitors --- https ---> nginx :443 (TLS, headers, body caps) ---> localhost:3000
+```
 
-A failed start writes one JSON line to stderr and to `startup-error.log` in
-the application root (readable in File Manager).
+- Nobody opens a shell on the server. Outbound SSH is blocked where the
+  studio works. Every action runs on a GitHub-hosted runner and reaches the
+  server over SSH as `deploy`, which has passwordless sudo. The integrator
+  starts a run and reads its log through the GitHub API.
+- The server never builds and never downloads Node.js or npm packages.
+  Several services block Iranian addresses (nodejs.org, npm, Docker Hub).
+  The release tarball therefore carries the standalone server with every
+  module, and the official Node.js binary of the build's version. The
+  workflow checks that binary against `SHASUMS256.txt`, and the signature of
+  that file against the keys of `nodejs/release-keys` (the "Verifying
+  binaries" steps of the Node.js README).
+- Migrations, the seeder and `first-admin` run on the runner from a checkout
+  of the commit, through an SSH tunnel to Postgres (2.7, way 1). The app's
+  start-up migrations stay as the fallback.
+- For that, the workflow reads two values from `/etc/sefid/app.env`:
+  `DATABASE_URL` and `PAYLOAD_SECRET`. It masks both, and the password inside
+  the URL, before any other use. No other secret leaves the server.
+- Packages come from the Ubuntu archive only: nginx, PostgreSQL (the major
+  that 26.04 ships), certbot, ufw, fail2ban, unattended-upgrades.
+- The build runs on an ubuntu-24.04 runner (glibc 2.39); the server runs
+  26.04 with a newer glibc. 2.1 asks for the same OS and libc, so this differs
+  on purpose. The release's native code (the Node binary, the prebuilt
+  libvips of sharp, modules built by `npm ci`) needs a glibc at least as old
+  as the build's, and newer glibc versions run it. Move the build to an
+  ubuntu-26.04 runner when GitHub offers one.
+- The SSH key enters an ssh-agent after `npm ci` and the build, never a file.
+  Code that runs later in the job (Payload, the seeder, their dependencies)
+  can use the connection while the job runs, but cannot copy the key.
+- `provision`, the release switch, `rollback` and maintenance mode run as
+  transient systemd units on the server, not as children of the SSH session.
+  A cancelled run or a dropped connection cannot stop them halfway.
 
-Unit tests: `deploy/cpanel/boot.test.ts` (CB1 to CB7, including a simulated
-loader that throws on a second `listen()` and `boot()` end to end).
+### 3.2 One-time setup
 
-### 3.2 Panel settings
+1. Before the bootstrap, the client sets a long random root password in the
+   provider's panel (at least 20 characters, from a password manager) and
+   checks once that the provider's web console opens a root shell. Until the
+   first `provision`, root can log in over SSH with that password, and no
+   firewall or fail2ban runs yet.
+2. The client runs the bootstrap below as root on the server (section 4 has
+   the steps in Persian). It creates the user `deploy` with sudo and one SSH
+   key. It prints the private key (output 1) and the server's host key
+   (output 2). The client sends output 2 to the studio at once.
+3. `SERVER_SSH_KEY`: output 1, the whole key with its BEGIN and END lines,
+   becomes an Actions secret of the repository (Settings, Secrets and
+   variables, Actions). On a repository of a personal account only the owner
+   can add secrets, and `localroot4/sefiddental` belongs to the studio. Who
+   pastes output 1 is an open decision (below).
+4. `ADMIN_PASSWORD`: the integrator makes a random temporary password with
+   `openssl rand -base64 18` and stores it with
+   `gh secret set ADMIN_PASSWORD`. Users rules: at least 12 characters,
+   without the part of the e-mail before `@`. The integrator tells it to the
+   client by phone, never in the e-mail or chat that carries the admin's
+   e-mail. The client changes it at the first sign-in (3.3).
+5. The integrator commits `deploy/vps/known_hosts` with one line: the
+   address, a space, then output 2, for example
+   `2.144.23.111 ssh-ed25519 AAAA... root@host`. Until then every SSH step
+   stops with a message that says so.
+6. The same day, the integrator runs `provision` (3.3 step 1). It turns off
+   root and password login over SSH and starts the firewall.
 
-| Setting | Value |
-|---|---|
-| Node.js version | 22.18 or newer. If the list stops below 22, ask the host to enable Node 22; the app does not start on older versions. |
-| Application mode | Production |
-| Application root | `sefid` |
-| Application URL | `sefiddental.ir` (the root, no path) |
-| Application startup file | `app.cjs` |
-| Environment variables | `SITE_URL=https://sefiddental.ir`, `ALLOW_INDEXING=false` until the client approves the content, `ALLOW_FIRST_USER=true` only until the first admin exists. Optional: SMTP values of 2.3. Nothing else is needed. |
+Open decision: who pastes output 1. The client cannot add a secret to the
+studio's repository, and output 1 must never travel by chat or e-mail. Two
+ways out:
+
+- The integrator runs the bootstrap in the provider's web console,
+  with access the client grants and withdraws afterwards, and pastes output 1
+  straight into the secret.
+- Invert the key flow. The integrator runs
+  `ssh-keygen -t ed25519 -N '' -C github-actions-deploy -f key`, then
+  `gh secret set SERVER_SSH_KEY < key`, and deletes `key`. Only the public
+  line `key.pub` goes to the client, and the bootstrap writes that line into
+  `authorized_keys` instead of running `ssh-keygen`; output 1 disappears.
+  This changes the bootstrap text below, which is fixed until the integrator
+  decides.
+
+Bootstrap (fixed; do not change what it creates):
+
+```sh
+bash <<'EOF'
+set -eu
+id deploy >/dev/null 2>&1 || useradd -m -s /bin/bash deploy
+echo 'deploy ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/90-deploy
+chmod 440 /etc/sudoers.d/90-deploy && visudo -cf /etc/sudoers.d/90-deploy >/dev/null
+install -d -m 700 -o deploy -g deploy /home/deploy/.ssh
+k=$(mktemp -d)
+ssh-keygen -q -t ed25519 -N '' -C github-actions-deploy -f "$k/key"
+install -m 600 -o deploy -g deploy "$k/key.pub" /home/deploy/.ssh/authorized_keys
+echo; echo '==== 1) GitHub secret SERVER_SSH_KEY (never paste it in a chat) ===='
+cat "$k/key"; rm -rf "$k"
+echo '==== 2) Host key: send this one line ===='
+cat /etc/ssh/ssh_host_ed25519_key.pub
+EOF
+```
+
+- Output 1 goes into the GitHub secret only: never into a chat, an e-mail or
+  a file in the repository.
+- Password login for root stays on until the first `provision`. Provision
+  turns it off; it runs over the key, so the key is proved first.
+- After the first `provision`, SSH accepts only `deploy` with its key. Root
+  cannot log in over SSH at all, with a password or a key, and neither can
+  the provider's default user. Without GitHub, the way in is the provider's
+  web console as root, with the root password of step 1. The client keeps
+  that password in a safe place.
+- To replace the key later (lost or leaked), run the bootstrap again as root
+  in the provider's web console. It writes a new `authorized_keys`, so the
+  old key stops working. Then update the secret.
+- A rebuild of the server, or a restore of a provider snapshot, can create a
+  new host key. Every SSH step then stops at the host key check. The client
+  runs `cat /etc/ssh/ssh_host_ed25519_key.pub` in the web console and sends
+  the line; the integrator commits it in `deploy/vps/known_hosts`.
+
+Who controls the server: `SERVER_SSH_KEY` is root on the server, and every
+workflow run in this repository can read repository secrets, on any branch.
+Whoever can push to the repository can push a workflow that prints the key:
+every collaborator with write access is an admin of the server, and so is a
+stolen token with the `workflow` scope. The main-only check in the workflow
+guards against a mistake, not an attack. Close the gap when the plan allows
+it (GitHub Pro or Team for a private repository):
+
+1. Create the environment `production` (Settings, Environments) with the
+   deployment branch rule "main" only.
+2. Add `environment: production` to the job `server` of
+   `.github/workflows/server.yml`, not to `vps-smoke` (it uses no secret).
+3. Move `SERVER_SSH_KEY` and `ADMIN_PASSWORD` from the repository secrets to
+   the environment.
+4. Add a ruleset on main: a pull request is required, force pushes are
+   blocked.
+
+Until then, keep the collaborators with write access to the minimum.
 
 ### 3.3 First release
 
-1. Create the application with the settings above, then stop it.
-2. File Manager: open `sefid`, upload the zip, "Extract", delete the zip.
-3. SSL/TLS Status: run AutoSSL for `sefiddental.ir` and `www`. Domains:
-   turn on "Force HTTPS Redirect". The form cookies are `__Host-` cookies and
-   work over HTTPS only.
-4. Start the application. Open `https://sefiddental.ir/api/health`: it
-   answers `{"status":"ok", ...}` with the release's `version`.
-5. Open `/admin` and create the first admin. Then remove `ALLOW_FIRST_USER`
-   and restart.
-6. Cron Jobs: every minute (`* * * * *`):
+Run the workflow "Server" from main (Actions, Server, Run workflow), one
+action at a time, in this order:
 
-   ```sh
-   curl -fsS -m 55 -H "Authorization: Bearer $(cat $HOME/sefid-data/cron-secret)" https://sefiddental.ir/api/cron/tick > /dev/null
-   ```
+1. `provision`. Read its report: OS, CPU, RAM, disk, versions, the effective
+   sshd values, ufw, the listening sockets (Node on loopback only, nginx on
+   80 and 443), the `systemd-analyze security` score and the app environment
+   names.
+2. `deploy`. The log ends with the health JSON; `version` is the commit.
+3. `seed`. The log shows the line `seed: mode create-only ...`.
+4. `first-admin` with the input `email` set to the clinic's admin e-mail. The
+   log shows `first-admin: <email> created`.
+5. The client adds the A record `new.sefiddental.ir` to `2.144.23.111`
+   (section 4). Wait for its TTL.
+6. `cert`. It stops with a clear message while the name does not resolve to
+   the server, so it never spends the Let's Encrypt rate limits.
+7. `status`. Then the client signs in at `https://new.sefiddental.ir/admin`
+   with the temporary password, sets up the TOTP code, changes the password,
+   and opens «وضعیت سیستم». Every row of «پیکربندی» must be green except
+   «ارسال ایمیل»: it stays red while no SMTP server is set (3.9).
+8. The integrator deletes the secret: `gh secret delete ADMIN_PASSWORD`. It
+   held the admin's password, and `first-admin` runs once. `reset-admin`
+   (3.4) sets a new one when it is needed.
 
-7. In the admin, open «وضعیت سیستم». Every row of «پیکربندی» must be green.
-   A red proxy-trust row means the host's web server does not pass the
-   visitor's address in `X-Forwarded-For` (2.4): every visitor then shares
-   one rate-limit key (S2). Report it before going further.
+Before step 6, nginx serves the snakeoil certificate. Test with
+`curl --resolve new.sefiddental.ir:443:2.144.23.111 -k`.
 
-### 3.4 Later releases
+Later releases: run `deploy` after CI is green on main. `deploy` refuses a
+commit whose CI run has not passed. Nothing deploys on its own yet.
 
-1. Download the new zip. Stop the application.
-2. File Manager, in `sefid`: delete the `server` folder (stale chunks of the
-   old release would stay otherwise), upload and extract the zip, delete it.
-3. Start the application and check `/api/health` shows the new `version`.
+### 3.4 The workflow "Server"
 
-Migrations run at the first request after the start. Rollback: the same steps
-with the previous zip, but only when that release has the same migrations
-(2.7: a down migration needs a backup and the client's confirmation).
+Input `action`:
 
-New seed content (phase 6, H43 with C8). A later release does not seed the
-live database again: `seed/` is copied on the first start only (3.1 step 5).
-New text in the seed files reaches a running site only by hand in the admin
-or through the seeder's fill mode, `npm run seed -- fill`. Fill creates
-missing records and fills empty fields. It never overwrites a filled field
-and leaves a document with a medical reviewer unchanged. Fill is off by
-default: nothing runs it at start or in the package. Before a fill, get the
-client's yes and back up `~/sefid-data` (3.5).
+| Action | What it does |
+|---|---|
+| `status` | `sefid-status`: health, current and previous release, units and timers, the last 50 app log lines, disk, memory, certificate, last backup, pending security updates, reboot required. Then `sefid-env`: the app environment names, never a value. The run is red when `/api/health` does not answer 200. |
+| `logs` | The last 300 journal lines of `sefid.service`: JSON with personal data redacted (2.11). |
+| `deploy` | Stops unless the CI workflow (`ci.yml`) passed for the commit. Then: build as CI (2.2), the release tarball and its sha256, upload, `sefid-backup pre-deploy`, the tunnel, `migrate:status` and `migrate`, then `sefid-release <tarball> <sha256> <release-id>` in a systemd unit. That switches, restarts and waits up to 180 s for `/api/health` 200 with the commit as `version`. Otherwise it switches back to the release that ran before, prints the last 80 log lines and fails. |
+| `provision` | Copies `deploy/vps/` to the server and runs `provision.sh` as root in a systemd unit; its output shows when it ends. Safe to run any number of times. It never deletes data, keeps the secrets, and rewrites the other values of `/etc/sefid/app.env` from `server.env`. |
+| `cert` | `sefid-cert`: checks that every name of `DOMAINS` resolves to the server only (local and public resolvers, AAAA too), runs certbot in webroot mode, points nginx at the certificate and reloads it. The packaged `certbot.timer` renews; a deploy hook reloads nginx. |
+| `seed` | The seeder in `create-only` mode. Media files first, then rows: a pass on a scratch SQLite database writes every media file, the files go to `/var/lib/sefid/media`, then the pass on the server's database writes the rows. That pass writes into an empty folder, so its files keep the names of the first pass; the run fails if it wrote a file the first pass did not. A failed copy never leaves a row without its file. Restarts the app at the end, because the app caches reads in memory. Through the tunnel the first seed can take long: the job waits up to 30 minutes for output (`PAYLOAD_STALL_MS`) and runs up to 120 minutes. |
+| `first-admin` | `npm run first-admin` with `ADMIN_EMAIL` from the input `email` and `ADMIN_PASSWORD` from the secret. Creates an admin only when no account exists. Prints the e-mail and `created` or `skipped: users exist`, never the password. |
+| `reset-admin` | For a lost password, a lost TOTP phone or a locked account. `npm run reset-admin -- <email>` with the input `email`: the password becomes the value of the secret `ADMIN_PASSWORD`, the TOTP secret is removed and the sign-in lock lifted. Prints `reset-admin: <email> reset`, never the password. Before the run the integrator sets a new temporary `ADMIN_PASSWORD` and tells it to the admin by phone. The admin signs in, changes the password and sets up TOTP again; then the integrator deletes the secret. |
+| `backup` | `sefid-backup manual` (3.6). |
+| `restart` | Restarts `sefid.service` and waits for `/api/health` 200. |
+| `rollback` | `sefid-release rollback` in a systemd unit: back to the previous release, with the same health check (section 5). |
+| `maintenance-on`, `maintenance-off` | `sefid-maintenance on` or `off` (2.12) in a systemd unit. It restarts the app and waits until `/api/health` shows the mode. |
+| `run` | Runs the input `command` as `deploy` on the server, for diagnosis. `deploy` has sudo, so this input is as powerful as the SSH key. The command and everything it prints go into the run log, which every collaborator can read for 90 days. Never put a secret in the command, and never print `/etc/sefid/app.env`, `/etc/sefid/cron-auth.header` or a key: `sudo sefid-env` lists the names. |
+| `smoke` | The `vps-smoke` job (3.8). |
 
-The seeder reads `docs/content/*.yaml`, `content/data/*.yaml`, the media
-files under `content/` and `src/seed/data/*.yaml`. The package ships none of
-them: `scripts/package-cpanel.mjs` runs the seeder at build time from the
-repository root. A fill therefore runs in one of two ways:
+Rules:
 
-1. Ship those files with the release, then run the fill on the host.
-2. Run the fill on a downloaded copy of `~/sefid-data`, then upload it again:
-   stop the application, download the folder, run the fill on the copy from a
-   checkout of the released commit (`release.json`) with
-   `DATABASE_URL=file:<copy>/sefid.db`, `MEDIA_DIR=<copy>/media` and
-   `DB_PUSH=false`, upload `sefid.db` and `media/` again, then start the
-   application.
+- Every action except `smoke` stops at once on a branch other than main.
+  That guards against a mistake, not an attack (3.2, "Who controls the
+  server").
+- One action at a time (concurrency group `server`). GitHub keeps one waiting
+  run per group: a newer waiting run cancels the older waiting one.
+- SSH uses `StrictHostKeyChecking yes` with `deploy/vps/known_hosts`,
+  `BatchMode yes` and `ConnectTimeout 20`. When the connection fails before
+  the server ran anything (a timeout, or a reset during the key exchange),
+  the step tries once more after 30 s. Every other failure stops the run.
+- The upload resumes where a dropped connection stopped it, up to 3
+  attempts, then checks the sha256.
+- `provision`, the release switch, `rollback` and maintenance mode run as
+  transient systemd units named `sefid-<name>-<UTC time>`. When the run is
+  cancelled or the connection drops, the unit still finishes, a switch back
+  included. To read one later, run `run` with
+  `sudo journalctl -u 'sefid-release-*' -n 200 --no-pager`.
+- No step prints a secret, and no step runs `set -x`.
 
-### 3.5 Backups
+### 3.5 Server layout
 
-Everything that cannot be rebuilt is in `~/sefid-data`: `sefid.db`, `media/`
-and `secrets.json`. Include the folder in the host's account backup and
-download a copy every week. Copy `sefid.db` only while the application is
-stopped, or with its `-wal` file beside it. Losing `secrets.json` signs every
-admin out and voids pending form tokens; it does not lose data.
+`deploy/vps/` is the source of truth. Overview:
 
-### 3.6 Known limits on this host
+| Path or unit | What it is |
+|---|---|
+| `/etc/sefid/app.env` (root:sefid 0640) | The app environment of 2.3. The secrets are generated on the server once and kept; the other values come from `server.env` on every provision. Never print it. |
+| `/etc/sefid/server.env`, `/etc/sefid/host.env` | The committed config, and the loopback origin that provision found for `localhost` |
+| `/etc/sefid/cron-auth.header` (sefid 0400) | `Authorization: Bearer <CRON_SECRET>` for the cron tick (2.8) |
+| `/srv/sefid/releases/<release-id>/` | `node/`, `app/`, `release.json`, `release.env`. Root-owned, read-only for the app. `release-id` is `<UTC yyyymmddThhmmssZ>-<sha7>`. The last 5 are kept. |
+| `/srv/sefid/current`, `/srv/sefid/previous` | Links to the running release and the one before |
+| `/var/lib/sefid/media` (sefid 0750) | `MEDIA_DIR`, uploads (2.9) |
+| `/var/backups/sefid/{db,media}` (root 0700) | Backups (3.6) |
+| `sefid.service` | User `sefid`, `localhost:3000`, sandboxed; `systemd-analyze security` in the provision report |
+| `sefid-cron.timer` | The tick of 2.8 every minute, on the loopback origin |
+| `sefid-backup.timer` | 23:30 UTC every night |
+| nginx | TLS 1.2 and 1.3, HTTP/2, every rule of 2.5. Unknown host names get no answer: 444 on port 80, a TLS alert without a certificate on 443. Port 80 serves `/.well-known/acme-challenge/` and redirects the rest to https. Access log with shortened client addresses (2.11). |
+| PostgreSQL | Loopback only, scram-sha-256, role and database `sefid` |
+| Firewall and SSH | ufw allows 22 (rate-limited), 80 and 443. fail2ban watches sshd. SSH: key only, user `deploy` only, no root login, forwarding only to `127.0.0.1:5432`. |
+| OS | Security updates every night at 22:30 to 22:45 UTC (02:00 in Tehran), with the service restarts they need; a reboot at 23:45 UTC when one is required. UTC clock (chrony, with plain NTP beside Ubuntu's NTS sources). 2 GB swap, journald capped at 1 GB. |
 
-- One account memory limit (LVE) for Next.js, the Payload admin and sharp.
-  An out-of-memory kill shows as a restart in the panel.
-- The loader may stop an idle application; the minute cron keeps it warm
-  and runs the job queue.
-- sharp and libsql ship prebuilt Linux x64 glibc binaries. A host on an old
-  glibc (CloudLinux 7, glibc 2.17) cannot load them; the start fails with a
-  loader error in `stderr.log`.
-- Request body caps of 2.5 (nginx) do not exist here: Next's own 10 MB cap
-  applies (S11).
+### 3.6 Backups
+
+- Every night at 23:30 UTC, `sefid-backup` writes
+  `/var/backups/sefid/db/sefid-<stamp>-nightly.dump` (`pg_dump` custom format,
+  read back with `pg_restore --list`) and a tar of the media folder. It keeps
+  14 days.
+- Every `deploy` takes a `pre-deploy` backup of the database before the
+  migrations. It skips the media folder: a release does not change media.
+- The action `backup` takes one now.
+- Before it writes, `sefid-backup` checks the free space. It stops with a
+  clear message when the disk has less than twice the newest dump plus the
+  media folder: a full disk would stop PostgreSQL. `status` prints the size
+  of all backups.
+- Each nightly media archive is a full copy, so 14 days keep 14 copies of the
+  media folder. Read "all backups" in `status` every month (open item 3.9).
+- The reboot after an update (23:45 UTC) comes 15 minutes after the backup
+  starts and cuts off a backup that still runs; that night then has no
+  backup. With a few GB of media the backup takes a minute or two. If it
+  grows past 10 minutes, move `Automatic-Reboot-Time` in
+  `deploy/vps/files/etc/apt/apt.conf.d/53sefid-auto-reboot`.
+- Not built yet: the off-site copy. The backups sit on the server's own
+  disk, so losing the VM loses them too. Until a bucket exists, ask the
+  provider for daily VM snapshots (section 4). A failed backup alerts nobody
+  yet: run `status` every week and read "last backup".
+
+### 3.7 From preview to live
+
+Only after the client approves the switch in writing. nginx serves a name
+only after `provision` knows it, and with a real certificate only after
+`cert`: this order keeps the gap to a few minutes.
+
+1. At least one day before: the client exports the zone of `sefiddental.ir`
+   (every record) and lowers the TTL of the apex and `www` records to 300 s.
+2. Mail, in the same days: on a zone made by cPanel, the MX record usually
+   points at the apex, and `mail`, `webmail` and `ftp` are often CNAMEs of
+   it. After the switch they would reach the VPS, which runs no mail server,
+   and mail to the clinic would bounce. If any record points at the apex or
+   is a CNAME of it, the client creates `mail.sefiddental.ir A <old host IP>`,
+   points the MX record and those names at it, waits for their old TTL and
+   sends a test mail to an `@sefiddental.ir` address. A change of the MX
+   record needs the client's confirmation.
+3. In `deploy/vps/server.env`, change the one line `PHASE=preview` to
+   `PHASE=live`. That sets `SITE_URL=https://sefiddental.ir`,
+   `DOMAINS="sefiddental.ir www.sefiddental.ir"` and `ALLOW_INDEXING=true`.
+   Commit to main.
+4. Run `provision` while the DNS still points at the old host. Visitors still
+   reach the old host; the preview at `new.sefiddental.ir` stops.
+5. The client points `sefiddental.ir` and `www.sefiddental.ir` at
+   `2.144.23.111` (A records) and removes every other A and AAAA record of
+   both names.
+6. Run `cert` at once, and again every few minutes until it passes. It stops
+   with a clear message while a resolver still gives the old address. Until
+   it passes, a visitor who already gets the new address sees a certificate
+   warning: about 5 to 10 minutes with a TTL of 300 s.
+7. Check: `https://sefiddental.ir/api/health` answers 200,
+   `https://www.sefiddental.ir/` redirects to the apex, `robots.txt` allows
+   crawling, and «وضعیت سیستم» shows no red row except «ارسال ایمیل» (3.9).
+
+After the switch `new.sefiddental.ir` is no longer served. Remove its A
+record then, and run `run` with
+`sudo certbot delete --non-interactive --cert-name new.sefiddental.ir`:
+otherwise `certbot.timer` keeps trying to renew it and fails every day.
+
+### 3.8 Smoke test: the job `vps-smoke`
+
+It runs on every push to main that changes `deploy/vps/` or
+`.github/workflows/server.yml`, and with the action `smoke`. It uses the same
+steps as the server job, on the runner itself:
+
+1. `provision.sh` twice with `SEFID_SMOKE=1`, in a systemd unit as on the
+   server. The second run must print no `==> updated` and no `restarting`
+   line: that proves it is idempotent. The switch skips sshd, ufw, fail2ban,
+   the host name, the swap file and the reboot settings (the update timer
+   included), and nothing else.
+2. `deploy`, `seed` and `first-admin` through `127.0.0.1`; the pre-deploy
+   backup runs on the still empty database. `first-admin` runs twice:
+   `created`, then `skipped: users exist`. Then `reset-admin` sets a new
+   password for that account.
+3. Checks: health 200 with the commit. Through nginx on 443 (`--resolve`,
+   `-k`): the home page answers 200 with each header of 2.5 item 1 exactly
+   once, and no `x-middleware-*` header; a `//` path and a Persian route carry
+   the same headers. An unknown host name gets no TLS handshake. The cron
+   timer runs a successful tick, and `/api/cron/tick` answers 401 without the
+   bearer. `sefid-backup` writes a dump that `pg_restore --list` reads.
+   Maintenance mode answers 503, then 200. A second release, then a
+   `rollback` in a systemd unit whose client is killed while it runs: the
+   unit still returns to the first release and records the second as
+   previous. A release whose server exits at once is switched back. `status`
+   and `logs` run.
+
+The runner is Ubuntu 24.04, the server 26.04. The smoke test cannot cover:
+
+- the PostgreSQL major (26.04 ships 18; CI and the int suite test 16), nginx
+  and OpenSSH versions, sshd socket activation, ufw, fail2ban and the real
+  network;
+- sudo-rs, which 26.04 uses as `sudo`;
+- the Rust coreutils (uutils), which 26.04 uses instead of GNU coreutils.
+  The scripts use `install -D -o -g`, `mv -T`, `sha256sum --check -`,
+  `sort -V`, `date -u +<format>`, `df --output=avail -B1`, and 6.1 uses
+  `cp --update=none`;
+- OpenSSH 10, whose `sshd-auth` process logs failed logins (the fail2ban
+  filter names it; check that the jail counts failures);
+- chrony with NTS sources, which a network in Iran may block.
+
+The provision report prints the sudo, `date`, PostgreSQL, nginx and OpenSSH
+versions, the time sources and the fail2ban sshd jail. Read them after the
+first `provision` on the server. The smoke test also runs
+`apt-get full-upgrade` on the runner, which has hundreds of preinstalled
+packages: a red or slow `vps-smoke` can come from there (3.9).
+
+### 3.9 Known limits and open items
+
+- Not run yet: the workflow and `provision.sh` have not run on any machine.
+  The first push runs `vps-smoke`.
+- One server, no staging. The preview phase serves as staging until the
+  switch.
+- The release folder is read-only for the app. The data cache stays in
+  memory (`experimental.isrFlushToDisk: false` in `next.config.ts`), so
+  Next.js writes nothing under `app/.next/cache`.
+- No SMTP server is set. «ارسال ایمیل» in «وضعیت سیستم» stays red, and
+  password reset by mail does not work: `reset-admin` (3.4) replaces it.
+  provision keeps lines of `/etc/sefid/app.env` it does not manage, so the
+  `SMTP_*` lines of 2.3 can go there, but no action writes a secret into that
+  file without showing it in the run log yet.
+- nginx's error log keeps full client addresses for 14 days (2.11), while the
+  privacy page says a form never keeps the IP address. Decide with the
+  client: add one sentence to the privacy page, or keep the error log
+  shorter.
+- Open items: who pastes the SSH key (3.2, open decision); GitHub
+  environment protection (3.2, "Who controls the server"); the off-site
+  backup copy (3.6); media backups that copy only changed files (for
+  example `rsync --link-dest` snapshots) instead of 14 full archives; alerts
+  for a failed backup, a failed cron tick or a down site; SMTP (above); one
+  run of the int suite against PostgreSQL 18; whether `SEFID_SMOKE=1` should
+  skip `apt-get full-upgrade` on the runner (it changes the list of what the
+  switch skips); a deploy that starts on its own after CI is green; a staging
+  environment.
 
 ## 4. کارهای شما
 
-این فهرست، راه‌اندازی سایت روی هاست cPanel است. کارها را به همین ترتیب انجام دهید. هر سطر یک کار است.
+این فهرست، راه‌اندازی سایت روی سرور خود کلینیک است. کارها را به همین ترتیب انجام دهید. هر سطر یک کار است.
 
-1. فایل `sefid-cpanel.zip` را بگیرید. استودیو آن را می‌فرستد.
-2. وارد cPanel شوید. بخش «Setup Node.js App» را باز کنید. «Create Application» را بزنید.
-3. «Node.js version» را روی ۲۲ یا بالاتر بگذارید. اگر ۲۲ در فهرست نیست، از پشتیبانی هاست Node 22 را بخواهید.
-4. «Application mode» را روی Production بگذارید.
-5. در «Application root» بنویسید `sefid`.
-6. در «Application URL» دامنهٔ `sefiddental.ir` را انتخاب کنید. مسیر را خالی بگذارید.
-7. در «Application startup file» بنویسید `app.cjs`.
-8. سه متغیر محیطی اضافه کنید: `SITE_URL` با مقدار `https://sefiddental.ir`، `ALLOW_INDEXING` با مقدار `false` و `ALLOW_FIRST_USER` با مقدار `true`.
-9. «Create» را بزنید. بعد «Stop App» را بزنید.
-10. «File Manager» را باز کنید. وارد پوشهٔ `sefid` شوید. فایل zip را بارگذاری کنید. روی آن «Extract» را بزنید. بعد فایل zip را پاک کنید.
-11. در «SSL/TLS Status» برای `sefiddental.ir` و `www.sefiddental.ir` گزینهٔ «Run AutoSSL» را بزنید.
-12. در «Domains» گزینهٔ «Force HTTPS Redirect» را روشن کنید.
-13. به «Setup Node.js App» برگردید. «Start App» را بزنید.
-14. نشانی `https://sefiddental.ir/api/health` را باز کنید. باید عبارت `"status":"ok"` را ببینید.
-15. نشانی `https://sefiddental.ir/admin` را باز کنید. حساب مدیر را با ایمیل کلینیک و یک گذرواژهٔ قوی بسازید.
-16. در «Setup Node.js App» متغیر `ALLOW_FIRST_USER` را پاک کنید. «Save» و بعد «Restart» را بزنید.
-17. در «Cron Jobs» یک کار با زمان‌بندی «Once Per Minute» بسازید. دستور بخش 3.3 بند ۶ را در آن بگذارید.
-18. در پنل مدیریت سایت، «وضعیت سیستم» را باز کنید. از بخش «پیکربندی» عکس بگیرید و برای استودیو بفرستید.
+1. در پنل ارائه‌دهندهٔ سرور، یک رمز root بلند و تصادفی بگذارید: دست‌کم ۲۰ نویسه، از یک برنامهٔ مدیریت رمز.
+2. این رمز را در جای امن نگه دارید. بعدها تنها راه ورود شما به سرور همین رمز است.
+3. کنسول وب ارائه‌دهنده را یک بار باز کنید. مطمئن شوید با root وارد می‌شوید.
+4. با کاربر root وارد سرور شوید: از کنسول وب ارائه‌دهنده، یا با SSH و رمز root.
+5. دستور «Bootstrap» بخش 3.2 را کامل کپی کنید، در سرور بچسبانید و Enter بزنید.
+6. خروجی شمارهٔ ۲ یک خط است که با `ssh-ed25519` شروع می‌شود. آن را همان موقع برای استودیو بفرستید. این خط محرمانه نیست.
+7. خروجی شمارهٔ ۱ یک کلید خصوصی است. جای آن فقط Secret مخزن در GitHub است. آن را برای هیچ‌کس نفرستید: نه در پیام‌رسان، نه در ایمیل.
+8. اگر به Settings مخزن سایت در GitHub دسترسی دارید: به Settings، بعد Secrets and variables، بعد Actions بروید.
+9. «New repository secret» را بزنید. نام را `SERVER_SSH_KEY` بگذارید. کلید را از خط `BEGIN` تا خط `END` در مقدار بچسبانید. «Add secret» را بزنید.
+10. اگر به Settings دسترسی ندارید، کلید را کپی نکنید. به استودیو خبر دهید. استودیو راه امن را با شما هماهنگ می‌کند.
+11. ایمیل حساب مدیر سایت را برای استودیو بفرستید.
+12. اگر ارائه‌دهندهٔ سرور «پشتیبان‌گیری خودکار» یا «Snapshot» روزانه دارد، آن را روشن کنید.
+13. منتظر پیام استودیو بمانید: «سایت روی سرور آماده است».
+14. از این به بعد، root نمی‌تواند با SSH وارد سرور شود، با رمز یا بدون رمز. این عمدی است و خرابی نیست.
+15. برای ورود به سرور فقط کنسول وب ارائه‌دهنده را با رمز root به کار ببرید.
+16. پنل DNS دامنهٔ `sefiddental.ir` را باز کنید. یک رکورد A بسازید: نام `new` و مقدار `2.144.23.111`. به رکوردهای دیگر دست نزنید.
+17. به استودیو خبر دهید. استودیو گواهی HTTPS را می‌گیرد.
+18. استودیو یک گذرواژهٔ موقت برای حساب مدیر، با تماس تلفنی به شما می‌گوید.
+19. نشانی `https://new.sefiddental.ir/admin` را باز کنید. با ایمیل خود و گذرواژهٔ موقت وارد شوید.
+20. کد دومرحله‌ای (TOTP) را با یک برنامهٔ Authenticator در گوشی راه بیندازید.
+21. گذرواژه را عوض کنید: دست‌کم ۱۲ نویسه، بدون بخش اول ایمیل. گذرواژهٔ تازه را به هیچ‌کس نگویید.
+22. در پنل مدیریت، «وضعیت سیستم» را باز کنید. از بخش «پیکربندی» عکس بگیرید و برای استودیو بفرستید.
+23. ردیف «ارسال ایمیل» فعلاً قرمز است. این تا راه‌اندازی سرور ایمیل طبیعی است.
+24. سایت را در `https://new.sefiddental.ir` ببینید و نظرتان را بگویید.
+25. وقتی سایت را برای نشانی اصلی تأیید کردید، این را کتبی به استودیو بگویید.
+26. استودیو مراحل تغییر DNS نشانی اصلی را برایتان می‌فرستد. این مراحل یک روز زودتر شروع می‌شوند.
+27. پیش از تغییر، رکوردهای ایمیل دامنه را با استودیو بررسی کنید. این کار ایمیل کلینیک را از قطع شدن حفظ می‌کند.
 
-اگر سایت بالا نیامد، فایل‌های `stderr.log` و `startup-error.log` را از پوشهٔ `sefid` بفرستید. هیچ فایلی از پوشهٔ `sefid-data` را برای کسی نفرستید: رمزهای سایت در آن است.
+اگر این اتفاق‌ها افتاد:
+
+- رمز مدیر یا گوشی کد دومرحله‌ای را گم کردید، یا حساب قفل شد: به استودیو خبر دهید. استودیو حساب را بازنشانی می‌کند و گذرواژهٔ موقت تازه را تلفنی می‌گوید. بعد از ورود، گذرواژه را عوض کنید و کد دومرحله‌ای را دوباره راه بیندازید.
+- ارائه‌دهنده سرور را از نو ساخت یا از Snapshot برگرداند: در کنسول وب، دستور `cat /etc/ssh/ssh_host_ed25519_key.pub` را بزنید. خروجی را برای استودیو بفرستید.
+- کلید خصوصی گم شد یا لو رفت: در کنسول وب با root، دستور «Bootstrap» را دوباره اجرا کنید. کلید قبلی از کار می‌افتد. بعد بندهای ۶ تا ۱۰ را دوباره انجام دهید.
+
+اگر مشکلی دیدید، فقط شرح مشکل و عکس صفحه را بفرستید. رمز root، کلید خصوصی و گذرواژهٔ مدیر را برای هیچ‌کس نفرستید.
 
 ## 5. Rollback
 
-Choose by what broke.
+Choose by what broke. On the VPS every step is an action of the workflow
+"Server" (3.4).
 
 | What broke | Action |
 |---|---|
-| Code of the new release | Redeploy the previous good commit (below). |
-| An environment value | Restore the old value in the platform and restart. |
+| Code of the new release | `rollback` (below). |
+| An environment value | Non-secret values: revert the change in `deploy/vps/server.env` on main, then run `provision`. The secrets live only in `/etc/sefid/app.env` on the server, and provision keeps them. Other hosts: restore the old value in the platform and restart. |
 | Data (wrong edits, a bad migration that lost data) | Restore runbook (section 6). |
 
-Redeploy the previous good commit:
+Back to the previous release on the VPS:
+
+1. Run `maintenance-on` if the release harms visitors or data.
+2. Run `rollback`. `sefid-release rollback` points `/srv/sefid/current` at
+   the previous release, restarts the app and waits for `/api/health` 200
+   with that release's commit. When the check fails, it switches back and
+   the run is red.
+3. Run `status`: `version` is the previous commit, and "releases" shows
+   current and previous swapped.
+4. Run `maintenance-off`.
+
+`rollback` knows one step back only, although the server keeps the last 5
+releases. To go further back, revert the bad commits on main
+(`git revert`), wait for CI, then run `deploy`. That builds a new release of
+the old code with its own `GIT_SHA`.
+
+Redeploy the previous good commit (other hosts):
 
 1. Turn on maintenance mode (2.12) if the release harms visitors or data.
 2. Find the previous good SHA: the last release that passed its health check.
@@ -982,9 +1270,8 @@ Redeploy the previous good commit:
    git log --oneline -n 10 origin/main
    ```
 
-3. Deploy that commit. The same artifact build of that SHA, with its own
-   `GIT_SHA`. The workflow command and the platform's release-history path go
-   into section 3, item 7. On C1, start the previous release folder.
+3. Deploy that commit: the artifact build of that SHA, with its own
+   `GIT_SHA`. On C1, start the previous release folder instead.
 4. Check the release:
 
    ```sh
@@ -1006,6 +1293,83 @@ Rules:
 
 Restore into a new database. Never restore over the live database: it stays as
 the way back.
+
+### 6.1 On the VPS
+
+Not run yet. Every step is an action of the workflow "Server" (3.4). For
+`run`, the line after "run:" goes into the input `command`. `<stamp>` is the
+UTC date of the restore, for example `20261101`.
+
+1. `maintenance-on`. Tell the editors to stop work in the admin.
+2. `backup`. This dump of the current state, even a broken one, is the undo
+   of the restore.
+3. Choose the dump: the newest one taken before the incident.
+
+   ```sh
+   sudo ls -lt /var/backups/sefid/db
+   ```
+
+4. Check that the file is a readable archive:
+
+   ```sh
+   sudo pg_restore --list /var/backups/sefid/db/<file> > /dev/null && echo readable
+   ```
+
+5. Create the empty database, owned by the app role:
+
+   ```sh
+   sudo -u postgres createdb --owner=sefid sefid_restore_<stamp>
+   ```
+
+6. Restore as the app role, in one transaction. Any error stops the restore
+   and leaves the database empty. Only root reads the backup folder, so
+   `cat` reads the file and `pg_restore` reads its standard input:
+
+   ```sh
+   sudo cat /var/backups/sefid/db/<file> | sudo -u postgres pg_restore --role=sefid --no-owner --no-privileges --exit-on-error --single-transaction --dbname=sefid_restore_<stamp>
+   ```
+
+7. Check the restored data:
+
+   ```sh
+   sudo -u postgres psql -d sefid_restore_<stamp> -c "SELECT name, batch FROM payload_migrations ORDER BY id" -c "SELECT count(*) AS users FROM users" -c "SELECT count(*) AS services FROM services"
+   ```
+
+   The migration list matches the dump's date. The counts are plausible.
+8. Swap the databases in one transaction (`psql -1`). `DATABASE_URL` stays
+   as it is (provision checks its form), so the restored database takes the
+   name `sefid`, and the old one keeps its data under a new name. The line
+   first ends every other session on both databases (the nightly dump, a
+   leftover tunnel), and it starts the app again in every case:
+
+   ```sh
+   sudo systemctl stop sefid-cron.timer sefid.service && sudo -u postgres psql -X -1 -v ON_ERROR_STOP=1 -c "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname IN ('sefid', 'sefid_restore_<stamp>') AND pid <> pg_backend_pid()" -c "ALTER DATABASE sefid RENAME TO sefid_before_restore_<stamp>" -c "ALTER DATABASE sefid_restore_<stamp> RENAME TO sefid"; rc=$?; sudo systemctl start sefid.service sefid-cron.timer; exit $rc
+   ```
+
+   If the run is red with a psql error, nothing was renamed and the app runs
+   on the old database again. Fix the cause (a typo in `<stamp>`, for
+   example) and run the line again. If the dump is older than the code, the
+   start applies the newer migrations (2.7). The restart also empties the
+   in-memory data cache.
+9. `status`: `/api/health` answers 200 and shows `"maintenance":true`. Sign
+   in to the admin and open «وضعیت سیستم»: the «پیکربندی» section shows no
+   red row except «ارسال ایمیل» (no SMTP server, 3.9). Open one public page.
+10. `maintenance-off`.
+11. Keep `sefid_before_restore_<stamp>` for 14 days. Dropping it deletes
+    data, so it needs the client's confirmation.
+
+Media: a database restore does not restore media files. To bring back files
+deleted after the dump, unpack the media archive of the same night (a
+`nightly` or `manual` one: `pre-deploy` backups hold no media) into a new
+folder, copy back only the files that are missing, then remove the unpacked
+copy: it holds every upload, patient photos included, outside the 14-day
+retention.
+
+```sh
+sudo mkdir /var/lib/sefid/restore-<stamp> && sudo tar -xzf /var/backups/sefid/media/<file> -C /var/lib/sefid/restore-<stamp> && sudo -u sefid cp -r --update=none /var/lib/sefid/restore-<stamp>/media/. /var/lib/sefid/media/; rc=$?; sudo rm -rf /var/lib/sefid/restore-<stamp>; exit $rc
+```
+
+### 6.2 Any other host
 
 Tested on 2026-10-14 with PostgreSQL 16 on a local migrated, seeded database:
 steps 2 and 4 to 7 restored all 109 tables with identical row counts. The
@@ -1093,3 +1457,176 @@ Steps:
 Media: a database restore does not restore media files. A file uploaded after
 the dump stays in the bucket without a row. A file deleted after the dump has
 a row without a file, and its URL answers 404.
+
+## 7. Former path: shared cPanel host (kept for reference)
+
+Chosen on 2026-10-18 and replaced by the own VPS on 2026-10-26 (1.2). Nothing
+below is in use. The workflow "Package for cPanel", `scripts/package-cpanel.mjs`
+and `deploy/cpanel/` still build and test the package. The text is unchanged,
+except that its section numbers now start with 7.
+
+On 2026-10-18 the client bought a shared host with a Node.js selector
+(decision record, 1.2). This section is the release procedure for that host.
+It accepts the limits of 1.3: no staging, no health-gated release, no
+rollback beyond re-uploading the previous package, SQLite instead of
+PostgreSQL, and one memory limit for the whole account.
+
+### 7.1 How the package runs on the host
+
+`node scripts/package-cpanel.mjs` (after `npm run build`, or the workflow
+"Package for cPanel") writes `release/sefid-cpanel-<sha>.zip`. Its root is the
+panel's "Application root":
+
+| Path | What it is |
+|---|---|
+| `app.cjs`, `boot.cjs` | Startup file (`deploy/cpanel/`). CommonJS: the panel's loader (Phusion Passenger or LiteSpeed lsnode) `require()`s it. |
+| `server/` | Next's standalone server with `public/` and `.next/static/`. No `node_modules` sits in the root: the Node selector reserves that name for its own environment. |
+| `seed/` | A migrated and seeded SQLite database with its media, copied to the data folder on the first start only. |
+| `package.json`, `release.json` | A minimal manifest (no dependencies; never run "NPM Install") and the commit and build time. |
+
+At start `boot.cjs`:
+
+1. Stops with a clear line when Node is older than 22.18.
+2. Uses the data folder `~/sefid-data` (`SEFID_DATA_DIR` overrides it), outside
+   the release, mode 0700. A new release never touches it.
+3. Takes each secret of 2.3 from the panel's environment, else from
+   `~/sefid-data/secrets.json` (0600), which the first start creates with
+   48 random bytes per value. It writes `~/sefid-data/cron-secret` (0600) for
+   the cron job. Values are never printed.
+4. Fills the defaults of this host type unless the panel sets them:
+   `DATABASE_URL=file:~/sefid-data/sefid.db`, `MEDIA_DIR=~/sefid-data/media`,
+   `DB_PUSH=false`, `TRUST_PROXY_HEADERS=true`, `TRUSTED_PROXY_HOPS=1`,
+   `TZ=UTC`, `NEXT_TELEMETRY_DISABLED=1`, `GIT_SHA` and `BUILD_TIME` from
+   `release.json`.
+5. On the first start only, copies `seed/sefid.db` and `seed/media/` into the
+   data folder (an existing database is never overwritten).
+6. Opens a second HTTP server on a free loopback port and sets
+   `INTERNAL_ORIGIN` to it. The panel's loader takes the app's first
+   `listen()` (public traffic arrives on its socket, not on a TCP port), so the
+   proxy's calls to `/api/internal/*` need their own listener. It serves those
+   paths only (404 for anything else) and listens through `net.Server`'s
+   `listen`, which the loaders leave alone.
+7. Gives Next's requests `X-Forwarded-Proto: https` when the panel's web
+   server sent none. Without the header Next fills in `http`, and the
+   canonical redirect would send every visitor to the same https URL again
+   and again. The panel forces HTTPS itself (7.3 step 3); a header the web
+   server does send is kept.
+8. Imports `server/server.js`. Pending migrations run when Payload first
+   starts (2.7, `prodMigrations` of the SQLite adapter).
+
+A failed start writes one JSON line to stderr and to `startup-error.log` in
+the application root (readable in File Manager).
+
+Unit tests: `deploy/cpanel/boot.test.ts` (CB1 to CB7, including a simulated
+loader that throws on a second `listen()` and `boot()` end to end).
+
+### 7.2 Panel settings
+
+| Setting | Value |
+|---|---|
+| Node.js version | 22.18 or newer. If the list stops below 22, ask the host to enable Node 22; the app does not start on older versions. |
+| Application mode | Production |
+| Application root | `sefid` |
+| Application URL | `sefiddental.ir` (the root, no path) |
+| Application startup file | `app.cjs` |
+| Environment variables | `SITE_URL=https://sefiddental.ir`, `ALLOW_INDEXING=false` until the client approves the content, `ALLOW_FIRST_USER=true` only until the first admin exists. Optional: SMTP values of 2.3. Nothing else is needed. |
+
+### 7.3 First release
+
+1. Create the application with the settings above, then stop it.
+2. File Manager: open `sefid`, upload the zip, "Extract", delete the zip.
+3. SSL/TLS Status: run AutoSSL for `sefiddental.ir` and `www`. Domains:
+   turn on "Force HTTPS Redirect". The form cookies are `__Host-` cookies and
+   work over HTTPS only.
+4. Start the application. Open `https://sefiddental.ir/api/health`: it
+   answers `{"status":"ok", ...}` with the release's `version`.
+5. Open `/admin` and create the first admin. Then remove `ALLOW_FIRST_USER`
+   and restart.
+6. Cron Jobs: every minute (`* * * * *`):
+
+   ```sh
+   curl -fsS -m 55 -H "Authorization: Bearer $(cat $HOME/sefid-data/cron-secret)" https://sefiddental.ir/api/cron/tick > /dev/null
+   ```
+
+7. In the admin, open «وضعیت سیستم». Every row of «پیکربندی» must be green.
+   A red proxy-trust row means the host's web server does not pass the
+   visitor's address in `X-Forwarded-For` (2.4): every visitor then shares
+   one rate-limit key (S2). Report it before going further.
+
+### 7.4 Later releases
+
+1. Download the new zip. Stop the application.
+2. File Manager, in `sefid`: delete the `server` folder (stale chunks of the
+   old release would stay otherwise), upload and extract the zip, delete it.
+3. Start the application and check `/api/health` shows the new `version`.
+
+Migrations run at the first request after the start. Rollback: the same steps
+with the previous zip, but only when that release has the same migrations
+(2.7: a down migration needs a backup and the client's confirmation).
+
+New seed content (phase 6, H43 with C8). A later release does not seed the
+live database again: `seed/` is copied on the first start only (7.1 step 5).
+New text in the seed files reaches a running site only by hand in the admin
+or through the seeder's fill mode, `npm run seed -- fill`. Fill creates
+missing records and fills empty fields. It never overwrites a filled field
+and leaves a document with a medical reviewer unchanged. Fill is off by
+default: nothing runs it at start or in the package. Before a fill, get the
+client's yes and back up `~/sefid-data` (7.5).
+
+The seeder reads `docs/content/*.yaml`, `content/data/*.yaml`, the media
+files under `content/` and `src/seed/data/*.yaml`. The package ships none of
+them: `scripts/package-cpanel.mjs` runs the seeder at build time from the
+repository root. A fill therefore runs in one of two ways:
+
+1. Ship those files with the release, then run the fill on the host.
+2. Run the fill on a downloaded copy of `~/sefid-data`, then upload it again:
+   stop the application, download the folder, run the fill on the copy from a
+   checkout of the released commit (`release.json`) with
+   `DATABASE_URL=file:<copy>/sefid.db`, `MEDIA_DIR=<copy>/media` and
+   `DB_PUSH=false`, upload `sefid.db` and `media/` again, then start the
+   application.
+
+### 7.5 Backups
+
+Everything that cannot be rebuilt is in `~/sefid-data`: `sefid.db`, `media/`
+and `secrets.json`. Include the folder in the host's account backup and
+download a copy every week. Copy `sefid.db` only while the application is
+stopped, or with its `-wal` file beside it. Losing `secrets.json` signs every
+admin out and voids pending form tokens; it does not lose data.
+
+### 7.6 Known limits on this host
+
+- One account memory limit (LVE) for Next.js, the Payload admin and sharp.
+  An out-of-memory kill shows as a restart in the panel.
+- The loader may stop an idle application; the minute cron keeps it warm
+  and runs the job queue.
+- sharp and libsql ship prebuilt Linux x64 glibc binaries. A host on an old
+  glibc (CloudLinux 7, glibc 2.17) cannot load them; the start fails with a
+  loader error in `stderr.log`.
+- Request body caps of 2.5 (nginx) do not exist here: Next's own 10 MB cap
+  applies (S11).
+
+### 7.7 کارهای مشتری روی هاست cPanel
+
+این فهرست، راه‌اندازی سایت روی هاست cPanel است. کارها را به همین ترتیب انجام دهید. هر سطر یک کار است.
+
+1. فایل `sefid-cpanel.zip` را بگیرید. استودیو آن را می‌فرستد.
+2. وارد cPanel شوید. بخش «Setup Node.js App» را باز کنید. «Create Application» را بزنید.
+3. «Node.js version» را روی ۲۲ یا بالاتر بگذارید. اگر ۲۲ در فهرست نیست، از پشتیبانی هاست Node 22 را بخواهید.
+4. «Application mode» را روی Production بگذارید.
+5. در «Application root» بنویسید `sefid`.
+6. در «Application URL» دامنهٔ `sefiddental.ir` را انتخاب کنید. مسیر را خالی بگذارید.
+7. در «Application startup file» بنویسید `app.cjs`.
+8. سه متغیر محیطی اضافه کنید: `SITE_URL` با مقدار `https://sefiddental.ir`، `ALLOW_INDEXING` با مقدار `false` و `ALLOW_FIRST_USER` با مقدار `true`.
+9. «Create» را بزنید. بعد «Stop App» را بزنید.
+10. «File Manager» را باز کنید. وارد پوشهٔ `sefid` شوید. فایل zip را بارگذاری کنید. روی آن «Extract» را بزنید. بعد فایل zip را پاک کنید.
+11. در «SSL/TLS Status» برای `sefiddental.ir` و `www.sefiddental.ir` گزینهٔ «Run AutoSSL» را بزنید.
+12. در «Domains» گزینهٔ «Force HTTPS Redirect» را روشن کنید.
+13. به «Setup Node.js App» برگردید. «Start App» را بزنید.
+14. نشانی `https://sefiddental.ir/api/health` را باز کنید. باید عبارت `"status":"ok"` را ببینید.
+15. نشانی `https://sefiddental.ir/admin` را باز کنید. حساب مدیر را با ایمیل کلینیک و یک گذرواژهٔ قوی بسازید.
+16. در «Setup Node.js App» متغیر `ALLOW_FIRST_USER` را پاک کنید. «Save» و بعد «Restart» را بزنید.
+17. در «Cron Jobs» یک کار با زمان‌بندی «Once Per Minute» بسازید. دستور بخش 7.3 بند ۶ را در آن بگذارید.
+18. در پنل مدیریت سایت، «وضعیت سیستم» را باز کنید. از بخش «پیکربندی» عکس بگیرید و برای استودیو بفرستید.
+
+اگر سایت بالا نیامد، فایل‌های `stderr.log` و `startup-error.log` را از پوشهٔ `sefid` بفرستید. هیچ فایلی از پوشهٔ `sefid-data` را برای کسی نفرستید: رمزهای سایت در آن است.

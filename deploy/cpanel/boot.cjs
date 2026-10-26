@@ -1,5 +1,5 @@
 'use strict';
-// Start-up for a shared cPanel or DirectAdmin "Node.js" host (docs/deploy.md section 3). Those
+// Start-up for a shared cPanel or DirectAdmin "Node.js" host (docs/deploy.md section 7). Those
 // panels run the app through Phusion Passenger or LiteSpeed's lsnode: they require() a CommonJS
 // startup file and take over the app's first http listen(), so there is no shell, no TCP port of
 // our own and often no PostgreSQL. CommonJS on purpose: the loaders require() this file.
@@ -132,7 +132,7 @@ function startInternalListener(env, getNextServer) {
 /**
  * Captures the first http server created after it: Next's. Its requests get
  * `X-Forwarded-Proto: https` when the panel's web server sent none: the panel ends TLS and forces
- * HTTPS (docs/deploy.md 3.3), but without the header Next fills in `http` and the canonical
+ * HTTPS (docs/deploy.md 7.3), but without the header Next fills in `http` and the canonical
  * redirect (src/lib/http/canonical.ts) would send every visitor to the same https URL forever.
  */
 function captureNextServer() {

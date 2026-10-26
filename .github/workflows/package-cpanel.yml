@@ -1,4 +1,4 @@
-# Builds the package for the shared cPanel host (docs/deploy.md section 3) and attaches it to the
+# Builds the package for the shared cPanel host (docs/deploy.md section 7) and attaches it to the
 # release `cpanel-latest` as `sefid-cpanel.zip`. Run by hand ("Run workflow") after CI is green on
 # the commit. It deploys nothing: the clinic uploads the zip in the panel's File Manager.
 # No stored secrets: the build and the seeder get random values per run; the package holds none.
@@ -54,7 +54,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp release/sefid-cpanel-*.zip release/sefid-cpanel.zip
-          notes="Commit ${GITHUB_SHA::12}, built $(date -u +%Y-%m-%dT%H:%MZ). Upload steps: docs/deploy.md section 3."
+          notes="Commit ${GITHUB_SHA::12}, built $(date -u +%Y-%m-%dT%H:%MZ). Upload steps: docs/deploy.md section 7."
           if ! gh release view cpanel-latest --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
             gh release create cpanel-latest --repo "$GITHUB_REPOSITORY" --prerelease \
               --target "$GITHUB_SHA" --title "cPanel package" --notes "$notes"

@@ -1,5 +1,5 @@
 'use strict';
-// Startup file for the panel's "Setup Node.js App" (docs/deploy.md section 3).
+// Startup file for the panel's "Setup Node.js App" (docs/deploy.md section 7).
 const fs = require('node:fs');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');

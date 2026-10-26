@@ -1,5 +1,5 @@
 // Packs the built app for a shared cPanel or DirectAdmin "Node.js" host (docs/deploy.md section
-// 3): `npm run build`, then `node scripts/package-cpanel.mjs`. Writes release/cpanel/ and
+// 7): `npm run build`, then `node scripts/package-cpanel.mjs`. Writes release/cpanel/ and
 // release/sefid-cpanel-<sha>.zip. The zip's root is the panel's "Application root":
 //   app.cjs, boot.cjs   startup file (deploy/cpanel/), no node_modules beside it (the panel's
 //                       Node selector keeps that name for its own virtual environment)
