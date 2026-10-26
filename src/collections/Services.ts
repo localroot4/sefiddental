@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload';
+import { array } from 'payload/shared';
 
 import { taxonomyAccess } from '@/access/presets';
 import { hiddenForEditors, isStaffField } from '@/access/roles';
@@ -17,7 +18,9 @@ import {
   slugField,
   sourcesArray,
   tomanField,
+  withRules,
 } from '@/fields/factories';
+import { sourcesRule } from '@/fields/validators';
 import { contentHooks } from '@/hooks/compose';
 import { sharedServiceSlug } from '@/hooks/slugNamespace';
 
@@ -186,11 +189,11 @@ export const Services: CollectionConfig = {
       defaultValue: true,
       admin: { description: 'این صفحه ادعای پزشکی دارد و به منبع و بازبین نیاز دارد.' },
     },
-    // shortcut: H25 (a medical service publishes with sources) waits for the wave 1b copy: the
-    // source sites are unreachable from the build network, and the gate would turn every seeded
-    // service into a refusal. Add `validate: withRules(array, (value, { data }) =>
-    // sourcesRule(data.isMedical, value))` in the commit that adds the sources to services.yaml.
-    sourcesArray(),
+    {
+      ...sourcesArray(),
+      // H25: a medical service publishes with sources; the reviewer waits for gap 42.
+      validate: withRules(array, (value, { data }) => sourcesRule(data.isMedical, value)),
+    },
     {
       name: 'searchTerms',
       type: 'text',

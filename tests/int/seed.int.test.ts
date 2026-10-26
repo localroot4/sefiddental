@@ -512,8 +512,7 @@ describe('phase 6 seeding: articles, links, fill and sync (H29, H43, C8, C32)', 
     },
   );
 
-  // Held with H25 until the wave 1b copy adds the sources (src/collections/Services.ts).
-  it.skip('SD12 a service the yaml cannot publish stops the run with its file:line and key (H25)', async () => {
+  it('SD12 a service the yaml cannot publish stops the run with its file:line and key (H25)', async () => {
     const root = seedRoot((services) => {
       const copy = serviceByKey(services, 'scaling').clone() as YAMLMap;
       copy.set('key', 'seed-no-source');

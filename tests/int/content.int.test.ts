@@ -191,8 +191,7 @@ describe('phase 4 content model (freeze F7, F17; the seeded restoration page)', 
     ).rejects.toMatchObject({ data: { errors: [{ message: 'هر بخش فقط یک بار می‌آید.' }] } });
   });
 
-  // Held with H25 until the wave 1b copy adds the sources (src/collections/Services.ts).
-  it.skip('CT6 a medical service publishes only with sources; a non-medical one without (H25)', async () => {
+  it('CT6 a medical service publishes only with sources; a non-medical one without (H25)', async () => {
     const category = (
       await payload.find({
         collection: 'service-categories',
