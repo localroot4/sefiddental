@@ -98,7 +98,7 @@ export function markdownTable(rows) {
   return `${lines.join('\n')}\n`;
 }
 
-async function waitForServer(origin, child, timeoutMs) {
+export async function waitForServer(origin, child, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
     if (child.exitCode !== null) throw new Error(`server exited with ${child.exitCode}`);

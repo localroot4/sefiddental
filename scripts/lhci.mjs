@@ -153,7 +153,7 @@ function measureHost() {
  * A one-day self-signed certificate for localhost and its SPKI pin: Chrome trusts exactly this key
  * through --ignore-certificate-errors-spki-list (lighthouserc.cjs), so the page counts as secure.
  */
-function localCertificate(dir) {
+export function localCertificate(dir) {
   const key = path.join(dir, 'key.pem');
   const cert = path.join(dir, 'cert.pem');
   const args =
@@ -177,7 +177,7 @@ function localCertificate(dir) {
 }
 
 /** Starts scripts/tls-front.mjs and resolves once it listens. */
-function startTlsFront(tls, listenPort, upstreamPort) {
+export function startTlsFront(tls, listenPort, upstreamPort) {
   const front = spawn(
     process.execPath,
     [path.join(root, 'scripts', 'tls-front.mjs'), tls.key, tls.cert, listenPort, upstreamPort],
