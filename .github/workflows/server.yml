@@ -136,6 +136,19 @@ jobs:
             echo "CI passed for $GITHUB_SHA"
             exit 0
           fi
+          # Server scripts are not part of the release: when every change since the newest green
+          # commit on main is under deploy/vps/ or in this workflow, that commit's CI counts.
+          base="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&status=success&per_page=1" --jq '.workflow_runs[0].head_sha // ""')"
+          if [ -n "$base" ]; then
+            verdict="$(gh api "repos/$GITHUB_REPOSITORY/compare/$base...$GITHUB_SHA" --jq '
+              if (.status == "ahead" or .status == "identical") and (.files | length) < 300
+                and all(.files[]; .filename | test("^(deploy/vps/|\\.github/workflows/server\\.yml$)"))
+              then "ok" else "no" end')"
+            if [ "$verdict" = ok ]; then
+              echo "CI passed for $base; the commits since then change only deploy/vps/ or server.yml"
+              exit 0
+            fi
+          fi
           latest="$(gh api "$runs&per_page=1" --jq '.workflow_runs[0] // {} | "\(.status // "no run") \(.conclusion // "") \(.html_url // "")"')"
           echo "::error::CI has not passed for $GITHUB_SHA (latest CI run: $latest). Wait until CI is green on main, then run deploy again."
           exit 1
