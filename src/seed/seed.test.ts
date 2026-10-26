@@ -2,8 +2,16 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import type { Field } from 'payload';
 import { afterAll, describe, expect, it } from 'vitest';
 
+import { ARTICLE_BLOCKS } from '@/blocks/articleBlocks';
+import { Articles } from '@/collections/Articles';
+import { Pages } from '@/collections/Pages';
+import { ServiceCategories } from '@/collections/ServiceCategories';
+import { Services } from '@/collections/Services';
+import { ServiceTiers } from '@/collections/ServiceTiers';
+import { ArticleCategories, Tags } from '@/collections/Taxonomies';
 import { ICONS } from '@/components/ui/icons';
 import { sourcesArray } from '@/fields/factories';
 import {
@@ -16,6 +24,7 @@ import {
   headingsRule,
   internalLinks,
   linksRule,
+  proseRule,
   richProseRule,
   slugRule,
   subtextRule,
@@ -55,6 +64,7 @@ import {
   seedPaths,
   serviceData,
   taxonomyData,
+  tierData,
 } from './transforms';
 
 const ROOT = process.cwd();
@@ -269,6 +279,7 @@ describe('phase 4 seed copy (freeze F6, F7, F15, F17, F28)', () => {
   ];
 
   it.each(seededCopy())('SC3 copy rules: %s', (text) => {
+    expect(proseRule(text)).toBe(true); // the admin's own check, so a publish never stops on it
     for (const word of [...BANNED_WORDS, ...LABELS, 'بدون درد', 'متخصص']) {
       expect(text).not.toContain(word);
     }
@@ -707,9 +718,7 @@ describe('phase 6 transforms (H29, H43)', () => {
   });
 });
 
-// shortcut: held until wave 1b writes the copy (the source sites are unreachable from the build
-// network); each copy lane removes `.skip` in the commit that adds its yaml.
-describe.skip('phase 6 copy checks (C10): red until the copy lanes write the yaml', () => {
+describe('phase 6 copy checks (C10): red until the copy lanes write the yaml', () => {
   const servicesFile = readYaml(ROOT, 'docs/content/services.yaml', servicesYaml).data;
   const pages = readYaml(ROOT, 'src/seed/data/pages.yaml', pagesYaml).data.pages;
   const doctors = readYaml(ROOT, 'content/data/doctors.yaml', doctorsYaml).data.doctors;
@@ -827,4 +836,87 @@ describe.skip('phase 6 copy checks (C10): red until the copy lanes write the yam
       expect(slugRule(taxonomyData(tag).slug, 80), tag.slug).toBe(true);
     }
   });
+
+  it('SC14 every seeded string fits the length limits of its field, so the seeder never stops on one', () => {
+    const ref = { category: 1, tags: [], primaryService: null };
+    const problems = [
+      ...servicesFile.categories.flatMap((c) =>
+        lengthProblems(ServiceCategories.fields, categoryData(c), c.key),
+      ),
+      ...servicesFile.services.flatMap((s) => [
+        ...lengthProblems(Services.fields, serviceData(s, 1, 10), s.key),
+        ...(s.tiers ?? []).flatMap((tier, i) =>
+          lengthProblems(ServiceTiers.fields, tierData(tier, 1, i), `${s.key}.${tier.key}`),
+        ),
+      ]),
+      ...pages.flatMap((p) => lengthProblems(Pages.fields, pageData(p), p.key)),
+      ...articlesFile.articles.flatMap((a) =>
+        lengthProblems(Articles.fields, articleData(a, ref), a.slug),
+      ),
+      ...articlesFile.categories.flatMap((c) =>
+        lengthProblems(ArticleCategories.fields, taxonomyData(c), c.slug),
+      ),
+      ...articlesFile.tags.flatMap((t) => lengthProblems(Tags.fields, taxonomyData(t), t.slug)),
+    ];
+    expect(problems).toEqual([]);
+  });
 });
+
+const ARTICLE_BLOCK_FIELDS = new Map(ARTICLE_BLOCKS.map((b) => [b.slug, b.fields]));
+
+/**
+ * The text limits (maxLength, minLength) a seeded value breaks, walked from the collection config
+ * the way Payload validates it: one line per string, with its path.
+ */
+function lengthProblems(fields: Field[], data: unknown, at: string, out: string[] = []): string[] {
+  if (!data || typeof data !== 'object') return out;
+  const row = data as Record<string, unknown>;
+  for (const field of fields) {
+    if (field.type === 'tabs') {
+      for (const tab of field.tabs) {
+        lengthProblems(tab.fields, 'name' in tab ? row[tab.name] : row, at, out);
+      }
+    } else if (!('name' in field)) {
+      if ('fields' in field) lengthProblems(field.fields, row, at, out);
+    } else {
+      const value = row[field.name];
+      const where = `${at}.${field.name}`;
+      if (field.type === 'text' || field.type === 'textarea') {
+        for (const text of [value].flat()) {
+          if (typeof text !== 'string') continue;
+          if (field.maxLength && text.length > field.maxLength) {
+            out.push(`${where}: ${text.length} > ${field.maxLength}: ${text}`);
+          }
+          if (field.minLength && text.length < field.minLength) {
+            out.push(`${where}: ${text.length} < ${field.minLength}: ${text}`);
+          }
+        }
+      } else if (field.type === 'group') {
+        lengthProblems(field.fields, value, where, out);
+      } else if (field.type === 'array' && Array.isArray(value)) {
+        value.forEach((item, i) => lengthProblems(field.fields, item, `${where}.${i}`, out));
+      } else if (field.type === 'blocks' && Array.isArray(value)) {
+        value.forEach((item: { blockType?: string }, i) => {
+          const block = field.blocks.find((b) => b.slug === item.blockType);
+          if (block) lengthProblems(block.fields, item, `${where}.${i}`, out);
+        });
+      } else if (field.type === 'richText') {
+        lexicalBlockProblems(value, where, out);
+      }
+    }
+  }
+  return out;
+}
+
+/** Lexical `block` nodes (callout, table) carry their own fields. */
+function lexicalBlockProblems(node: unknown, at: string, out: string[]) {
+  if (!node || typeof node !== 'object') return;
+  const { type, fields, children, root } = node as Record<string, unknown>;
+  if (type === 'block') {
+    const blockFields = ARTICLE_BLOCK_FIELDS.get((fields as { blockType: string }).blockType);
+    if (blockFields) lengthProblems(blockFields, fields, at, out);
+  }
+  for (const child of [root, ...(Array.isArray(children) ? children : [])]) {
+    lexicalBlockProblems(child, at, out);
+  }
+}
