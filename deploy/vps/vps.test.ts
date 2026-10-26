@@ -141,7 +141,7 @@ describe('provision.sh helpers', { timeout: 30_000 }, () => {
       DB_PUSH: 'false',
       TRUST_PROXY_HEADERS: 'true',
       TRUSTED_PROXY_HOPS: '1',
-      NODE_OPTIONS: '--max-old-space-size=1024',
+      NODE_OPTIONS: '--max-old-space-size=768',
       HOSTNAME: 'localhost',
       PORT: '3000',
       INTERNAL_ORIGIN: 'http://127.0.0.1:3000',

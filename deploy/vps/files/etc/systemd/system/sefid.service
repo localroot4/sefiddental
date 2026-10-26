@@ -19,8 +19,10 @@ Restart=on-failure
 RestartSec=5
 TimeoutStopSec=30
 UMask=0027
-# Heap 1 GiB (NODE_OPTIONS) plus native memory; leaves room for PostgreSQL on 4 GB.
-MemoryMax=2G
+# Heap 768 MiB (NODE_OPTIONS) plus native memory, on 2 GB of RAM with PostgreSQL: above
+# MemoryHigh the kernel reclaims (swap) before the hard cap stops the process.
+MemoryHigh=1G
+MemoryMax=1400M
 TasksMax=512
 
 # Sandboxing. MemoryDenyWriteExecute stays off: the V8 JIT writes executable memory.

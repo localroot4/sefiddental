@@ -815,7 +815,7 @@ cron timer and nightly backups.
 |---|---|
 | Server | Ubuntu Server 26.04 LTS, amd64, a cloud VM in Tehran |
 | Address | `2.144.23.111`, host name `sefid-prod-1` |
-| Size | Assumed 2 vCPU, 4 GB RAM, 80 GB NVMe. The provision report prints the real values. |
+| Size | 2 vCPU, 2 GB RAM, 28 GB disk (read on 2026-10-26). A 2 GB swap file backs the RAM. PostgreSQL, the service cap and the Node heap are sized for it; on a larger plan raise them together. |
 | Access | SSH as `deploy` with one ed25519 key, from GitHub Actions only |
 | Server code | `deploy/vps/` (`provision.sh`, the files it installs, `server.env`, `known_hosts`) |
 | Workflow | `.github/workflows/server.yml` ("Server") |
