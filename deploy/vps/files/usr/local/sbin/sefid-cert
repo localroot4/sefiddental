@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# Get or renew the Let's Encrypt certificate for every name in DOMAINS of
+# /etc/sefid/server.env (webroot mode), then point nginx at it and reload nginx.
+#
+# It stops before asking Let's Encrypt when a name does not resolve to SERVER_HOST only (the
+# local resolver and a public one), so a missing DNS record never burns the rate limits.
+# Renewal: the packaged certbot.timer; the deploy hook reloads nginx.
+set -Eeuo pipefail
+# shellcheck source=SCRIPTDIR/../lib/sefid/common.sh
+. "$(dirname "$(readlink -f "$0")")/../lib/sefid/common.sh"
+
+need_root "$@"
+# shellcheck source=/dev/null
+. "$SEFID_ETC/server.env"
+: "${DOMAINS:?}" "${SERVER_HOST:?}"
+WEBROOT=/var/www/letsencrypt
+
+# public NAME TYPE: the addresses a public resolver gives, space separated; "unreachable"
+# when no resolver answers.
+public() {
+  local server out re='^[0-9.]+$'
+  [ "$2" = A ] || re='^[0-9a-f]*:[0-9a-f:]+$'
+  for server in 8.8.8.8 1.1.1.1 9.9.9.9; do
+    if out=$(dig +short +time=3 +tries=1 "$1" "$2" "@$server" 2>/dev/null); then
+      printf '%s\n' "$out" | { grep -E "$re" || true; } | sort -u | tr '\n' ' '
+      return 0
+    fi
+  done
+  echo unreachable
+}
+
+# Global IPv6 addresses of this server: an AAAA record may point at one of them.
+mine6=" $(ip -6 -o addr show scope global 2>/dev/null | awk '{sub(/\/.*/, "", $4); print $4}' | tr '\n' ' ')"
+failed=0
+for name in $DOMAINS; do
+  here=$(getent ahostsv4 "$name" | awk '{print $1}' | sort -u | tr '\n' ' ') || true
+  v4=$(public "$name" A)
+  v6=$(public "$name" AAAA)
+  echo "$name: local resolver: ${here:-none}; public A: ${v4:-none}; public AAAA: ${v6:-none}"
+  if [ "$here" != "$SERVER_HOST " ]; then
+    echo "ERROR: $name must resolve to $SERVER_HOST only (local resolver). Add or fix the A record, wait for its TTL, then run cert again." >&2
+    failed=1
+  fi
+  if [ "$v4" = unreachable ]; then
+    echo "WARNING: no public resolver answered for $name; only the local resolver was checked."
+  elif [ "$v4" != "$SERVER_HOST " ]; then
+    echo "ERROR: $name must resolve to $SERVER_HOST only (public resolver). Fix the A record, wait for its TTL, then run cert again." >&2
+    failed=1
+  fi
+  # Let's Encrypt prefers IPv6: an AAAA record that points elsewhere fails the challenge.
+  if [ "$v6" != unreachable ]; then
+    for addr in $v6; do
+      case "$mine6" in *" $addr "*) ;; *)
+        echo "ERROR: $name has the AAAA record $addr, which is not this server. Remove it or point it here." >&2
+        failed=1
+        ;;
+      esac
+    done
+  fi
+done
+[ "$failed" = 0 ] || exit 1
+
+name=${DOMAINS%% *}
+args=(certonly --webroot -w "$WEBROOT" --cert-name "$name" --non-interactive --agree-tos
+  --keep-until-expiring --expand)
+for d in $DOMAINS; do args+=(-d "$d"); done
+if [ -n "${LE_EMAIL:-}" ]; then
+  args+=(--email "$LE_EMAIL" --no-eff-email)
+else
+  args+=(--register-unsafely-without-email)
+fi
+install -d -m 0755 "$WEBROOT"
+certbot "${args[@]}"
+
+link_tls "$name"
+nginx -t
+systemctl reload nginx
+openssl x509 -in "$SEFID_ETC/tls/fullchain.pem" -noout -subject -enddate -ext subjectAltName
+say "nginx serves the certificate $name"

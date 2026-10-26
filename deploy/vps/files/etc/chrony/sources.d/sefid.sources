@@ -1,0 +1,3 @@
+# Installed by deploy/vps/provision.sh: plain NTP beside Ubuntu's NTS sources. NTS needs TCP 4460
+# to ubuntu.com, which a network in Iran may block; chrony then uses the sources that answer.
+pool 0.ubuntu.pool.ntp.org iburst maxsources 2

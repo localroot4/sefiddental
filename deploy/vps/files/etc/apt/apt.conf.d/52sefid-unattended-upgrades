@@ -1,0 +1,5 @@
+// Installed by deploy/vps/provision.sh: refresh the package lists and install security updates
+// every day (the origins of 50unattended-upgrades: the -security pocket only).
+APT::Periodic::Update-Package-Lists "1";
+APT::Periodic::Unattended-Upgrade "1";
+APT::Periodic::AutocleanInterval "7";

@@ -1,0 +1,10 @@
+# Installed by deploy/vps/provision.sh: ban an address for an hour after 5 failed SSH logins in
+# 10 minutes. The journal match covers both unit names (ssh.service, sshd.service) and every
+# process name (sshd; sshd-session of OpenSSH 9.8 and later; sshd-auth of OpenSSH 10).
+[sshd]
+enabled = true
+backend = systemd
+journalmatch = _SYSTEMD_UNIT=ssh.service + _SYSTEMD_UNIT=sshd.service + _COMM=sshd + _COMM=sshd-session + _COMM=sshd-auth
+maxretry = 5
+findtime = 10m
+bantime = 1h

@@ -1,0 +1,644 @@
+# The one workflow for the clinic's own server (docs/deploy.md section 3): Ubuntu 26.04 at
+# SERVER_HOST of deploy/vps/server.env. Nobody opens a shell on it. Every action runs on a GitHub
+# runner and reaches the server over SSH as `deploy` (passwordless sudo). Start it by hand: "Run
+# workflow", branch main, pick an action. A push to main that changes deploy/vps/ or this file
+# runs only `vps-smoke`, which provisions and checks a server on the runner itself.
+# Secrets: SERVER_SSH_KEY (deploy's private key) and ADMIN_PASSWORD (first-admin, reset-admin).
+# Any workflow run in this repository can read them: whoever can push a workflow is an admin of
+# the server (docs/deploy.md 3.2). No step prints a secret: values read from the server are
+# masked before any other use, and no step runs `set -x`. The key lives in an ssh-agent, never
+# in a file, and only after the build: third-party code that runs later (Payload, the seeder)
+# can use the connection during the job but cannot copy the key. Actions are pinned to commit
+# SHAs as in ci.yml.
+name: Server
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Action (docs/deploy.md 3.4)
+        type: choice
+        default: status
+        options:
+          - status
+          - logs
+          - deploy
+          - provision
+          - cert
+          - seed
+          - first-admin
+          - reset-admin
+          - backup
+          - restart
+          - rollback
+          - maintenance-on
+          - maintenance-off
+          - run
+          - smoke
+      email:
+        description: 'first-admin, reset-admin: e-mail of the admin account'
+        type: string
+      command:
+        description: 'run: one shell command, run as deploy on the server. deploy has sudo, so this is as powerful as the SSH key. The command and its output go into the log.'
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - deploy/vps/**
+      - .github/workflows/server.yml
+
+permissions:
+  contents: read
+
+# -e and pipefail in every step: `a | tee log` fails when `a` fails.
+defaults:
+  run:
+    shell: bash
+
+env:
+  NEXT_TELEMETRY_DISABLED: '1'
+  # Every Payload command here reaches the server's database and runs without NODE_ENV: unset,
+  # DB_PUSH would push the dev schema into it (src/payload/db.ts) and block the next migrate.
+  DB_PUSH: 'false'
+  # A push runs the smoke test only.
+  ACTION: ${{ github.event_name == 'push' && 'smoke' || inputs.action }}
+  # ssh lines of a connection that failed before the server ran anything: safe to try again.
+  SSH_RETRY: '^ssh: connect to host .*: Connection timed out|Connection timed out during banner exchange|^kex_exchange_identification: |^Connection closed by [^ ]+ port [0-9]+$'
+  # Waits up to 2 minutes for /api/health 200 on the server's loopback port 3000 (2.3) and
+  # prints the answer. One group, so `a && $WAIT_HEALTH` waits only after `a` succeeded.
+  WAIT_HEALTH: >-
+    { ok=0; for _ in $(seq 60); do
+    if curl -fs -o /dev/null --max-time 5 http://localhost:3000/api/health; then ok=1; break; fi;
+    sleep 2; done;
+    curl -sS --max-time 10 -w '\nHTTP %{http_code}\n' http://localhost:3000/api/health;
+    [ "$ok" = 1 ]; }
+  # Remote command prefix: `$DETACHED <name> <absolute command> [args]` runs the command as root
+  # in the transient systemd unit sefid-<name>-<UTC time>, not as a child of the SSH session.
+  # It finishes, a switch back included, when the session drops (a cancelled run, a timeout, a
+  # reset link). Its output comes from the journal when it ends. A lost one:
+  # `sudo journalctl -u 'sefid-<name>-*'` with the action run.
+  DETACHED: >-
+    detached() { u="sefid-$1-$(date -u +%Y%m%dT%H%M%S)"; shift;
+    echo "as the systemd unit $u; its output follows when it ends";
+    sudo systemd-run --quiet --wait --collect --unit="$u"
+    -p StandardOutput=journal -p StandardError=journal "$@"; rc=$?;
+    sudo journalctl --sync; sudo journalctl -u "$u" -o cat --no-pager; return "$rc"; };
+    detached
+
+jobs:
+  server:
+    name: ${{ inputs.action }}
+    if: github.event_name == 'workflow_dispatch' && inputs.action != 'smoke'
+    runs-on: ubuntu-24.04
+    # The first seed through the tunnel can take long (PAYLOAD_STALL_MS below).
+    timeout-minutes: ${{ inputs.action == 'seed' && 120 || 60 }}
+    # actions: read for the CI check of deploy.
+    permissions:
+      contents: read
+      actions: read
+    env:
+      # The seeder prints only its summary, and every query crosses the tunnel to Tehran:
+      # scripts/payload.mjs waits this long for output before it calls the command stalled.
+      PAYLOAD_STALL_MS: '1800000'
+    # One action at a time on the server. GitHub keeps one waiting run per group: a third run
+    # queued while one waits cancels the waiting one.
+    concurrency:
+      group: server
+      cancel-in-progress: false
+    steps: &steps
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Config (deploy/vps/server.env)
+        run: |
+          # Guards against a mistake, not an attack: a workflow edited on a branch skips it.
+          if [ "$ACTION" != smoke ] && [ "$GITHUB_REF" != refs/heads/main ]; then
+            echo "::error::Run this workflow from main (this run is on $GITHUB_REF): the server gets reviewed code only."
+            exit 1
+          fi
+          set -a
+          # shellcheck disable=SC1091
+          . deploy/vps/server.env
+          set +a
+          for name in SERVER_HOST SSH_USER SITE_URL DOMAINS LE_EMAIL; do
+            echo "$name=${!name-}" >> "$GITHUB_ENV"
+          done
+          echo "action $ACTION, commit $GITHUB_SHA, server $SSH_USER@$SERVER_HOST, site $SITE_URL, domains $DOMAINS, indexing ${ALLOW_INDEXING-}"
+
+      - name: CI passed for this commit (ci.yml)
+        if: env.ACTION == 'deploy'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA"
+          if [ "$(gh api "$runs&status=success" --jq .total_count)" -gt 0 ]; then
+            echo "CI passed for $GITHUB_SHA"
+            exit 0
+          fi
+          latest="$(gh api "$runs&per_page=1" --jq '.workflow_runs[0] // {} | "\(.status // "no run") \(.conclusion // "") \(.html_url // "")"')"
+          echo "::error::CI has not passed for $GITHUB_SHA (latest CI run: $latest). Wait until CI is green on main, then run deploy again."
+          exit 1
+
+      - if: contains(fromJSON('["deploy","seed","first-admin","reset-admin","smoke"]'), env.ACTION)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - if: contains(fromJSON('["deploy","seed","first-admin","reset-admin","smoke"]'), env.ACTION)
+        run: npm ci
+
+      - name: Build (as CI, docs/deploy.md 2.2)
+        if: env.ACTION == 'deploy' || env.ACTION == 'smoke'
+        env:
+          # The build opens no database and inlines no app value (2.2).
+          DATABASE_URL: postgres://build:build@127.0.0.1:5432/build
+          GIT_SHA: ${{ github.sha }}
+          ALLOW_INDEXING: 'false'
+          MEDIA_DIR: /tmp/sefid-media
+        run: |
+          for name in PAYLOAD_SECRET FORM_TOKEN_SECRET CRON_SECRET IP_HASH_SECRET INTERNAL_API_TOKEN; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            export "$name=$value"
+          done
+          npm run build
+          node scripts/check-no-prerender.mjs
+
+      - name: Release tarball (standalone server, its own Node runtime, release.json)
+        if: env.ACTION == 'deploy' || env.ACTION == 'smoke'
+        run: |
+          id="$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA::7}"
+          version="$(node -p process.version)"
+          rel="$RUNNER_TEMP/release"
+          rm -rf "$rel"
+          mkdir -p "$rel/app/public" "$rel/app/.next/static" "$rel/node" "$RUNNER_TEMP/nodejs"
+          # As scripts/package-cpanel.mjs: never the local media folder or an env file that
+          # tracing picked up.
+          cp -a .next/standalone/. "$rel/app/"
+          rm -rf "$rel/app/media" "$rel/app/.env" "$rel/app/.env.production" "$rel/app/.env.local"
+          cp -a public/. "$rel/app/public/"
+          cp -a .next/static/. "$rel/app/.next/static/"
+          # The server cannot reach nodejs.org: the release carries the build's Node version, the
+          # official binary checked against SHASUMS256.txt and its signature against the
+          # release keys (nodejs/node README, "Verifying binaries").
+          cd "$RUNNER_TEMP/nodejs"
+          dist="node-$version-linux-x64"
+          curl -fsSL --retry 3 -O "https://nodejs.org/dist/$version/$dist.tar.xz"
+          curl -fsSL --retry 3 -O "https://nodejs.org/dist/$version/SHASUMS256.txt.asc"
+          curl -fsSL --retry 3 -o keyring.kbx https://github.com/nodejs/release-keys/raw/HEAD/gpg/pubring.kbx
+          gpgv --keyring="$PWD/keyring.kbx" --output SHASUMS256.txt < SHASUMS256.txt.asc
+          grep " $dist.tar.xz\$" SHASUMS256.txt | sha256sum --check -
+          tar -xJf "$dist.tar.xz" -C "$rel/node" --strip-components=1 "$dist/bin/node" "$dist/LICENSE"
+          if [ "$("$rel/node/bin/node" -p process.version)" != "$version" ]; then
+            echo "::error::The packed Node runtime is not $version."
+            exit 1
+          fi
+          built="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          printf '{"gitSha":"%s","buildTime":"%s","node":"%s","releaseId":"%s"}\n' "$GITHUB_SHA" "$built" "$version" "$id" > "$rel/release.json"
+          file="sefid-$id.tar.gz"
+          # Top level: node/ app/ release.json, every entry owned by root (sefid-release).
+          tar -C "$rel" --owner=0 --group=0 --numeric-owner -czf "$RUNNER_TEMP/$file" node app release.json
+          sha="$(sha256sum "$RUNNER_TEMP/$file" | cut -d' ' -f1)"
+          { echo "RELEASE_ID=$id"; echo "RELEASE_FILE=$file"; echo "RELEASE_SHA256=$sha"; } >> "$GITHUB_ENV"
+          echo "release $id: $(du -h "$RUNNER_TEMP/$file" | cut -f1), sha256 $sha, node $version"
+
+      # After npm ci and the build: no install script or build plugin runs while the key exists.
+      - name: Connection to the server
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          bin="$RUNNER_TEMP/bin"
+          mkdir -p "$bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          if [ "$ACTION" = smoke ]; then
+            # The runner is the server: `remote` runs the command here as the runner user (sudo).
+            # shellcheck disable=SC2016 # $1 expands when remote runs
+            printf '%s\n' '#!/usr/bin/env bash' 'cd ~ && exec bash -c "{ $1' '} 2>&1"' > "$bin/remote"
+            chmod 755 "$bin/remote"
+            exit 0
+          fi
+          if [ -z "$SERVER_SSH_KEY" ]; then
+            echo "::error::The repository secret SERVER_SSH_KEY is empty. Add the private key the bootstrap printed (docs/deploy.md 3.2)."
+            exit 1
+          fi
+          known="$GITHUB_WORKSPACE/deploy/vps/known_hosts"
+          if ! ssh-keygen -F "$SERVER_HOST" -f "$known" > /dev/null; then
+            echo "::error::deploy/vps/known_hosts has no host key for $SERVER_HOST. Commit one line: \"$SERVER_HOST ssh-ed25519 AAAA...\" (the bootstrap's output 2 with the address in front, docs/deploy.md 3.2). Until then no step connects."
+            exit 1
+          fi
+          dir="$RUNNER_TEMP/ssh"
+          install -d -m 700 "$dir"
+          # The key goes into an agent, never into a file. The last step stops the agent.
+          eval "$(ssh-agent -s -a "$dir/agent.sock")" > /dev/null
+          echo "SSH_AGENT_PID=$SSH_AGENT_PID" >> "$GITHUB_ENV"
+          if ! printf '%s\n' "$SERVER_SSH_KEY" | tr -d '\r' | SSH_ASKPASS_REQUIRE=never ssh-add -q -; then
+            echo "::error::SERVER_SSH_KEY is not an OpenSSH private key without a passphrase. Paste the whole key, BEGIN and END lines included."
+            exit 1
+          fi
+          cat > "$dir/config" <<EOF
+          Host server
+            HostName $SERVER_HOST
+            User $SSH_USER
+            IdentityAgent $dir/agent.sock
+            StrictHostKeyChecking yes
+            UserKnownHostsFile $known
+            HostKeyAlgorithms ssh-ed25519
+            BatchMode yes
+            ConnectTimeout 20
+            ServerAliveInterval 15
+            ServerAliveCountMax 8
+          EOF
+          echo "SSH_CONFIG=$dir/config" >> "$GITHUB_ENV"
+          cat > "$bin/remote" <<'EOF'
+          #!/usr/bin/env bash
+          # remote '<command>': runs it as deploy on the server; stdin passes through, stderr joins
+          # stdout. One retry after 30 s when the connection failed before the server ran
+          # anything (exit 255 with a line of SSH_RETRY). Every other failure stops.
+          err="$(mktemp)"
+          for attempt in 1 2; do
+            ssh -F "$SSH_CONFIG" server "{ $1
+          } 2>&1" 2> "$err"
+            rc=$?
+            cat "$err" >&2
+            if [ "$rc" = 255 ] && [ "$attempt" = 1 ] && grep -Eq "$SSH_RETRY" "$err"; then
+              echo "::warning::The SSH connection failed before the server ran anything; one more try in 30 s." >&2
+              sleep 30
+              continue
+            fi
+            exit "$rc"
+          done
+          EOF
+          chmod 755 "$bin/remote"
+          # shellcheck disable=SC2016 # expands on the server
+          SSH_CONFIG="$dir/config" "$bin/remote" 'echo "connected: $(hostname), $(. /etc/os-release && echo "$PRETTY_NAME"), user $(id -un)"'
+
+      - name: Certificate (sefid-cert; it checks DNS before it asks Let's Encrypt)
+        if: env.ACTION == 'cert'
+        run: remote 'sudo sefid-cert'
+
+      - name: Provision (deploy/vps/provision.sh as root, in a systemd unit)
+        if: env.ACTION == 'provision' || env.ACTION == 'smoke'
+        run: |
+          tar -czf "$RUNNER_TEMP/vps.tgz" -C deploy vps
+          runs=1
+          smoke=
+          if [ "$ACTION" = smoke ]; then
+            runs=2
+            smoke=SEFID_SMOKE=1
+          fi
+          for run in $(seq "$runs"); do
+            echo "::notice::provision.sh, run $run of $runs"
+            remote "d=\$(mktemp -d) && tar -xzf - -C \"\$d\" && $DETACHED provision /usr/bin/env $smoke /bin/bash \"\$d/vps/provision.sh\"; rc=\$?; sudo rm -rf \"\$d\"; exit \$rc" < "$RUNNER_TEMP/vps.tgz" | tee "$RUNNER_TEMP/provision-$run.log"
+          done
+          # Idempotent: a second run installs no file and restarts nothing.
+          if [ "$runs" = 2 ] && grep -E '^==> (updated |restarting )' "$RUNNER_TEMP/provision-2.log"; then
+            echo "::error::The second provision.sh run changed what the lines above name: a second run must change nothing."
+            exit 1
+          fi
+
+      - name: Upload the release (resumes after a dropped connection)
+        if: env.ACTION == 'deploy' || env.ACTION == 'smoke'
+        run: |
+          start=$SECONDS
+          file="$RUNNER_TEMP/$RELEASE_FILE"
+          part="incoming/$RELEASE_FILE.part"
+          size="$(stat -c %s "$file")"
+          for attempt in 1 2 3; do
+            have="$(remote "mkdir -p incoming && touch $part && stat -c %s $part")" || have=unknown
+            if [[ "$have" =~ ^[0-9]+$ ]] && [ "$have" -le "$size" ] &&
+              tail -c "+$((have + 1))" "$file" | remote "cat >> $part"; then
+              break
+            fi
+            if [ "$attempt" = 3 ]; then
+              echo "::error::The upload failed 3 times ($have of $size bytes had arrived before the last attempt)."
+              exit 1
+            fi
+            echo "::warning::The upload was cut off (attempt $attempt); it resumes from the bytes that arrived in $((attempt * 30)) s."
+            sleep $((attempt * 30))
+          done
+          remote "mv $part incoming/$RELEASE_FILE && echo '$RELEASE_SHA256  incoming/$RELEASE_FILE' | sha256sum --check -"
+          echo "uploaded $size bytes in $((SECONDS - start)) s"
+
+      - name: Backup before the release (sefid-backup)
+        if: env.ACTION == 'deploy' || env.ACTION == 'smoke'
+        # On the smoke runner the database is still empty here: a backup of it must pass.
+        run: remote 'sudo sefid-backup pre-deploy'
+
+      - name: Database access (two values from /etc/sefid/app.env, SSH tunnel to Postgres)
+        if: contains(fromJSON('["deploy","seed","first-admin","reset-admin","smoke"]'), env.ACTION)
+        run: |
+          lines="$(remote 'sudo grep -E "^(DATABASE_URL|PAYLOAD_SECRET)=" /etc/sefid/app.env || true')"
+          value() { sed -n "s/^$1=//p" <<< "$lines" | sed -n 1p | sed -E "s/^\"(.*)\"\$/\\1/; s/^'(.*)'\$/\\1/"; }
+          mask() { if [ -n "$1" ]; then echo "::add-mask::$1"; fi; }
+          url="$(value DATABASE_URL)"
+          secret="$(value PAYLOAD_SECRET)"
+          mask "$url"
+          mask "$secret"
+          re='^(postgres(ql)?://[^:@/]+:)([^@/]+)@[^/?]+(/.*)$'
+          if [[ ! "$url" =~ $re ]] || [ -z "$secret" ]; then
+            echo "::error::/etc/sefid/app.env lacks PAYLOAD_SECRET or a DATABASE_URL like postgres://user:password@host:port/db. Run the provision action first."
+            exit 1
+          fi
+          mask "${BASH_REMATCH[3]}"
+          # Through the tunnel; the smoke run reaches its own Postgres directly.
+          port=15432
+          if [ "$ACTION" = smoke ]; then port=5432; fi
+          {
+            echo "DATABASE_URL=${BASH_REMATCH[1]}${BASH_REMATCH[3]}@127.0.0.1:$port${BASH_REMATCH[4]}"
+            echo "PAYLOAD_SECRET=$secret"
+          } >> "$GITHUB_ENV"
+          if [ "$ACTION" = smoke ]; then exit 0; fi
+          # Postgres listens on the server's loopback only (sshd PermitOpen 127.0.0.1:5432). The
+          # last step of the job stops the tunnel.
+          for attempt in 1 2; do
+            ssh -F "$SSH_CONFIG" -N -o ExitOnForwardFailure=yes -L 127.0.0.1:15432:127.0.0.1:5432 server < /dev/null > "$RUNNER_TEMP/tunnel.log" 2>&1 &
+            pid=$!
+            echo "$pid" > "$RUNNER_TEMP/tunnel.pid"
+            for _ in $(seq 30); do
+              if (exec 3<> /dev/tcp/127.0.0.1/15432) 2> /dev/null; then
+                echo "tunnel open: 127.0.0.1:15432 to the server's 127.0.0.1:5432"
+                exit 0
+              fi
+              kill -0 "$pid" 2> /dev/null || break
+              sleep 1
+            done
+            kill "$pid" 2> /dev/null || true
+            cat "$RUNNER_TEMP/tunnel.log"
+            if [ "$attempt" = 1 ] && grep -Eq "$SSH_RETRY" "$RUNNER_TEMP/tunnel.log"; then
+              sleep 30
+              continue
+            fi
+            break
+          done
+          echo "::error::The SSH tunnel to the server's Postgres did not open (ssh log above)."
+          exit 1
+
+      - name: Migrations (docs/deploy.md 2.7, release step)
+        if: env.ACTION == 'deploy' || env.ACTION == 'smoke'
+        run: |
+          npm run migrate:status
+          npm run migrate
+
+      # It waits for /api/health 200 with this commit and prints it, else switches back and fails.
+      - name: Switch to the release (sefid-release, in a systemd unit)
+        if: env.ACTION == 'deploy' || env.ACTION == 'smoke'
+        run: remote "$DETACHED release /usr/local/sbin/sefid-release ~/incoming/$RELEASE_FILE $RELEASE_SHA256 $RELEASE_ID"
+
+      - name: Seed (create-only; media files first, then the rows)
+        if: env.ACTION == 'seed' || env.ACTION == 'smoke'
+        run: |
+          media="$RUNNER_TEMP/seed-media"
+          media2="$RUNNER_TEMP/seed-media-2"
+          mkdir -p "$media" "$media2"
+          copy_media() {
+            tar -C "$1" -czf "$RUNNER_TEMP/seed-media.tgz" .
+            # --no-overwrite-dir: the media folder keeps its mode (0750), not the archive's.
+            # shellcheck disable=SC2016 # expands on the server
+            remote 'sudo -u sefid tar -xzf - -C /var/lib/sefid/media --skip-old-files --no-overwrite-dir && echo "media files on the server: $(sudo find /var/lib/sefid/media -type f | wc -l)"' < "$RUNNER_TEMP/seed-media.tgz"
+          }
+          summary() {
+            grep -q 'seed: mode' "$1" || { echo "::error::The seeder printed no summary line ($2)."; exit 1; }
+          }
+          # The seeder writes media files on the runner. Pass 1, on a scratch SQLite database,
+          # writes every file (content-hash names), and they reach the server before pass 2 writes
+          # the rows that point at them. A failed copy therefore never leaves a row without a file.
+          scratch="file:$RUNNER_TEMP/seed-scratch.db"
+          if ! { DATABASE_URL="$scratch" MEDIA_DIR="$media" npm run migrate && DATABASE_URL="$scratch" MEDIA_DIR="$media" npm run seed; } > "$RUNNER_TEMP/seed-scratch.log" 2>&1; then
+            cat "$RUNNER_TEMP/seed-scratch.log"
+            exit 1
+          fi
+          summary "$RUNNER_TEMP/seed-scratch.log" 'scratch pass'
+          copy_media "$media"
+          # Pass 2 writes into an empty folder. Beside pass 1's files, Payload would rename every
+          # upload (name-1.jpg), and those rows would point at files only a later copy delivers.
+          # Empty, it picks pass 1's names, whose files are on the server already.
+          start=$SECONDS
+          MEDIA_DIR="$media2" npm run seed | tee "$RUNNER_TEMP/seed.log"
+          echo "seed of the server database: $((SECONDS - start)) s"
+          summary "$RUNNER_TEMP/seed.log" 'server database'
+          new="$(comm -13 <(cd "$media" && find . -type f | sort) <(cd "$media2" && find . -type f | sort))"
+          copy_media "$media2"
+          if [ -n "$new" ]; then
+            echo "::error::Pass 2 wrote files that pass 1 did not (copied to the server anyway):"
+            echo "$new"
+            exit 1
+          fi
+          # The app caches every read in memory; a restart shows the new rows.
+          remote "sudo systemctl restart sefid.service && $WAIT_HEALTH"
+
+      - name: Admin account (scripts/first-admin.ts, scripts/reset-admin.ts)
+        if: contains(fromJSON('["first-admin","reset-admin","smoke"]'), env.ACTION)
+        env:
+          ADMIN_EMAIL: ${{ inputs.email }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+        run: |
+          if [ "$ACTION" = smoke ]; then
+            ADMIN_EMAIL=smoke-admin@sefid.test
+            ADMIN_PASSWORD="$(openssl rand -base64 24)"
+            echo "::add-mask::$ADMIN_PASSWORD"
+          fi
+          if [ -z "$ADMIN_EMAIL" ]; then
+            echo "::error::Give the admin's e-mail in the input \"email\"."
+            exit 1
+          fi
+          if [ -z "$ADMIN_PASSWORD" ]; then
+            echo "::error::The repository secret ADMIN_PASSWORD is empty. Add it (docs/deploy.md 3.2)."
+            exit 1
+          fi
+          export ADMIN_EMAIL ADMIN_PASSWORD
+          # payload run can exit 0 before the script ran (scripts/payload.mjs): require the line.
+          expect_line() {
+            grep -q "^$1" "$RUNNER_TEMP/admin.log" || { echo "::error::$2 did not print \"$1\"."; exit 1; }
+          }
+          if [ "$ACTION" = smoke ]; then
+            npm run first-admin | tee "$RUNNER_TEMP/admin.log"
+            expect_line 'first-admin: .* created$' first-admin
+            npm run first-admin | tee "$RUNNER_TEMP/admin.log"
+            expect_line 'first-admin: .* skipped: users exist$' first-admin
+            ADMIN_PASSWORD="$(openssl rand -base64 24)"
+            echo "::add-mask::$ADMIN_PASSWORD"
+          fi
+          if [ "$ACTION" = first-admin ]; then
+            npm run first-admin | tee "$RUNNER_TEMP/admin.log"
+            expect_line 'first-admin: .* \(created\|skipped: users exist\)$' first-admin
+          else
+            # New password from ADMIN_PASSWORD, TOTP removed, sign-in lock lifted.
+            npm run reset-admin -- "$ADMIN_EMAIL" | tee "$RUNNER_TEMP/admin.log"
+            expect_line 'reset-admin: .* reset$' reset-admin
+          fi
+
+      - name: Restart the app
+        if: env.ACTION == 'restart'
+        run: remote "sudo systemctl restart sefid.service && $WAIT_HEALTH"
+
+      - name: Maintenance mode on (docs/deploy.md 2.12)
+        if: env.ACTION == 'maintenance-on'
+        run: remote "$DETACHED maintenance /usr/local/sbin/sefid-maintenance on"
+
+      - name: Maintenance mode off
+        if: env.ACTION == 'maintenance-off'
+        run: remote "$DETACHED maintenance /usr/local/sbin/sefid-maintenance off"
+
+      - name: Backup now (sefid-backup)
+        if: env.ACTION == 'backup'
+        run: remote 'sudo sefid-backup manual'
+
+      - name: Roll back to the previous release (sefid-release rollback, in a systemd unit)
+        if: env.ACTION == 'rollback'
+        run: remote "$DETACHED rollback /usr/local/sbin/sefid-release rollback"
+
+      - name: Run the command input
+        if: env.ACTION == 'run'
+        env:
+          COMMAND: ${{ inputs.command }}
+        run: |
+          if [ -z "$COMMAND" ]; then
+            echo "::error::Give the shell command in the input \"command\"."
+            exit 1
+          fi
+          echo "as $SSH_USER on the server (the command and its output stay in this log): $COMMAND"
+          remote "$COMMAND"
+
+      - name: Smoke checks (nginx headers, cron, backup, maintenance, failed release, rollback)
+        if: env.ACTION == 'smoke'
+        run: |
+          fail() {
+            echo "::error::$1"
+            exit 1
+          }
+          host="${SITE_URL#https://}"
+          # nginx on 443 with the snakeoil certificate (-k), the site name pinned to this machine.
+          headers() { curl -sk --max-time 20 --resolve "$host:443:127.0.0.1" -o /dev/null -D - "https://$host$1" | tr -d '\r'; }
+          check_headers() {
+            got="$(headers "$1")"
+            echo "== $1"
+            echo "$got"
+            status="$(head -n 1 <<< "$got" | cut -d' ' -f2)"
+            if [ -n "$2" ] && [ "$status" != "$2" ]; then fail "$1 answered $status through nginx, expected $2."; fi
+            for name in strict-transport-security x-content-type-options referrer-policy permissions-policy; do
+              count="$(grep -ci "^$name:" <<< "$got" || true)"
+              [ "$count" = 1 ] || fail "$1: $name appears $count times through nginx, expected once (2.5 item 1)."
+            done
+            if grep -qi '^x-middleware-' <<< "$got"; then fail "$1: an x-middleware-* header passes nginx (2.5 item 2)."; fi
+          }
+          check_headers / 200
+          # Next's own 308 for a path with // carries none of the app's headers (2.5 item 1).
+          check_headers // ''
+          # /خدمات: a Persian route that Node answers with x-middleware-rewrite.
+          services=/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA
+          echo "Node direct, $services: $(curl -s --max-time 20 -o /dev/null -D - "http://localhost:3000$services" | grep -i '^x-middleware-rewrite' || echo 'no x-middleware-rewrite')"
+          check_headers "$services" ''
+          # An unknown TLS name gets a handshake alert, no certificate.
+          if curl -sk --max-time 20 --resolve "unknown.invalid:443:127.0.0.1" -o /dev/null https://unknown.invalid/; then
+            fail "nginx completed TLS for an unknown host name (ssl_reject_handshake)."
+          fi
+
+          # Cron: a successful tick after this point, and 401 without the bearer (2.8).
+          before="$(systemctl show sefid-cron.service -p ExecMainExitTimestampMonotonic --value)"
+          now="$before"
+          for _ in $(seq 36); do
+            now="$(systemctl show sefid-cron.service -p ExecMainExitTimestampMonotonic --value)"
+            [ "$now" != "$before" ] && break
+            sleep 5
+          done
+          [ "$now" != "$before" ] || fail "sefid-cron.timer started no tick within 3 minutes."
+          result="$(systemctl show sefid-cron.service -p Result --value)"
+          sudo journalctl -u sefid-cron.service -n 3 --no-pager
+          [ "$result" = success ] || fail "The cron tick ended with \"$result\"."
+          code="$(curl -s -o /dev/null --max-time 20 -w '%{http_code}' http://localhost:3000/api/cron/tick)"
+          [ "$code" = 401 ] || fail "/api/cron/tick answered $code without the bearer, expected 401."
+
+          # Backup: a dump that pg_restore reads (2.10).
+          sudo sefid-backup smoke
+          dump="$(sudo find /var/backups/sefid/db -type f -name '*.dump' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2)"
+          [ -n "$dump" ] || fail "sefid-backup wrote no .dump file under /var/backups/sefid/db."
+          sudo pg_restore --list "$dump" > /dev/null || fail "pg_restore cannot read $dump."
+          echo "backup readable: $dump"
+
+          # Maintenance: 503 through nginx while on, 200 after off (2.12).
+          sudo sefid-maintenance on
+          check_headers / 503
+          sudo sefid-maintenance off
+          check_headers / 200
+
+          # Rollback: a second release, then `sefid-release rollback` returns to the first. It
+          # runs in a systemd unit whose client is killed mid-run, as when the SSH session
+          # drops: the unit still switches and records the release it left as previous.
+          current="$(sudo readlink -f /srv/sefid/current)"
+          sleep 1
+          second="$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA::7}"
+          cp "$RUNNER_TEMP/$RELEASE_FILE" ~/incoming/
+          sudo sefid-release ~/incoming/"$RELEASE_FILE" "$RELEASE_SHA256" "$second"
+          [ "$(sudo readlink -f /srv/sefid/current)" = "/srv/sefid/releases/$second" ] || fail "The second release is not current."
+          remote "$DETACHED killtest /usr/local/sbin/sefid-release rollback" > "$RUNNER_TEMP/killtest.log" 2>&1 &
+          unit=
+          for _ in $(seq 100); do
+            unit="$(systemctl list-units --all --no-legend --plain 'sefid-killtest-*' | grep -o 'sefid-killtest-[0-9T]*\.service' || true)"
+            [ -n "$unit" ] && break
+            sleep 0.2
+          done
+          [ -n "$unit" ] || fail "The detached rollback unit did not start."
+          # sudo and systemd-run, the client side; the unit's own process is not a child of them.
+          pids="$(pgrep -f -- "--unit=${unit%.service}" || true)"
+          [ -n "$pids" ] || fail "No client of $unit to kill."
+          # shellcheck disable=SC2086 # one pid per word
+          sudo kill -KILL $pids
+          wait || true
+          for _ in $(seq 120); do
+            systemctl is-active --quiet "$unit" || break
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/killtest.log"
+          sudo journalctl -u "$unit" -o cat --no-pager
+          [ "$(sudo readlink -f /srv/sefid/current)" = "$current" ] || fail "The rollback whose client was killed did not return to $current."
+          [ "$(sudo readlink -f /srv/sefid/previous)" = "/srv/sefid/releases/$second" ] || fail "The rollback whose client was killed did not record $second as previous."
+          remote "$WAIT_HEALTH"
+
+          # A release whose server exits at once: sefid-release fails and switches back.
+          broken="$RUNNER_TEMP/broken"
+          rm -rf "$broken"
+          cp -al "$RUNNER_TEMP/release" "$broken"
+          rm "$broken/app/server.js"
+          echo 'process.exit(1);' > "$broken/app/server.js"
+          tar -C "$broken" --owner=0 --group=0 --numeric-owner -czf ~/incoming/sefid-broken.tar.gz node app release.json
+          sleep 1
+          if sudo env SEFID_HEALTH_TIMEOUT=30 sefid-release ~/incoming/sefid-broken.tar.gz \
+            "$(sha256sum ~/incoming/sefid-broken.tar.gz | cut -d' ' -f1)" "$(date -u +%Y%m%dT%H%M%SZ)-${GITHUB_SHA::7}"; then
+            fail "sefid-release accepted a release whose server does not start."
+          fi
+          [ "$(sudo readlink -f /srv/sefid/current)" = "$current" ] || fail "The failed release did not switch back to $current."
+          remote "$WAIT_HEALTH"
+          rm -f ~/incoming/sefid-broken.tar.gz
+          echo "smoke checks passed"
+
+      - name: Status (sefid-status, sefid-env)
+        if: env.ACTION == 'status' || env.ACTION == 'smoke'
+        run: |
+          # shellcheck disable=SC2016 # expands on the server
+          remote 'sudo sefid-status; rc=$?; echo; sudo sefid-env; exit $rc'
+
+      - name: App log, last 300 lines (JSON, personal data redacted, 2.11)
+        if: env.ACTION == 'logs' || env.ACTION == 'smoke'
+        run: remote 'sudo journalctl -u sefid.service -n 300 --no-pager -o short-iso'
+
+      - name: Close the tunnel, remove the upload, stop the key agent
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/tunnel.pid" ]; then kill "$(cat "$RUNNER_TEMP/tunnel.pid")" 2> /dev/null || true; fi
+          if [ -n "${RELEASE_FILE-}" ] && command -v remote > /dev/null; then
+            remote "rm -f incoming/$RELEASE_FILE incoming/$RELEASE_FILE.part" || true
+          fi
+          if [ -n "${SSH_AGENT_PID-}" ]; then kill "$SSH_AGENT_PID" 2> /dev/null || true; fi
+          rm -rf "$RUNNER_TEMP/ssh"
+
+  vps-smoke:
+    name: Smoke test of deploy/vps on the runner
+    if: github.event_name == 'push' || inputs.action == 'smoke'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    concurrency:
+      group: vps-smoke
+      cancel-in-progress: false
+    # The same steps as the server job: `remote` runs on the runner itself (SEFID_SMOKE=1).
+    steps: *steps

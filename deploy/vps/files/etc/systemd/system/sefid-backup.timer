@@ -1,0 +1,10 @@
+# 23:30 UTC every day: 03:00 in Tehran (UTC+03:30 all year), docs/deploy.md 2.10.
+[Unit]
+Description=Sefid nightly backup at 23:30 UTC
+
+[Timer]
+OnCalendar=*-*-* 23:30:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

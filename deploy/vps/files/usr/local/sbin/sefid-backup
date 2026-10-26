@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Back up the database and the media folder on this server (docs/deploy.md 2.10).
+#
+#   sefid-backup [label]    label: nightly (default, the timer), pre-deploy, manual, ...
+#
+# Writes /var/backups/sefid/db/sefid-<UTC stamp>-<label>.dump (pg_dump custom format, checked
+# with pg_restore --list) and, except for pre-deploy (a release never changes media),
+# /var/backups/sefid/media/media-<UTC stamp>-<label>.tar.gz, then deletes files older than 14
+# days. It refuses to start when the disk has less than twice the room this run needs, so a
+# backup never fills the disk PostgreSQL writes to. Nothing is deleted when a step fails. An
+# off-site copy is not built yet: the files stay on this disk only.
+set -Eeuo pipefail
+# shellcheck source=SCRIPTDIR/../lib/sefid/common.sh
+. "$(dirname "$(readlink -f "$0")")/../lib/sefid/common.sh"
+
+DIR=/var/backups/sefid
+MEDIA=/var/lib/sefid/media
+label=${1:-nightly}
+[[ $label =~ ^[a-z0-9-]{1,32}$ ]] || die "the label must be 1 to 32 characters of a-z, 0-9 and -"
+need_root "$@"
+cd /
+umask 077
+install -d -m 0700 "$DIR" "$DIR/db" "$DIR/media"
+# /run, not the world-writable /run/lock: there another user could create the file first.
+exec 9>/run/sefid-backup.lock
+flock -w 600 9 || die "another backup has been running for 10 minutes"
+
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+db=$DIR/db/sefid-$stamp-$label.dump
+media=$DIR/media/media-$stamp-$label.tar.gz
+with_media=1
+if [ "$label" = pre-deploy ]; then with_media=0; fi
+
+# Room: twice the newest dump, plus twice the media folder when it is archived.
+need=$(find "$DIR/db" -maxdepth 1 -type f -name 'sefid-*.dump' -printf '%T@ %s\n' | sort -n | tail -n 1 | cut -d ' ' -f 2)
+need=${need:-0}
+if [ "$with_media" = 1 ]; then need=$((need + $(du -sb "$MEDIA" | cut -f 1))); fi
+need=$((need * 2))
+free=$(df --output=avail -B1 "$DIR" | tail -n 1 | tr -d ' ')
+[ "$free" -ge "$need" ] ||
+  die "only $((free >> 20)) MiB free on $DIR; this backup needs $((need >> 20)) MiB (twice the newest dump and the media folder). Delete old files in $DIR/media or grow the disk."
+
+# As the postgres superuser over the local socket (peer): no password on the command line.
+runuser -u postgres -- pg_dump --format=custom --no-owner --no-privileges --dbname=sefid >"$db.part"
+list=$(pg_restore --list "$db.part") || die "pg_restore cannot read the new dump $db.part"
+# A database without tables lists only comment lines: 0 entries, not an error.
+entries=$(grep -cv '^;' <<<"$list" || true)
+mv "$db.part" "$db"
+say "database: $db ($(du -h "$db" | cut -f 1), $entries archive entries)"
+if [ "$with_media" = 1 ]; then
+  tar -C "$(dirname "$MEDIA")" -czf "$media.part" "$(basename "$MEDIA")"
+  mv "$media.part" "$media"
+  say "media: $media ($(du -h "$media" | cut -f 1))"
+else
+  say "media: not archived for $label (a release does not change media files)"
+fi
+find "$DIR/db" "$DIR/media" -type f \( -name 'sefid-*.dump' -o -name 'media-*.tar.gz' \) -mtime +13 -print -delete
+find "$DIR/db" "$DIR/media" -type f -name '*.part' -mmin +60 -print -delete
+say "free space on $DIR: $(df -h "$DIR" | awk 'NR == 2 {print $4}')"

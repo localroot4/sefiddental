@@ -1,0 +1,4 @@
+# Installed by deploy/vps/provision.sh. OpenSSH 9.8 and later log failed logins from the
+# sshd-session process, OpenSSH 10 from sshd-auth; match every process name.
+[DEFAULT]
+_daemon = sshd(?:-session|-auth)?

@@ -1,0 +1,10 @@
+# Nightly backup of the database and the media folder (docs/deploy.md 2.10).
+[Unit]
+Description=Sefid nightly backup (database dump and media archive)
+After=postgresql.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/sefid-backup nightly
+Nice=10
+IOSchedulingClass=idle

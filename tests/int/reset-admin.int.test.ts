@@ -37,4 +37,25 @@ describe('account recovery without SMTP (SEC-AUTH-3)', () => {
     expect(stored?.totpSecret ?? null).toBeNull();
     await expect(resetAccount(payload, 'nobody@sefid.test')).rejects.toThrow(/no account/);
   });
+
+  it('RA2 a given password becomes the new one; a password against the policy is refused', async () => {
+    const { admin } = await staffUsers(payload);
+    await payload.db.updateOne({
+      collection: 'users',
+      id: admin.id,
+      data: { totpSecret: 'JBSWY3DPEHPK3PXP' },
+    });
+    const given = 'Given-password-for-the-workflow-reset';
+    expect(await resetAccount(payload, admin.email, given)).toBe(given);
+    const login = await payload.login({
+      collection: 'users',
+      data: { email: admin.email, password: given },
+    });
+    expect(login.user?.id).toBe(admin.id);
+    await expect(resetAccount(payload, admin.email, 'short')).rejects.toThrow(/refused/);
+    // The refused password did not replace the given one.
+    await expect(
+      payload.login({ collection: 'users', data: { email: admin.email, password: given } }),
+    ).resolves.toBeTruthy();
+  });
 });

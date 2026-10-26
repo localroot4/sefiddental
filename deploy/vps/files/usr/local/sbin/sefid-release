@@ -1,0 +1,195 @@
+#!/usr/bin/env bash
+# Install and switch a release of the site (deploy/vps, docs/deploy.md section 3).
+#
+#   sefid-release <tarball> <sha256> <release-id>   install, switch, restart, wait for health
+#   sefid-release rollback                          switch to the previous release
+#
+# The tarball holds node/ (the Node runtime), app/ (the standalone server with public/ and
+# .next/static/) and release.json ({"gitSha", "buildTime", "node"}) at its top. release-id is
+# <UTC yyyymmddThhmmssZ>-<first 7 characters of gitSha>. A release that does not answer
+# /api/health with 200 and its own gitSha within SEFID_HEALTH_TIMEOUT seconds (default 180;
+# migrations may run at start) is switched back to the release that ran before; the script then
+# prints the last 80 journal lines of sefid.service and exits 1. The uploaded file is never
+# deleted. The last 5 releases are kept, and always the current and the previous one.
+set -Eeuo pipefail
+# shellcheck source=SCRIPTDIR/../lib/sefid/common.sh
+. "$(dirname "$(readlink -f "$0")")/../lib/sefid/common.sh"
+
+: "${SEFID_HEALTH_TIMEOUT:=180}"
+RELEASES=$SEFID_ROOT/releases
+KEEP=5
+ID_RE='^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{7}$'
+STAGE=""
+umask 022
+
+usage() {
+  echo "usage: sefid-release <tarball> <sha256> <release-id> | sefid-release rollback" >&2
+  exit 2
+}
+
+# target_of LINK: the release id that $SEFID_ROOT/LINK points at; empty when there is none.
+target_of() {
+  local t
+  t=$(readlink "$SEFID_ROOT/$1" 2>/dev/null) || return 0
+  basename "$t"
+}
+
+# point LINK ID: switch LINK to releases/ID atomically (a new link renamed over the old one).
+point() {
+  ln -sfn "releases/$2" "$SEFID_ROOT/.$1.new"
+  mv -T "$SEFID_ROOT/.$1.new" "$SEFID_ROOT/$1"
+}
+
+sha_of() { env_get "$RELEASES/$1/release.env" GIT_SHA; }
+
+# activate NEW OLD: switch to NEW and wait for health; on failure switch back to OLD.
+activate() {
+  local new=$1 old=$2
+  say "switching to $new (running before: ${old:-none})"
+  point current "$new"
+  # A failed start is judged by the health check below, not by set -e.
+  systemctl restart sefid.service || true
+  if wait_healthy "$(sha_of "$new")" "$SEFID_HEALTH_TIMEOUT"; then
+    if [ -n "$old" ] && [ "$old" != "$new" ]; then point previous "$old"; fi
+    say "release $new is live"
+    return 0
+  fi
+  echo "ERROR: release $new failed its health check. Last 80 lines of sefid.service:" >&2
+  journalctl -u sefid.service -n 80 --no-pager -o short-iso >&2 || true
+  if [ -z "$old" ]; then
+    echo "ERROR: there is no previous release to switch back to." >&2
+    return 1
+  fi
+  say "switching back to $old"
+  point current "$old"
+  systemctl restart sefid.service || true
+  wait_healthy "$(sha_of "$old")" "$SEFID_HEALTH_TIMEOUT" ||
+    echo "ERROR: the previous release $old is not healthy either." >&2
+  return 1
+}
+
+# untar FILE DEST: extract into the new folder DEST. Every member is checked first: an absolute
+# path, a ".." path, a link that leaves DEST or a device file refuses the whole tarball. Files
+# become root-owned and readable by everyone; write bits for group and other are dropped.
+untar() {
+  python3 -I - "$1" "$2" <<'PY'
+import os, sys, tarfile
+
+src, dest = sys.argv[1], sys.argv[2]
+
+def readable(member, path):
+    member = tarfile.data_filter(member, path)
+    if member.isreg():
+        mode = member.mode | 0o444 | (0o111 if member.mode & 0o100 else 0)
+        member = member.replace(mode=mode, deep=False)
+    return member
+
+with tarfile.open(src) as tar:
+    members = tar.getmembers()
+    for member in members:
+        # The data filter would only strip a leading "/": refuse it instead.
+        if os.path.isabs(member.name):
+            sys.exit(f"ERROR: tarball refused, {member.name!r} is an absolute path")
+        try:
+            tarfile.data_filter(member, dest)
+        except tarfile.FilterError as error:
+            sys.exit(f"ERROR: tarball refused, {error}")
+    os.mkdir(dest, 0o755)
+    tar.extractall(dest, members=members, filter=readable)
+PY
+}
+
+install_release() {
+  local tarball=$1 sum=$2 id=$3 actual current tree
+  [[ $sum =~ ^[0-9a-f]{64}$ ]] || die "the sha256 must be 64 lowercase hex characters"
+  [[ $id =~ $ID_RE ]] || die "the release id must look like 20261026T101500Z-abc1234, got: $id"
+  [ -f "$tarball" ] || die "tarball not found: $tarball"
+  current=$(target_of current)
+  if [ "$current" = "$id" ]; then
+    say "release $id is already current; checking its health"
+    wait_healthy "$(sha_of "$id")" "$SEFID_HEALTH_TIMEOUT"
+    return
+  fi
+
+  install -d -m 0755 "$RELEASES"
+  STAGE=$RELEASES/.incoming-$id
+  rm -rf "$STAGE"
+  install -d -m 0700 "$STAGE"
+  trap 'rm -rf "$STAGE"' EXIT
+  # Check and unpack a root-owned copy, so the upload cannot change in between.
+  cp -- "$tarball" "$STAGE/release.tar.gz"
+  actual=$(sha256sum "$STAGE/release.tar.gz" | cut -d ' ' -f 1)
+  [ "$actual" = "$sum" ] || die "sha256 mismatch: expected $sum, the file has $actual"
+  tree=$STAGE/tree
+  untar "$STAGE/release.tar.gz" "$tree"
+
+  if [ ! -f "$tree/app/server.js" ] || [ ! -x "$tree/node/bin/node" ] || [ ! -f "$tree/release.json" ]; then
+    die "the tarball must hold app/server.js, node/bin/node and release.json at its top"
+  fi
+  local git_sha build_time node_version ran
+  read -r git_sha build_time node_version < <(python3 -I -c '
+import json, sys
+r = json.load(open(sys.argv[1]))
+print(r["gitSha"], r["buildTime"], r["node"])' "$tree/release.json") ||
+    die "release.json must hold gitSha, buildTime and node"
+  [[ $git_sha =~ ^[0-9a-f]{40}$ ]] || die "release.json gitSha is not a 40-character commit SHA"
+  [ "${git_sha:0:7}" = "${id##*-}" ] || die "release id $id does not belong to commit $git_sha"
+  [[ $build_time =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9:.]+Z$ ]] ||
+    die "release.json buildTime is not an ISO UTC time"
+  ran=$("$tree/node/bin/node" --version 2>&1) || true
+  [ "$ran" = "$node_version" ] ||
+    die "the bundled Node does not run here: expected $node_version, got: $ran"
+  printf 'GIT_SHA=%s\nBUILD_TIME=%s\n' "$git_sha" "$build_time" >"$tree/release.env"
+  chmod 0644 "$tree/release.env"
+
+  rm -rf "${RELEASES:?}/$id"
+  mv -T "$tree" "$RELEASES/$id"
+  say "installed $id (commit $git_sha, built $build_time, Node $node_version)"
+  activate "$id" "$current"
+}
+
+rollback() {
+  local current previous
+  current=$(target_of current)
+  previous=$(target_of previous)
+  if [ -z "$previous" ] || [ ! -d "$RELEASES/$previous" ]; then
+    die "there is no previous release to roll back to"
+  fi
+  [ "$previous" != "$current" ] || die "the previous release is the current one"
+  activate "$previous" "$current"
+}
+
+# Keep the newest $KEEP releases, and always the current and the previous one. A staging
+# folder of another run is stale (the lock allows one run): a run killed by SIGKILL left it.
+prune() {
+  local all=("$RELEASES"/*) current previous i id
+  find "$RELEASES" -mindepth 1 -maxdepth 1 -name '.incoming-*' ! -path "$STAGE" \
+    -printf '==> removed the stale staging folder %f\n' -exec rm -rf {} +
+  current=$(target_of current)
+  previous=$(target_of previous)
+  for ((i = ${#all[@]} - 1 - KEEP; i >= 0; i--)); do
+    id=${all[i]##*/}
+    if [[ ! $id =~ $ID_RE ]] || [ "$id" = "$current" ] || [ "$id" = "$previous" ]; then continue; fi
+    rm -rf "${RELEASES:?}/$id"
+    say "removed old release $id"
+  done
+}
+
+main() {
+  need_root "$@"
+  [ -d "$SEFID_ROOT" ] || die "$SEFID_ROOT is missing: run the provision action first"
+  exec 9>"$SEFID_ROOT/.release.lock"
+  flock -n 9 || die "another sefid-release is running"
+  # No "|| ..." around these calls: it would switch off set -e inside them.
+  case ${1:-} in
+    rollback) [ $# -eq 1 ] || usage; rollback ;;
+    -h | --help | '') usage ;;
+    *) [ $# -eq 3 ] || usage; install_release "$1" "$2" "$3" ;;
+  esac
+  prune
+  local previous
+  previous=$(target_of previous)
+  say "current: $(target_of current), previous: ${previous:-none}"
+}
+
+main "$@"

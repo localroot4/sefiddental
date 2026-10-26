@@ -1,0 +1,10 @@
+# Every minute, on the minute (docs/deploy.md 2.8). A tick still running skips the next one.
+[Unit]
+Description=Sefid cron tick every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=1s
+
+[Install]
+WantedBy=timers.target

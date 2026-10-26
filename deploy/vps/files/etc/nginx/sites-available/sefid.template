@@ -1,0 +1,171 @@
+# The site behind nginx (deploy/vps). provision.sh renders this template into
+# /etc/nginx/sites-available/sefid on every run: never edit the rendered file on the server.
+# Rules: docs/deploy.md 2.4 (proxy trust) and 2.5 (reverse proxy), numbered "item N" below.
+# Placeholders, each between two @ signs: SERVER_NAMES (DOMAINS), SITE_URL, UPSTREAM (the
+# address "localhost" resolves to, with the port), H2 and H2ON (the HTTP/2 syntax of the
+# installed nginx). Lines that end in "# ipv6" are dropped on a host without IPv6.
+
+upstream sefid_app {
+    server @UPSTREAM@;
+    keepalive 16;
+}
+
+# Item 6. The client as the app counts it (limitSubject in src/lib/http/clientIp.ts): IPv4 per
+# address, IPv6 per /64. When "::" falls inside the first four groups, the groups before it
+# stand in for the /64 (a coarser key).
+map $remote_addr $sefid_client {
+    "~^(?<p64>[0-9a-f]+:[0-9a-f]+:[0-9a-f]+:[0-9a-f]+):" $p64;
+    "~^(?<pre>[0-9a-f][0-9a-f:]*)::"                    $pre;
+    default                                             $binary_remote_addr;
+}
+# An empty key is not counted, so other methods and paths pass.
+map $request_method $sefid_media_write {
+    POST    $sefid_client;
+    PATCH   $sefid_client;
+    default "";
+}
+map "$request_method:$uri" $sefid_form_post {
+    "~^POST:/(?:رزرو-نوبت|اورژانس|api/booking|api/emergency)/?$" $sefid_client;
+    default "";
+}
+limit_req_zone $sefid_media_write zone=sefid_media:10m rate=10r/m;
+limit_req_zone $sefid_form_post zone=sefid_forms:10m rate=10r/m;
+
+# 2.11: the access log keeps the client address without its last part (IPv4 /24, IPv6 /48).
+# The privacy page promises that a form never keeps the IP address. Other shapes log "-".
+map $remote_addr $sefid_log_addr {
+    "~^(?<log4>[0-9]+\.[0-9]+\.[0-9]+)\.[0-9]+$"        "$log4.0";
+    "~^(?<log6>[0-9a-f]+:[0-9a-f]+:[0-9a-f]+):"           "$log6::";
+    default                                               "-";
+}
+# $request_id is the X-Request-Id the app logs (2.11): search the journal for it.
+log_format sefid '$sefid_log_addr [$time_iso8601] "$request" $status $body_bytes_sent '
+                 '$request_time rid=$request_id "$http_referer" "$http_user_agent"';
+# A rejected request is a warning, below the error level that Ubuntu's error log keeps: the
+# error log names the full client address. The access log still shows the 429.
+limit_req_log_level warn;
+
+# Unknown host names, and requests by IP address: close the connection without an answer.
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;  # ipv6
+    listen 443 ssl@H2@ default_server;
+    listen [::]:443 ssl@H2@ default_server;  # ipv6
+    @H2ON@
+    server_name _;
+    server_tokens off;
+    access_log off;
+    include snippets/sefid-tls.conf;
+    # No certificate: TLS for an unknown name ends in a handshake alert, so the default
+    # certificate never tells a scanner which machine this is.
+    ssl_reject_handshake on;
+    return 444;
+}
+
+# Plain HTTP: the ACME challenge of certbot (webroot mode), everything else to HTTPS.
+server {
+    listen 80;
+    listen [::]:80;  # ipv6
+    server_name @SERVER_NAMES@;
+    server_tokens off;
+    access_log /var/log/nginx/sefid.access.log sefid;
+    include snippets/sefid-headers.conf;
+
+    location ^~ /.well-known/acme-challenge/ {
+        root /var/www/letsencrypt;
+        default_type text/plain;
+    }
+    location / {
+        return 301 @SITE_URL@$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl@H2@;
+    listen [::]:443 ssl@H2@;  # ipv6
+    # Item 7: HTTP/2 to browsers.
+    @H2ON@
+    server_name @SERVER_NAMES@;
+    server_tokens off;
+    include snippets/sefid-tls.conf;
+    # Symlinks: the Let's Encrypt certificate, or snakeoil until the cert action has run.
+    ssl_certificate /etc/sefid/tls/fullchain.pem;
+    ssl_certificate_key /etc/sefid/tls/privkey.pem;
+    access_log /var/log/nginx/sefid.access.log sefid;
+
+    # Items 1, 2 and 4: server level only. nginx copies add_header, proxy_hide_header and
+    # proxy_set_header into a location only when that location sets none of its own.
+    include snippets/sefid-headers.conf;
+    proxy_hide_header Strict-Transport-Security;
+    proxy_hide_header X-Content-Type-Options;
+    proxy_hide_header Referrer-Policy;
+    proxy_hide_header Permissions-Policy;
+    proxy_hide_header X-Powered-By;
+    # Item 2: Next.js internals. Keep x-nextjs-rewritten-path and x-nextjs-rewritten-query.
+    proxy_hide_header x-middleware-rewrite;
+    proxy_hide_header x-middleware-next;
+    proxy_hide_header x-middleware-redirect;
+    proxy_hide_header x-middleware-refresh;
+    proxy_hide_header x-middleware-set-cookie;
+    proxy_hide_header x-middleware-override-headers;
+    proxy_hide_header x-middleware-skip;
+    # The app echoes the id nginx sends; nginx sets it itself so its own errors carry it too.
+    proxy_hide_header X-Request-Id;
+    add_header X-Request-Id $request_id always;
+    # Item 4: Host unchanged, one X-Forwarded-For entry appended (TRUSTED_PROXY_HOPS=1), and
+    # never the client's own X-Request-Id.
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Request-Id $request_id;
+    proxy_set_header Connection "";
+    proxy_http_version 1.1;
+
+    proxy_connect_timeout 5s;
+    proxy_send_timeout 60s;
+    proxy_read_timeout 60s;
+    client_header_timeout 15s;
+    client_body_timeout 30s;
+    send_timeout 30s;
+    keepalive_timeout 30s;
+
+    # Items 3 and 6.
+    client_max_body_size 32k;
+    limit_req zone=sefid_forms burst=20 nodelay;
+    limit_req_status 429;
+    # The static Persian page with the clinic's call button: for a flood (429), and while the
+    # app restarts during a release (502, 504). proxy_intercept_errors stays off, so the app's
+    # own error answers pass unchanged.
+    error_page 429 502 504 /maintenance.html;
+    location = /maintenance.html {
+        root /srv/sefid/current/app/public;
+    }
+
+    location / {
+        proxy_pass http://sefid_app;
+    }
+    # Items 3 and 5. A regex location wins over the /api/ prefix; the longer prefix /api/media
+    # wins over /api/.
+    location ~ ^/api/(?:booking|emergency|events|csp-report)/?$ {
+        if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
+        proxy_pass http://sefid_app;
+    }
+    location /api/ {
+        client_max_body_size 10m;
+        if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
+        proxy_pass http://sefid_app;
+    }
+    location /admin {
+        client_max_body_size 10m;
+        if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
+        proxy_pass http://sefid_app;
+    }
+    location /api/media {
+        client_max_body_size 64m;
+        limit_req zone=sefid_media burst=5;
+        # Image processing of a large upload can take longer than a page.
+        proxy_read_timeout 120s;
+        if ($request_uri ~ "%(?![0-9A-Fa-f]{2})") { return 400; }
+        proxy_pass http://sefid_app;
+    }
+}

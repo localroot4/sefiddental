@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Turn maintenance mode on or off (docs/deploy.md 2.12): set MAINTENANCE_MODE in
+# /etc/sefid/app.env, restart sefid.service and wait until /api/health shows the new mode.
+#
+#   sefid-maintenance on|off
+set -Eeuo pipefail
+# shellcheck source=SCRIPTDIR/../lib/sefid/common.sh
+. "$(dirname "$(readlink -f "$0")")/../lib/sefid/common.sh"
+
+case ${1:-} in
+  on) want=true ;;
+  off) want=false ;;
+  *)
+    echo "usage: sefid-maintenance on|off" >&2
+    exit 2
+    ;;
+esac
+need_root "$@"
+file=$SEFID_ETC/app.env
+[ -f "$file" ] || die "$file is missing: run the provision action first"
+sha=$(env_get "$SEFID_ROOT/current/release.env" GIT_SHA)
+[ -n "$sha" ] || die "no release is installed yet"
+
+if grep -q '^MAINTENANCE_MODE=' "$file"; then
+  sed -i "s/^MAINTENANCE_MODE=.*/MAINTENANCE_MODE=$1/" "$file"
+else
+  echo "MAINTENANCE_MODE=$1" >>"$file"
+fi
+systemctl restart sefid.service || true
+body=$(wait_healthy "$sha" 120)
+printf '%s\n' "$body"
+[ "$(printf '%s' "$body" | json_field maintenance)" = "$want" ] ||
+  die "/api/health does not show maintenance $want"
+say "maintenance mode is $1"

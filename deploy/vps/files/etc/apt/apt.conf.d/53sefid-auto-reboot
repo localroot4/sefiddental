@@ -1,0 +1,4 @@
+// Installed by deploy/vps/provision.sh (not on the CI runner): reboot at 23:45 UTC (03:15 in
+// Tehran) when an update needs it. The server runs in UTC.
+Unattended-Upgrade::Automatic-Reboot "true";
+Unattended-Upgrade::Automatic-Reboot-Time "23:45";

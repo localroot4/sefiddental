@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Print which environment names the app gets, never a value (docs/deploy.md 2.3).
+# Exits 1 when a name the production start requires (src/lib/env.ts) is missing or empty.
+set -Eeuo pipefail
+# shellcheck source=SCRIPTDIR/../lib/sefid/common.sh
+. "$(dirname "$(readlink -f "$0")")/../lib/sefid/common.sh"
+
+REQUIRED="SITE_URL DATABASE_URL PAYLOAD_SECRET CRON_SECRET INTERNAL_API_TOKEN IP_HASH_SECRET
+FORM_TOKEN_SECRET MEDIA_DIR GIT_SHA"
+need_root "$@"
+
+# names FILE: "NAME" for each non-empty assignment, "NAME (empty)" for an empty one.
+names() {
+  awk -F= '/^[A-Za-z_][A-Za-z0-9_]*=/ { print $1 (length($0) > length($1) + 1 ? "" : " (empty)") }' "$1"
+}
+
+set_names=""
+for file in "$SEFID_ETC/app.env" "$SEFID_ROOT/current/release.env"; do
+  if [ ! -f "$file" ]; then
+    echo "$file: missing"
+    continue
+  fi
+  echo "$file:"
+  list=$(names "$file")
+  printf '%s\n' "$list" | sed 's/^/  /'
+  set_names="$set_names $(printf '%s\n' "$list" | { grep -v ' (empty)$' || true; } | tr '\n' ' ')"
+done
+
+missing=""
+for name in $REQUIRED; do
+  case " $set_names " in *" $name "*) ;; *) missing="$missing $name" ;; esac
+done
+if [ -n "$missing" ]; then
+  echo "missing or empty, the production start fails:$missing"
+  exit 1
+fi
+echo "every required name is set"

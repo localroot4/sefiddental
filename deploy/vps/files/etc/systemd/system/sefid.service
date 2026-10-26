@@ -1,0 +1,53 @@
+# The site: Next.js standalone server of the current release (deploy/vps, docs/deploy.md 2.2).
+# Installed by provision.sh. Releases are switched by sefid-release through /srv/sefid/current.
+[Unit]
+Description=Sefid dental website (Next.js standalone server)
+After=network-online.target postgresql.service
+Wants=network-online.target postgresql.service
+# No release yet: skip instead of failing at every boot.
+ConditionPathExists=/srv/sefid/current/app/server.js
+
+[Service]
+Type=simple
+User=sefid
+Group=sefid
+EnvironmentFile=/etc/sefid/app.env
+EnvironmentFile=/srv/sefid/current/release.env
+WorkingDirectory=/srv/sefid/current/app
+ExecStart=/srv/sefid/current/node/bin/node /srv/sefid/current/app/server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+UMask=0027
+# Heap 1 GiB (NODE_OPTIONS) plus native memory; leaves room for PostgreSQL on 4 GB.
+MemoryMax=2G
+TasksMax=512
+
+# Sandboxing. MemoryDenyWriteExecute stays off: the V8 JIT writes executable memory.
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+ProtectSystem=strict
+ReadWritePaths=/var/lib/sefid/media
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+
+[Install]
+WantedBy=multi-user.target

@@ -5,6 +5,7 @@
     "scripts/*.mjs",
     "src/seed/index.ts",
     "scripts/reset-admin.ts",
+    "scripts/first-admin.ts",
     "tests/setup/e2eUsers.ts",
     "tests/fixtures/qa-seed.ts",
     "deploy/cpanel/app.cjs"

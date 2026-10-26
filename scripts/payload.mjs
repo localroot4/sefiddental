@@ -4,12 +4,13 @@
 // ran, and a CI job hung for 45 minutes). A stalled attempt prints nothing more, so after
 // STALL_MS of silence it is stopped and run again; the first attempt has warmed the cache.
 // The commands it runs (migrate, seed, generate:*) are safe to repeat. Drop once tsx or Node
-// fixes the loader.
+// fixes the loader. PAYLOAD_STALL_MS raises the limit where a command is silent for long: the
+// workflow "Server" seeds through an SSH tunnel, and the seeder prints only its summary.
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
-const STALL_MS = 120_000;
+const STALL_MS = Number(process.env.PAYLOAD_STALL_MS) || 120_000;
 const ATTEMPTS = 3;
 const tsx = createRequire(import.meta.url).resolve('tsx/cli');
 const inner = fileURLToPath(new URL('./payload-bin.mjs', import.meta.url));

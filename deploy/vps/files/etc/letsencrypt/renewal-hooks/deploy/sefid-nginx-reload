@@ -1,0 +1,6 @@
+#!/bin/sh
+# Installed by deploy/vps/provision.sh: certbot runs this after it issues or renews a
+# certificate. Check the configuration, then reload nginx so it serves the new certificate.
+set -e
+nginx -t -q
+systemctl reload nginx

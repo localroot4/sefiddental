@@ -1,0 +1,30 @@
+# One cron tick of the app (docs/deploy.md 2.8): GET /api/cron/tick on the loopback origin with
+# the bearer from /etc/sefid/cron-auth.header, which keeps the secret out of the process list.
+# Started every minute by sefid-cron.timer. 200 and the 503 of maintenance mode (2.12) succeed;
+# any other answer fails the unit with the code in the journal. "$$" and "%%" are systemd's
+# escapes for "$" and "%".
+[Unit]
+Description=Sefid cron tick (/api/cron/tick)
+After=sefid.service
+ConditionPathExists=/srv/sefid/current/app/server.js
+
+[Service]
+Type=oneshot
+User=sefid
+Group=sefid
+EnvironmentFile=/etc/sefid/host.env
+ExecStart=/bin/sh -c 'code=$$(/usr/bin/curl -sS --max-time 55 -o /dev/null -w "%%{http_code}" -H @/etc/sefid/cron-auth.header "$$SEFID_ORIGIN/api/cron/tick") || exit 1; case $$code in 200 | 503) ;; *) echo "/api/cron/tick answered HTTP $$code"; exit 1 ;; esac'
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+SystemCallArchitectures=native
