@@ -54,9 +54,9 @@ Iranian hosts sell cPanel or DirectAdmin plans with a Node.js selector
 
 | Need | What a shared Node.js host offers | Result |
 |---|---|---|
-| Node 22.18 or newer (`package.json` `engines`) | Vendors list Node up to 16. The CloudLinux Node.js Selector docs list 6.x to 19.x. Our own host showed no version at all. | Fails unless the host proves 22.18+ |
+| Node 22.23.4 or newer (`package.json` `engines`) | Vendors list Node up to 16. The CloudLinux Node.js Selector docs list 6.x to 19.x. Our own host showed no version at all. | Fails unless the host proves 22.23.4+ |
 | One long-running process | The selector runs apps through Phusion Passenger, which loads a CommonJS startup file. The standalone `server.js` is an ES module (`"type": "module"`). | Needs a wrapper; untested |
-| PostgreSQL | Usually MySQL only. Payload 3.90.2 has no MySQL adapter. | SQLite on disk, against `docs/architecture.md` |
+| PostgreSQL | Usually MySQL only. Payload 3.92.0 has no MySQL adapter. | SQLite on disk, against `docs/architecture.md` |
 | Memory | An LVE limit per account (1 to 3 GB advertised). Next.js, the Payload admin and sharp share it. No control over out-of-memory kills. | Tight |
 | Build | The build cannot run on the host. CI must ship the artifact over SSH. | Extra work |
 | Deploy from GitHub Actions | Needs SSH open to foreign IP addresses. | Unknown per host (risk R2) |
@@ -169,8 +169,8 @@ This section holds on every path: Liara, ArvanCloud, a VPS or C1.
 
 ### 2.1 Runtime
 
-- Node.js 22 LTS, version 22.18.0 or newer (`package.json` `engines`). CI uses
-  `.nvmrc` (22).
+- Node.js 22 LTS, version 22.23.4 or newer, or Node 24.22.1 or newer
+  (`package.json` `engines`). CI uses `.nvmrc` (22.23.4).
 - Linux x64 with glibc, the same OS, CPU and libc as the build machine. sharp
   installs a prebuilt binary for the build platform only, so a build from an
   Ubuntu runner does not run on Alpine (musl). Use a Debian-based image such as
@@ -1486,7 +1486,7 @@ panel's "Application root":
 
 At start `boot.cjs`:
 
-1. Stops with a clear line when Node is older than 22.18.
+1. Stops with a clear line when Node is older than 22.23.4 (24.22.1 on Node 24).
 2. Uses the data folder `~/sefid-data` (`SEFID_DATA_DIR` overrides it), outside
    the release, mode 0700. A new release never touches it.
 3. Takes each secret of 2.3 from the panel's environment, else from
@@ -1517,14 +1517,14 @@ At start `boot.cjs`:
 A failed start writes one JSON line to stderr and to `startup-error.log` in
 the application root (readable in File Manager).
 
-Unit tests: `deploy/cpanel/boot.test.ts` (CB1 to CB7, including a simulated
+Unit tests: `deploy/cpanel/boot.test.ts` (CB1 to CB8, including a simulated
 loader that throws on a second `listen()` and `boot()` end to end).
 
 ### 7.2 Panel settings
 
 | Setting | Value |
 |---|---|
-| Node.js version | 22.18 or newer. If the list stops below 22, ask the host to enable Node 22; the app does not start on older versions. |
+| Node.js version | 22.23.4 or a newer 22.x, or 24.22.1 or newer; 23.x does not start. If the list has no such version, ask the host to enable Node 22.23.4 or newer; the app does not start on older versions. |
 | Application mode | Production |
 | Application root | `sefid` |
 | Application URL | `sefiddental.ir` (the root, no path) |
@@ -1612,7 +1612,7 @@ admin out and voids pending form tokens; it does not lose data.
 
 1. فایل `sefid-cpanel.zip` را بگیرید. استودیو آن را می‌فرستد.
 2. وارد cPanel شوید. بخش «Setup Node.js App» را باز کنید. «Create Application» را بزنید.
-3. «Node.js version» را روی ۲۲ یا بالاتر بگذارید. اگر ۲۲ در فهرست نیست، از پشتیبانی هاست Node 22 را بخواهید.
+3. «Node.js version» را روی یکی از این‌ها بگذارید: `22.23.4` یا یک نسخهٔ ۲۲ جدیدتر، یا `24.22.1` یا جدیدتر. سایت روی نسخه‌های دیگر (از جمله ۲۳) بالا نمی‌آید. اگر چنین نسخه‌ای در فهرست نیست، از پشتیبانی هاست `Node 22.23.4` یا جدیدتر را بخواهید.
 4. «Application mode» را روی Production بگذارید.
 5. در «Application root» بنویسید `sefid`.
 6. در «Application URL» دامنهٔ `sefiddental.ir` را انتخاب کنید. مسیر را خالی بگذارید.

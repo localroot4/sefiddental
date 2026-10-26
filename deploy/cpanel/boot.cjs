@@ -164,10 +164,12 @@ function readRelease(root) {
 
 /** Run before Next starts; returns what the entry needs. */
 async function boot(root, env = process.env) {
-  const [major, minor] = process.versions.node.split('.').map(Number);
-  if (major < 22 || (major === 22 && minor < 18)) {
+  // package.json engines: Payload needs the 2026-10-21 security releases, 22.23.4 or 24.22.1.
+  const [major, minor, patch] = process.versions.node.split('.').map(Number);
+  const version = major * 1e6 + minor * 1e3 + patch;
+  if (version < 22_023_004 || (major > 22 && version < 24_022_001)) {
     throw new Error(
-      `Node ${process.versions.node} is too old: choose Node 22.18 or newer in the panel's Node.js app settings.`,
+      `Node ${process.versions.node} is too old: choose Node 22.23.4 or newer (24.22.1 or newer on Node 24) in the panel's Node.js app settings.`,
     );
   }
   const dataDir = dataDirOf(env);

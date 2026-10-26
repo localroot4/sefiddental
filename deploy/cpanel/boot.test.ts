@@ -113,7 +113,30 @@ describe('cPanel start-up (docs/deploy.md section 7)', () => {
 });
 
 describe('boot() end to end', () => {
+  it('CB8 starts only on a Node with the 2026-10-21 security releases (package.json engines)', async () => {
+    const real = Object.getOwnPropertyDescriptor(process.versions, 'node')!;
+    closers.push(() => Object.defineProperty(process.versions, 'node', real));
+    const createServer = http.createServer;
+    closers.push(() => (http.createServer = createServer));
+    const run = require('./boot.cjs') as { boot: (root: string, env: object) => Promise<unknown> };
+    // A set INTERNAL_ORIGIN skips the listener, so an accepted start leaves no open server.
+    const start = (version: string) => {
+      Object.defineProperty(process.versions, 'node', { ...real, value: version });
+      return run.boot(tmp(), { SEFID_DATA_DIR: tmp(), INTERNAL_ORIGIN: 'http://127.0.0.1:9' });
+    };
+    for (const version of ['22.18.0', '22.23.3', '23.11.1', '24.22.0']) {
+      await expect(start(version), version).rejects.toThrow(`Node ${version} is too old`);
+    }
+    for (const version of ['22.23.4', '22.24.0', '24.22.1', '25.0.0']) {
+      await expect(start(version), version).resolves.toHaveProperty('dataDir');
+    }
+  });
+
   it('CB6 the internal listener forwards to the server Next creates after boot, not to itself', async () => {
+    const real = Object.getOwnPropertyDescriptor(process.versions, 'node')!;
+    closers.push(() => Object.defineProperty(process.versions, 'node', real));
+    // The engines floor, so the test does not depend on the Node that runs it (CB8 covers the check).
+    Object.defineProperty(process.versions, 'node', { ...real, value: '22.23.4' });
     const createServer = http.createServer;
     closers.push(() => (http.createServer = createServer));
     const env: Record<string, string | undefined> = { SEFID_DATA_DIR: tmp() };

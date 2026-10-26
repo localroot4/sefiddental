@@ -2,11 +2,11 @@
 
 Custom Persian (RTL) website for کلینیک دندانپزشکی سفید, a digital dental clinic in south Tehran.
 Next.js 16.4 serves light, SEO-first content pages and a quality-tiered WebGL scroll experience on home.
-Payload CMS 3.90 runs inside the same app at `/admin`, on PostgreSQL (production) or SQLite (tests, local).
+Payload CMS 3.92 runs inside the same app at `/admin`, on PostgreSQL (production) or SQLite (tests, local).
 
 ## Prerequisites
 
-- Node.js 22.18 or newer (`.nvmrc`: 22) and npm.
+- Node.js 22.23.4 or newer, or 24.22.1 or newer (`.nvmrc`: 22.23.4) and npm.
 - PostgreSQL 16, or a SQLite file for local work.
 
 ## First setup

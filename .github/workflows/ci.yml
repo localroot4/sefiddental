@@ -52,11 +52,11 @@ jobs:
       - run: npm run test:tz
       - name: Integration tests on SQLite (one temporary database per worker)
         run: npm run test:int
-      # The log lists every advisory; the gate is critical because the 10 high advisories of
-      # 2026-10-13 sit in Payload 3.90.2's own dependency tree (npm's only "fix" is a downgrade).
-      # Raise the level to high once the integrator clears them (overrides or a Payload release).
+      # The log lists every advisory; the gate is high. On 2026-10-26 Payload 3.92.0 plus the
+      # package.json overrides left only moderate esbuild advisories, under drizzle-kit's CLI loader.
+      # docs/architecture.md section 8 says why each override exists and when to drop it.
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=critical
+        run: npm audit --omit=dev --audit-level=high
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

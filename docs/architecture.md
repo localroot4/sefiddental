@@ -8,8 +8,8 @@ this file in the same commit.
 
 | Layer | Choice | Notes |
 |---|---|---|
-| Framework | Next.js 16.4.0 with React 19.3.0, App Router, TypeScript 5.9.3 strict, on Node.js 22 (22.18 or later) | Server components by default; client islands only where behaviour needs JavaScript, and for WebGL. TypeScript 5.9.3 is the version verified with Payload 3.90.2 and the lint toolchain |
-| CMS | Payload CMS 3.90.2 inside the same Next.js app, admin at `/admin`, locale `fa`, RTL | Collections, drafts and versions, scheduled publish, access control, media with sharp, live preview |
+| Framework | Next.js 16.4.3 with React 19.3.0, App Router, TypeScript 5.9.3 strict, on Node.js 22 (22.23.4 or later) | Server components by default; client islands only where behaviour needs JavaScript, and for WebGL. TypeScript 5.9.3 is the version verified with Payload 3.92.0 and the lint toolchain |
+| CMS | Payload CMS 3.92.0 inside the same Next.js app, admin at `/admin`, locale `fa`, RTL | Collections, drafts and versions, scheduled publish, access control, media with sharp, live preview |
 | Database | PostgreSQL (Payload Postgres adapter) on a PaaS or a VPS; Payload's SQLite adapter on cPanel paths (C2) | The data model is identical; the adapter is an environment setting, and the confirmed hosting path (section 2) sets it |
 | Styling | Tailwind CSS 4.3.3 with `@theme` tokens from `design/tokens.css`; CSS modules for complex scenes | one token file, no ad-hoc colors |
 | UI motion | CSS transitions on transform and opacity with the motion tokens of `design/tokens.css`; native `<dialog>`, `<details>` and the Popover API | no motion library (phase 4: the JavaScript headroom, 10 KiB on content pages and 19.5 KiB on home, leaves no room for one); zero motion under `prefers-reduced-motion` |
@@ -19,7 +19,7 @@ this file in the same commit.
 | Fonts | Vazirmatn and Estedad via `next/font/local`, subsets, swap | preloaded |
 | Icons | Phosphor, from the raw SVG package `@phosphor-icons/core` (devDependency) compiled at prebuild into one sprite, `public/brand/icons.svg`, holding only the names in `src/components/ui/icons.ts` | one family; `<Icon>` is a server component (`<svg><use href>`), so no icon JavaScript reaches the client |
 | Dates | `date-fns-jalali` 4.4.0-0 for display; store UTC | Asia/Tehran |
-| Email | Nodemailer (`@payloadcms/email-nodemailer` 3.90.2) through the host's SMTP | admin notifications; without SMTP no reset mail is sent (the log shows only the recipient and subject); recovery is `npm run reset-admin -- <email>` |
+| Email | Nodemailer (`@payloadcms/email-nodemailer` 3.92.0) through the host's SMTP | admin notifications; without SMTP no reset mail is sent (the log shows only the recipient and subject); recovery is `npm run reset-admin -- <email>` |
 | Tests | Vitest 5.0.4 (unit), Playwright 1.64.0 (e2e, screenshots, frame timing), axe-core (`@axe-core/playwright` 4.13.0), Lighthouse CI 0.15.1 | all in GitHub Actions |
 | Lint | ESLint 9.39.5, Prettier 3.9.10, TypeScript `--noEmit`, `knip` 6.41.0 for dead code | CI gate |
 
@@ -96,7 +96,7 @@ client opens on a phone.
 Update on 2026-10-13: the host answered that it does not support Node.js,
 so C2 at the current host is out. The client offered to buy a Node host.
 A shared cPanel "Node.js host" does not qualify: such plans list Node 19 or
-older (the app needs Node 22.18 or later, `package.json` `engines`),
+older (the app needs Node 22.23.4 or later, `package.json` `engines`),
 Passenger loads CommonJS while Payload is ESM, and they usually have no
 PostgreSQL (Payload has no MySQL adapter). The studio recommends path A on Liara; `docs/deploy.md` records
 the probe facts and the purchase list. Deploy code waits for the client's
@@ -359,6 +359,22 @@ with zod; the forms also work as plain HTML posts.
   editors.
 - `npm audit` in CI; no secrets in the repository or logs; phones never in
   logs.
+- `package.json` `overrides` (2026-10-26) exist only because a parent pins
+  an old version. Neither package reaches the server bundle. Drop each one
+  when its parent catches up:
+  - `dompurify` `^3.4.17` (GHSA-cg2g-xh64-v4q7 critical, GHSA-mrv2-3pqr-j5jr
+    high): `monaco-editor` 0.57.0, under `@payloadcms/ui`, pins 3.4.15. The
+    override only clears `npm audit`. Monaco bundles its own DOMPurify copy
+    and never imports the npm package. Payload's code editor (JSON and code
+    fields) loads monaco 0.55.1, with its own DOMPurify, at run time from
+    `cdn.jsdelivr.net` (the default path of `@monaco-editor/loader`), not
+    from `node_modules`. Drop the override when `monaco-editor` depends on
+    3.4.17 or newer. Self-hosting monaco is a separate task.
+  - `happy-dom` `^21.0.4` (GHSA-834v-8h66-3h79 high): `@lexical/headless`
+    0.50.0, under `@payloadcms/richtext-lexical`, declares `^20.9.0`. The
+    override sits outside that range. It is safe only because nothing loads
+    `@lexical/headless/dom`, the one entry that imports happy-dom. Drop the
+    override when `@lexical/headless` accepts `^21`.
 
 ## 9. Observability and operations
 
