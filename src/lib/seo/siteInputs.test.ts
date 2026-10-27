@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Clinic, Media, SeoDefault } from '@/payload-types';
 
@@ -65,6 +65,13 @@ const seoGlobal = {
 const OG_PATH = '/api/media/file/og-1-1200x630.jpg';
 
 describe('site inputs from the globals', () => {
+  // The first import transforms the module graph (the collections read the env at import): 5 s
+  // and more on a loaded host, which SI1 used to pay inside its own timeout.
+  beforeAll(async () => {
+    stubSiteEnv();
+    await import('./siteInputs');
+    vi.unstubAllEnvs();
+  }, 60_000);
   beforeEach(() => stubSiteEnv());
   afterEach(() => {
     vi.restoreAllMocks();
