@@ -59,15 +59,20 @@ function ExperienceHost(props: { children: React.ReactNode }): React.JSX.Element
   useEffect(() => {
     if (!loaded || !engineWanted || engineModule !== null) return;
     let cancelled = false;
-    import('./engine/scrollEngine').then(
-      (mod) => {
-        if (!cancelled) setEngineModule(mod);
-      },
-      (error: unknown) =>
-        console.error('[experience] scroll engine failed to load; tier 0.', error),
-    );
+    // A task of its own: the chunk loader inserts one script per engine chunk (4 to 20 ms for
+    // the four in Lighthouse's traces), which made the effects after hydration one long task.
+    const id = window.setTimeout(() => {
+      import('./engine/scrollEngine').then(
+        (mod) => {
+          if (!cancelled) setEngineModule(mod);
+        },
+        (error: unknown) =>
+          console.error('[experience] scroll engine failed to load; tier 0.', error),
+      );
+    }, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(id);
     };
   }, [loaded, engineWanted, engineModule]);
 
