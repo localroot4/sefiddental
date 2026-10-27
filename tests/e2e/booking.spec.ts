@@ -4,7 +4,7 @@
 // the 2 s time trap: the island holds a JS submit itself (G5); no-JS tests wait.
 import { readFile } from 'node:fs/promises';
 
-import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { expect, test, type Page, type Request, type TestInfo } from '@playwright/test';
 
 import { t } from '@/i18n/fa';
 import { toPersianDigits } from '@/lib/persianText';
@@ -234,13 +234,13 @@ test('T-BK6 a 419 renews the token, keeps the values and the next press succeeds
   await isolateClient(context);
   const phone = uniquePhone(testInfo);
   let posts = 0;
-  let second: { at: number; body: string } | null = null;
+  let second: { request: Request; body: string } | null = null;
   await page.route('**/*', async (route) => {
     const request = route.request();
     if (request.method() === 'POST' && decodeURI(new URL(request.url()).pathname) === BOOKING) {
       posts += 1;
       if (posts === 1) return route.fulfill({ status: 419, json: { ok: false, error: 'expired' } });
-      second = { at: Date.now(), body: request.postData() ?? '' };
+      second = { request, body: request.postData() ?? '' };
     }
     return route.continue();
   });
@@ -249,13 +249,12 @@ test('T-BK6 a 419 renews the token, keeps the values and the next press succeeds
   expect(pageTs).toMatch(/^v1\./);
   await form(page).getByLabel(t('booking.phone')).fill(phone);
   await form(page).getByLabel(t('booking.name')).fill('نمونهٔ آزمایشی');
-  // The clock starts when the renewal answer arrives, not when the test gets to read it.
-  const renewal = page
-    .waitForResponse((response) => response.url().includes('/api/form-session?renew='))
-    .then((response) => ({ response, at: Date.now() }));
+  const renewal = page.waitForResponse((response) =>
+    response.url().includes('/api/form-session?renew='),
+  );
   await submitButton(page).click();
   await expect(form(page).getByRole('alert')).toHaveText(t('booking.failed.expired'));
-  const { response: renewed, at: renewedAt } = await renewal;
+  const renewed = await renewal;
   expect(new URL(renewed.url()).searchParams.get('renew')).toBe(pageTs);
   const { ts: newTs } = (await renewed.json()) as { ts: string };
   await expect(form(page).getByLabel(t('booking.phone'))).toHaveValue(phone);
@@ -267,9 +266,14 @@ test('T-BK6 a 419 renews the token, keeps the values and the next press succeeds
   expect(posts).toBe(2);
   // The next press carries the renewed token and waits until it is 2 s old (G5), so the server
   // stores it clean, not «مشکوک» (E-BK13; the stored row: BH-FAST).
-  const sent = second as { at: number; body: string } | null;
+  const sent = second as { request: Request; body: string } | null;
   expect(sent?.body).toContain(newTs);
-  expect((sent?.at ?? 0) - renewedAt).toBeGreaterThanOrEqual(2000);
+  // Both instants on the browser's network clock, the one the form's 2 s wait runs on: the test
+  // process sees the renewal answer late on a loaded runner (1993 ms on CI run 61). The form
+  // counts whole milliseconds (Date.now), so its 2000 can read 1999.x on this clock.
+  const renewalTiming = renewed.request().timing();
+  const renewedAt = renewalTiming.startTime + renewalTiming.responseEnd;
+  expect(sent!.request.timing().startTime - renewedAt).toBeGreaterThanOrEqual(1999);
 });
 
 test('T-BK7 network and server failures show their message; nothing is posted again', async ({
