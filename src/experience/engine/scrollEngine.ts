@@ -325,6 +325,11 @@ export function createScrollEngine(opts: {
     scrollTo(target, scrollOpts = {}) {
       const instant = scrollOpts.immediate === true || window.matchMedia(QUERIES.reduce).matches;
       if (lenis) {
+        // A native scroll earlier in this same task (a focus, a test runner's scroll into view)
+        // reaches Lenis only with the scroll event of the next frame; until then scrollTo adds the
+        // element's rect to a stale animatedScroll and lands that far off (T-EN7 on CI, 458 px).
+        // resize() syncs animatedScroll and the limit to the real position first.
+        lenis.resize();
         // Lenis 1.3.26 applies the root's scroll-padding and the target's scroll-margin itself.
         lenis.scrollTo(target, { immediate: instant });
         return;
