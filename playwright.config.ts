@@ -136,10 +136,25 @@ export default defineConfig({
         launchOptions: noWebgl2Launch(),
       },
     },
+    // The recorders render on the CPU (SwiftShader) under 4x and 6x throttling for minutes: on
+    // CI's 2 cores a test running beside them starves (T-AD32 timed out in run 53). They start
+    // once every other project is done, one test at a time; `--no-deps` runs them alone.
     {
       name: 'perf-swiftshader',
       testDir: './tests/perf',
       fullyParallel: false,
+      workers: 1,
+      dependencies: [
+        'phone-light',
+        'phone-dark',
+        'tablet-light',
+        'tablet-dark',
+        'desktop-light',
+        'desktop-dark',
+        'http',
+        'admin',
+        'no-webgl2',
+      ],
       use: {
         ...devices['Desktop Chrome'],
         ...base,
@@ -154,6 +169,7 @@ export default defineConfig({
       name: 'perf-default',
       testDir: './tests/perf',
       fullyParallel: false,
+      workers: 1,
       use: { ...devices['Desktop Chrome'], ...base, ...VIEWPORTS.desktop, colorScheme: 'light' },
     },
   ],
