@@ -33,7 +33,10 @@ const startServerCommand = [
 
 // Interim initial-JS limits gate CI; the documented targets (90 KB content, 180 KB home) stay
 // below the framework floor and are reported beside the measurements (freeze decision 4).
-const scriptLimit = (pageClass) => limits.classes[pageClass].interimKiB * KiB;
+// Lighthouse's transfer size counts the response headers of every script (about 75 bytes each
+// over HTTP/2); check:bundle gates the bodies, so the headers get their own allowance here.
+const scriptLimit = (pageClass) =>
+  (limits.classes[pageClass].interimKiB + limits.scriptHeadersKiB) * KiB;
 
 const median = { aggregationMethod: 'median' };
 

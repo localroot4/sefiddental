@@ -192,8 +192,9 @@ describe('lighthouserc.cjs', () => {
       const { 'resource-summary:script:size': script, ...rest } = page!.assertions;
       const { 'resource-summary:script:size': _content, ...contentRest } = notFound!.assertions;
       expect(rest).toEqual(contentRest);
-      // The booking class adds the deferred dialog island's allowance (limits.json deferredKiB).
-      expect(script).toEqual(['error', { maxNumericValue: (150 + 5) * 1024 }]);
+      // The booking class adds the deferred dialog island's allowance (limits.json deferredKiB);
+      // every class adds the script response headers Lighthouse counts (scriptHeadersKiB).
+      expect(script).toEqual(['error', { maxNumericValue: (150 + 5 + 1) * 1024 }]);
     }
     expect(service!.assertions).toEqual(notFound!.assertions);
     expect(dentist!.assertions).toEqual(notFound!.assertions);
@@ -201,8 +202,8 @@ describe('lighthouserc.cjs', () => {
     const { 'resource-summary:script:size': homeScript, ...tier0Rest } = tier0!.assertions;
     const { 'resource-summary:script:size': contentScript, ...contentRest } = notFound!.assertions;
     expect(tier0Rest).toEqual(contentRest);
-    expect(homeScript).toEqual(['error', { maxNumericValue: 215 * 1024 }]);
-    expect(contentScript).toEqual(['error', { maxNumericValue: 150 * 1024 }]);
+    expect(homeScript).toEqual(['error', { maxNumericValue: (215 + 1) * 1024 }]);
+    expect(contentScript).toEqual(['error', { maxNumericValue: (150 + 1) * 1024 }]);
   });
 });
 

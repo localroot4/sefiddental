@@ -43,5 +43,7 @@
     }
   },
   "cssKiB": 50,
-  "fontsKiB": 120
+  "fontsKiB": 120,
+  "scriptHeadersKiB": 1,
+  "scriptHeadersNote": "Lighthouse only: its script transfer size includes the HTTP/2 response headers of the 10 to 13 script requests (about 75 bytes each; the restoration page measured 773 bytes over its bodies on CI run 50); check:bundle gates the bodies."
 }
