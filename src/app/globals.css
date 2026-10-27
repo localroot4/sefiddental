@@ -200,6 +200,9 @@
     caret-color: var(--color-brand);
     /* Anchors such as #سطح-ترمیم land below the sticky header. */
     scroll-padding-block-start: calc(var(--nav-h) + var(--space-4));
+    /* The classic scrollbar's gutter is reserved from the first paint, so a frame painted before
+       the page is tall enough never shifts 15 px when the bar appears (desktop CLS 0.011). */
+    scrollbar-gutter: stable;
   }
   body {
     background: var(--color-surface);
