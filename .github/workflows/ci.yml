@@ -68,7 +68,9 @@ jobs:
   app:
     name: Drift, Postgres integration, build, e2e, bundle and Lighthouse
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
+    # A normal run takes about 51 minutes (e2e 20, Lighthouse 25); run 64 lost its Lighthouse step
+    # to the old 60 when the Chromium download took 10 minutes instead of 16 seconds.
+    timeout-minutes: 90
     services:
       postgres:
         image: postgres:16
