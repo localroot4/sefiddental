@@ -8,27 +8,69 @@ vi.mock('@/components/booking/BookingForm', () => ({ BookingForm: () => null }))
 
 const set = { avif: 'a.avif 800w', other: 'a.webp 800w', otherType: 'image/webp' };
 
+function render(placeholder: boolean): string {
+  return renderToStaticMarkup(
+    <HomeHero
+      title="عنوان"
+      subtext="زیرعنوان"
+      image={{
+        wide: set,
+        tall: set,
+        img: { src: '/a.webp', width: 800, height: 1000, alt: 'عکس' },
+        preloadHref: '/a.avif',
+        placeholder,
+      }}
+      relief
+      phone="+982100000000"
+      facts={[{ value: 'یک' }]}
+    />,
+  );
+}
+
 describe('home hero markup', () => {
   it('HH1 the scrim (H1 and subtext) comes before the photo in the streamed HTML', () => {
-    const html = renderToStaticMarkup(
-      <HomeHero
-        title="عنوان"
-        subtext="زیرعنوان"
-        image={{
-          wide: set,
-          tall: set,
-          img: { src: '/a.webp', width: 800, height: 1000, alt: 'عکس' },
-          preloadHref: '/a.avif',
-          placeholder: false,
-        }}
-        relief
-        phone="+982100000000"
-        facts={[{ value: 'یک' }]}
-      />,
-    );
+    const html = render(false);
     // A first frame that holds only the photo paints it under the header on phones (LCP, shift).
     expect(html.indexOf('id="hero-h1"')).toBeGreaterThan(-1);
     expect(html.indexOf('id="hero-sub"')).toBeLessThan(html.indexOf('<picture'));
     expect(html.indexOf('id="hero-h1"')).toBeLessThan(html.indexOf('<picture'));
+  });
+
+  it('HH2 the trust band is the world window after the clipped photo wrapper, in the server HTML (D18)', () => {
+    const html = render(true);
+    const photo = html.indexOf('data-hero-photo=""');
+    const band = html.indexOf('data-scene="trust"');
+    expect(photo).toBeGreaterThan(-1);
+    expect(band).toBeGreaterThan(photo);
+    expect(html.slice(band)).toContain('data-world-slot="hero-exit"');
+    expect(html.slice(band)).toContain('lg:min-h-[40vh]');
+    // The band leaves the photo's bounds: it is outside the clipping wrapper.
+    const wrapper = html.indexOf('lg:overflow-clip');
+    expect(wrapper).toBeLessThan(photo);
+    // From 1024 px the sunken surface is the wrapper's, in its own stacking context (under the
+    // photo), and the section is transparent: the band shows the page surface.
+    expect(html.slice(0, wrapper)).toContain('lg:bg-transparent');
+    const wrapperClass = html.slice(html.lastIndexOf('class="', wrapper), wrapper);
+    expect(wrapperClass).toContain('lg:isolate');
+    expect(html.slice(wrapper, wrapper + 40)).toContain('lg:bg-surface-sunken');
+    expect(html).not.toContain('style=');
+  });
+
+  it('HH3 the settle is keyed on html[data-intro] with 60 ms steps by position; no opacity on the H1 (D11)', () => {
+    // Static markup escapes the `&` of the arbitrary variants.
+    const html = render(true).replace(/&amp;/g, '&');
+    const h1 = html.slice(html.indexOf('<h1'), html.indexOf('</h1>'));
+    expect(h1).toContain('[html[data-intro=playing]_&]:translate-y-[12px]');
+    expect(h1).toContain('[html[data-intro=done]_&]:translate-y-0');
+    expect(h1).not.toContain('opacity');
+    expect(h1).not.toContain('delay-');
+    const sub = html.slice(html.indexOf('id="hero-sub"'), html.indexOf('</p>'));
+    expect(sub).toContain('[html[data-intro=done]_&]:delay-[60ms]');
+    expect(html).toContain('[html[data-intro=done]_&]:delay-[120ms]');
+  });
+
+  it('HH4 the mark relief renders on a real photo only (D3)', () => {
+    expect(render(true)).not.toContain('#mark"');
+    expect(render(false)).toContain('#mark"');
   });
 });

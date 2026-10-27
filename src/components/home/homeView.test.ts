@@ -8,7 +8,7 @@ import type { ClinicHours } from '@/lib/hoursState';
 import type { Media, Page } from '@/payload-types';
 
 import { heroPlaceholderFiles } from './heroPlaceholder';
-import { heroImage, heroSubtext, sectionCopy, trustFacts } from './homeView';
+import { heroImage, heroRelief, heroSubtext, sectionCopy, trustFacts } from './homeView';
 
 const EVERY_DAY = ['sat', 'sun', 'mon', 'tue', 'wed', 'thu', 'fri'] as const;
 const HOURS: ClinicHours = {
@@ -122,6 +122,14 @@ describe('hero image (freeze F3, nav-conversion-hero 2.6)', () => {
       sizes: { p640: { url: '/p.webp', width: 640 }, p640Avif: { url: '/p.avif', width: 640 } },
     } as unknown as Media;
     expect(heroImage(PHOTO, portrait).tall.avif).toBe('/p.avif 640w');
+  });
+});
+
+describe('hero mark relief (brief decision 19, phase 7 D3)', () => {
+  it('HV4 renders only with the feature on and a real photo; never on the placeholder', () => {
+    expect(heroRelief(true, { placeholder: false })).toBe(true);
+    expect(heroRelief(true, { placeholder: true })).toBe(false);
+    expect(heroRelief(false, { placeholder: false })).toBe(false);
   });
 });
 

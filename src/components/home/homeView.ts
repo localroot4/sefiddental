@@ -70,6 +70,15 @@ export interface HeroImage {
   placeholder: boolean;
 }
 
+/**
+ * The static mark relief on the hero (brief decision 19, phase 7 D3): only with the «نقش برجستهٔ
+ * لوگو» feature on and a real photo. The placeholder never carries it (gap 36 open), so the
+ * client judges it on their own photo.
+ */
+export function heroRelief(feature: boolean, image: Pick<HeroImage, 'placeholder'>): boolean {
+  return feature && !image.placeholder;
+}
+
 const srcSet = (list: Size[]) => list.map((s) => `${s.url} ${s.width}w`).join(', ');
 
 function mediaSizes(media: Media | null, names: readonly string[], avif: boolean): Size[] {
