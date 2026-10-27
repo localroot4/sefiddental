@@ -33,7 +33,9 @@ describe('form flash cookie (freeze G3)', () => {
 
   it('FL2 a tampered value, another secret or a malformed value opens to null', () => {
     const value = sealFlash(K, FLASH);
-    const flipped = `${value.slice(0, -2)}${value.endsWith('A') ? 'B' : 'A'}${value.slice(-1)}`;
+    const at = value.length - 2;
+    const flipped = `${value.slice(0, at)}${value[at] === 'A' ? 'B' : 'A'}${value.slice(at + 1)}`;
+    expect(flipped).not.toBe(value);
     expect(openFlash([K], flipped, NOW)).toBeNull();
     expect(openFlash(['x'.repeat(48)], value, NOW)).toBeNull();
     expect(openFlash([K], 'not-a-flash', NOW)).toBeNull();
