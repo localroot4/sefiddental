@@ -7,7 +7,7 @@ import { track } from '@/lib/track/track';
 import type { Service, ServiceTier } from '@/payload-types';
 
 import { HomeBookingPrefill } from './HomeBookingPrefill';
-import { RestorationSection } from './HomeSections';
+import { RestorationSection } from './sections/RestorationSection';
 
 // The section module also renders the booking block, whose data readers need Payload.
 vi.mock('@/components/booking/BookingForm', () => ({ BookingForm: () => null }));

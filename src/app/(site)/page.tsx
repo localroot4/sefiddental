@@ -3,19 +3,22 @@
 // scroll engine and the canvas after hydration, and phases 7 and 8 animate this markup through
 // its [data-scene] hooks.
 import type { Metadata } from 'next';
+import { headers } from 'next/headers';
 
+import { LockupSprite } from '@/components/brand/LockupParts';
 import { HomeBookingPrefill } from '@/components/home/HomeBookingPrefill';
 import { HomeHero } from '@/components/home/HomeHero';
-import {
-  BookingSection,
-  CasesSection,
-  DentistsSection,
-  FaqSection,
-  JourneySection,
-  RestorationSection,
-  ServicesSection,
-  VoicesSection,
-} from '@/components/home/HomeSections';
+import { IntroOverlay } from '@/components/home/intro/IntroOverlay';
+import { BookingSection } from '@/components/home/sections/BookingSection';
+import { CasesSection } from '@/components/home/sections/CasesSection';
+import { DentistsSection } from '@/components/home/sections/DentistsSection';
+import { FaqSection } from '@/components/home/sections/FaqSection';
+import { JourneySection } from '@/components/home/sections/JourneySection';
+import { PlaygroundSection } from '@/components/home/sections/PlaygroundSection';
+import { RestorationSection } from '@/components/home/sections/RestorationSection';
+import { ServicesSection } from '@/components/home/sections/ServicesSection';
+import { VoicesSection } from '@/components/home/sections/VoicesSection';
+import { WorkflowSection } from '@/components/home/sections/WorkflowSection';
 import { getHomeData, getHomePage } from '@/components/home/homeData';
 import { heroImage, heroSubtext, sectionCopy, trustFacts } from '@/components/home/homeView';
 import { JsonLd } from '@/components/seo/JsonLd';
@@ -47,8 +50,12 @@ const mediaOf = (value: number | Media | null | undefined): Media | null =>
   typeof value === 'object' && value !== null ? value : null;
 
 export default async function HomePage() {
-  const data = await getHomeData();
+  const [data, nonce] = await Promise.all([
+    getHomeData(),
+    headers().then((h) => h.get('x-nonce') ?? undefined),
+  ]);
   const { page, features, clinic } = data;
+  const siteCap = siteCapFrom(features.qualityTierOverride);
   const free = features.freeConsultation !== false;
   const steps = (block(page, 'steps')?.items ?? []).map(({ title, text }) => ({ title, text }));
   const faqs = (block(page, 'faq')?.items ?? []).map(({ question, answer }) => ({
@@ -60,8 +67,12 @@ export default async function HomePage() {
       ? `https://wa.me/${clinic.phones.whatsapp.replace(/^\+/, '')}?text=${encodeURIComponent(t('home.whatsappText'))}`
       : null;
   return (
-    <ExperienceRoot siteCap={siteCapFrom(features.qualityTierOverride)}>
+    <ExperienceRoot siteCap={siteCap}>
       <div data-page-type="home">
+        {/* Phase 7: the lockup parts once (the intro and the playground use them), then the intro
+            overlay (none when the site cap is 0: no experience, no brand moment). */}
+        <LockupSprite />
+        {siteCap === 0 ? null : <IntroOverlay nonce={nonce} />}
         <HomeHero
           title={page?.title ?? clinic.nameFa}
           subtext={heroSubtext(page, free)}
@@ -81,6 +92,7 @@ export default async function HomePage() {
           path={data.restoration?.path ?? null}
           copy={sectionCopy(page, 'restoration')}
         />
+        <WorkflowSection items={block(page, 'workflow')?.items ?? []} />
         <CasesSection cases={data.cases} copy={sectionCopy(page, 'compare')} />
         <DentistsSection doctors={data.doctors} copy={sectionCopy(page, 'dentists')} />
         <VoicesSection testimonials={data.testimonials} copy={sectionCopy(page, 'voices')} />
@@ -99,6 +111,7 @@ export default async function HomePage() {
           />
         </div>
         <BookingSection clinic={clinic} hours={data.hours} />
+        <PlaygroundSection />
       </div>
       <HomeBookingPrefill />
       <JsonLd data={faqs.length ? jsonLdGraph(faqPageNode(faqs)) : null} />
