@@ -181,6 +181,12 @@ test.describe('without the intro', () => {
         }
       }).observe({ type: 'layout-shift', buffered: true });
     });
+    // Fonts in the cache first: a webfont that arrives after the first paint swaps the text
+    // (font-display: swap) and shifts the hero by itself, 0.016 on a loaded CI runner and 0.058
+    // with a 1.5 s font delay locally. That shift is the Lighthouse CLS gate's business; this test
+    // is about the band, which must not move or appear after the first paint.
+    await page.goto('/?tier=0');
+    await page.evaluate(() => document.fonts.ready);
     for (const height of [900, 1200]) {
       await page.setViewportSize({ width: 1440, height });
       const rects: Record<string, { x: number; y: number; width: number; height: number }> = {};

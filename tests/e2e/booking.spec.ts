@@ -268,12 +268,13 @@ test('T-BK6 a 419 renews the token, keeps the values and the next press succeeds
   // stores it clean, not «مشکوک» (E-BK13; the stored row: BH-FAST).
   const sent = second as { request: Request; body: string } | null;
   expect(sent?.body).toContain(newTs);
-  // Both instants on the browser's network clock, the one the form's 2 s wait runs on: the test
-  // process sees the renewal answer late on a loaded runner (1993 ms on CI run 61). The form
-  // counts whole milliseconds (Date.now), so its 2000 can read 1999.x on this clock.
+  // Both instants on the browser's network clock: the test process sees the renewal answer late
+  // on a loaded runner (1993 ms on CI run 61). The form waits on Date.now in the page, which runs
+  // a few milliseconds apart from the network clock (1997.1 and 1998.9 on CI run 62), so the bound
+  // keeps 10 ms for the two clocks; a form that did not wait shows about 500 ms.
   const renewalTiming = renewed.request().timing();
   const renewedAt = renewalTiming.startTime + renewalTiming.responseEnd;
-  expect(sent!.request.timing().startTime - renewedAt).toBeGreaterThanOrEqual(1999);
+  expect(sent!.request.timing().startTime - renewedAt).toBeGreaterThanOrEqual(1990);
 });
 
 test('T-BK7 network and server failures show their message; nothing is posted again', async ({
