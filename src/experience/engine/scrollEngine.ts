@@ -2,30 +2,69 @@
  * One clock, one master timeline (spec EXP 3.6). Native scroll stays the source of truth: Lenis
  * only smooths wheel input on fine pointers and never takes touch; GSAP's ticker drives Lenis,
  * ScrollTrigger and every per-frame subscriber in that order. No scroll listener in app code.
+ *
+ * Phase 7 (report, plan section 3): the DOM scene modules run inside the matchMedia context,
+ * pins first in document order, then the master with one label per present scene, then every
+ * scene's `setup`. Labels and the children added at them are rebuilt from the measured bounds on
+ * every ScrollTrigger refresh; `destroy()` runs the scene cleanups, reverts the context and
+ * leaves no trigger, ticker callback, listener or observer behind.
  */
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 
+import type { Tier, TierSettings } from '@/lib/qualityTier';
+
 import { coverRanges, isCovered } from '../core/gates';
-import type { SceneDefinition, SceneId } from '../scenes/types';
+import { DOM_SCENES } from '../scenes/dom';
+import { isSceneId } from '../scenes/registry';
+import type { DomScene, SceneContext, SceneDefinition, SceneId } from '../scenes/types';
+import { createFrameMonitor } from '../tier/frameMonitor';
 import type { LayoutLatch } from '../tier/latch';
 
-import { sceneBounds, sceneProgress, scrollFraction, type SceneBound } from './timelineMath';
+import { once } from './once';
+import {
+  activeScene,
+  sceneBounds,
+  sceneProgress,
+  scrollFraction,
+  scrollYAt,
+  type SceneBound,
+  type SceneOffset,
+  type ScenePlace,
+} from './timelineMath';
+
+/** Dispatched by `bookingRoute.ts` while a tier is latched; the engine answers with `scrollTo`. */
+export const SCROLL_TO_EVENT = 'sefid:scroll-to';
 
 export interface ScrollEngine {
+  /** Null at tier 0, on coarse pointers, and during the engine's first frame (see creation). */
   readonly lenis: Lenis | null;
   /** Duration 1; its progress is the document scroll fraction. Null at tier 0. */
   readonly master: gsap.core.Timeline | null;
+  /**
+   * Main-thread milliseconds of `createScrollEngine` plus, when a scene pinned, the full refresh
+   * those pins queue for the next frame (spacer layout, the engine's re-measure and re-placing).
+   */
+  readonly initMs: number;
   /** 0..1 document scroll fraction. */
   progress(): number;
   /** 0..1 inside the scene's segment. */
   sceneProgress(id: SceneId): number;
+  /** The active scene (the last label at or before the position) and its progress; relatch keep-place. */
+  activeScene(): ScenePlace<SceneId> | null;
+  /** The master's labels in time order (one per present scene); empty without a master. */
+  labels(): string[];
   /** px/s from the master's ScrollTrigger; 0 without a master. */
   velocity(): number;
   scrollTo(target: HTMLElement | number, opts?: { immediate?: boolean }): void;
-  /** Runs after Lenis and ScrollTrigger in the same gsap tick; returns the unsubscribe. */
-  onTick(cb: (timeSec: number) => void): () => void;
+  /**
+   * Runs after Lenis and ScrollTrigger in the same gsap tick (time and delta in seconds); returns
+   * the unsubscribe.
+   */
+  onTick(cb: (timeSec: number, deltaSec: number) => void): () => void;
+  /** Ticker callbacks the engine owns right now: subscribers plus Lenis's raf (teardown proof). */
+  tickSubscribers(): number;
   /** True while a `[data-experience-cover]` fills the viewport (render gate, spec EXP 3.4). */
   covered(): boolean;
   /** Latch inputs (freeze 3.7). */
@@ -47,8 +86,16 @@ const QUERIES = {
 const LAG_THRESHOLD_MS = 500;
 const LAG_ADJUSTED_MS = 33;
 
+/** A child never gets a zero duration: a timeline's duration setter divides by it. */
+const MIN_SEGMENT = 1e-6;
+
 let pluginsRegistered = false;
-function registerPlugins(): void {
+/**
+ * Registers ScrollTrigger once per page. Its registration writes body's style attribute and
+ * reads a 100vh probe, which costs one full style recalculation (8 ms at 1x on home): the root
+ * calls this one frame before `createScrollEngine`, so neither task is long at 4x.
+ */
+export function prepareScrollEngine(): void {
   if (pluginsRegistered) return;
   gsap.registerPlugin(ScrollTrigger);
   // Phone address-bar resizes do not refresh the triggers.
@@ -61,26 +108,99 @@ const maxScroll = (): number =>
 
 const documentTop = (el: Element): number => el.getBoundingClientRect().top + window.scrollY;
 
+interface PresentScene {
+  id: Exclude<SceneId, 'intro'>;
+  el: HTMLElement;
+  scene: DomScene;
+}
+
+/** The `[data-scene]` elements of the root in document order, with their modules. */
+function presentScenes(root: HTMLElement): PresentScene[] {
+  const out: PresentScene[] = [];
+  for (const el of root.querySelectorAll<HTMLElement>('[data-scene]')) {
+    const id = el.getAttribute('data-scene') ?? '';
+    if (isSceneId(id) && id !== 'intro') out.push({ id, el, scene: DOM_SCENES[id] });
+  }
+  return out;
+}
+
+function measureBounds(root: HTMLElement): SceneBound<SceneId>[] {
+  const offsets: SceneOffset<SceneId>[] = presentScenes(root).map(({ id, el }) => {
+    const rect = el.getBoundingClientRect();
+    return { id, top: rect.top + window.scrollY, height: rect.height };
+  });
+  return sceneBounds(offsets, maxScroll());
+}
+
+/**
+ * The scrollY that keeps a reader at `place` in the current document (measured now, after the
+ * previous engine reverted its pins); null when that scene is gone.
+ */
+export function placeScrollY(root: HTMLElement, place: ScenePlace<SceneId>): number | null {
+  return scrollYAt(place, measureBounds(root), maxScroll());
+}
+
+/**
+ * The frame monitor on the gsap ticker while no canvas renders (D5): the same sampler and step
+ * rule as the canvas probe, fed by the engine's tick. Returns the stop.
+ */
+export function monitorFrames(
+  engine: ScrollEngine,
+  opts: { tier: Tier; onStepDown: () => void },
+): () => void {
+  const monitor = createFrameMonitor({
+    tier: opts.tier,
+    mode: 'auto',
+    onStepDown: () => opts.onStepDown(),
+  });
+  const off = engine.onTick((_, deltaSec) => monitor.push(deltaSec, performance.now()));
+  // rAF stops in a background tab; the pause must not count as slow frames.
+  const onVisibility = (): void => {
+    if (document.visibilityState === 'visible') monitor.reset(performance.now());
+  };
+  document.addEventListener('visibilitychange', onVisibility);
+  return () => {
+    off();
+    document.removeEventListener('visibilitychange', onVisibility);
+  };
+}
+
 export function createScrollEngine(opts: {
   root: HTMLElement;
   layout: LayoutLatch;
+  settings: TierSettings;
   scenes: readonly SceneDefinition[];
+  /** Keep-place across a relatch: applied again after the refresh the new pins queue. */
+  restore?: ScenePlace<SceneId>;
 }): ScrollEngine {
-  registerPlugins();
-  const { root, layout, scenes } = opts;
+  const t0 = performance.now();
+  const { root, layout, settings, scenes, restore } = opts;
   const known = new Set<string>(scenes.map((scene) => scene.id));
   const pinnedIds = new Set<string>(scenes.filter((s) => s.pinnedDesktop).map((s) => s.id));
   const firstPinned = scenes.find((s) => s.pinnedDesktop)?.id ?? null;
 
-  const subscribers = new Set<(timeSec: number) => void>();
-  const tick = (time: number): void => {
-    for (const cb of subscribers) cb(time);
+  const subscribers = new Set<(timeSec: number, deltaSec: number) => void>();
+  const tick = (time: number, deltaMs: number): void => {
+    for (const cb of subscribers) cb(time, deltaMs / 1000);
   };
   let tickAdded = false;
 
   let lenis: Lenis | null = null;
+  let lenisRaf: ((time: number) => void) | null = null;
   let master: gsap.core.Timeline | null = null;
+  let spine: gsap.core.Animation | null = null;
+  // Direct children of the master by the scene whose label they were added at.
+  const children = new Map<gsap.core.Animation, SceneId>();
+  let present: PresentScene[] = [];
   let destroyed = false;
+  let initMs = 0;
+  // Keep-place (report section 3): the root scrolls to `restore` before creation, in the document
+  // without pins; the spacers the new pins add move the content on the refresh those pins queue
+  // (ScrollTrigger 3.15 `_queueRefreshAll`), so the place is applied again from the bounds that
+  // refresh measures. That refresh also counts in `initMs`.
+  let pending: ScenePlace<SceneId> | null = null;
+  let pinRefresh = false;
+  let refreshStart = 0;
 
   // Measured on every ScrollTrigger refresh (pins add spacers) and once at creation.
   let covers: { top: number; height: number }[] = [];
@@ -97,60 +217,72 @@ export function createScrollEngine(opts: {
       // Ceil: a 100dvh cover can measure a fraction under the integer viewport height.
       return { top: rect.top + window.scrollY, height: Math.ceil(rect.height) };
     });
-    const offsets = sectionElements().map((el) => ({
-      id: el.getAttribute('data-scene') as SceneId,
-      top: documentTop(el),
-    }));
-    bounds = sceneBounds(offsets, maxScroll());
+    bounds = measureBounds(root);
   };
 
-  const mm = gsap.matchMedia(root);
-  mm.add(QUERIES, (context) => {
-    const { reduce = false, fine = false } = context.conditions ?? {};
-    // Tier 0 and reduced motion: no Lenis, no master timeline, no pins (spec EXP 3.8).
-    if (reduce || layout.latchedAtTier === 0) return;
+  /** Native scroll, not Lenis: Lenis clamps to the limit its observer measured before the spacers. */
+  const apply = (place: ScenePlace<SceneId>): void => {
+    const y = scrollYAt(place, bounds, maxScroll());
+    if (y !== null) window.scrollTo(0, y);
+  };
 
-    let lenisRaf: ((time: number) => void) | null = null;
-    let offScroll: (() => void) | null = null;
-    if (fine && layout.lenis) {
-      // Official integration from the Lenis 1.3.26 README ("GSAP ScrollTrigger"), with named
-      // callbacks so teardown can remove them, and Lenis's raf first in the tick (prioritize).
-      const instance = new Lenis({ autoRaf: false, anchors: true, stopInertiaOnNavigate: true });
-      offScroll = instance.on('scroll', ScrollTrigger.update);
-      lenisRaf = (time: number) => {
-        instance.raf(time * 1000); // Convert time from seconds to milliseconds
-      };
-      gsap.ticker.add(lenisRaf, false, true);
-      gsap.ticker.lagSmoothing(0);
-      lenis = instance;
+  const segmentOf = (id: SceneId): { start: number; end: number } => {
+    const bound = bounds.find((b) => b.id === id);
+    return bound ? { start: bound.start, end: bound.end } : { start: 0, end: 0 };
+  };
+
+  const placeLabels = (): void => {
+    if (master === null) return;
+    for (const bound of bounds) master.addLabel(bound.id, bound.start);
+  };
+
+  /** A child added at a label after `setup` (a lazy chunk) belongs to the scene of that label. */
+  const adopt = (): void => {
+    if (master === null) return;
+    for (const child of master.getChildren(false, true, true)) {
+      if (child === spine || children.has(child)) continue;
+      const owner = present.find(({ id }) => master?.labels[id] === child.startTime());
+      if (owner) children.set(child, owner.id);
     }
+  };
 
-    // Pins (scenes 3-5, wide screens with layout.pinnedScenes) are created here in phase 7, in
-    // document order and before the master, so the master's end includes their spacing.
+  const placeChildren = (): void => {
+    if (master === null) return;
+    for (const [child, id] of children) {
+      const segment = segmentOf(id);
+      child.startTime(segment.start);
+      if (child.duration() > 0) child.duration(Math.max(segment.end - segment.start, MIN_SEGMENT));
+    }
+    master.render(master.totalTime(), true, true);
+  };
 
-    master = gsap.timeline({
-      scrollTrigger: { start: 0, end: 'max', scrub: true, invalidateOnRefresh: true },
-    });
-    master.to({}, { duration: 1, ease: 'none' });
+  /**
+   * A refresh must not move the reader. ScrollTrigger scrolls to 0 to measure and then restores
+   * the position it recorded at `refreshInit`; after a context revert (the previous engine's
+   * teardown on a relatch) it skips that record and restores 0, so the page would jump to the
+   * top. Both events run in one task, so putting the reader back here is never visible.
+   */
+  let scrollAtRefreshInit = 0;
+  const onRefreshInit = (): void => {
+    scrollAtRefreshInit = window.scrollY;
+    refreshStart = performance.now();
+  };
 
-    return () => {
-      master = null;
-      if (lenisRaf) {
-        offScroll?.();
-        gsap.ticker.remove(lenisRaf);
-        lenis?.destroy();
-        lenis = null;
-        gsap.ticker.lagSmoothing(LAG_THRESHOLD_MS, LAG_ADJUSTED_MS);
-      }
-    };
-  });
-
-  ScrollTrigger.addEventListener('refresh', measure);
-  measure();
-  // Font swap after `load` changes section heights.
-  void document.fonts?.ready.then(() => {
-    if (!destroyed) ScrollTrigger.refresh();
-  });
+  /** Refresh: re-measure, then re-place labels, children and the pending reader place. */
+  const onRefresh = (): void => {
+    adopt();
+    measure();
+    placeLabels();
+    placeChildren();
+    if (pending !== null) apply(pending);
+    else if (window.scrollY !== scrollAtRefreshInit) window.scrollTo(0, scrollAtRefreshInit);
+    pending = null;
+    if (pinRefresh) {
+      pinRefresh = false;
+      initMs += performance.now() - refreshStart;
+      performance.measure('sefid:engine-first-refresh', { start: refreshStart });
+    }
+  };
 
   const progress = (): number => {
     const trigger = master?.scrollTrigger;
@@ -165,17 +297,27 @@ export function createScrollEngine(opts: {
         return { start: top, end: top + el.getBoundingClientRect().height - window.innerHeight };
       });
 
-  return {
+  const api: ScrollEngine = {
     get lenis() {
       return lenis;
     },
     get master() {
       return master;
     },
+    get initMs() {
+      return initMs;
+    },
     progress,
     sceneProgress(id) {
       const bound = bounds.find((b) => b.id === id);
       return bound ? sceneProgress(progress(), bound) : 0;
+    },
+    activeScene() {
+      return activeScene(progress(), bounds);
+    },
+    labels() {
+      const labels = master?.labels ?? {};
+      return Object.keys(labels).sort((a, b) => (labels[a] ?? 0) - (labels[b] ?? 0));
     },
     velocity() {
       return master?.scrollTrigger?.getVelocity() ?? 0;
@@ -183,6 +325,7 @@ export function createScrollEngine(opts: {
     scrollTo(target, scrollOpts = {}) {
       const instant = scrollOpts.immediate === true || window.matchMedia(QUERIES.reduce).matches;
       if (lenis) {
+        // Lenis 1.3.26 applies the root's scroll-padding and the target's scroll-margin itself.
         lenis.scrollTo(target, { immediate: instant });
         return;
       }
@@ -204,6 +347,9 @@ export function createScrollEngine(opts: {
         }
       };
     },
+    tickSubscribers() {
+      return subscribers.size + (lenisRaf ? 1 : 0);
+    },
     covered() {
       return isCovered(window.scrollY, coverRanges(covers, window.innerHeight));
     },
@@ -223,8 +369,187 @@ export function createScrollEngine(opts: {
       subscribers.clear();
       if (tickAdded) gsap.ticker.remove(tick);
       tickAdded = false;
-      ScrollTrigger.removeEventListener('refresh', measure);
+      resize.disconnect();
+      if (refreshFrame !== 0) cancelAnimationFrame(refreshFrame);
+      ScrollTrigger.removeEventListener('refreshInit', onRefreshInit);
+      ScrollTrigger.removeEventListener('refresh', onRefresh);
       mm.revert();
     },
   };
+
+  // Reads before writes: the measure runs on the clean tree of the last frame (the root waits
+  // two frames after its commit and registers ScrollTrigger in between), and Lenis waits one
+  // more frame (below), so this task forces no full style recalculation (three of them cost
+  // 25 of 33 ms at 1x, 160 to 240 ms at 4x, measured before the split).
+  measure();
+  prepareScrollEngine();
+  ScrollTrigger.addEventListener('refreshInit', onRefreshInit);
+  ScrollTrigger.addEventListener('refresh', onRefresh);
+
+  const mm = gsap.matchMedia(root);
+  mm.add(QUERIES, (context) => {
+    const { reduce = false, fine = false, wide = false } = context.conditions ?? {};
+    // Tier 0 and reduced motion: no Lenis, no master timeline, no pins (spec EXP 3.8).
+    if (reduce || layout.latchedAtTier === 0) return;
+
+    let offScroll: (() => void) | null = null;
+    let lenisFrame = 0;
+    if (fine && layout.lenis) {
+      // One frame later: Lenis reads the document size and adds classes to <html>, which makes
+      // the next layout read recalculate every element's style; after a rendered frame that
+      // recalculation rides the frame instead of the creation task. Scroll keeps working
+      // natively until then; `engine.lenis` is null for that frame.
+      lenisFrame = requestAnimationFrame(() => {
+        lenisFrame = 0;
+        // Official integration from the Lenis 1.3.26 README ("GSAP ScrollTrigger"), with named
+        // callbacks so teardown can remove them, and Lenis's raf first in the tick (prioritize).
+        // No `stopInertiaOnNavigate`: its click listener resets the scroll on any link to another
+        // path, which kills the engine's own scroll for the in-page booking routes (every CTA
+        // links to /رزرو-نوبت); a link that does navigate unloads the document anyway.
+        const instance = new Lenis({ autoRaf: false, anchors: true });
+        // Lenis 1.3.26 rewrites html's class list at every scroll start and stop
+        // (`lenis-scrolling`, `lenis-smooth`); each rewrite forces a full style recalculation of
+        // the page on the next layout read, 60 to 110 ms at 4x on home (the 83 ms hero frame of
+        // step 1, traced 2026-10-27). Nothing styles those classes: the instance keeps only the
+        // `lenis` class its constructor added.
+        (instance as unknown as { updateClassName(): void }).updateClassName = () => {};
+        offScroll = instance.on('scroll', ScrollTrigger.update);
+        const raf = (time: number) => {
+          instance.raf(time * 1000); // Convert time from seconds to milliseconds
+        };
+        gsap.ticker.add(raf, false, true);
+        gsap.ticker.lagSmoothing(0);
+        lenisRaf = raf;
+        lenis = instance;
+      });
+    }
+
+    // The booking routes scroll through the engine while a tier is latched (report section 3).
+    const onScrollTo = (event: Event): void => {
+      const target: unknown = (event as CustomEvent<{ target?: unknown }>).detail?.target;
+      if (!(target instanceof HTMLElement) && typeof target !== 'number') return;
+      event.preventDefault();
+      api.scrollTo(target);
+    };
+    document.addEventListener(SCROLL_TO_EVENT, onScrollTo);
+
+    const conditions = { reduce, fine, wide };
+    const nearViewport =
+      (el: HTMLElement) =>
+      (cb: () => void): (() => void) => {
+        // One guard for the immediate check and the trigger's onEnter: a deep link or a reload
+        // past `start` fires onEnter on the first refresh too (C13). What `cb` creates at once
+        // joins this context; what it creates after a chunk load is the scene's own cleanup.
+        let trigger: ScrollTrigger | null = null;
+        const fire = once(() => {
+          trigger?.kill();
+          trigger = null;
+          context.add(cb);
+        });
+        trigger = ScrollTrigger.create({
+          trigger: el,
+          start: 'top bottom+=100%',
+          once: true,
+          onEnter: fire,
+        });
+        if (el.getBoundingClientRect().top <= window.innerHeight * 2) fire();
+        return () => {
+          trigger?.kill();
+          trigger = null;
+        };
+      };
+
+    present = presentScenes(root);
+    const cleanups: (() => void)[] = [];
+    const base = { layout, settings, conditions, engine: api };
+
+    // Pins in document order before the master, so the master's end includes their spacing;
+    // their spacers land in the bounds on the full refresh every pin queues (ScrollTrigger),
+    // through `onRefresh`, so the creation task reads nothing after they wrote.
+    if (layout.pinnedScenes && wide) {
+      for (const { id, el, scene } of present) {
+        scene.pin?.({ id, el, ...base, nearViewport: nearViewport(el) });
+      }
+    }
+    if (ScrollTrigger.getAll().some((trigger) => trigger.pin)) {
+      pending = restore ?? null;
+      pinRefresh = true;
+    }
+
+    const timeline = gsap.timeline({
+      scrollTrigger: { start: 0, end: 'max', scrub: true, invalidateOnRefresh: true },
+    });
+    // The spine keeps the master at duration 1 whatever the children do.
+    spine = timeline.to({}, { duration: 1, ease: 'none' });
+    master = timeline;
+    placeLabels();
+
+    for (const { id, el, scene } of present) {
+      const before = new Set(timeline.getChildren(false, true, true));
+      const ctx: SceneContext = {
+        id,
+        el,
+        ...base,
+        master: timeline,
+        label: id,
+        segment: () => segmentOf(id),
+        nearViewport: nearViewport(el),
+      };
+      const cleanup = scene.setup(ctx);
+      for (const child of timeline.getChildren(false, true, true)) {
+        if (!before.has(child)) children.set(child, id);
+      }
+      if (typeof cleanup === 'function') cleanups.push(cleanup);
+    }
+    placeChildren();
+
+    return () => {
+      // The scene cleanups first (listeners, observers, Draggables, classes), newest first, then
+      // the master, then Lenis; the context revert that follows kills every trigger and tween.
+      for (const cleanup of cleanups.splice(0).reverse()) cleanup();
+      children.clear();
+      present = [];
+      spine = null;
+      master = null;
+      document.removeEventListener(SCROLL_TO_EVENT, onScrollTo);
+      if (lenisFrame !== 0) cancelAnimationFrame(lenisFrame);
+      if (lenisRaf) {
+        offScroll?.();
+        gsap.ticker.remove(lenisRaf);
+        lenisRaf = null;
+        lenis?.destroy();
+        lenis = null;
+        gsap.ticker.lagSmoothing(LAG_THRESHOLD_MS, LAG_ADJUSTED_MS);
+      }
+    };
+  });
+
+  // Any height change of the root (images, FAQ toggles, the tier attribute, theme CSS, pin
+  // spacers) refreshes the triggers, once per frame. The observer's first callback reports the
+  // initial size, which the creation just measured.
+  let refreshFrame = 0;
+  let observed = false;
+  const resize = new ResizeObserver(() => {
+    if (!observed) {
+      observed = true;
+      return;
+    }
+    if (refreshFrame !== 0) return;
+    refreshFrame = requestAnimationFrame(() => {
+      refreshFrame = 0;
+      if (!destroyed) ScrollTrigger.refresh();
+    });
+  });
+  resize.observe(root);
+  // A font still loading after `load` changes section heights when it swaps; fonts already
+  // loaded were measured above (a redundant full refresh costs two recalculations).
+  if (document.fonts?.status === 'loading') {
+    void document.fonts.ready.then(() => {
+      if (!destroyed) ScrollTrigger.refresh();
+    });
+  }
+
+  initMs = performance.now() - t0;
+  performance.measure('sefid:engine-init', { start: t0, duration: initMs });
+  return api;
 }

@@ -41,6 +41,7 @@ only. Every event fires once per interaction and never blocks navigation.
 | `save_contact` | The vCard downloaded from a success state | `location` | `data-track` | no |
 | `content_to_service` | A plain link from a guide or an article to a service or service category page (both live under `/خدمات/<slug>`, so the URL cannot tell them apart) | `location` (`article`), `from_slug` | `TrackListener`, by the link target | no |
 | `theme_toggle` | A manual theme change | `location`, `to` | theme button | no |
+| `scene_view` | A home scene reached: once per scene per page view, when the scene's top crosses the viewport middle (IntersectionObserver, `rootMargin: 0px 0px -50% 0px`); at every tier, with or without the scroll engine | `location` = the scene id (`hero`, `trust`, `services`, `restoration`, `workflow`, `compare`, `dentists`, `voices`, `first-visit`, `booking`, `footer`) | `ExperienceRoot` | no |
 
 The `tel:115` link of the emergency safety box is not tracked.
 
@@ -51,7 +52,9 @@ stored as is.
 
 - Locations (`EVENT_LOCATIONS`): header, hero, sticky, section, tier, aside,
   article, page, block, dialog, footer, drawer, mega_menu, faq, success,
-  closed_sheet, none, other. Missing becomes `none`, unknown `other`.
+  closed_sheet, the home scene ids of `scene_view` (trust, services,
+  restoration, workflow, compare, dentists, voices, first-visit, booking),
+  none, other. Missing becomes `none`, unknown `other`.
 - Page types (`PAGE_TYPES`), from `data-page-type` on the template root:
   home, service, category, services_hub, dentist, dentists_hub, cases,
   pricing, guide, guide_hub, article, articles, address, emergency, booking,

@@ -13,6 +13,7 @@ import { applyStyle } from '../core/applyStyle';
 import {
   buildSnapshot,
   createFpsMeter,
+  createSceneFps,
   installDebugHook,
   type DebugSnapshot,
 } from '../core/debugHook';
@@ -98,6 +99,8 @@ function rows(s: DebugSnapshot): string {
     `memory  heap ${fmt(s.memory.heapUsedMB)}/${fmt(s.memory.heapLimitMB, 0)} MB  geo ${s.memory.geometries ?? 'n/a'}  tex ${s.memory.textures ?? 'n/a'}  prog ${s.memory.programs ?? 'n/a'}  calls ${s.memory.calls ?? 'n/a'}  tris ${s.memory.triangles ?? 'n/a'}`,
     `gate    ${s.gate}  frames ${s.framesRendered}`,
     `engine  lenis ${s.lenis ? 'on' : 'off'}  triggers ${s.scrollTriggers}  progress ${s.progress.toFixed(4)}  velocity ${fmt(s.velocity, 0)}`,
+    `scene   ${s.scene ?? 'none'} ${s.sceneProgress.toFixed(4)}  fps ${fmt(s.sceneFps?.mean)} (min ${fmt(s.sceneFps?.min)})`,
+    `init    ${fmt(s.engineInitMs)} ms  ticks ${s.tickSubscribers}  draggables ${s.draggables}`,
   ].join('\n');
 }
 
@@ -138,9 +141,11 @@ export function DevOverlay(props: {
 
   useEffect(() => {
     const fps = createFpsMeter();
-    const snapshot = () => buildSnapshot({ tier: tierRef.current, runtime, experience, fps });
+    const sceneFps = createSceneFps();
+    const snapshot = () =>
+      buildSnapshot({ tier: tierRef.current, runtime, experience, fps, sceneFps });
     snapshotRef.current = snapshot;
-    const uninstall = installDebugHook(snapshot);
+    const uninstall = installDebugHook(snapshot, (o) => tierRef.current.setUserOverride(o));
     const timer = window.setInterval(() => setText(rows(snapshot())), UPDATE_MS);
     return () => {
       window.clearInterval(timer);

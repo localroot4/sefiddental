@@ -114,8 +114,13 @@ export function setupBookingRoute(doc: Document, win: Window = window): () => vo
     }
     const box = route.kind === 'block' ? route.block : route.dialog;
     prefill(cta, box);
-    if (route.kind === 'block') route.block.scrollIntoView({ block: 'start', behavior });
-    else {
+    if (route.kind === 'block') {
+      // While a tier is latched the home engine scrolls (Lenis and native scroll never fight).
+      const tiered = Number(html.dataset.tier) >= 1;
+      const own = new CustomEvent('sefid:scroll-to', { cancelable: true, detail: { target: box } });
+      if (!tiered || doc.dispatchEvent(own))
+        route.block.scrollIntoView({ block: 'start', behavior });
+    } else {
       if (win.innerWidth > html.clientWidth) html.classList.add(GUTTER);
       html.classList.add(LOCK);
       openModal(route.dialog, cta);

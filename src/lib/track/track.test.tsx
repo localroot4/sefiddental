@@ -41,6 +41,16 @@ describe('track (spec 11.2)', () => {
     });
   });
 
+  it('TR1b scene_view carries the scene id as its location, nothing else stored', async () => {
+    document.body.innerHTML = '<main data-page-type="home"></main>';
+    track('scene_view', { location: 'restoration' });
+    expect(await beaconBody(sendBeacon.mock.calls[0] ?? [])).toEqual({
+      event: 'scene_view',
+      location: 'restoration',
+      pageType: 'home',
+    });
+  });
+
   it('TR2 falls back to fetch keepalive without cookies when the beacon is refused', () => {
     sendBeacon.mockReturnValue(false);
     const fetchMock = vi.fn(async () => new Response(null, { status: 204 }));

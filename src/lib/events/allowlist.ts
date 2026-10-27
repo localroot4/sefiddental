@@ -19,6 +19,7 @@ export const EVENT_NAMES = [
   'save_contact',
   'content_to_service',
   'theme_toggle',
+  'scene_view',
 ] as const;
 
 export const EVENT_LOCATIONS = [
@@ -38,6 +39,16 @@ export const EVENT_LOCATIONS = [
   'faq',
   'success',
   'closed_sheet',
+  // Home scene ids (`scene_view`; `hero` and `footer` exist above).
+  'trust',
+  'services',
+  'restoration',
+  'workflow',
+  'compare',
+  'dentists',
+  'voices',
+  'first-visit',
+  'booking',
   'none',
   'other',
 ] as const;

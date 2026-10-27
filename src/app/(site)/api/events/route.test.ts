@@ -46,6 +46,19 @@ describe('POST /api/events (spec 11.2)', () => {
     });
   });
 
+  it('ER1b scene_view stores the scene id as its location (phase 7)', async () => {
+    const { POST } = await import('./route');
+    const res = await POST(post({ event: 'scene_view', location: 'services', pageType: 'home' }));
+    expect(res.status).toBe(204);
+    expect(mocks.increment).toHaveBeenCalledWith(mocks.payload, {
+      date: zonedDateKey(new Date()),
+      event: 'scene_view',
+      location: 'services',
+      pageType: 'home',
+      serviceKey: 'none',
+    });
+  });
+
   it('ER2 an array increments each event; unknown names are dropped with 204', async () => {
     const { POST } = await import('./route');
     const res = await POST(

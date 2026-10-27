@@ -443,6 +443,37 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     stop();
   });
 
+  it('CB20 with a tier latched the block route asks the engine first; without one it scrolls itself', () => {
+    document.body.innerHTML = `
+      <a id="cta" href="/رزرو-نوبت" data-booking-cta>b</a>
+      <section data-booking-form="block"><form novalidate><h2>t</h2><input type="tel"></form></section>`;
+    const block = document.querySelector<HTMLElement>('[data-booking-form="block"]')!;
+    block.scrollIntoView = vi.fn();
+    const seen: unknown[] = [];
+    const engine = (event: Event) => {
+      seen.push((event as CustomEvent<{ target: unknown }>).detail.target);
+      event.preventDefault();
+    };
+    document.addEventListener('sefid:scroll-to', engine);
+    const stop = setupBookingRoute(document);
+    const cta = document.getElementById('cta')!;
+    // Tier 0 (no attribute): native scroll, no event.
+    click(cta);
+    expect(seen).toEqual([]);
+    expect(block.scrollIntoView).toHaveBeenCalledTimes(1);
+    // A latched tier: the engine answers and the native scroll is skipped.
+    document.documentElement.dataset.tier = '1';
+    click(cta);
+    expect(seen).toEqual([block]);
+    expect(block.scrollIntoView).toHaveBeenCalledTimes(1);
+    // Nobody answers (a content page has no engine): native scroll again.
+    document.removeEventListener('sefid:scroll-to', engine);
+    click(cta);
+    expect(block.scrollIntoView).toHaveBeenCalledTimes(2);
+    delete document.documentElement.dataset.tier;
+    stop();
+  });
+
   it('CB18 a form in its success state takes the CTA focus on its success heading', () => {
     document.body.innerHTML = `
       <a id="cta" href="/رزرو-نوبت" data-booking-cta>b</a>

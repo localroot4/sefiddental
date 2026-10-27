@@ -30,6 +30,27 @@ function watchScripts(page: Page, needle = 'WebGLRenderer'): Set<string> {
   return urls;
 }
 
+/** Transfer size (encoded body bytes) of every script response, by URL. */
+function watchScriptSizes(page: Page): Map<string, number> {
+  const sizes = new Map<string, number>();
+  page.on('response', async (response) => {
+    if (response.request().resourceType() !== 'script') return;
+    try {
+      const { responseBodySize } = await response.request().sizes();
+      sizes.set(response.url(), responseBodySize);
+    } catch {
+      // A script still in flight when the next navigation starts has no sizes.
+    }
+  });
+  return sizes;
+}
+
+/** The plugin chunks of phase 7 (MorphSVG for scene 3, Draggable and Inertia for scene 11). */
+const PLUGIN_NEEDLES = ['MorphSVG', 'Draggable'] as const;
+
+/** The engine chunk (gsap core, ScrollTrigger, Lenis, the DOM scene modules): at most this. */
+const ENGINE_LIMIT_KIB = 64;
+
 /** Start times of the given resource URLs in the page's resource timing. */
 async function startTimes(page: Page, urls: Set<string>): Promise<number[]> {
   return page.evaluate(
@@ -93,7 +114,8 @@ test('T-EX1 P1 the canvas host mounts only after load, and three.js loads only a
   await holdLoad(page);
   await recordLayerMount(page);
   const webgl = watchScripts(page);
-  await page.goto('/?tier=2');
+  // D5: in phase 7 the canvas chunk is requested only under the debug flag (no scene draws yet).
+  await page.goto('/?debug=1&tier=2');
   await page.waitForLoadState('load');
   const layer = page.locator('[data-experience-layer]');
   await expect(layer).toHaveCount(1, { timeout: 15_000 });
@@ -112,17 +134,19 @@ test('T-EX1 P1 the canvas host mounts only after load, and three.js loads only a
     expect(start).toBeGreaterThanOrEqual(loadStart);
 });
 
-test('T-EX5 the scroll engine (GSAP, ScrollTrigger, Lenis) never loads at tier 0, and at tier 1 only after load', async ({
+test('T-EX5 the scroll engine (GSAP, ScrollTrigger, Lenis) never loads at tier 0, at tier 1 only after load and within 64 KiB; the plugin chunks never before load', async ({
   page,
-}) => {
-  const atZero = watchScripts(page, 'ScrollTrigger');
+}, testInfo) => {
+  const atZero = [...PLUGIN_NEEDLES, 'ScrollTrigger'].map((needle) => watchScripts(page, needle));
   await page.goto('/?tier=0');
   await page.waitForLoadState('load');
   await page.waitForTimeout(2000);
-  expect([...atZero]).toEqual([]);
+  for (const urls of atZero) expect([...urls]).toEqual([]);
 
   await holdLoad(page);
   const atOne = watchScripts(page, 'ScrollTrigger');
+  const plugins = PLUGIN_NEEDLES.map((needle) => watchScripts(page, needle));
+  const sizes = watchScriptSizes(page);
   await page.goto('/?tier=1');
   await page.waitForLoadState('load');
   await expect.poll(() => atOne.size, { timeout: 15_000 }).toBeGreaterThan(0);
@@ -130,6 +154,26 @@ test('T-EX5 the scroll engine (GSAP, ScrollTrigger, Lenis) never loads at tier 0
   expect(loadStart).toBeGreaterThan(HOLD_LOAD_MS);
   for (const start of await startTimes(page, atOne))
     expect(start).toBeGreaterThanOrEqual(loadStart);
+  for (const urls of plugins)
+    for (const start of await startTimes(page, urls))
+      expect(start).toBeGreaterThanOrEqual(loadStart);
+
+  // The engine set is every script that started after `load` (at tier 0 none does).
+  await page.waitForTimeout(1500);
+  const afterLoad = await page.evaluate(
+    (since) =>
+      performance
+        .getEntriesByType('resource')
+        .filter((entry) => entry.startTime >= since && /\.js(\?|$)/.test(entry.name))
+        .map((entry) => entry.name),
+    loadStart,
+  );
+  const engineBytes = afterLoad.reduce((sum, url) => sum + (sizes.get(url) ?? 0), 0);
+  const engineNote = `${(engineBytes / 1024).toFixed(1)} (${afterLoad.length} scripts after load)`;
+  testInfo.annotations.push({ type: 'engine chunk KiB', description: engineNote });
+  console.log(`T-EX5 engine chunk KiB: ${engineNote}`);
+  expect(afterLoad.length).toBeGreaterThan(0);
+  expect(engineBytes).toBeLessThanOrEqual(ENGINE_LIMIT_KIB * 1024);
 });
 
 test('T-EX2 ?tier=N fixes the tier; ?tier=0 never mounts a canvas or fetches three.js', async ({
@@ -144,6 +188,12 @@ test('T-EX2 ?tier=N fixes the tier; ?tier=0 never mounts a canvas or fetches thr
   await page.goto('/?tier=0');
   await expect(html).toHaveAttribute('data-tier', '0');
   await expect(html).toHaveAttribute('data-tier-reason', 'query-override');
+  await expectNoLayerAfterLoad(page);
+  expect([...webgl]).toEqual([]);
+
+  // D5: without the debug flag no registry scene draws yet, so tier 2 fetches no three.js either.
+  await page.goto('/?tier=2');
+  await expect(html).toHaveAttribute('data-tier', '2');
   await expectNoLayerAfterLoad(page);
   expect([...webgl]).toEqual([]);
 });

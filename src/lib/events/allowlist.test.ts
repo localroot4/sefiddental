@@ -58,10 +58,40 @@ describe('normalizeEvent (spec-data 4.2)', () => {
   });
 
   it('E6 the lists hold the frozen values and the sentinels', () => {
-    expect(EVENT_NAMES).toHaveLength(14);
+    expect(EVENT_NAMES).toHaveLength(15);
     expect(EVENT_LOCATIONS).toContain('none');
     expect(EVENT_LOCATIONS).toContain('other');
     expect(PAGE_TYPES).toContain('other');
     expect(PAGE_TYPES).not.toContain('contact');
+  });
+
+  it('E7 scene_view keeps a scene id as its location; an unknown scene becomes other', () => {
+    const scenes = [
+      'hero',
+      'trust',
+      'services',
+      'restoration',
+      'workflow',
+      'compare',
+      'dentists',
+      'voices',
+      'first-visit',
+      'booking',
+      'footer',
+    ];
+    for (const scene of scenes) {
+      expect(
+        normalizeEvent({ event: 'scene_view', location: scene, pageType: 'home' }, DAY, keys),
+      ).toEqual({
+        date: DAY,
+        event: 'scene_view',
+        location: scene,
+        pageType: 'home',
+        serviceKey: 'none',
+      });
+    }
+    expect(normalizeEvent({ event: 'scene_view', location: 'intro' }, DAY, keys)?.location).toBe(
+      'other',
+    );
   });
 });

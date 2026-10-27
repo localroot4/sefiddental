@@ -5,7 +5,7 @@ import { SERVER_TIER_STATE } from '../tier/tierStore';
 
 import type { ScrollEngine } from '../engine/scrollEngine';
 
-import { buildSnapshot, createFpsMeter, installDebugHook } from './debugHook';
+import { buildSnapshot, createFpsMeter, createSceneFps, installDebugHook } from './debugHook';
 import { createFrameRuntime, createStore, type ExperienceState } from './store';
 
 type Tick = (time: number, deltaTime: number) => void;
@@ -75,6 +75,13 @@ describe('debug hook', () => {
       lenis: false,
       progress: 0,
       velocity: 0,
+      scene: null,
+      sceneProgress: 0,
+      sceneFps: null,
+      labels: [],
+      engineInitMs: null,
+      tickSubscribers: 0,
+      draggables: 0,
     });
     expect(snap.memory.geometries).toBeNull();
     expect(snap.dpr.pixelRatio).toBeNull();
@@ -101,12 +108,17 @@ describe('debug hook', () => {
     );
     const engine = {
       lenis: {},
+      initMs: 12.345,
       progress: () => 0.123456,
       velocity: () => 12.34,
+      activeScene: () => ({ id: 'hero', progress: 0.33333 }),
+      labels: () => ['hero', 'trust'],
+      tickSubscribers: () => 2,
     } as unknown as ScrollEngine;
     const experience = createStore<ExperienceState>({ engine });
     const fps = { read: () => ({ fps: 59.96, p50: 16.66, p95: 17.04 }), stop: () => {} };
-    const snap = buildSnapshot({ tier: SERVER_TIER_STATE, runtime, experience, fps });
+    const sceneFps = createSceneFps();
+    const snap = buildSnapshot({ tier: SERVER_TIER_STATE, runtime, experience, fps, sceneFps });
     expect(snap).toMatchObject({
       fps: 60,
       frameMsP50: 16.7,
@@ -116,7 +128,19 @@ describe('debug hook', () => {
       lenis: true,
       progress: 0.1235,
       velocity: 12.3,
+      scene: 'hero',
+      sceneProgress: 0.3333,
+      sceneFps: { mean: 60, min: 60 },
+      labels: ['hero', 'trust'],
+      engineInitMs: 12.3,
+      tickSubscribers: 2,
+      draggables: 0,
     });
+    // The per-scene fps keeps the mean and the minimum of the readings taken while it was active.
+    fps.read = () => ({ fps: 40, p50: 25, p95: 30 });
+    expect(
+      buildSnapshot({ tier: SERVER_TIER_STATE, runtime, experience, fps, sceneFps }).sceneFps,
+    ).toEqual({ mean: 50, min: 40 });
     expect(snap.memory).toMatchObject({
       geometries: 4,
       textures: 2,
@@ -127,14 +151,36 @@ describe('debug hook', () => {
     expect(snap.dpr).toMatchObject({ pixelRatio: 1.5, performance: 1 });
   });
 
+  it('DH5 draggables counts the live instances through the plugin and drops a killed one', async () => {
+    const { Draggable } = await import('gsap/Draggable');
+    gsap.registerPlugin(Draggable);
+    const el = document.body.appendChild(document.createElement('div'));
+    const [instance] = Draggable.create(el);
+    const snap = () =>
+      buildSnapshot({
+        tier: SERVER_TIER_STATE,
+        runtime: createFrameRuntime(),
+        experience: createStore<ExperienceState>({ engine: null }),
+        fps: { read: () => ({ fps: null, p50: null, p95: null }), stop: () => {} },
+      });
+    expect(snap().draggables).toBe(1);
+    instance?.kill();
+    expect(snap().draggables).toBe(0);
+    el.remove();
+  });
+
   it('DH4 install exposes window.__sefid and the uninstall removes it', () => {
     const runtime = createFrameRuntime();
     const experience = createStore<ExperienceState>({ engine: null });
     const fps = { read: () => ({ fps: null, p50: null, p95: null }), stop: () => {} };
-    const uninstall = installDebugHook(() =>
-      buildSnapshot({ tier: SERVER_TIER_STATE, runtime, experience, fps }),
+    const setUserOverride = vi.fn();
+    const uninstall = installDebugHook(
+      () => buildSnapshot({ tier: SERVER_TIER_STATE, runtime, experience, fps }),
+      setUserOverride,
     );
     expect(window.__sefid?.snapshot().gate).toBe('not-mounted');
+    window.__sefid?.setUserOverride(0);
+    expect(setUserOverride).toHaveBeenCalledWith(0);
     uninstall();
     expect(window.__sefid).toBeUndefined();
   });
