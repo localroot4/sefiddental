@@ -6,6 +6,8 @@
 // skipIntro(): every test here starts with the intro.
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
+import { isolateClient } from '../helpers/booking';
+
 const SKIP = 'رد کردن انیمیشن';
 const PHONE_FIELD = 'شمارهٔ موبایل';
 
@@ -380,6 +382,9 @@ test('T-IN8 no console error, page error or CSP violation through the intro', as
     if (msg.type() === 'error') problems.push(`console: ${msg.text()}`);
   });
   page.on('pageerror', (error) => problems.push(`pageerror: ${error.message}`));
+  // Its own client address: the per-client limits of /api/events and /api/form-session would
+  // otherwise answer 429 (a console error) once the other specs of the run share the address.
+  await isolateClient(page.context());
   await page.goto('/');
   await waitForEnd(page);
   await page.waitForTimeout(1500);
