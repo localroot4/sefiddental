@@ -4,6 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 import { t } from '@/i18n/fa';
 
+import { skipIntro } from '../helpers/intro';
 import { effectiveTheme, projectTheme, setThemeChoice, type Theme } from '../helpers/theme';
 
 // --color-surface of design/tokens.css per theme (the layout's theme-color uses the same pair).
@@ -33,6 +34,8 @@ async function recordFirstFrame(page: Page): Promise<() => Promise<FirstFrame>> 
 }
 
 const opposite = (theme: Theme): Theme => (theme === 'dark' ? 'light' : 'dark');
+
+test.beforeEach(({ page }) => skipIntro(page));
 
 test('T-TH1 without a stored choice the first frame follows the system preference', async ({
   page,

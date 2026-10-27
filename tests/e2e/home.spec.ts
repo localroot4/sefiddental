@@ -5,6 +5,8 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
+import { skipIntro } from '../helpers/intro';
+
 const SECTIONS = [
   'hero',
   'trust',
@@ -107,6 +109,8 @@ async function recordShifts(page: Page): Promise<void> {
     }).observe({ type: 'layout-shift', buffered: true });
   });
 }
+
+test.beforeEach(({ page }) => skipIntro(page));
 
 test('T-HOME1 the ten T-home sections in reading order, at least five families, none twice', async ({
   page,

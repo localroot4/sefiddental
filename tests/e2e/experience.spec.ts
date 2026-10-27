@@ -4,6 +4,8 @@
 // (the spec's project for these rows); the no-WebGL 2 path is tier0.spec.ts.
 import { expect, test, type Page } from '@playwright/test';
 
+import { skipIntro } from '../helpers/intro';
+
 /** The layer is portalled to body; mount timing comes from a MutationObserver set before load. */
 async function recordLayerMount(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -78,6 +80,8 @@ async function expectNoLayerAfterLoad(page: Page): Promise<void> {
   await expect(page.locator('[data-experience-layer]')).toHaveCount(0);
   await expect(page.locator('canvas')).toHaveCount(0);
 }
+
+test.beforeEach(({ page }) => skipIntro(page));
 
 test.beforeEach(({}, testInfo) => {
   test.skip(testInfo.project.name !== 'desktop-light', 'experience rows run in desktop-light');

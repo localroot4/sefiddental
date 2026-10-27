@@ -6,12 +6,16 @@ import { expect, test, type TestInfo } from '@playwright/test';
 
 import { t } from '@/i18n/fa';
 
+import { skipIntro } from '../helpers/intro';
+
 const PRIVACY = '/حریم-خصوصی';
 const PRICING = '/هزینه-و-پرداخت';
 
 function only(testInfo: TestInfo, ...projects: string[]): void {
   test.skip(!projects.includes(testInfo.project.name), `runs in ${projects.join(', ')}`);
 }
+
+test.beforeEach(({ page }) => skipIntro(page));
 
 test('T-PV1 the privacy page states what the form stores and who sees it', async ({
   page,

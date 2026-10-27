@@ -16,6 +16,7 @@ import {
   recordEvents,
   uniquePhone,
 } from '../helpers/booking';
+import { skipIntro } from '../helpers/intro';
 import { requireRoutes } from '../helpers/pending';
 import { captureTemplate } from '../helpers/screens';
 import { projectTheme } from '../helpers/theme';
@@ -34,6 +35,8 @@ const block = (page: Page) => page.locator('#bk-block');
 const submitIn = (root: ReturnType<Page['locator']>) =>
   root.getByRole('button', { name: t('booking.submit') });
 const path = (page: Page) => decodeURI(new URL(page.url()).pathname);
+
+test.beforeEach(({ page }) => skipIntro(page));
 
 test('T-HB1 the hero card: compact success in place, items 1 to 4, the card does not move', async ({
   page,

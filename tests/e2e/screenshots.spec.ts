@@ -14,6 +14,7 @@ import {
   pastTimeTrap,
   uniquePhone,
 } from '../helpers/booking';
+import { skipIntro } from '../helpers/intro';
 import { captureTemplate } from '../helpers/screens';
 import { MAINTENANCE_ORIGIN } from '../helpers/servers';
 import { projectTheme } from '../helpers/theme';
@@ -42,6 +43,8 @@ const TEMPLATES = [
   { name: 'pricing', url: encodeURI('/هزینه-و-پرداخت') },
   { name: 'privacy', url: encodeURI('/حریم-خصوصی') },
 ] as const;
+
+test.beforeEach(({ page }) => skipIntro(page));
 
 for (const template of TEMPLATES) {
   test(`T-SS ${template.name} screenshot`, async ({ page }, testInfo) => {

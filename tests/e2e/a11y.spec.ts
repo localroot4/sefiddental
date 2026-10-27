@@ -4,6 +4,7 @@
 import { expect, test } from '@playwright/test';
 
 import { expectNoA11yViolations } from '../helpers/axe';
+import { skipIntro } from '../helpers/intro';
 import { requireRoutes, type PendingRoute } from '../helpers/pending';
 import { MAINTENANCE_ORIGIN } from '../helpers/servers';
 
@@ -43,6 +44,8 @@ const TEMPLATES: ReadonlyArray<{
   { name: 'booking', url: encodeURI('/رزرو-نوبت'), status: 200 },
   { name: 'emergency', url: encodeURI('/اورژانس'), status: 200 },
 ];
+
+test.beforeEach(({ page }) => skipIntro(page));
 
 for (const template of TEMPLATES) {
   test(`T-A11Y ${template.name}`, async ({ page }) => {

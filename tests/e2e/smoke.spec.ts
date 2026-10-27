@@ -6,6 +6,9 @@ import { t } from '@/i18n/fa';
 import { ADMIN_ROUTE } from '@/lib/paths';
 
 import { watchConsoleErrors } from '../helpers/console';
+import { skipIntro } from '../helpers/intro';
+
+test.beforeEach(({ page }) => skipIntro(page));
 
 test('T-SM1 home renders with lang fa and dir rtl, without console errors', async ({ page }) => {
   const consoleErrors = watchConsoleErrors(page);

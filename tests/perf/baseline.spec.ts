@@ -4,7 +4,10 @@
 import { expect, test } from '@playwright/test';
 
 import { collectGarbage, throttleCpu } from '../helpers/cpu';
+import { skipIntro } from '../helpers/intro';
 import { sampleFrames } from '../helpers/frames';
+
+test.beforeEach(({ page }) => skipIntro(page));
 
 for (const rate of [4, 6] as const) {
   test(`T-PF${rate} home at tier 0 keeps rendering frames under ${rate}x CPU throttling`, async ({

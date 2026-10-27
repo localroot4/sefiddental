@@ -2,6 +2,10 @@
 // 3.12 P2): even a forced ?tier=3 falls back to tier 0, the readable page without a canvas.
 import { expect, test } from '@playwright/test';
 
+import { skipIntro } from '../helpers/intro';
+
+test.beforeEach(({ page }) => skipIntro(page));
+
 test('T-T01 without WebGL 2, ?tier=3 gives tier 0 (no-webgl2), no canvas and no three.js', async ({
   page,
 }) => {

@@ -4,8 +4,11 @@ import { expect, test } from '@playwright/test';
 
 import { ADMIN_ROUTE } from '@/lib/paths';
 
+import { skipIntro } from '../helpers/intro';
 import { requireRoutes } from '../helpers/pending';
 import { MAINTENANCE_ORIGIN } from '../helpers/servers';
+
+test.beforeEach(({ page }) => skipIntro(page));
 
 test.use({ baseURL: MAINTENANCE_ORIGIN });
 
