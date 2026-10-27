@@ -155,13 +155,21 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
   let lastStep: TierState['lastStep'] = null;
   let scrollProbe: ScrollProbe | null = null;
 
-  const readSignals = () => ({
-    reducedMotion: env.reducedMotion.matches(),
-    finePointer: env.finePointer.matches(),
-    viewport: env.viewport(),
-    saveData: env.saveData(),
-    deviceMemory: env.deviceMemory(),
-  });
+  const readSignals = () => {
+    const viewport = env.viewport();
+    // Chromium fires the (min-width: 1024px) change while innerWidth still reads the old width
+    // (a tablet rotation): the query that fired decides which side of 1024 px the width is on.
+    const width = env.wide.matches()
+      ? Math.max(viewport.width, WIDE_MIN_PX)
+      : Math.min(viewport.width, WIDE_MIN_PX - 1);
+    return {
+      reducedMotion: env.reducedMotion.matches(),
+      finePointer: env.finePointer.matches(),
+      viewport: { ...viewport, width },
+      saveData: env.saveData(),
+      deviceMemory: env.deviceMemory(),
+    };
+  };
   let signals = readSignals();
 
   const inputs = (): TierInputs => ({

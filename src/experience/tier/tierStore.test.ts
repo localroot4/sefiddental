@@ -314,6 +314,18 @@ describe('tier store: live changes and controls', () => {
     expect(state().settings.compareWipe).toBe('dom');
   });
 
+  it('TS16a the media query that fired decides wide, even before innerWidth catches up', async () => {
+    const { fake, state } = started({ ...cachedRtx, width: 1180 });
+    await fake.load();
+    expect(state().layout.pinnedScenes).toBe(true);
+    // A rotation to portrait: Chromium fires the (min-width: 1024px) change while innerWidth
+    // still reads the old 1180 (T-EN8 on tablet-light, probed in the SERVICES lane).
+    fake.wide.set(false);
+    expect(state().layout.pinnedScenes).toBe(false);
+    fake.wide.set(true);
+    expect(state().layout.pinnedScenes).toBe(true);
+  });
+
   it('TS16b a pointer change relatches Lenis at once', async () => {
     const { fake, state } = started(cachedRtx);
     await fake.load();
