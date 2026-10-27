@@ -12,24 +12,20 @@
  *   silhouette through the five icon outlines while each icon's ink outline crossfades in by
  *   opacity (the `d` write is this scene's D12 exception). A keyboard focus in the track scrolls
  *   the page to the pin position that shows the focused world.
- * - From 1024 px without a pin (tier 1): the heading, the lead and the mark reveal line by line
- *   (each block moves as one line: no text splitting), then the tiles with a 60 ms stagger, once.
+ * - From 1024 px without a pin (tier 1): the bento stays still. A line reveal cost 3 fps at 4x
+ *   (56 against 59) and the section budget is 59, so the plan's tier-1 reveal is dropped.
  * - Under 1024 px (every tier, D6): the native snap row; a keyboard focus centres the focused
  *   world in the row; the bar under it follows the card in view through an IntersectionObserver
  *   (`scaleX` through `applyStyle`).
  * - Tier 0 and reduced motion never reach this module: the engine does not run.
  */
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import { applyStyle } from '../../core/applyStyle';
 import type { DomScene, SceneContext } from '../types';
 
 /** The pin distance in viewport heights (D7: +200 vh). */
 export const PIN_VH = 2;
-/** `--dur-3` in seconds (the tier 1 reveal) and its stagger. */
-const REVEAL_SEC = 0.32;
-const STAGGER_SEC = 0.06;
 /** A card counts as the one in view from this share of it inside the row. */
 const IN_VIEW = 0.6;
 /** The root attribute the pinned CSS follows: the latched layout pins. */
@@ -65,8 +61,6 @@ interface Parts {
   outlines: SVGSVGElement[];
   bar: HTMLElement | null;
   fill: HTMLElement | null;
-  /** The blocks that reveal line by line at tier 1: heading, lead, mark. */
-  lines: HTMLElement[];
 }
 
 function parts(el: HTMLElement): Parts | null {
@@ -84,11 +78,6 @@ function parts(el: HTMLElement): Parts | null {
     outlines: svgs.slice(1),
     bar: el.querySelector<HTMLElement>('[data-progress]'),
     fill: el.querySelector<HTMLElement>('[data-progress] > *'),
-    lines: [
-      el.querySelector<HTMLElement>('h2'),
-      el.querySelector<HTMLElement>('h2 + p'),
-      el.querySelector<HTMLElement>('[data-mark]'),
-    ].filter((node): node is HTMLElement => node !== null),
   };
 }
 
@@ -216,24 +205,6 @@ const scene: DomScene = {
         fill.removeAttribute('style');
         bar.setAttribute('aria-hidden', 'true');
         bar.setAttribute('aria-valuenow', '1');
-      });
-    } else if (wide && tl === null && p.stage.getBoundingClientRect().top > window.innerHeight) {
-      // Tier 1: only a stage still below the viewport hides and reveals, so nothing in view blinks.
-      // Created here, inside the engine's context, so the revert restores every inline style.
-      const reveal = gsap.timeline({ paused: true });
-      const to = { y: 0, opacity: 1, duration: REVEAL_SEC, ease: 'expo.out', stagger: STAGGER_SEC };
-      reveal.fromTo(p.lines, { y: 24, opacity: 0 }, { ...to, immediateRender: true }, 0);
-      reveal.fromTo(
-        p.worlds,
-        { y: 24, opacity: 0 },
-        { ...to, immediateRender: true },
-        STAGGER_SEC * 2,
-      );
-      ScrollTrigger.create({
-        trigger: p.stage,
-        start: 'top 80%',
-        once: true,
-        onEnter: () => reveal.play(),
       });
     }
 

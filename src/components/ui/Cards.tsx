@@ -55,9 +55,10 @@ export function CategoryIcon(props: {
 
 // Link cards: the title's link stretches over the card (one accessible name, no nested
 // controls), the ring shows on the card, the 2 px lift and the shadow come on hover. The shadow
-// sits on a pseudo-element and fades by opacity (DESIGN.md X-16).
+// sits on a pseudo-element and fades by opacity (DESIGN.md X-16). The lift transitions `translate`
+// only: a scene that tweens `transform` would restart a CSS transition every frame.
 const LINK_CARD =
-  "relative isolate rounded-card border border-line bg-surface-raised transition-transform hover:-translate-y-[2px] has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus before:absolute before:-inset-px before:-z-10 before:rounded-[inherit] before:opacity-0 before:shadow-raised before:transition-opacity before:content-[''] hover:before:opacity-100";
+  "relative isolate rounded-card border border-line bg-surface-raised transition-[translate] hover:-translate-y-[2px] has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus before:absolute before:-inset-px before:-z-10 before:rounded-[inherit] before:opacity-0 before:shadow-raised before:transition-opacity before:content-[''] hover:before:opacity-100";
 
 const STRETCHED = "after:absolute after:inset-0 after:content-[''] focus-visible:outline-none";
 
