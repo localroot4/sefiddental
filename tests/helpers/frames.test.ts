@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { frameStatsFrom } from './frames';
+import { frameStatsFrom, sectionFrameStats } from './frames';
 
 describe('frameStatsFrom', () => {
   it('T-FR1 steady 60 fps gives 60 in every 1 s window', () => {
@@ -35,5 +35,37 @@ describe('frameStatsFrom', () => {
       longTasksOver100ms: 0,
       frames: 0,
     });
+  });
+});
+
+describe('sectionFrameStats', () => {
+  it('T-FR5 each section gets its own 1 s windows beside the measure-home fields', () => {
+    const frames: Array<[number, string]> = [
+      ...Array<[number, string]>(120).fill([1000 / 60, 'hero']),
+      ...Array<[number, string]>(60).fill([1000 / 30, 'services']),
+      [16, 'none'],
+    ];
+    const [hero, services, none] = sectionFrameStats(
+      frames,
+      [{ start: 2500, duration: 120 }],
+      [
+        { t: 0, id: 'hero' },
+        { t: 2000, id: 'services' },
+      ],
+    );
+    expect(hero).toMatchObject({ section: 'hero', frames: 120, longTasks: 0 });
+    expect(hero?.medianFps).toBeCloseTo(60, 5);
+    expect(hero?.minWindowFps).toBeCloseTo(60, 5);
+    expect(services).toMatchObject({
+      section: 'services',
+      frames: 60,
+      longTasks: 1,
+      longTasksOver100ms: 1,
+      longestTaskMs: 120,
+    });
+    expect(services?.medianFps).toBeCloseTo(30, 5);
+    expect(services?.minWindowFps).toBeCloseTo(30, 5);
+    // One frame holds no full window: the window numbers are 0, the frame count is still there.
+    expect(none).toMatchObject({ section: 'none', frames: 1, medianFps: 0, minWindowFps: 0 });
   });
 });

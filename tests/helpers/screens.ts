@@ -55,7 +55,7 @@ export async function captureTemplate(
   testInfo: TestInfo,
   template: string,
   theme: Theme,
-  opts: { fullPage?: boolean } = {},
+  opts: { fullPage?: boolean; animations?: 'disabled' | 'allow' } = {},
 ): Promise<void> {
   await page.evaluate(() => document.fonts.ready);
   if (opts.fullPage ?? true) {
@@ -94,7 +94,11 @@ export async function captureTemplate(
   const file = `${template}-${width}-${theme}.png`;
   const dir = qaScreenshotDir();
   // fullPage false for a dialog or a first screen: what the viewer sees, where they see it.
-  const body = await page.screenshot({ fullPage: opts.fullPage ?? true, animations: 'disabled' });
+  // animations 'allow' for a mid-animation state the test has paused itself (the intro).
+  const body = await page.screenshot({
+    fullPage: opts.fullPage ?? true,
+    animations: opts.animations ?? 'disabled',
+  });
   // Lossless recompression halves the committed files (a 390 px page is 1170 px wide at 3x).
   if (dir) {
     await mkdir(dir, { recursive: true });

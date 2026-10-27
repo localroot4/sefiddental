@@ -148,5 +148,13 @@ export default defineConfig({
         launchOptions: swiftShaderLaunch(),
       },
     },
+    // The same recorders on the default GPU: the measurement host's frame numbers (phase 7
+    // report D19). `PERF_GATE=1 npx playwright test --project=perf-default` asserts the budgets.
+    {
+      name: 'perf-default',
+      testDir: './tests/perf',
+      fullyParallel: false,
+      use: { ...devices['Desktop Chrome'], ...base, ...VIEWPORTS.desktop, colorScheme: 'light' },
+    },
   ],
 });

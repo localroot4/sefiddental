@@ -5,7 +5,10 @@ import {
   lighthouseSummary,
   median,
   medianFields,
+  parsePace,
+  parseSections,
   parseTiers,
+  parseViewport,
   retried,
   sectionStats,
 } from './measure-home.mjs';
@@ -67,6 +70,27 @@ describe('sectionStats', () => {
       longTasksOver100ms: 1,
       longestTaskMs: 120,
     });
+  });
+
+  it('adds the window statistics of `windowStats` to every row, from that section’s deltas only', () => {
+    const seen: number[][] = [];
+    const rows = sectionStats(
+      [
+        [16, 'hero'],
+        [40, 'services'],
+      ],
+      [],
+      [{ t: 0, id: 'hero' }],
+      (deltas: number[]) => {
+        seen.push(deltas);
+        return { medianFps: 1000 / deltas[0]! };
+      },
+    );
+    expect(seen).toEqual([[16], [40]]);
+    expect(rows.map((r) => [r.section, r.medianFps])).toEqual([
+      ['hero', 62.5],
+      ['services', 25],
+    ]);
   });
 });
 
@@ -147,5 +171,31 @@ describe('parseTiers', () => {
     expect(parseTiers(['docs/qa/x', '--tiers=1,2,2'])).toEqual([1, 2]);
     expect(parseTiers(['--tiers=2,9'])).toEqual([2]);
     expect(() => parseTiers(['--tiers=9'])).toThrow('--tiers');
+  });
+});
+
+describe('parseSections, parseViewport and parsePace', () => {
+  it('--sections is null without the option, a list of unique ids with it, and never empty', () => {
+    expect(parseSections(['docs/qa/x', '--tiers=1'])).toBeNull();
+    expect(parseSections(['--sections=hero, trust,hero,footer'])).toEqual([
+      'hero',
+      'trust',
+      'footer',
+    ]);
+    expect(() => parseSections(['--sections=,'])).toThrow('--sections');
+  });
+
+  it('--viewport is desktop by default, phone on request, nothing else', () => {
+    expect(parseViewport(['docs/qa/x'])).toBe('desktop');
+    expect(parseViewport(['--viewport=phone'])).toBe('phone');
+    expect(() => parseViewport(['--viewport=tablet'])).toThrow('tablet');
+  });
+
+  it('--pace is 80 by default and a whole number of px from 1 to 400 with it', () => {
+    expect(parsePace(['docs/qa/x', '--tiers=1'])).toBe(80);
+    expect(parsePace(['--pace=16'])).toBe(16);
+    expect(() => parsePace(['--pace=0'])).toThrow('--pace');
+    expect(() => parsePace(['--pace=1.5'])).toThrow('1.5');
+    expect(() => parsePace(['--pace=fast'])).toThrow('fast');
   });
 });

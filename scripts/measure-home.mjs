@@ -6,8 +6,17 @@
 // after that scroll, INP of the hero card submit and of the scene 10 booking block (the booking
 // POST is stubbed, as in tests/e2e/home.spec.ts), and initial JS per page class
 // (scripts/check-bundle.mjs).
-// Writes results.json, bundle.json, bundle.md and README.md into the output folder.
+// Writes results.json, bundle.json, bundle.md and README.md into the output folder; phase 7 steps
+// go to docs/qa/phase-07/steps/<nn>-<lane>/.
 //   node scripts/measure-home.mjs <out dir> [--only=bundle,lighthouse,frames,inp] [--tiers=0,1]
+//     [--sections=hero,trust] [--viewport=phone] [--pace=16]
+//   --sections scrolls the frames lane from one viewport above the first listed section to the
+//   bottom of the last one (a pinned scene's spacer included) and reports those sections only
+//   (`footer` is the playground stage; an id not on the page is an error);
+//   --viewport=phone runs the frames lane at 390x844 with touch scrolling at 6x on the default
+//   GPU (Lighthouse and INP keep their own presets);
+//   --pace=<px> is the wheel step every 50 ms (default 80): a short section holds a full 1 s
+//   window only at a slower pace (hero and trust at 16).
 //   (after `npm run build` and `npm run db:e2e`; CHROME_PATH and PW_CHROMIUM_EXECUTABLE set, as
 //   in .env; ports E2E_PORT and E2E_PORT + 1 free)
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
@@ -29,7 +38,12 @@ import { cpuMultiplierFor, localCertificate, startTlsFront } from './lhci.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let TIERS = [0, 1];
-const RATES = [4, 6];
+/** `--sections` ids, or null for the whole page. */
+let SECTIONS = null;
+/** `--viewport`: desktop (wheel, 4x and 6x, both GPUs) or phone (touch, 6x, default GPU). */
+let VIEWPORT = 'desktop';
+/** Wheel step in px every 50 ms (`--pace`). */
+let PACE = 80;
 const RUNS = 3;
 const BOOKING = '/رزرو-نوبت';
 const MiB = 1024 * 1024;
@@ -56,8 +70,10 @@ export function p95(values) {
  * Frame and long-task statistics per home section (pure, unit-tested). `frames` holds
  * [delta ms, section id] in order; `changes` the times the section under the viewport's centre
  * line changed; a long task counts for the section that was there when it started.
+ * `windowStats(deltas)`, when given, adds its fields to every row: tests/helpers/frames.ts
+ * passes `frameStatsFrom` for the 1 s window numbers the budgets are written in.
  */
-export function sectionStats(frames, longTasks, changes) {
+export function sectionStats(frames, longTasks, changes, windowStats) {
   const sectionAt = (t) => {
     let id = changes[0]?.id ?? 'none';
     for (const change of changes) {
@@ -76,6 +92,7 @@ export function sectionStats(frames, longTasks, changes) {
   return [...sections].map(([section, { deltas, tasks }]) => {
     const total = deltas.reduce((sum, d) => sum + d, 0);
     return {
+      ...(windowStats ? windowStats(deltas) : {}),
       section,
       frames: deltas.length,
       meanFps: total > 0 ? round((deltas.length * 1000) / total, 1) : null,
@@ -224,13 +241,14 @@ async function measureLighthouse(port) {
 }
 
 /** Waits for the tier scaffold (engine at load, canvas on idle within 1.5 s); Esc skips an intro. */
-async function settle(page) {
+export async function settle(page) {
   await page.waitForTimeout(2500);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
 }
 
-async function heapMiB(page) {
+/** Used JS heap of the page in MiB (CDP Runtime.getHeapUsage). */
+export async function heapMiB(page) {
   const cdp = await page.context().newCDPSession(page);
   const { usedSize } = await cdp.send('Runtime.getHeapUsage');
   await cdp.detach();
@@ -238,13 +256,16 @@ async function heapMiB(page) {
 }
 
 /**
- * In-page sampler: requestAnimationFrame deltas tagged with the section under the viewport's
- * centre line (an IntersectionObserver, so no layout read per frame and no scroll listener; the
- * innermost section wins, e.g. the trust band inside the hero) and long tasks with start times.
+ * In-page sampler (`page.evaluate(startSampler)`; tests/perf/scenes.spec.ts shares it):
+ * requestAnimationFrame deltas tagged with the section under the viewport's centre line (an
+ * IntersectionObserver, so no layout read per frame and no scroll listener; the innermost
+ * section wins, e.g. the trust band inside the hero; the footer playground stage, which has no
+ * `data-home-section`, is `footer`) and long tasks with start times.
  */
-function startSampler() {
+export function startSampler() {
   const w = window;
-  const sections = [...document.querySelectorAll('[data-home-section]')];
+  const sections = [...document.querySelectorAll('[data-home-section], [data-scene="footer"]')];
+  const idOf = (el) => el.getAttribute('data-home-section') ?? 'footer';
   const active = new Set();
   let current = 'none';
   const changes = [{ t: performance.now(), id: current }];
@@ -256,7 +277,7 @@ function startSampler() {
       }
       const list = [...active];
       const inner = list.find((el) => !list.some((other) => other !== el && el.contains(other)));
-      const id = inner ? inner.getAttribute('data-home-section') : 'none';
+      const id = inner ? idOf(inner) : 'none';
       if (id !== current) {
         current = id;
         changes.push({ t: performance.now(), id });
@@ -291,23 +312,61 @@ function startSampler() {
         changes,
         durationMs: performance.now() - started,
         scrollHeight: document.documentElement.scrollHeight,
-        sections: sections.map((s) => s.getAttribute('data-home-section')),
+        sections: sections.map(idOf),
+        // Scroll height per section (the pin spacer's when pinned): the perf spec expects a
+        // full 1 s window only from a section at least one viewport tall.
+        heights: Object.fromEntries(
+          sections.map((el) => [
+            idOf(el),
+            Math.round((el.closest('.pin-spacer') ?? el).getBoundingClientRect().height),
+          ]),
+        ),
       };
     },
   };
 }
 
-async function scrollThrough(page) {
-  await page.evaluate(startSampler);
-  const deadline = Date.now() + 180_000;
-  let reachedBottom = false;
-  while (!reachedBottom && Date.now() < deadline) {
-    await page.mouse.wheel(0, 80);
-    await page.waitForTimeout(50);
-    reachedBottom = await page.evaluate(
-      () => window.scrollY + window.innerHeight >= document.documentElement.scrollHeight - 2,
-    );
+/**
+ * The scroll range of `--sections` in page pixels: one viewport above the first listed section
+ * (its enter reveal is part of the scene) to the bottom of the last one, measured on the
+ * ScrollTrigger pin spacer when the section is pinned (the spacer's padding is the pin
+ * distance; the engine has built it by `settle`); null without the option. An id not on the
+ * page is an error, not a silent gap in the report.
+ */
+async function sectionRange(page) {
+  if (!SECTIONS) return null;
+  const range = await page.evaluate((ids) => {
+    const found = [];
+    const rects = [];
+    for (const id of ids) {
+      const el = document.querySelector(
+        id === 'footer' ? '[data-scene="footer"]' : `[data-home-section="${id}"]`,
+      );
+      if (!el) continue;
+      found.push(id);
+      rects.push((el.closest('.pin-spacer') ?? el).getBoundingClientRect());
+    }
+    const max = document.documentElement.scrollHeight - innerHeight;
+    return {
+      found,
+      startY: Math.max(0, Math.min(...rects.map((r) => r.top)) + scrollY - innerHeight),
+      endY: Math.min(max, Math.max(...rects.map((r) => r.bottom)) + scrollY),
+    };
+  }, SECTIONS);
+  const missing = SECTIONS.filter((id) => !range.found.includes(id));
+  if (missing.length)
+    throw new Error(`measure-home: --sections ids not on the page: ${missing.join(', ')}`);
+  return range;
+}
+
+async function scrollThrough(page, h, drive) {
+  const range = await sectionRange(page);
+  if (range) {
+    await page.evaluate((y) => window.scrollTo(0, y), range.startY);
+    await page.waitForTimeout(300);
   }
+  await page.evaluate(startSampler);
+  const reachedBottom = await h.scrollThrough(page, 1, { drive, endY: range?.endY, stepPx: PACE });
   await page.waitForTimeout(500);
   const raw = await page.evaluate(() => window.__measureHome.stop());
   return { ...raw, reachedBottom };
@@ -317,16 +376,16 @@ async function scrollThrough(page) {
 const closeQuietly = (context) => context.close().catch(() => {});
 
 async function measureFrames(browser, origin, h, tier, rate) {
-  const context = await (await browser()).newContext({ ...h.VIEWPORTS.desktop, ...CONTEXT });
+  const context = await (await browser()).newContext({ ...h.VIEWPORTS[VIEWPORT], ...CONTEXT });
   const page = await context.newPage();
   try {
     await page.goto(`${origin}/?tier=${tier}`, { waitUntil: 'load' });
     await settle(page);
-    await page.mouse.move(720, 450);
+    if (VIEWPORT === 'desktop') await page.mouse.move(720, 450);
     await h.collectGarbage(page);
     const heapBeforeMiB = await heapMiB(page);
     const restore = await h.throttleCpu(page, rate);
-    const raw = await scrollThrough(page);
+    const raw = await scrollThrough(page, h, VIEWPORT === 'phone' ? 'touch' : 'wheel');
     await restore();
     const heapAfterMiB = await heapMiB(page);
     await h.collectGarbage(page);
@@ -348,7 +407,9 @@ async function measureFrames(browser, origin, h, tier, rate) {
         longTasks: tasks.length,
         longestTaskMs: tasks.length ? round(Math.max(...tasks)) : 0,
       },
-      sections: sectionStats(raw.frames, raw.longTasks, raw.changes),
+      sections: h
+        .sectionFrameStats(raw.frames, raw.longTasks, raw.changes)
+        .filter((s) => !SECTIONS || SECTIONS.includes(s.section)),
       heap: { beforeMiB: heapBeforeMiB, afterMiB: heapAfterMiB, afterGcMiB: heapAfterGcMiB },
     };
   } finally {
@@ -498,10 +559,11 @@ function readme(results, bundleMd) {
   }
   if (results.frames) {
     const runs = results.frames;
+    const phone = results.viewport === 'phone';
     lines.push(
-      `## Frame times and heap (desktop 1440x900, median of ${RUNS} runs field by field)`,
+      `## Frame times and heap (${phone ? 'phone 390x844 touch' : 'desktop 1440x900'}, median of ${RUNS} runs field by field)`,
       '',
-      'Chromium launched as tests/helpers/launch.ts does: `default` (headless as is) and `swiftshader` (the software GPU profile of the perf project); CDP CPU throttling, mouse wheel 80 px every 50 ms from the top to the bottom of the page. Frames are requestAnimationFrame deltas; long tasks come from a PerformanceObserver (over 50 ms). Heap is CDP Runtime.getHeapUsage: before the scroll after a forced GC, right after it, and after another GC.',
+      `Chromium launched as tests/helpers/launch.ts does: \`default\` (headless as is)${phone ? '' : ' and `swiftshader` (the software GPU profile of the perf project)'}; CDP CPU throttling, ${phone ? 'one-finger swipes of 500 px (CDP touch events, no fling)' : `mouse wheel ${results.pace ?? 80} px every 50 ms`} from the top to the bottom of the page${results.sections ? ` (\`--sections\`: from one viewport above ${results.sections[0]} to the bottom of ${results.sections.at(-1)}, a pin spacer included)` : ''}. Frames are requestAnimationFrame deltas; long tasks come from a PerformanceObserver (over 50 ms). Heap is CDP Runtime.getHeapUsage: before the scroll after a forced GC, right after it, and after another GC.`,
       '',
       '| GPU | Tier | CPU | Median fps (1 s windows) | Slowest window fps | p95 frame ms | Worst frame ms | Frames over 33 ms | Long tasks (over 100 ms) | Longest task ms | Heap MiB before / after / after GC | Scroll s | Reached bottom |',
       '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
@@ -513,17 +575,18 @@ function readme(results, bundleMd) {
     );
     const order = [...new Set(runs.flatMap((r) => r.sections.map((s) => s.section)))];
     lines.push(
-      '### Per section (mean fps / p95 frame ms / long tasks, longest ms)',
+      '### Per section (median window fps / slowest window fps / worst frame ms / p95 frame ms / long tasks, longest ms)',
       '',
-      'The section is the innermost `data-home-section` under the viewport centre line; `none` is the header strip at the top, gaps and the footer.',
+      "The section is the innermost `data-home-section` under the viewport centre line, `footer` the playground stage; `none` is the header strip at the top, gaps and the site footer. Window fps are 1 s windows of that section's frames (`-` when the section held no full window); the budgets (report section 5) read the first three numbers.",
       '',
       `| Section | ${runs.map((r) => `${r.gpu}, tier ${r.tier}, ${r.rate}x`).join(' | ')} |`,
       `|---|${runs.map(() => '---').join('|')}|`,
       ...order.map((id) => {
         const cells = runs.map((r) => {
           const s = r.sections.find((x) => x.section === id);
+          const fps = (v) => (v ? round(v, 1) : '-');
           return s
-            ? `${round(s.meanFps, 1)} / ${round(s.p95FrameMs, 1)} / ${round(s.longTasks)}${s.longTasks ? `, ${round(s.longestTaskMs)}` : ''}`
+            ? `${fps(s.medianFps)} / ${fps(s.minWindowFps)} / ${round(s.worstFrameMs, 1)} / ${round(s.p95FrameMs, 1)} / ${round(s.longTasks)}${s.longTasks ? `, ${round(s.longestTaskMs)}` : ''}`
             : '-';
         });
         return `| ${id} | ${cells.join(' | ')} |`;
@@ -561,16 +624,55 @@ function readme(results, bundleMd) {
   return `${lines.join('\n')}\n`;
 }
 
+/** The value of `--name=value` among the arguments, or undefined. */
+const option = (args, name) =>
+  args.find((a) => a.startsWith(`--${name}=`))?.slice(`--${name}=`.length);
+
 /** `--tiers=1,2` picks the tiers Lighthouse, frames and INP run at (default 0 and 1). */
 export function parseTiers(args) {
-  const arg = args.find((a) => a.startsWith('--tiers='));
-  if (!arg) return [0, 1];
-  const tiers = [...new Set(arg.slice('--tiers='.length).split(',').map(Number))].filter(
+  const arg = option(args, 'tiers');
+  if (arg === undefined) return [0, 1];
+  const tiers = [...new Set(arg.split(',').map(Number))].filter(
     (t) => Number.isInteger(t) && t >= 0 && t <= 3,
   );
   if (!tiers.length)
     throw new Error('measure-home: --tiers needs numbers 0 to 3, e.g. --tiers=1,2');
   return tiers;
+}
+
+/** `--sections=hero,trust` narrows the frames lane to those section ids; null without it. */
+export function parseSections(args) {
+  const arg = option(args, 'sections');
+  if (arg === undefined) return null;
+  const ids = [
+    ...new Set(
+      arg
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (!ids.length)
+    throw new Error('measure-home: --sections needs section ids, e.g. --sections=hero,trust');
+  return ids;
+}
+
+/** `--viewport=phone` runs the frames lane on the phone profile; desktop without it. */
+export function parseViewport(args) {
+  const arg = option(args, 'viewport') ?? 'desktop';
+  if (arg !== 'desktop' && arg !== 'phone')
+    throw new Error(`measure-home: --viewport is desktop or phone, not "${arg}"`);
+  return arg;
+}
+
+/** `--pace=16` is the wheel step in px every 50 ms (a whole number from 1 to 400); 80 without it. */
+export function parsePace(args) {
+  const arg = option(args, 'pace');
+  if (arg === undefined) return 80;
+  const pace = Number(arg);
+  if (!Number.isInteger(pace) || pace < 1 || pace > 400)
+    throw new Error(`measure-home: --pace is a whole number of px from 1 to 400, not "${arg}"`);
+  return pace;
 }
 
 async function main() {
@@ -580,13 +682,11 @@ async function main() {
     console.error('measure-home: name the output folder, e.g. docs/qa/phase-07/baseline.');
     process.exit(2);
   }
-  const only = new Set(
-    (
-      args.find((a) => a.startsWith('--only='))?.slice('--only='.length) ??
-      'bundle,lighthouse,frames,inp'
-    ).split(','),
-  );
+  const only = new Set((option(args, 'only') ?? 'bundle,lighthouse,frames,inp').split(','));
   TIERS = parseTiers(args);
+  SECTIONS = parseSections(args);
+  VIEWPORT = parseViewport(args);
+  PACE = parsePace(args);
   const envFile = path.join(root, '.env');
   if (existsSync(envFile)) process.loadEnvFile(envFile);
   const outDir = path.resolve(root, outArg);
@@ -597,7 +697,10 @@ async function main() {
   const results = {
     label: path.relative(path.join(root, 'docs', 'qa'), outDir),
     measuredAt: new Date().toISOString(),
-    command: `E2E_PORT=${port} node scripts/measure-home.mjs ${path.relative(root, outDir)}${args.some((a) => a.startsWith('--only=')) ? ` --only=${[...only].join(',')}` : ''}${args.some((a) => a.startsWith('--tiers=')) ? ` --tiers=${TIERS.join(',')}` : ''}`,
+    command: `E2E_PORT=${port} node scripts/measure-home.mjs ${path.relative(root, outDir)}${option(args, 'only') ? ` --only=${[...only].join(',')}` : ''}${option(args, 'tiers') ? ` --tiers=${TIERS.join(',')}` : ''}${SECTIONS ? ` --sections=${SECTIONS.join(',')}` : ''}${VIEWPORT === 'phone' ? ' --viewport=phone' : ''}${PACE === 80 ? '' : ` --pace=${PACE}`}`,
+    viewport: VIEWPORT,
+    sections: SECTIONS,
+    pace: PACE,
     host: {
       commit: git('rev-parse', '--short', 'HEAD'),
       dirty: git('status', '--porcelain').length > 0,
@@ -666,11 +769,13 @@ async function main() {
       if (only.has('frames')) {
         results.frames = [];
         // The software GPU the master prompt asks for, and the default headless path: on
-        // SwiftShader the GPU side can hide what CPU throttling does to the main thread.
-        for (const gpu of ['default', 'swiftshader']) {
+        // SwiftShader the GPU side can hide what CPU throttling does to the main thread. The
+        // phone lane is the low-end Android proxy: default GPU, 6x only.
+        const phone = VIEWPORT === 'phone';
+        for (const gpu of phone ? ['default'] : ['default', 'swiftshader']) {
           launchOptions = gpu === 'swiftshader' ? swiftShaderLaunch() : defaultLaunch();
           for (const tier of TIERS) {
-            for (const rate of RATES) {
+            for (const rate of phone ? [6] : [4, 6]) {
               const label = `frames ${gpu} tier ${tier} ${rate}x`;
               const samples = [];
               for (let i = 0; i < RUNS; i += 1) {

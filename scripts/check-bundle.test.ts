@@ -90,6 +90,29 @@ describe('check-bundle evaluate', () => {
     ]);
   });
 
+  it('T-BU5 gsap before load on home, or at all on a content page, fails (B3, phase 7)', () => {
+    const { failures } = evaluate(
+      {
+        home: {
+          pages: [page('/', framework, { gsapBeforeLoad: true, gsapAfterLoad: true })],
+        },
+        content: {
+          pages: [page('/qa/not-found', framework, { gsapAfterLoad: true })],
+        },
+      },
+      limits,
+    );
+    expect(failures).toEqual([
+      'B3 home /: gsap (_gsap or ScrollTrigger) loaded before load',
+      'B3 content /qa/not-found: gsap (_gsap or ScrollTrigger) loaded on a content page',
+    ]);
+    // The engine chunk after load on home is the design, not a failure.
+    expect(
+      evaluate({ home: { pages: [page('/', framework, { gsapAfterLoad: true })] } }, limits)
+        .failures,
+    ).toEqual([]);
+  });
+
   it('T-BU4 the report table shows the documented target beside each measurement', () => {
     const { rows } = evaluate({ home: { pages: [page('/', framework)] } }, limits);
     const table = markdownTable(rows);

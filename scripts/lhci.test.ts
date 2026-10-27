@@ -187,7 +187,7 @@ describe('lighthouserc.cjs', () => {
       '/?tier=1',
     ]);
     for (const url of ci.collect.url) expect(entries(url), url).toHaveLength(1);
-    const [floor, notFound, service, dentist, pricing, booking, emergency, tier0] =
+    const [floor, notFound, service, dentist, pricing, booking, emergency, tier0, tier1] =
       ci.collect.url.map((url) => entries(url)[0]!);
     // The floor is measured, never asserted; content TBT only warns in LHCI (tbtGate gates it).
     expect(floor!.assertions).toEqual({});
@@ -209,8 +209,19 @@ describe('lighthouserc.cjs', () => {
     const { 'resource-summary:script:size': homeScript, ...tier0Rest } = tier0!.assertions;
     const { 'resource-summary:script:size': contentScript, ...contentRest } = notFound!.assertions;
     expect(tier0Rest).toEqual(contentRest);
-    expect(homeScript).toEqual(['error', { maxNumericValue: (215 + 1) * 1024 }]);
+    expect(homeScript).toEqual(['error', { maxNumericValue: (170 + 1) * 1024 }]);
     expect(contentScript).toEqual(['error', { maxNumericValue: (150 + 1) * 1024 }]);
+    // Phase 7 (report section 5): tier 1 gates its score on the median, LCP on the best of 5
+    // like tier 0, and the total JS with the deferred engine chunk (limits.json deferredKiB).
+    expect(tier1!.assertions).toMatchObject({
+      'categories:performance': ['error', { minScore: 0.9, aggregationMethod: 'median' }],
+      'largest-contentful-paint': [
+        'error',
+        { maxNumericValue: 2500, aggregationMethod: 'optimistic' },
+      ],
+      'resource-summary:script:size': ['error', { maxNumericValue: (170 + 65 + 1) * 1024 }],
+      'cumulative-layout-shift': ['error', { maxNumericValue: 0.05, aggregationMethod: 'median' }],
+    });
   });
 });
 

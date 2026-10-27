@@ -18,7 +18,7 @@ const kib = (bytes) => Math.round((bytes / KiB) * 10) / 10;
 
 /**
  * Pure verdicts over the measurements (unit-tested).
- * @param {Record<string, { pages: { url: string, scripts: Record<string, number>, cssBytes: number, fontBytes: number, foreignOrigins: string[], webglBeforeLoad: boolean, webglAfterLoad: boolean }[] }>} measured
+ * @param {Record<string, { pages: { url: string, scripts: Record<string, number>, cssBytes: number, fontBytes: number, foreignOrigins: string[], webglBeforeLoad: boolean, webglAfterLoad: boolean, gsapBeforeLoad?: boolean, gsapAfterLoad?: boolean }[] }>} measured
  * @param {any} limits tests/budgets/limits.json
  */
 export function evaluate(measured, limits) {
@@ -66,6 +66,13 @@ export function evaluate(measured, limits) {
       if (name === 'home' ? page.webglBeforeLoad : page.webglBeforeLoad || page.webglAfterLoad) {
         failures.push(
           `B3 ${at}: three.js (WebGLRenderer) loaded ${name === 'home' ? 'before load' : 'on a content page'}`,
+        );
+      }
+      // Phase 7: the scroll engine is a chunk after `load` on home and nothing elsewhere; a
+      // static gsap import would add about 50 KiB before `load` and could hide under the limit.
+      if (name === 'home' ? page.gsapBeforeLoad : page.gsapBeforeLoad || page.gsapAfterLoad) {
+        failures.push(
+          `B3 ${at}: gsap (_gsap or ScrollTrigger) loaded ${name === 'home' ? 'before load' : 'on a content page'}`,
         );
       }
       if (page.cssBytes > limits.cssKiB * KiB) {
@@ -130,8 +137,12 @@ async function measurePage(browser, origin, url) {
       const at = Date.now();
       scriptBodies.push(
         response.text().then(
-          (text) => ({ at, webgl: text.includes('WebGLRenderer') }),
-          () => ({ at, webgl: false }),
+          (text) => ({
+            at,
+            webgl: text.includes('WebGLRenderer'),
+            gsap: text.includes('_gsap') || text.includes('ScrollTrigger'),
+          }),
+          () => ({ at, webgl: false, gsap: false }),
         ),
       );
     }
@@ -140,7 +151,13 @@ async function measurePage(browser, origin, url) {
   if (response?.status() !== 200) {
     throw new Error(`${url} answered ${response?.status()}: every listed page must return 200.`);
   }
-  const loadedAt = Date.now();
+  // The load time on the page's own clock (wall time, like the responses' Date.now() in Node):
+  // a chunk requested at `load` is received after loadEventStart, while Node's clock after
+  // goto resolves can run behind the response events of a loaded host.
+  const loadedAt = await page.evaluate(() => {
+    const nav = performance.getEntriesByType('navigation')[0];
+    return performance.timeOrigin + (nav ? nav.loadEventStart : performance.now());
+  });
   // Content pages must not fetch three.js later either (B3): watch 3 s after load.
   await page.waitForTimeout(3000);
   const entries = await page.evaluate(() => {
@@ -174,6 +191,8 @@ async function measurePage(browser, origin, url) {
     foreignOrigins: [...foreign],
     webglBeforeLoad: bodies.some((b) => b.webgl && b.at <= loadedAt),
     webglAfterLoad: bodies.some((b) => b.webgl && b.at > loadedAt),
+    gsapBeforeLoad: bodies.some((b) => b.gsap && b.at <= loadedAt),
+    gsapAfterLoad: bodies.some((b) => b.gsap && b.at > loadedAt),
   };
 }
 

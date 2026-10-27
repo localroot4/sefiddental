@@ -5,8 +5,10 @@
       "label": "Home (experience)",
       "pages": ["/"],
       "targetKB": 180,
-      "interimKiB": 215,
-      "routeAllowanceKiB": 85
+      "interimKiB": 170,
+      "routeAllowanceKiB": 85,
+      "deferredKiB": 65,
+      "deferredNote": "Lighthouse /?tier=1 only: the scroll engine chunk (gsap core, ScrollTrigger, Lenis, the DOM scene modules; at most 64 KiB gz) loads after the load event at tier 1 or more, and three.js only once a scene declares a WebGL layer (phase 8); check:bundle gates the initial JS at interimKiB (phase 7 plan budget 160 KiB plus noise; 215 let a stray 50 KiB gsap import pass)"
     },
     "content": {
       "label": "Content",
