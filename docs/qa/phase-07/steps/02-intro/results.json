@@ -1,0 +1,270 @@
+{
+  "label": "phase-07/steps/02-intro",
+  "measuredAt": "2026-10-27T01:45:52.480Z",
+  "command": "E2E_PORT=3200 node scripts/measure-home.mjs docs/qa/phase-07/steps/02-intro --only=bundle,lighthouse",
+  "host": {
+    "commit": "1e63a42",
+    "dirty": true,
+    "cpus": 4,
+    "loadAverage": [
+      8.59,
+      5.17,
+      3.82
+    ],
+    "chromium": null
+  },
+  "bundle": {
+    "exitCode": 0
+  },
+  "lighthouse": {
+    "lighthouseVersion": "12.6.1",
+    "mobileCpuMultiplier": 4,
+    "warmupBenchmarkIndex": 2219,
+    "rows": [
+      {
+        "page": "/?tier=0",
+        "preset": "mobile",
+        "summary": {
+          "performance": 0.91,
+          "lcpMs": 2124.518,
+          "cls": 0,
+          "tbtMs": 338.5,
+          "maxPotentialFidMs": 211,
+          "fcpMs": 1106.518,
+          "speedIndexMs": 2345.961,
+          "scriptKiB": 156.246,
+          "scriptRequests": 11,
+          "benchmarkIndex": 1807,
+          "runs": 3,
+          "lcpElements": [
+            "section.relative > div.relative > div.grid > h1#hero-h1"
+          ]
+        },
+        "runs": [
+          {
+            "performance": 0.95,
+            "lcpMs": 1970.962,
+            "cls": 0,
+            "tbtMs": 217,
+            "maxPotentialFidMs": 172,
+            "fcpMs": 1105.962,
+            "speedIndexMs": 2155.890659869826,
+            "scriptKiB": 156.27734375,
+            "scriptRequests": 11,
+            "benchmarkIndex": 1807,
+            "lcpElement": "section.relative > div.relative > div.grid > h1#hero-h1"
+          },
+          {
+            "performance": 0.91,
+            "lcpMs": 2124.518,
+            "cls": 0,
+            "tbtMs": 338.5,
+            "maxPotentialFidMs": 211,
+            "fcpMs": 1106.518,
+            "speedIndexMs": 2345.9606611749005,
+            "scriptKiB": 156.2373046875,
+            "scriptRequests": 11,
+            "benchmarkIndex": 1934.5,
+            "lcpElement": "section.relative > div.relative > div.grid > h1#hero-h1"
+          },
+          {
+            "performance": 0.82,
+            "lcpMs": 2299.0280000000002,
+            "cls": 0,
+            "tbtMs": 621.5,
+            "maxPotentialFidMs": 330,
+            "fcpMs": 1125.028,
+            "speedIndexMs": 2467.7559440532614,
+            "scriptKiB": 156.24609375,
+            "scriptRequests": 11,
+            "benchmarkIndex": 1548,
+            "lcpElement": "section.relative > div.relative > div.grid > h1#hero-h1"
+          }
+        ]
+      },
+      {
+        "page": "/?tier=1",
+        "preset": "mobile",
+        "summary": {
+          "performance": 0.73,
+          "lcpMs": 2436.03,
+          "cls": 0,
+          "tbtMs": 1279,
+          "maxPotentialFidMs": 302,
+          "fcpMs": 1120.03,
+          "speedIndexMs": 2648.694,
+          "scriptKiB": 444.137,
+          "scriptRequests": 15,
+          "benchmarkIndex": 1985.5,
+          "runs": 3,
+          "lcpElements": [
+            "section.relative > div.relative > div.grid > h1#hero-h1"
+          ]
+        },
+        "runs": [
+          {
+            "performance": 0.74,
+            "lcpMs": 2564.3235,
+            "cls": 0,
+            "tbtMs": 1101.5000000000005,
+            "maxPotentialFidMs": 302,
+            "fcpMs": 1149.3235,
+            "speedIndexMs": 2648.694343820082,
+            "scriptKiB": 444.1591796875,
+            "scriptRequests": 15,
+            "benchmarkIndex": 1985.5,
+            "lcpElement": "section.relative > div.relative > div.grid > h1#hero-h1"
+          },
+          {
+            "performance": 0.73,
+            "lcpMs": 2436.0299999999997,
+            "cls": 0,
+            "tbtMs": 1279,
+            "maxPotentialFidMs": 429,
+            "fcpMs": 1120.03,
+            "speedIndexMs": 2775.8440577087886,
+            "scriptKiB": 444.0927734375,
+            "scriptRequests": 15,
+            "benchmarkIndex": 2046,
+            "lcpElement": "section.relative > div.relative > div.grid > h1#hero-h1"
+          },
+          {
+            "performance": 0.73,
+            "lcpMs": 2262.911,
+            "cls": 0,
+            "tbtMs": 1351,
+            "maxPotentialFidMs": 299,
+            "fcpMs": 1110.911,
+            "speedIndexMs": 2501.814419656742,
+            "scriptKiB": 444.13671875,
+            "scriptRequests": 15,
+            "benchmarkIndex": 1773.5,
+            "lcpElement": "section.relative > div.relative > div.grid > h1#hero-h1"
+          }
+        ]
+      },
+      {
+        "page": "/?tier=0",
+        "preset": "desktop",
+        "summary": {
+          "performance": 0.99,
+          "lcpMs": 690.826,
+          "cls": 0,
+          "tbtMs": 2.5,
+          "maxPotentialFidMs": 55,
+          "fcpMs": 345.326,
+          "speedIndexMs": 1138.524,
+          "scriptKiB": 156.246,
+          "scriptRequests": 11,
+          "benchmarkIndex": 1792.5,
+          "runs": 3,
+          "lcpElements": [
+            "section.relative > div.relative > picture > img.absolute"
+          ]
+        },
+        "runs": [
+          {
+            "performance": 0.98,
+            "lcpMs": 859.2719999999999,
+            "cls": 0,
+            "tbtMs": 14.5,
+            "maxPotentialFidMs": 79,
+            "fcpMs": 431.272,
+            "speedIndexMs": 1233.0196716766372,
+            "scriptKiB": 156.2548828125,
+            "scriptRequests": 11,
+            "benchmarkIndex": 1452.5,
+            "lcpElement": "section.relative > div.relative > picture > img.absolute"
+          },
+          {
+            "performance": 0.99,
+            "lcpMs": 690.826,
+            "cls": 0,
+            "tbtMs": 2.5,
+            "maxPotentialFidMs": 55,
+            "fcpMs": 345.326,
+            "speedIndexMs": 1138.5238129763588,
+            "scriptKiB": 156.228515625,
+            "scriptRequests": 11,
+            "benchmarkIndex": 1792.5,
+            "lcpElement": "section.relative > div.relative > picture > img.absolute"
+          },
+          {
+            "performance": 0.99,
+            "lcpMs": 616.204,
+            "cls": 0.011235955056179775,
+            "tbtMs": 2,
+            "maxPotentialFidMs": 54,
+            "fcpMs": 316.204,
+            "speedIndexMs": 1028.0423191515886,
+            "scriptKiB": 156.24609375,
+            "scriptRequests": 11,
+            "benchmarkIndex": 1964,
+            "lcpElement": "section.relative > div.relative > picture > img.absolute"
+          }
+        ]
+      },
+      {
+        "page": "/?tier=1",
+        "preset": "desktop",
+        "summary": {
+          "performance": 0.99,
+          "lcpMs": 615.208,
+          "cls": 0,
+          "tbtMs": 48,
+          "maxPotentialFidMs": 78,
+          "fcpMs": 313.208,
+          "speedIndexMs": 1129.47,
+          "scriptKiB": 444.137,
+          "scriptRequests": 15,
+          "benchmarkIndex": 2090.5,
+          "runs": 3,
+          "lcpElements": [
+            "section.relative > div.relative > picture > img.absolute"
+          ]
+        },
+        "runs": [
+          {
+            "performance": 0.99,
+            "lcpMs": 593.8115,
+            "cls": 0,
+            "tbtMs": 48,
+            "maxPotentialFidMs": 88,
+            "fcpMs": 321.8115,
+            "speedIndexMs": 1129.4698223597075,
+            "scriptKiB": 444.13671875,
+            "scriptRequests": 15,
+            "benchmarkIndex": 2093,
+            "lcpElement": "section.relative > div.relative > picture > img.absolute"
+          },
+          {
+            "performance": 0.99,
+            "lcpMs": 625.337,
+            "cls": 0,
+            "tbtMs": 17.5,
+            "maxPotentialFidMs": 74,
+            "fcpMs": 310.337,
+            "speedIndexMs": 1087.5697791346056,
+            "scriptKiB": 444.1591796875,
+            "scriptRequests": 15,
+            "benchmarkIndex": 1761.5,
+            "lcpElement": "section.relative > div.relative > picture > img.absolute"
+          },
+          {
+            "performance": 0.99,
+            "lcpMs": 615.208,
+            "cls": 0,
+            "tbtMs": 68.50000000000006,
+            "maxPotentialFidMs": 78,
+            "fcpMs": 313.20799999999997,
+            "speedIndexMs": 1137.8887129147174,
+            "scriptKiB": 444.1279296875,
+            "scriptRequests": 15,
+            "benchmarkIndex": 2090.5,
+            "lcpElement": "section.relative > div.relative > picture > img.absolute"
+          }
+        ]
+      }
+    ]
+  }
+}

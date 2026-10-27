@@ -1,5 +1,6 @@
 import type { ServerEnv } from '@/lib/env';
 import type { PathKind } from '@/lib/http/classify';
+import { INTRO_SCRIPT_SHA256 } from '@/lib/intro/introScript';
 import { STATIC_PAGE_STYLE_SHA256 } from '@/lib/system-pages/staticPage';
 import { THEME_INIT_SCRIPT_SHA256 } from '@/lib/theme/themeInitScript';
 
@@ -41,9 +42,9 @@ function serialize(directives: Directives): string {
  * Content-Security-Policy per route kind (spec 7.2, 7.3; decisions 1, 2, 47).
  *
  * Public pages: nonce plus 'strict-dynamic' for scripts, the theme init script by hash (it also
- * runs where a document renders without the layout nonce); styles by nonce plus the static
- * system page style by hash (/qa/gone serves that document under this policy). Never
- * 'unsafe-inline' or 'unsafe-eval' outside development.
+ * runs where a document renders without the layout nonce) and the home intro script by hash
+ * (phase 7); styles by nonce plus the static system page style by hash (/qa/gone serves that
+ * document under this policy). Never 'unsafe-inline' or 'unsafe-eval' outside development.
  * Admin: the same script policy; styles keep 'unsafe-inline' (Payload injects runtime styles and
  * exposes no nonce), so style-src carries no nonce or hash, which would void 'unsafe-inline'.
  * Development: 'unsafe-eval' for React's debugging and 'unsafe-inline' styles (Next dev).
@@ -114,6 +115,7 @@ export function buildCsp(input: {
         nonceSource,
         nonceSource && "'strict-dynamic'",
         `'sha256-${THEME_INIT_SCRIPT_SHA256}'`,
+        `'sha256-${INTRO_SCRIPT_SHA256}'`,
         dev && "'unsafe-eval'",
         ...(ga ? GA_SCRIPT : []),
       ],

@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { API_CSP, buildCsp, newNonce } from '@/lib/http/csp';
 import { testEnv } from '@/lib/http/testEnv';
+import { INTRO_SCRIPT } from '@/lib/intro/introScript';
 import { STATIC_PAGE_STYLE_SHA256 } from '@/lib/system-pages/staticPage';
 import { THEME_INIT_SCRIPT } from '@/lib/theme/themeInitScript';
 
@@ -47,13 +48,14 @@ describe('buildCsp public pages (spec 7.2)', () => {
     expect(tokens).not.toContain("'unsafe-eval'");
   });
 
-  it('CSP2 scripts: self, nonce, strict-dynamic, the theme script hash', () => {
+  it('CSP2 scripts: self, nonce, strict-dynamic, the theme and intro script hashes', () => {
     const d = directives(page().value);
     expect(d.get('script-src')).toEqual([
       "'self'",
       `'nonce-${NONCE}'`,
       "'strict-dynamic'",
       `'sha256-${sha(THEME_INIT_SCRIPT)}'`,
+      `'sha256-${sha(INTRO_SCRIPT)}'`,
     ]);
     expect(d.get('style-src')).toEqual([
       "'self'",

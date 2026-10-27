@@ -204,6 +204,8 @@ test('T-HB5 two visitors of one cached home both book; the token comes after loa
     const context = await browser.newContext();
     await isolateClient(context);
     const page = await context.newPage();
+    // A fresh context plays the intro, and `main` is inert while it plays: the fill would be lost.
+    await skipIntro(page);
     // Serve the one captured document (its CSP nonce matches its own header).
     await page.route(
       (url) => url.pathname === '/',

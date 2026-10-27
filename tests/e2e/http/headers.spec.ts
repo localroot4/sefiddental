@@ -6,6 +6,7 @@
 // docs/deploy.md has the reverse proxy set the static set on every response.
 import { expect, test, type APIResponse } from '@playwright/test';
 
+import { INTRO_SCRIPT, INTRO_SCRIPT_SHA256 } from '@/lib/intro/introScript';
 import { ADMIN_ROUTE } from '@/lib/paths';
 
 import { requireRoutes } from '../../helpers/pending';
@@ -67,7 +68,15 @@ test('T-HD1 public HTML (home, 404 template, unknown path): static set and a str
     expect(response.status(), path).toBe(status);
     expectStaticSet(response, path);
     const nonce = expectPublicCsp(response, path);
-    expectScriptsCarryNonce(await response.text(), nonce, path);
+    const html = await response.text();
+    expectScriptsCarryNonce(html, nonce, path);
+    if (path === '/') {
+      // The inline intro script (phase 7) rides on the nonce and on its hash in script-src.
+      expect(html).toContain(`>${INTRO_SCRIPT}</script>`);
+      expect(response.headers()['content-security-policy']).toContain(
+        `'sha256-${INTRO_SCRIPT_SHA256}'`,
+      );
+    }
   }
 });
 
@@ -90,7 +99,8 @@ test('T-HD3 public pages load without a single CSP violation', async ({ page }) 
       report(`${e.violatedDirective} ${e.blockedURI} ${e.sourceFile}:${e.lineNumber}`);
     });
   });
-  for (const path of ['/', '/qa/not-found', '/?debug=1&tier=1', '/qa/components']) {
+  // The first home load plays the intro (fresh context); `/?tier=2` at 1440 px pins the scenes.
+  for (const path of ['/', '/qa/not-found', '/?debug=1&tier=1', '/?tier=2', '/qa/components']) {
     await page.goto(path);
     await page.waitForLoadState('load');
     // The canvas chunk and the overlay load after `load`; give them time to run.
