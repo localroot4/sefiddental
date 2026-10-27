@@ -436,3 +436,33 @@ test('T-IN10 a slow document: the dialog survives hydration and leaves only on t
   expect(r.hydratedAt!).toBeLessThan(r.endAt!);
   expect(r.removedAt!).toBeGreaterThanOrEqual(r.endAt!);
 });
+
+test("T-IN11 the served page: a render-blocking expect link in <head> naming the intro script, the dialog before the hero, the script after the hero's first row", async ({
+  request,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  const html = await (await request.get('/')).text();
+  // React hoists the link: left in the body it would not hold the frames before the script.
+  const head = html.slice(0, html.indexOf('</head>'));
+  const guards = (head.match(/<link [^>]*>/g) ?? []).filter(
+    (link) => link.includes('rel="expect"') && link.includes('blocking="render"'),
+  );
+  expect(guards, 'the expect link inside <head>').toHaveLength(1);
+  // The script needs the dialog before it; the parser yields after it, so the H1 comes first.
+  const dialog = html.indexOf('<dialog id="intro"');
+  const hero = html.lastIndexOf('<section', html.indexOf('data-scene="hero"'));
+  const h1 = html.indexOf('id="hero-h1"');
+  const script = html.lastIndexOf('<script', html.indexOf('id="intro-script"'));
+  expect(guards[0], 'the expect link names the intro script').toContain('href="#intro-script"');
+  expect(dialog).toBeGreaterThan(head.length);
+  expect(hero).toBeGreaterThan(dialog);
+  expect(h1).toBeGreaterThan(hero);
+  expect(script).toBeGreaterThan(h1);
+  // Safari and Firefox ignore the link: a parser yield there can paint this span uncovered.
+  const span = Buffer.byteLength(html.slice(hero, script));
+  expect(span, 'bytes from the hero <section> to the intro <script>').toBeLessThanOrEqual(10_240);
+  testInfo.annotations.push({
+    type: 'intro offsets',
+    description: `</head> ${head.length}, dialog ${dialog}, hero ${hero}, h1 ${h1}, script ${script} (UTF-16 offsets); hero to script ${span} B`,
+  });
+});

@@ -8,7 +8,7 @@ import { headers } from 'next/headers';
 import { LockupSprite } from '@/components/brand/LockupParts';
 import { HomeBookingPrefill } from '@/components/home/HomeBookingPrefill';
 import { HomeHero } from '@/components/home/HomeHero';
-import { IntroOverlay } from '@/components/home/intro/IntroOverlay';
+import { IntroOverlay, IntroScript } from '@/components/home/intro/IntroOverlay';
 import { BookingSection } from '@/components/home/sections/BookingSection';
 import { CasesSection } from '@/components/home/sections/CasesSection';
 import { DentistsSection } from '@/components/home/sections/DentistsSection';
@@ -70,7 +70,8 @@ export default async function HomePage() {
     <ExperienceRoot siteCap={siteCap}>
       <div data-page-type="home">
         {/* Phase 7: the lockup parts once (the intro and the playground use them), then the intro
-            overlay (none when the site cap is 0: no experience, no brand moment). */}
+            overlay (none when the site cap is 0: no experience, no brand moment); its script
+            follows the hero's first row. */}
         <LockupSprite />
         {siteCap === 0 ? null : <IntroOverlay nonce={nonce} />}
         <HomeHero
@@ -85,6 +86,7 @@ export default async function HomePage() {
             callbackMinutes: clinic.reception.callbackMinutes,
             insurers: data.insurers,
           })}
+          intro={siteCap === 0 ? null : <IntroScript nonce={nonce} />}
         />
         <ServicesSection tree={data.tree} copy={sectionCopy(page, 'services')} />
         <RestorationSection

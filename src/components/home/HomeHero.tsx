@@ -61,6 +61,12 @@ export function HomeHero(props: {
   relief: boolean;
   phone: string;
   facts: TrustFact[];
+  /**
+   * The intro's inline script (IntroOverlay.tsx `IntroScript`): after the first row (the H1
+   * block and the booking card), whole in the first frame; from 744 px a card painted a frame
+   * after the H1 block re-centres it (layout shift 0.03 at 820 px, 0.06 at 1440 px).
+   */
+  intro?: React.ReactNode;
 }) {
   const { image } = props;
   preload(image.preloadHref, {
@@ -121,6 +127,7 @@ export function HomeHero(props: {
             </p>
           ) : null}
         </div>
+        {props.intro}
         <div
           data-hero-photo=""
           className="relative -z-10 col-start-1 row-start-2 aspect-[4/5] md:absolute md:inset-0 md:aspect-auto"

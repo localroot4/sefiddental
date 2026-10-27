@@ -3,12 +3,12 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { HomeHero } from './HomeHero';
 
-// The booking island's data readers need Payload; the order test needs only the markup around it.
-vi.mock('@/components/booking/BookingForm', () => ({ BookingForm: () => null }));
+// The booking island's data readers need Payload; the order tests need only its place.
+vi.mock('@/components/booking/BookingForm', () => ({ BookingForm: () => <form /> }));
 
 const set = { avif: 'a.avif 800w', other: 'a.webp 800w', otherType: 'image/webp' };
 
-function render(placeholder: boolean): string {
+function render(placeholder: boolean, intro?: React.ReactNode): string {
   return renderToStaticMarkup(
     <HomeHero
       title="عنوان"
@@ -23,6 +23,7 @@ function render(placeholder: boolean): string {
       relief
       phone="+982100000000"
       facts={[{ value: 'یک' }]}
+      intro={intro}
     />,
   );
 }
@@ -72,5 +73,18 @@ describe('home hero markup', () => {
   it('HH4 the mark relief renders on a real photo only (D3)', () => {
     expect(render(true)).not.toContain('#mark"');
     expect(render(false)).toContain('#mark"');
+  });
+
+  it('HH5 the intro script comes right after the first row (H1 block, booking card), before the photo', () => {
+    const html = render(true, <script id="intro-script" />);
+    // The parser yields after that script: what is parsed before it paints in the first frame,
+    // and a card arriving a frame after the H1 block would re-centre it from 744 px.
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const row = doc.getElementById('hero-h1')?.parentElement?.parentElement;
+    expect(doc.getElementById('intro-script')?.previousElementSibling).toBe(row);
+    expect(row?.querySelector('#hero-sub')).not.toBeNull();
+    expect(row?.querySelector('form')).not.toBeNull();
+    expect(row?.lastElementChild?.tagName).toBe('P'); // the placeholder caption
+    expect(html.indexOf('id="intro-script"')).toBeLessThan(html.indexOf('data-hero-photo'));
   });
 });

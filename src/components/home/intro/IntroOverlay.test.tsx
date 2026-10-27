@@ -2,26 +2,28 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { LOCKUP_MARK_PATH } from '@/components/brand/LockupParts';
-import { IntroOverlay } from '@/components/home/intro/IntroOverlay';
+import { IntroOverlay, IntroScript } from '@/components/home/intro/IntroOverlay';
 import { INTRO_CSS, INTRO_SCRIPT } from '@/lib/intro/introScript';
 
 const NONCE = 'AAAAAAAAAAAAAAAAAAAAAA==';
 
 describe('IntroOverlay markup (D10; report section 3)', () => {
-  const html = renderToStaticMarkup(<IntroOverlay nonce={NONCE} />);
-  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const parse = (html: string) => new DOMParser().parseFromString(html, 'text/html');
+  const doc = parse(renderToStaticMarkup(<IntroOverlay nonce={NONCE} />));
+  // In the body, as inside the hero: alone, the link and the script would parse into <head>.
+  const scriptDoc = parse(`<body>${renderToStaticMarkup(<IntroScript nonce={NONCE} />)}`);
 
-  it('IO1 a closed, labelled dialog#intro with its nonced style and the nonced script after it', () => {
+  it("IO1 a closed, labelled dialog#intro with its nonced style; the nonced script is apart (after the hero's first row)", () => {
     const dialog = doc.querySelector('dialog#intro');
     expect(dialog?.hasAttribute('open')).toBe(false);
     expect(dialog?.getAttribute('aria-label')).toBeTruthy();
     const style = dialog?.querySelector('style');
     expect(style?.getAttribute('nonce')).toBe(NONCE);
     expect(style?.textContent).toBe(INTRO_CSS);
-    const script = doc.querySelector('script');
+    expect(doc.querySelector('script')).toBeNull();
+    const script = scriptDoc.querySelector('script');
     expect(script?.getAttribute('nonce')).toBe(NONCE);
     expect(script?.textContent).toBe(INTRO_SCRIPT);
-    expect(script?.previousElementSibling).toBe(dialog);
   });
 
   it('IO2 no style attribute anywhere (CSP), one focusable element: the skip button', () => {
@@ -56,12 +58,19 @@ describe('IntroOverlay markup (D10; report section 3)', () => {
     expect(frame?.getAttribute('d')?.endsWith(LOCKUP_MARK_PATH)).toBe(true);
   });
 
+  it('IO5 rendering waits for the script: the render-blocking expect link names it', () => {
+    const link = scriptDoc.querySelector('link[rel="expect"]');
+    expect(link?.getAttribute('blocking')).toBe('render');
+    // A missing id would block rendering until the whole document is parsed.
+    const target = scriptDoc.querySelector(link?.getAttribute('href') ?? '#none');
+    expect(target).not.toBeNull();
+    expect(target).toBe(scriptDoc.querySelector('script#intro-script'));
+  });
+
   it('IO4 without a nonce the inline elements carry none', () => {
-    const bare = new DOMParser().parseFromString(
-      renderToStaticMarkup(<IntroOverlay nonce={undefined} />),
-      'text/html',
-    );
+    const bare = parse(renderToStaticMarkup(<IntroOverlay nonce={undefined} />));
     expect(bare.querySelector('style')?.hasAttribute('nonce')).toBe(false);
-    expect(bare.querySelector('script')?.hasAttribute('nonce')).toBe(false);
+    const bareScript = parse(renderToStaticMarkup(<IntroScript nonce={undefined} />));
+    expect(bareScript.querySelector('script')?.hasAttribute('nonce')).toBe(false);
   });
 });
