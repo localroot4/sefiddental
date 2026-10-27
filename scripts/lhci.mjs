@@ -214,6 +214,34 @@ export function shiftCulprits(lhrs, url) {
     );
 }
 
+/**
+ * One line per home run (pure, unit-tested): the LCP element, its render delay, FCP and the
+ * intro's user timings, so a home LCP miss on CI says what painted when (the report artifact
+ * cannot always be downloaded).
+ */
+export function homeLcpLines(lhrs) {
+  return lhrs
+    .filter((lhr) => /\/\?tier=/.test(lhr.requestedUrl))
+    .map((lhr) => {
+      const a = lhr.audits;
+      const items = a['largest-contentful-paint-element']?.details?.items ?? [];
+      const selector = items[0]?.items?.[0]?.node?.selector ?? '?';
+      const phases = (items[1]?.items ?? [])
+        .map((p) => `${p.phase} ${Math.round(p.timing)}`)
+        .join(', ');
+      const marks = (a['user-timings']?.details?.items ?? [])
+        .filter((m) => /^intro:/.test(m.name))
+        .map((m) => `${m.name} ${Math.round(m.startTime)}`)
+        .join(', ');
+      const ms = (id) => Math.round(a[id]?.numericValue ?? -1);
+      // The simulated metrics come from lantern; the observed ones and the marks share the clock
+      // of the trace, so they say whether the paint waited for the intro's end.
+      const observed = a.metrics?.details?.items?.[0] ?? {};
+      const seen = `observed FCP ${Math.round(observed.observedFirstContentfulPaint ?? -1)}, observed LCP ${Math.round(observed.observedLargestContentfulPaint ?? -1)}`;
+      return `${lhr.requestedUrl}: LCP ${ms('largest-contentful-paint')} ms (${selector}; ${phases || 'no phases'}), FCP ${ms('first-contentful-paint')} ms, TBT ${ms('total-blocking-time')} ms; ${seen}${marks ? `, ${marks}` : ''}`;
+    });
+}
+
 /** One GitHub annotation per failed error-level assertion: CI logs are not always readable. */
 function annotateFailures(theme) {
   let results = [];
@@ -299,6 +327,7 @@ function run() {
     }
     const table = `${spreadTable(theme, tbt.rows)}Framework floor (/qa/floor) TBT median: ${tbt.floorMs ?? 'not measured'} ms.\n`;
     console.log(`\n${table}`);
+    for (const line of homeLcpLines(lhrs)) console.log(`lhci ${theme}: ${line}`);
     sections.push(table);
   }
   mkdirSync(lhciDir, { recursive: true });

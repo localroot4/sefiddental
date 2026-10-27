@@ -2,7 +2,14 @@ import { createRequire } from 'node:module';
 
 import { describe, expect, it } from 'vitest';
 
-import { cpuMultiplierFor, lcpSpread, shiftCulprits, spreadTable, tbtGate } from './lhci.mjs';
+import {
+  cpuMultiplierFor,
+  homeLcpLines,
+  lcpSpread,
+  shiftCulprits,
+  spreadTable,
+  tbtGate,
+} from './lhci.mjs';
 
 const matrix = [
   {
@@ -219,5 +226,50 @@ describe('shiftCulprits', () => {
       run('https://x/other', [{ node: { selector: 'main' }, score: 0.2 }]),
     ];
     expect(shiftCulprits(lhrs, 'https://x/?tier=0')).toEqual(['section.hero > h1 0.577']);
+  });
+});
+
+describe('homeLcpLines (scripts/lhci.mjs)', () => {
+  it('names the LCP element, its phases, FCP and the intro marks of every home run only', () => {
+    const home = {
+      requestedUrl: 'https://localhost:3443/?tier=0',
+      categories: {},
+      audits: {
+        'largest-contentful-paint': { numericValue: 2728.4 },
+        'first-contentful-paint': { numericValue: 1100.2 },
+        'total-blocking-time': { numericValue: 572.5 },
+        metrics: {
+          details: {
+            items: [{ observedFirstContentfulPaint: 410.4, observedLargestContentfulPaint: 1580 }],
+          },
+        },
+        'largest-contentful-paint-element': {
+          details: {
+            items: [
+              { items: [{ node: { selector: 'h1#hero-h1' } }] },
+              {
+                items: [
+                  { phase: 'TTFB', timing: 600 },
+                  { phase: 'Render Delay', timing: 2128.4 },
+                ],
+              },
+            ],
+          },
+        },
+        'user-timings': {
+          details: {
+            items: [
+              { name: 'intro:start', startTime: 1100.6 },
+              { name: 'intro:end', startTime: 2420.1 },
+              { name: 'Next.js-hydration', startTime: 1500 },
+            ],
+          },
+        },
+      },
+    };
+    const content = { ...home, requestedUrl: 'https://localhost:3443/qa/not-found' };
+    expect(homeLcpLines([content, home])).toEqual([
+      'https://localhost:3443/?tier=0: LCP 2728 ms (h1#hero-h1; TTFB 600, Render Delay 2128), FCP 1100 ms, TBT 573 ms; observed FCP 410, observed LCP 1580, intro:start 1101, intro:end 2420',
+    ]);
   });
 });
