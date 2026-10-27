@@ -2,6 +2,7 @@ import type { Block } from 'payload';
 
 import {
   faqsArray,
+  imageUpload,
   persianRichText,
   proseText,
   proseTextarea,
@@ -86,5 +87,36 @@ export const CalloutBlock: Block = {
   ],
 };
 
+/**
+ * The home page's digital-workflow scene (phase 7, D2): four steps with a title, a line and a 4:3
+ * photo. It stays unpublished until the client confirms gap 48; the home renders nothing without it.
+ */
+export const WorkflowBlock: Block = {
+  slug: 'workflow',
+  labels: { singular: 'روش دیجیتال', plural: 'روش دیجیتال' },
+  fields: [
+    {
+      name: 'items',
+      type: 'array',
+      label: 'گام‌ها',
+      labels: { singular: 'گام', plural: 'گام‌ها' },
+      minRows: 1,
+      maxRows: 4,
+      fields: [
+        proseText('title', 'عنوان گام', { required: true, maxLength: 40 }),
+        proseTextarea('text', 'توضیح گام', { required: true, maxLength: 160 }),
+        imageUpload('photo', 'عکس گام', 'عکس ۴:۳ از همین گام در کلینیک.', true),
+      ],
+    },
+  ],
+};
+
 export const SERVICE_BLOCKS: Block[] = [ContentBlock, StepsBlock, CalloutBlock];
-export const PAGE_BLOCKS: Block[] = [ContentBlock, StepsBlock, FaqBlock, FactsBlock, CalloutBlock];
+export const PAGE_BLOCKS: Block[] = [
+  ContentBlock,
+  StepsBlock,
+  FaqBlock,
+  FactsBlock,
+  CalloutBlock,
+  WorkflowBlock,
+];

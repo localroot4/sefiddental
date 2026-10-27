@@ -1406,7 +1406,8 @@ export interface Page {
    */
   sections?:
     | {
-        key: 'services' | 'restoration' | 'compare' | 'dentists' | 'voices' | 'journey' | 'faq' | 'booking';
+        key:
+          'services' | 'restoration' | 'workflow' | 'compare' | 'dentists' | 'voices' | 'journey' | 'faq' | 'booking';
         heading: string;
         intro?: string | null;
         id?: string | null;
@@ -1488,6 +1489,22 @@ export interface Page {
             id?: string | null;
             blockName?: string | null;
             blockType: 'callout';
+          }
+        | {
+            items?:
+              | {
+                  title: string;
+                  text: string;
+                  /**
+                   * عکس ۴:۳ از همین گام در کلینیک.
+                   */
+                  photo: number | Media;
+                  id?: string | null;
+                }[]
+              | null;
+            id?: string | null;
+            blockName?: string | null;
+            blockType: 'workflow';
           }
       )[]
     | null;
@@ -2230,6 +2247,20 @@ export interface PagesSelect<T extends boolean = true> {
           | {
               tone?: T;
               text?: T;
+              id?: T;
+              blockName?: T;
+            };
+        workflow?:
+          | T
+          | {
+              items?:
+                | T
+                | {
+                    title?: T;
+                    text?: T;
+                    photo?: T;
+                    id?: T;
+                  };
               id?: T;
               blockName?: T;
             };

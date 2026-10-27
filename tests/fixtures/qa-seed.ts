@@ -513,7 +513,53 @@ await article(
   true,
 );
 
+// Scene 5 (phase 7, D2): the digital-workflow block exists on the e2e database only, until the
+// client confirms gap 48. Four steps with 4:3 neutral stand-ins and sample-marked captions, plus
+// the section's heading row; the home's other blocks and section rows stay as the seeder wrote them.
+const homePage = await first(
+  payload.find({ collection: 'pages', where: { key: { equals: 'home' } }, limit: 1, depth: 0 }),
+);
+if (!homePage) {
+  throw new Error(
+    'qa-fixture: the seeded home page is missing. Run the seeder first (npm run seed).',
+  );
+}
+const workflowItems = [];
+for (const n of [1, 2, 3, 4]) {
+  const step = toPersianDigits(String(n));
+  workflowItems.push({
+    title: `${MARK}: گام ${step}`,
+    text: `${MARK}: توضیح کوتاه گام ${step} از روش دیجیتال، فقط برای آزمودن قالب صحنه.`,
+    photo: await media(
+      `qa-fixture/workflow-${n}.jpg`,
+      `${MARK}: جای عکس ۴:۳ گام ${step} روش دیجیتال`,
+      grey(1200, 900, 168 + n * 10),
+      'image/jpeg',
+    ),
+  });
+}
+await payload.update({
+  collection: 'pages',
+  id: homePage.id,
+  data: {
+    sections: [
+      ...(homePage.sections ?? []).filter((row) => row.key !== 'workflow'),
+      {
+        key: 'workflow',
+        heading: `${MARK}: روش دیجیتال کلینیک`,
+        intro: `${MARK}: چهار گام نمونه؛ متن واقعی پس از تأیید کلینیک می‌آید.`,
+      },
+    ],
+    blocks: [
+      ...(homePage.blocks ?? []).filter((b) => b.blockType !== 'workflow'),
+      { blockType: 'workflow', items: workflowItems },
+    ],
+    _status: 'published',
+  } as never,
+  context,
+});
+
 // The e2e scripts grep this line: `payload run` can exit 0 before the script ran.
 payload.logger.info(
-  `qa-fixture: dentist /پزشکان/${dentist.slug}, guide ${guide.path}, case ${sample.id}, testimonial ${voice.id}, financing ${loan.key}, articles ${posts.length} published and 1 draft`,
+  `qa-fixture: dentist /پزشکان/${dentist.slug}, guide ${guide.path}, case ${sample.id}, testimonial ${voice.id}, financing ${loan.key}, articles ${posts.length} published and 1 draft, workflow ${workflowItems.length} steps`,
 );

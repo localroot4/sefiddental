@@ -61,6 +61,7 @@ export const needsMedicalReview = (data: KeyData) =>
 const SECTION_OPTIONS = [
   { label: 'خدمات', value: 'services' },
   { label: 'سه سطح ترمیم', value: 'restoration' },
+  { label: 'روش دیجیتال', value: 'workflow' },
   { label: 'قبل و بعد', value: 'compare' },
   { label: 'پزشکان', value: 'dentists' },
   { label: 'ویدئوی بیماران', value: 'voices' },
