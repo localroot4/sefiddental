@@ -67,6 +67,7 @@ baseline. The hero mark relief still renders by default.
 | D17 | The client's message about ThreeUI is answered plainly at the hand-off: phase 7 is the DOM skeleton (the intro bar, word and line reveals, the fps overlay are its only ThreeUI pieces); the glass mark, particles, backdrop, wipe and glow are phase 8 (`docs/discovery/threeui-review.md` 3). No phase 8 slice is pulled forward. | Pulling WebGL into this phase breaks the brief («before any WebGL scene exists») and the tier 1 budgets that already fail. |
 | D18 | The world window after the hero is the trust band itself: from 1024 px, at every tier and in the server HTML, the band leaves the photo's bottom edge and becomes a 40 vh row under the photo with the facts on it (`data-world-slot="hero-exit"`); under 1024 px the band stays on the 4:5 photo's edge. No element appears or grows after hydration. | A window inserted after hydration shifts the services section visible at scrollY 0 on tall desktops (hero grid `min(100svh - nav, 52rem)` = 832 px at 1200 px tall; impact 296/1200 x distance 480/1200 = 0.099 CLS, over the 0.05 gate), and a blank 40 vh band at tier 0 is not a complete site. The facts give the window content at every tier; phase 8 draws the world behind them. |
 | D19 | The per-scene frame thresholds (59 fps median at 4x, 55 slowest window, 50 ms worst frame, no long task over 100 ms, heap +0.5 MiB) are asserted by `tests/perf/scenes.spec.ts` only with `PERF_GATE=1`, which the integrator sets on the local `perf-default` run at every step; on CI the same spec records annotations and attachments and stays green. The budget numbers do not move. | CI runs every Playwright project on a 2-core runner without a GPU (baseline 44.5 fps at tier 0 and 22 at tier 1 on SwiftShader), so an unconditional gate is red by construction and would block the deploy at step 9; the numbers are valid only on the measurement host. |
+| D20 | The GPU probe makes its WebGL 2 context in a dedicated worker (`gpuProbe.worker.ts`, an OffscreenCanvas) with a 1500 ms timeout. The main thread makes one only without the worker's answer, for detect-gpu on a cache miss, or once to confirm a worker-only result before a tier that mounts the canvas: tiers 2 and 3, and tier 1 under `?debug=1` or once a scene declares `webgl.load` (`confirmWebgl2` in `tierStore.ts`, `SCENES_LOAD_WEBGL` in the registry). Any other tier 1 draws no WebGL in phase 7: with only the worker's answer it means «WebGL 2 in a worker, the main thread unchecked», and no main-thread context is made for it. Two visible changes: `data-tier-reason` is `software-renderer` instead of `no-webgl2` when WebGL 2 works only in workers on a software renderer, and under Chromium's `--disable-webgl2` `/?tier=1` gives `html[data-tier]` 1 where it gave 0 (`?tier=3` still gives 0, `no-webgl2`: T-T01). | On Lighthouse's software GPU the main-thread context was the largest tier 1 long task after `load` (19 to 102 ms, median 30 ms, in 20 of 20 tier 1 traces); with the worker no tier 1 trace has a main-thread GL task (0 of 20) and the main thread only receives the answer (1 to 6 ms). A context in a worker does not promise one on a main-thread `<canvas>` (`--disable-webgl2` blocks only the latter), so D-Q3 (no WebGL 2 beats `?tier=N`) holds through the confirm for every tier that draws. |
 
 ### 2. What: lanes and their scenes
 
@@ -259,6 +260,13 @@ budget (brief step 2). Frame numbers come from
   the master labels; `SceneProps.progress` and `active` are getters, never
   state. The warm light (`--warm` on the DOM layer) is mirrored to the
   world light in phase 8 by reading the same layer's variable.
+- The WebGL 2 confirm (D20): once a scene declares `webgl.load`, every tier
+  of 1 or more confirms a worker-only probe result with one main-thread
+  context right after `load`, inside the Lighthouse window (23 to 24 ms in
+  the tier 3 and debug controls on a software GPU), while three.js loads
+  only at the hero exit (D5). Phase 8 picks one: confirm when `wantsCanvas`
+  becomes true, accepting a later relatch to tier 0 when the confirm fails,
+  or keep the confirm at `load` and count it against the tier 1 TBT budget.
 
 ### 7. Risks and mitigations
 
