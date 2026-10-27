@@ -20,6 +20,7 @@ import {
 } from '@/lib/qualityTier';
 
 import { debugActive, parseExperienceQuery } from '../core/query';
+import { SCENES_LOAD_WEBGL } from '../scenes/registry';
 
 import type { ProbeResult } from './gpuProbe';
 import {
@@ -57,6 +58,8 @@ export interface TierEnv {
   /** Calls back once the document has loaded (at once when it already has). */
   onLoad(cb: () => void): () => void;
   probe(opts: { benchmark: (renderer: string | null) => boolean }): Promise<ProbeResult>;
+  /** Whether a main-thread `<canvas>` gets a WebGL 2 context: what the canvas needs. */
+  webgl2OnMainThread(): boolean;
   scrollY(): number;
   now(): number;
   every(ms: number, cb: () => void): () => void;
@@ -287,6 +290,7 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
   /** Recomputes, applies the latch rule for `reason`, and notifies. */
   function update(reason: RelatchReason | null): void {
     runProbe(); // an input that pinned tier 0 may have changed since `load`
+    confirmWebgl2();
     const { desired } = derive();
     if (reason !== null && !sameLayout(desired, layout)) {
       if (desired.pinnedScenes === layout.pinnedScenes) {
@@ -362,6 +366,21 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
         probe = result;
         update('detection');
       });
+  }
+
+  // D-Q3 (no WebGL 2 beats ?tier=N) holds for every tier that mounts the canvas: tiers 2 and 3,
+  // and tier 1 under the debug flag or once a scene loads WebGL (ExperienceRoot, D5). The canvas
+  // needs WebGL 2 on a main-thread <canvas>, which a context in the probe's worker does not
+  // promise, so a worker-only result is confirmed there first, once. Any other tier 1 draws no
+  // WebGL in phase 7: with only the worker's answer it means "WebGL 2 in a worker, the main
+  // thread unchecked", and no main-thread context is made for it (Lighthouse's ?tier=1).
+  function confirmWebgl2(): void {
+    if (probe?.workerOnly !== true) return;
+    const { tier } = derive();
+    if (tier < 2 && !(tier === 1 && (debug || SCENES_LOAD_WEBGL))) return;
+    probe = env.webgl2OnMainThread()
+      ? { ...probe, workerOnly: false }
+      : { webgl2: false, renderer: null, gpu: null };
   }
 
   const onLoad = (): void => {

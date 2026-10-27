@@ -1,10 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { GpuResult } from '@/lib/qualityTier';
 
 import { serializeGpuCache } from './gpuCache';
 import type { ProbeResult } from './gpuProbe';
 import { createTierStore, RELATCH_POLL_MS, type TierEnv } from './tierStore';
+
+// TS26 swaps in a registry where a scene declares `webgl.load` (phase 8); today none does.
+const registry = vi.hoisted(() => ({ sceneLoadsWebgl: false }));
+vi.mock('../scenes/registry', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../scenes/registry')>()),
+  get SCENES_LOAD_WEBGL() {
+    return registry.sceneLoadsWebgl;
+  },
+}));
 
 const RTX = 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)';
 const SWIFTSHADER =
@@ -44,6 +53,8 @@ interface FakeOptions {
   fine?: boolean;
   width?: number;
   probe?: ProbeResult;
+  /** What a main-thread <canvas> answers for WebGL 2 (default yes). */
+  mainThread?: boolean;
   deviceMemory?: number | null;
 }
 
@@ -57,6 +68,7 @@ function fakeEnv(o: FakeOptions = {}) {
   let loadCb: (() => void) | null = null;
   let resolveProbe: ((r: ProbeResult) => void) | null = null;
   const benchmarkCalls: (string | null)[] = [];
+  let mainThreadChecks = 0;
   const timers = new Set<() => void>();
   let now = 0;
   let scrollY = 0;
@@ -82,6 +94,10 @@ function fakeEnv(o: FakeOptions = {}) {
         benchmarkCalls.push(benchmark(result.renderer) ? result.renderer : null);
         resolveProbe = resolve;
       }),
+    webgl2OnMainThread: () => {
+      mainThreadChecks++;
+      return o.mainThread ?? true;
+    },
     scrollY: () => scrollY,
     now: () => now,
     every: (_ms, cb) => {
@@ -97,6 +113,7 @@ function fakeEnv(o: FakeOptions = {}) {
     local,
     session,
     benchmarkCalls,
+    mainThreadChecks: () => mainThreadChecks,
     /** Fires `load` and resolves the probe with `result`. */
     async load(result?: ProbeResult) {
       loadCb?.();
@@ -210,6 +227,64 @@ describe('tier store: probe after load and the detection relatch (X30)', () => {
     const { fake } = started({ search: '?tier=2' });
     await fake.load();
     expect(fake.benchmarkCalls).toEqual([null]);
+  });
+});
+
+describe('tier store: a WebGL 2 context seen only in the probe worker (D-Q3)', () => {
+  afterEach(() => {
+    registry.sceneLoadsWebgl = false;
+  });
+
+  const workerOnly: ProbeResult = {
+    webgl2: true,
+    renderer: SWIFTSHADER,
+    gpu: null,
+    workerOnly: true,
+  };
+
+  it('TS22 no WebGL 2 on a main-thread canvas beats ?tier=3, whatever the worker saw', async () => {
+    const { fake, state } = started({ search: '?tier=3', probe: workerOnly, mainThread: false });
+    await fake.load();
+    expect(fake.mainThreadChecks()).toBe(1);
+    expect(state()).toMatchObject({ tier: 0, reason: 'no-webgl2' });
+    expect(state().probe?.webgl2).toBe(false);
+  });
+
+  it('TS23 tier 1 draws no WebGL: the worker answer stands and no main-thread context is made', async () => {
+    const { fake, state } = started({ search: '?tier=1', probe: workerOnly, mainThread: false });
+    await fake.load();
+    expect(fake.mainThreadChecks()).toBe(0);
+    expect(state()).toMatchObject({ tier: 1, reason: 'query-override' });
+    expect(state().probe).toEqual(workerOnly);
+  });
+
+  it('TS24 tier 1 under the debug flag mounts the canvas, so the main thread decides', async () => {
+    const { fake, state } = started({
+      search: '?tier=1&debug=1',
+      probe: workerOnly,
+      mainThread: false,
+    });
+    await fake.load();
+    expect(state()).toMatchObject({ tier: 0, reason: 'no-webgl2' });
+  });
+
+  it('TS25 a later tier that mounts the canvas confirms once; a main-thread yes keeps it', async () => {
+    const { fake, state } = started({ search: '?tier=1', probe: workerOnly });
+    await fake.load();
+    state().setPageOverride(3);
+    expect(fake.mainThreadChecks()).toBe(1);
+    expect(state()).toMatchObject({ tier: 3, reason: 'query-override' });
+    expect(state().probe).toMatchObject({ webgl2: true, renderer: SWIFTSHADER, workerOnly: false });
+    state().setPageOverride(2);
+    expect(fake.mainThreadChecks()).toBe(1);
+  });
+
+  it('TS26 tier 1 once a scene loads WebGL mounts the canvas, so the main thread decides', async () => {
+    registry.sceneLoadsWebgl = true;
+    const { fake, state } = started({ search: '?tier=1', probe: workerOnly, mainThread: false });
+    await fake.load();
+    expect(fake.mainThreadChecks()).toBe(1);
+    expect(state()).toMatchObject({ tier: 0, reason: 'no-webgl2' });
   });
 });
 

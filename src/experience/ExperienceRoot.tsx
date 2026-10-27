@@ -18,7 +18,7 @@ import { canMount } from './core/gates';
 import { createFrameRuntime, createStore, useStore, type ExperienceState } from './core/store';
 import type { ScrollEngine } from './engine/scrollEngine';
 import type { ScenePlace } from './engine/timelineMath';
-import { isSceneId, SCENES } from './scenes/registry';
+import { isSceneId, SCENES, SCENES_LOAD_WEBGL } from './scenes/registry';
 import type { SceneId } from './scenes/types';
 import { TierProvider, useTier, useTierStore } from './tier/TierProvider';
 
@@ -134,8 +134,7 @@ function ExperienceHost(props: { children: React.ReactNode }): React.JSX.Element
   // D5: in phase 7 it is requested only under the debug flag or once a registry scene declares
   // `webgl.load` (phase 8); a chunk that draws nothing costs the tier 1 LCP and TBT budgets.
   const [canvasModule, setCanvasModule] = useState<CanvasModule | null>(null);
-  const wantsCanvas =
-    loaded && readyTier >= 1 && (tier.debug || SCENES.some((s) => s.webgl?.load !== undefined));
+  const wantsCanvas = loaded && readyTier >= 1 && (tier.debug || SCENES_LOAD_WEBGL);
   useEffect(() => {
     if (!wantsCanvas || canvasModule !== null) return;
     let cancelled = false;

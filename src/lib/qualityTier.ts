@@ -4,6 +4,8 @@
  *
  * Precedence (decision D-Q3): reduced motion > no WebGL 2 > site cap > explicit override >
  * detection. The frame monitor only acts in 'auto' mode and never steps up within a visit.
+ * WebGL 2 seen only in the probe's worker counts until a tier that mounts the canvas confirms it
+ * on the main thread (tierStore).
  */
 
 export type Tier = 0 | 1 | 2 | 3;

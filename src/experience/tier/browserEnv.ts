@@ -2,7 +2,7 @@
  * The browser side of TierEnv (spec-utils 6.1 inputs). Storage access is wrapped: private mode
  * and blocked storage read as empty and never throw.
  */
-import { probeGpu } from './gpuProbe';
+import { probeGpu, webgl2OnMainThread } from './gpuProbe';
 import type { KeyValueStore, MediaSignal, TierEnv } from './tierStore';
 
 type NavigatorHints = Navigator & {
@@ -73,6 +73,7 @@ export function createBrowserTierEnv(): TierEnv {
       return () => window.removeEventListener('load', cb);
     },
     probe: ({ benchmark }) => probeGpu({ benchmark, storage: local }),
+    webgl2OnMainThread,
     scrollY: () => window.scrollY,
     now: () => performance.now(),
     every: (ms, cb) => {

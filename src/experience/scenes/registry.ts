@@ -103,6 +103,12 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
   },
 ] satisfies SceneDefinition[]);
 
+/**
+ * A scene draws WebGL (phase 8), so tier 1 mounts the canvas too: ExperienceRoot loads it (D5)
+ * and the tier store confirms WebGL 2 on the main thread first.
+ */
+export const SCENES_LOAD_WEBGL = SCENES.some((scene) => scene.webgl?.load !== undefined);
+
 const IDS: ReadonlySet<string> = new Set(SCENES.map((scene) => scene.id));
 
 export function isSceneId(value: string): value is SceneId {

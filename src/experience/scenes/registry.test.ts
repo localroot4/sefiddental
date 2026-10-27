@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { FIRST_PINNED_SCENE, isSceneId, PLACEHOLDER_SCENE_IDS, SCENES } from './registry';
+import {
+  FIRST_PINNED_SCENE,
+  isSceneId,
+  PLACEHOLDER_SCENE_IDS,
+  SCENES,
+  SCENES_LOAD_WEBGL,
+} from './registry';
 
 describe('scene registry', () => {
   it('V7 ids are unique and order is 0..11 contiguous', () => {
@@ -45,6 +51,7 @@ describe('scene registry', () => {
 
   it('V7 no scene loads WebGL in phase 3; the hero never draws over the photo', () => {
     for (const scene of SCENES) expect(scene.webgl?.load).toBeUndefined();
+    expect(SCENES_LOAD_WEBGL).toBe(false);
     expect(SCENES.find((s) => s.id === 'hero')?.webgl).toBeNull();
   });
 });
