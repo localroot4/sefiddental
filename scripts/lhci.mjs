@@ -237,8 +237,40 @@ export function homeLcpLines(lhrs) {
       // The simulated metrics come from lantern; the observed ones and the marks share the clock
       // of the trace, so they say whether the paint waited for the intro's end.
       const observed = a.metrics?.details?.items?.[0] ?? {};
-      const seen = `observed FCP ${Math.round(observed.observedFirstContentfulPaint ?? -1)}, observed LCP ${Math.round(observed.observedLargestContentfulPaint ?? -1)}`;
-      return `${lhr.requestedUrl}: LCP ${ms('largest-contentful-paint')} ms (${selector}; ${phases || 'no phases'}), FCP ${ms('first-contentful-paint')} ms, TBT ${ms('total-blocking-time')} ms; ${seen}${marks ? `, ${marks}` : ''}`;
+      const lcpAt = observed.observedLargestContentfulPaint ?? -1;
+      const seen = `observed FP ${Math.round(observed.observedFirstPaint ?? -1)}, observed FCP ${Math.round(observed.observedFirstContentfulPaint ?? -1)}, observed LCP ${Math.round(lcpAt)}`;
+      // Lantern's LCP graph can hold every request that ended before the observed LCP. The count
+      // is approximate: request times count from the first request's start and the LCP from
+      // navigation start, and lantern drops a script whose evaluation starts after the LCP.
+      const early = (a['network-requests']?.details?.items ?? []).filter(
+        (r) => r.resourceType !== 'Document' && r.networkEndTime <= lcpAt,
+      );
+      const kib = Math.round(early.reduce((sum, r) => sum + (r.transferSize ?? 0), 0) / 1024);
+      return `${lhr.requestedUrl}: LCP ${ms('largest-contentful-paint')} ms (${selector}; ${phases || 'no phases'}), FCP ${ms('first-contentful-paint')} ms, TBT ${ms('total-blocking-time')} ms; ${seen}${marks ? `, ${marks}` : ''}; approx. ${early.length} requests (${kib} KiB) ended before the observed LCP`;
+    });
+}
+
+/**
+ * One line per home run (pure, unit-tested): TBT and Lighthouse's long tasks (simulated start
+ * and duration, by the script they ran in), so a tier 1 TBT miss on CI names its tasks.
+ */
+export function homeTbtLines(lhrs) {
+  const file = (url) => {
+    try {
+      return new URL(url).pathname.split('/').pop() || '/';
+    } catch {
+      return String(url); // 'Unattributable'
+    }
+  };
+  return lhrs
+    .filter((lhr) => /\/\?tier=/.test(lhr.requestedUrl))
+    .map((lhr) => {
+      const tasks = [...(lhr.audits['long-tasks']?.details?.items ?? [])]
+        .sort((a, b) => a.startTime - b.startTime)
+        .map((t) => `${file(t.url)}@${Math.round(t.startTime)}+${Math.round(t.duration)}`)
+        .join(' ');
+      const tbt = Math.round(lhr.audits['total-blocking-time']?.numericValue ?? -1);
+      return `${lhr.requestedUrl}: TBT ${tbt} ms; long tasks ${tasks || 'none'}`;
     });
 }
 
@@ -328,6 +360,7 @@ function run() {
     const table = `${spreadTable(theme, tbt.rows)}Framework floor (/qa/floor) TBT median: ${tbt.floorMs ?? 'not measured'} ms.\n`;
     console.log(`\n${table}`);
     for (const line of homeLcpLines(lhrs)) console.log(`lhci ${theme}: ${line}`);
+    for (const line of homeTbtLines(lhrs)) console.log(`lhci ${theme}: ${line}`);
     sections.push(table);
   }
   mkdirSync(lhciDir, { recursive: true });

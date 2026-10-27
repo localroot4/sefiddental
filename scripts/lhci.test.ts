@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   cpuMultiplierFor,
   homeLcpLines,
+  homeTbtLines,
   lcpSpread,
   shiftCulprits,
   spreadTable,
@@ -241,7 +242,7 @@ describe('shiftCulprits', () => {
 });
 
 describe('homeLcpLines (scripts/lhci.mjs)', () => {
-  it('names the LCP element, its phases, FCP and the intro marks of every home run only', () => {
+  it('names the LCP element, its phases, FCP, the paints, the intro marks and the requests before the LCP of every home run only', () => {
     const home = {
       requestedUrl: 'https://localhost:3443/?tier=0',
       categories: {},
@@ -251,7 +252,24 @@ describe('homeLcpLines (scripts/lhci.mjs)', () => {
         'total-blocking-time': { numericValue: 572.5 },
         metrics: {
           details: {
-            items: [{ observedFirstContentfulPaint: 410.4, observedLargestContentfulPaint: 1580 }],
+            items: [
+              {
+                observedFirstPaint: 395.2,
+                observedFirstContentfulPaint: 410.4,
+                observedLargestContentfulPaint: 1580,
+              },
+            ],
+          },
+        },
+        'network-requests': {
+          details: {
+            items: [
+              { resourceType: 'Document', networkEndTime: 120, transferSize: 60000 },
+              { resourceType: 'Font', networkEndTime: 300, transferSize: 32768 },
+              { resourceType: 'Script', networkEndTime: 1580, transferSize: 71680 },
+              { resourceType: 'Script', networkEndTime: 1600, transferSize: 4096 },
+              { resourceType: 'Image' },
+            ],
           },
         },
         'largest-contentful-paint-element': {
@@ -280,7 +298,37 @@ describe('homeLcpLines (scripts/lhci.mjs)', () => {
     };
     const content = { ...home, requestedUrl: 'https://localhost:3443/qa/not-found' };
     expect(homeLcpLines([content, home])).toEqual([
-      'https://localhost:3443/?tier=0: LCP 2728 ms (h1#hero-h1; TTFB 600, Render Delay 2128), FCP 1100 ms, TBT 573 ms; observed FCP 410, observed LCP 1580, intro:start 1101, intro:end 2420',
+      'https://localhost:3443/?tier=0: LCP 2728 ms (h1#hero-h1; TTFB 600, Render Delay 2128), FCP 1100 ms, TBT 573 ms; observed FP 395, observed FCP 410, observed LCP 1580, intro:start 1101, intro:end 2420; approx. 2 requests (102 KiB) ended before the observed LCP',
+    ]);
+  });
+});
+
+describe('homeTbtLines (scripts/lhci.mjs)', () => {
+  it('lists TBT and the long tasks of every home run in start order, named by script', () => {
+    const home = {
+      requestedUrl: 'https://localhost:3443/?tier=1',
+      audits: {
+        'total-blocking-time': { numericValue: 443.4 },
+        'long-tasks': {
+          details: {
+            items: [
+              {
+                url: 'https://localhost:3443/_next/static/chunks/1p64.js',
+                startTime: 2893.2,
+                duration: 159.4,
+              },
+              { url: 'https://localhost:3443/?tier=1', startTime: 1344, duration: 107 },
+              { url: 'Unattributable', startTime: 1065.4, duration: 161 },
+            ],
+          },
+        },
+      },
+    };
+    const quiet = { requestedUrl: 'https://localhost:3443/?tier=0', audits: {} };
+    const content = { ...home, requestedUrl: 'https://localhost:3443/qa/not-found' };
+    expect(homeTbtLines([content, home, quiet])).toEqual([
+      'https://localhost:3443/?tier=1: TBT 443 ms; long tasks Unattributable@1065+161 /@1344+107 1p64.js@2893+159',
+      'https://localhost:3443/?tier=0: TBT -1 ms; long tasks none',
     ]);
   });
 });
