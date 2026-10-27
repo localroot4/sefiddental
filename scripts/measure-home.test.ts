@@ -5,6 +5,7 @@ import {
   lighthouseSummary,
   median,
   medianFields,
+  parseTiers,
   retried,
   sectionStats,
 } from './measure-home.mjs';
@@ -137,5 +138,14 @@ describe('lighthouseSummary', () => {
       tbtMs: null,
       lcpElements: ['img.hero', 'h1'],
     });
+  });
+});
+
+describe('parseTiers', () => {
+  it('defaults to 0 and 1, reads --tiers, drops repeats and values outside 0 to 3', () => {
+    expect(parseTiers(['docs/qa/x', '--only=frames'])).toEqual([0, 1]);
+    expect(parseTiers(['docs/qa/x', '--tiers=1,2,2'])).toEqual([1, 2]);
+    expect(parseTiers(['--tiers=2,9'])).toEqual([2]);
+    expect(() => parseTiers(['--tiers=9'])).toThrow('--tiers');
   });
 });

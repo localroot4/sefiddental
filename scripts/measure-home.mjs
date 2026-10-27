@@ -7,7 +7,7 @@
 // POST is stubbed, as in tests/e2e/home.spec.ts), and initial JS per page class
 // (scripts/check-bundle.mjs).
 // Writes results.json, bundle.json, bundle.md and README.md into the output folder.
-//   node scripts/measure-home.mjs <out dir> [--only=bundle,lighthouse,frames,inp]
+//   node scripts/measure-home.mjs <out dir> [--only=bundle,lighthouse,frames,inp] [--tiers=0,1]
 //   (after `npm run build` and `npm run db:e2e`; CHROME_PATH and PW_CHROMIUM_EXECUTABLE set, as
 //   in .env; ports E2E_PORT and E2E_PORT + 1 free)
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
@@ -28,7 +28,7 @@ import { waitForServer } from './check-bundle.mjs';
 import { cpuMultiplierFor, localCertificate, startTlsFront } from './lhci.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const TIERS = [0, 1];
+let TIERS = [0, 1];
 const RATES = [4, 6];
 const RUNS = 3;
 const BOOKING = '/رزرو-نوبت';
@@ -561,6 +561,18 @@ function readme(results, bundleMd) {
   return `${lines.join('\n')}\n`;
 }
 
+/** `--tiers=1,2` picks the tiers Lighthouse, frames and INP run at (default 0 and 1). */
+export function parseTiers(args) {
+  const arg = args.find((a) => a.startsWith('--tiers='));
+  if (!arg) return [0, 1];
+  const tiers = [...new Set(arg.slice('--tiers='.length).split(',').map(Number))].filter(
+    (t) => Number.isInteger(t) && t >= 0 && t <= 3,
+  );
+  if (!tiers.length)
+    throw new Error('measure-home: --tiers needs numbers 0 to 3, e.g. --tiers=1,2');
+  return tiers;
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const outArg = args.find((a) => !a.startsWith('--'));
@@ -574,6 +586,7 @@ async function main() {
       'bundle,lighthouse,frames,inp'
     ).split(','),
   );
+  TIERS = parseTiers(args);
   const envFile = path.join(root, '.env');
   if (existsSync(envFile)) process.loadEnvFile(envFile);
   const outDir = path.resolve(root, outArg);
@@ -584,7 +597,7 @@ async function main() {
   const results = {
     label: path.relative(path.join(root, 'docs', 'qa'), outDir),
     measuredAt: new Date().toISOString(),
-    command: `E2E_PORT=${port} node scripts/measure-home.mjs ${path.relative(root, outDir)}${args.some((a) => a.startsWith('--only=')) ? ` --only=${[...only].join(',')}` : ''}`,
+    command: `E2E_PORT=${port} node scripts/measure-home.mjs ${path.relative(root, outDir)}${args.some((a) => a.startsWith('--only=')) ? ` --only=${[...only].join(',')}` : ''}${args.some((a) => a.startsWith('--tiers=')) ? ` --tiers=${TIERS.join(',')}` : ''}`,
     host: {
       commit: git('rev-parse', '--short', 'HEAD'),
       dirty: git('status', '--porcelain').length > 0,
