@@ -41,6 +41,10 @@ on:
       command:
         description: 'run: one shell command, run as deploy on the server. deploy has sudo, so this is as powerful as the SSH key. The command and its output go into the log.'
         type: string
+      allow_red_ci:
+        description: 'deploy, preview only: deploy although CI is red, when the newest CI run on main failed only in Lighthouse and no app file changed since'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -121,7 +125,7 @@ jobs:
           # shellcheck disable=SC1091
           . deploy/vps/server.env
           set +a
-          for name in SERVER_HOST SSH_USER SITE_URL DOMAINS LE_EMAIL; do
+          for name in PHASE SERVER_HOST SSH_USER SITE_URL DOMAINS LE_EMAIL; do
             echo "$name=${!name-}" >> "$GITHUB_ENV"
           done
           echo "action $ACTION, commit $GITHUB_SHA, server $SSH_USER@$SERVER_HOST, site $SITE_URL, domains $DOMAINS, indexing ${ALLOW_INDEXING-}"
@@ -130,7 +134,30 @@ jobs:
         if: env.ACTION == 'deploy'
         env:
           GH_TOKEN: ${{ github.token }}
+          ALLOW_RED_CI: ${{ inputs.allow_red_ci }}
         run: |
+          # The owner's exception for the preview (phase 7, 2026-10-28): a red Lighthouse gate does
+          # not hold back the preview, a failed build, test or e2e step still does.
+          if [ "$ALLOW_RED_CI" = true ]; then
+            if [ "$PHASE" != preview ]; then
+              echo "::error::allow_red_ci deploys the preview only; PHASE is $PHASE."
+              exit 1
+            fi
+            run="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&status=completed&per_page=1" --jq '.workflow_runs[0] // {}')"
+            id="$(jq -r '.id // ""' <<<"$run")"
+            sha="$(jq -r '.head_sha // ""' <<<"$run")"
+            same="$(gh api "repos/$GITHUB_REPOSITORY/compare/$sha...$GITHUB_SHA" --jq '
+              if (.status == "ahead" or .status == "identical")
+                and all(.files[]; .filename | test("^(deploy/vps/|\\.github/workflows/server\\.yml$)"))
+              then "ok" else "no" end')"
+            failed="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" --jq '[.jobs[].steps[] | select(.conclusion == "failure") | .name] | join(", ")')"
+            if [ "$same" = ok ] && [ "$failed" = "Lighthouse CI, light and dark" ]; then
+              echo "::warning::Preview deploy with CI red only in Lighthouse (run $id on $sha)."
+              exit 0
+            fi
+            echo "::error::allow_red_ci needs the newest CI run on main ($sha) to fail only in Lighthouse, with only deploy/vps/ or server.yml changed since; failed steps: ${failed:-none}; same: $same."
+            exit 1
+          fi
           runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA"
           if [ "$(gh api "$runs&status=success" --jq .total_count)" -gt 0 ]; then
             echo "CI passed for $GITHUB_SHA"
