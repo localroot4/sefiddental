@@ -359,9 +359,9 @@ with zod; the forms also work as plain HTML posts.
   editors.
 - `npm audit` in CI; no secrets in the repository or logs; phones never in
   logs.
-- `package.json` `overrides` (2026-10-26) exist only because a parent pins
-  an old version. Neither package reaches the server bundle. Drop each one
-  when its parent catches up:
+- `package.json` `overrides` exist only because a parent pins an old
+  version. The site never runs the vulnerable code of any of the three.
+  Drop each one when its parent catches up:
   - `dompurify` `^3.4.17` (GHSA-cg2g-xh64-v4q7 critical, GHSA-mrv2-3pqr-j5jr
     high): `monaco-editor` 0.57.0, under `@payloadcms/ui`, pins 3.4.15. The
     override only clears `npm audit`. Monaco bundles its own DOMPurify copy
@@ -370,6 +370,13 @@ with zod; the forms also work as plain HTML posts.
     `cdn.jsdelivr.net` (the default path of `@monaco-editor/loader`), not
     from `node_modules`. Drop the override when `monaco-editor` depends on
     3.4.17 or newer. Self-hosting monaco is a separate task.
+  - `graphql-scalars` `^2.0.1` (GHSA-x8rm-f576-gq67 high, 2026-10-29):
+    `@payloadcms/graphql` 3.92.1, under `@payloadcms/next`, pins 1.22.2.
+    The ReDoS sits in the PhoneNumber scalar, which Payload never imports
+    (it uses DateTime and EmailAddress only), and GraphQL is off with no
+    route, so the override only clears `npm audit`. 2.x keeps both
+    resolvers and accepts graphql 16. Drop the override when
+    `@payloadcms/graphql` depends on 2.0.1 or newer.
   - `happy-dom` `^21.0.4` (GHSA-834v-8h66-3h79 high): `@lexical/headless`
     0.50.0, under `@payloadcms/richtext-lexical`, declares `^20.9.0`. The
     override sits outside that range. It is safe only because nothing loads
