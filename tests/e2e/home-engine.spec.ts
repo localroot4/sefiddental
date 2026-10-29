@@ -300,6 +300,54 @@ test('T-EN4c a reload at voices (tier 2, the pins arrive after the restored scro
   expect(Math.abs(await voicesTop())).toBeLessThanOrEqual(2);
 });
 
+test('T-EN4d a reload inside each pin (tier 2) lands at the same progress of that pin', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  /** The pin's document range: the spacer's top under the nav, the spacer's padding long. */
+  const pinRange = (scene: string) =>
+    page.evaluate((id) => {
+      const spacer = document.querySelector(`[data-scene="${id}"] .pin-spacer`);
+      const stage = spacer?.firstElementChild;
+      if (!spacer || !stage) throw new Error(`no pin in [data-scene="${id}"]`);
+      const navH = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue('--nav-h'),
+      );
+      const top = spacer.getBoundingClientRect().top + window.scrollY - navH;
+      const length = spacer.getBoundingClientRect().height - stage.getBoundingClientRect().height;
+      return { start: top, length };
+    }, scene);
+  const pinPlace = async (scene: string) => {
+    const { start, length } = await pinRange(scene);
+    const y = await page.evaluate(() => window.scrollY);
+    return { length, progress: (y - start) / length };
+  };
+  const refreshed = () =>
+    page.waitForFunction(
+      () => performance.getEntriesByName('sefid:engine-first-refresh').length > 0,
+    );
+  await page.goto('/?tier=2');
+  await refreshed();
+  for (const scene of ['services', 'restoration', 'workflow']) {
+    const range = await pinRange(scene);
+    await page.evaluate(
+      (top) => window.scrollTo({ top, behavior: 'instant' }),
+      Math.round(range.start + 0.4 * range.length),
+    );
+    await frames(page);
+    // A step switch in restoration moves the pins after it: the progress is read after the scroll.
+    const before = await pinPlace(scene);
+    // Chrome restores the scroll in the document without pins, where the pin range has no height
+    // (services 2010 landed at 3410); the engine returns to the progress kept at pagehide.
+    await page.reload();
+    await refreshed();
+    await frames(page);
+    await frames(page);
+    const after = await pinPlace(scene);
+    expect(Math.abs(after.progress - before.progress) * after.length, scene).toBeLessThanOrEqual(2);
+  }
+});
+
 test.describe('375 px touch', () => {
   test.use({ viewport: { width: 375, height: 667 }, hasTouch: true, isMobile: true });
 

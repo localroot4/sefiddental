@@ -25,6 +25,7 @@ import { coverRanges, isCovered } from '../core/gates';
 import { DOM_SCENES } from '../scenes/dom';
 import { isSceneId } from '../scenes/registry';
 import type { DomScene, SceneContext, SceneDefinition, SceneId } from '../scenes/types';
+import { keyValue } from '../tier/browserEnv';
 import { createFrameMonitor, type MonitorWindow } from '../tier/frameMonitor';
 import type { LayoutLatch } from '../tier/latch';
 
@@ -220,6 +221,43 @@ export function placeNow(root: HTMLElement): ScenePlace<SceneId> | null {
   return activeScene(scrollFraction(window.scrollY, maxScroll()), measureBounds(root));
 }
 
+/** A reader's place: in a scene's segment, or (`pin`) in the range of the scene's pin. */
+export type KeptPlace = ScenePlace<SceneId> & { pin?: true };
+
+/** sessionStorage: the pin the reader was inside when the page was left, and the progress. */
+export const PIN_PLACE_KEY = 'sefid-pin-place';
+const session = keyValue(() => window.sessionStorage);
+
+/**
+ * At `pagehide`. A reload restores its scroll in the document without pins, where a pin range
+ * has no height, so no place read there maps back into it (a reload at services 2010 landed at
+ * 3410, at restoration 4381 at 7684).
+ */
+export function savePinPlace(): void {
+  const pin = ScrollTrigger.getAll().find((trigger) => trigger.pin && trigger.isActive);
+  const id = pin?.pin?.closest('[data-scene]')?.getAttribute('data-scene');
+  if (pin && id) session.set(PIN_PLACE_KEY, JSON.stringify({ id, progress: pin.progress }));
+  else session.remove(PIN_PLACE_KEY);
+}
+
+/** The place `savePinPlace` kept, read once; only a reload or a history visit restores it. */
+export function takePinPlace(): KeptPlace | null {
+  const raw = session.get(PIN_PLACE_KEY);
+  session.remove(PIN_PLACE_KEY);
+  const nav = performance.getEntriesByType('navigation')[0] as
+    PerformanceNavigationTiming | undefined;
+  if (raw === null || (nav?.type !== 'reload' && nav?.type !== 'back_forward')) return null;
+  try {
+    const { id, progress } = JSON.parse(raw) as Record<string, unknown>;
+    if (typeof id === 'string' && isSceneId(id) && typeof progress === 'number') {
+      if (progress >= 0 && progress <= 1) return { id, progress, pin: true };
+    }
+  } catch {
+    // Not JSON (another writer, a manual edit): no place, the fallback applies.
+  }
+  return null;
+}
+
 /**
  * The frame monitor while no canvas renders (D5, phone spec D26): the same sampler and step rule
  * as the canvas probe, fed only while the page scrolls. Its own requestAnimationFrame loop runs
@@ -298,10 +336,11 @@ export function createScrollEngine(opts: {
   settings: TierSettings;
   scenes: readonly SceneDefinition[];
   /**
-   * Keep-place across a relatch, or the place the browser restored for a first engine: applied
-   * again by the refresh the new pins queue, run in the creation task.
+   * Keep-place across a relatch, the place the browser restored for a first engine, or the pin
+   * place a reload kept at `pagehide`: applied again by the refresh the new pins queue, run in
+   * the creation task.
    */
-  restore?: ScenePlace<SceneId>;
+  restore?: KeptPlace;
 }): ScrollEngine {
   const t0 = performance.now();
   const { root, layout, settings, scenes, restore } = opts;
@@ -328,7 +367,7 @@ export function createScrollEngine(opts: {
   // without pins; the spacers the new pins add move the content on the refresh those pins queue
   // (ScrollTrigger 3.15 `_queueRefreshAll`), so the place is applied again from the bounds that
   // refresh measures. That refresh also counts in `initMs`.
-  let pending: ScenePlace<SceneId> | null = null;
+  let pending: KeptPlace | null = null;
   let pinRefresh = false;
   let refreshStart = 0;
 
@@ -350,9 +389,17 @@ export function createScrollEngine(opts: {
     bounds = measureBounds(root);
   };
 
-  /** Native scroll, not Lenis: Lenis clamps to the limit its observer measured before the spacers. */
-  const apply = (place: ScenePlace<SceneId>): void => {
-    const y = scrollYAt(place, bounds, maxScroll());
+  /**
+   * Native scroll, not Lenis: Lenis clamps to the limit its observer measured before the spacers.
+   * A pin place reads the pin's own range: a segment's share of the document moves with every
+   * height change after the measure (a restoration step switch moved it 14 px).
+   */
+  const apply = (place: KeptPlace): void => {
+    const el = place.pin ? root.querySelector(`[data-scene="${place.id}"]`) : null;
+    const pin = el && ScrollTrigger.getAll().find((t) => t.pin && el.contains(t.pin));
+    const y = pin
+      ? pin.start + place.progress * (pin.end - pin.start)
+      : scrollYAt(place, bounds, maxScroll());
     if (y !== null) window.scrollTo(0, y);
   };
 

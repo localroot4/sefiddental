@@ -20,6 +20,9 @@ const mocks = vi.hoisted(() => ({
   placeScrollY: vi.fn(() => 1234),
   /** The place the browser restored before the first engine; none (the top) unless set. */
   placeNow: vi.fn((): { id: string; progress: number } | null => null),
+  /** The pin place a reload inside a pin kept at pagehide; none unless set. */
+  takePinPlace: vi.fn((): { id: string; progress: number; pin: true } | null => null),
+  savePinPlace: vi.fn(),
   monitorFrames: vi.fn((_opts: { tier: number }) => () => {}),
   canvasImports: 0,
   /** Renders of the canvas host: the factory count above sees only the file's first import. */
@@ -66,6 +69,8 @@ vi.mock('./engine/scrollEngine', () => ({
   },
   placeScrollY: mocks.placeScrollY,
   placeNow: mocks.placeNow,
+  takePinPlace: mocks.takePinPlace,
+  savePinPlace: mocks.savePinPlace,
   monitorFrames: mocks.monitorFrames,
   prepareScrollEngine: () => {},
 }));
@@ -166,6 +171,8 @@ beforeEach(() => {
   mocks.engines.length = 0;
   mocks.placeScrollY.mockClear();
   mocks.placeNow.mockClear().mockReturnValue(null);
+  mocks.takePinPlace.mockClear().mockReturnValue(null);
+  mocks.savePinPlace.mockClear();
   mocks.monitorFrames.mockClear().mockImplementation(() => () => {});
   mocks.canvasMounts = 0;
   mocks.gpu.options = null;
@@ -232,6 +239,32 @@ describe('ExperienceRoot (dom)', () => {
     await waitFor(() => expect(mocks.engines).toHaveLength(2));
     expect(mocks.engines[1]!.restore).toEqual({ id: 'services', progress: 0.5 });
     expect(mocks.placeNow).toHaveBeenCalledTimes(1);
+  });
+
+  it('XR9 a reload inside a pin: the first engine gets the pin place, read once; pagehide keeps the place while an engine lives', async () => {
+    mocks.takePinPlace.mockReturnValue({ id: 'services', progress: 0.4, pin: true });
+    const view = home('/?tier=2');
+    await waitFor(() => expect(mocks.engines).toHaveLength(1));
+    expect(mocks.engines[0]!.restore).toEqual({ id: 'services', progress: 0.4, pin: true });
+    expect(mocks.placeNow).not.toHaveBeenCalled();
+    window.dispatchEvent(new Event('pagehide'));
+    expect(mocks.savePinPlace).toHaveBeenCalledTimes(1);
+
+    await act(async () => view.getByTestId('tier').click());
+    await waitFor(() => expect(mocks.engines).toHaveLength(2));
+    expect(mocks.takePinPlace).toHaveBeenCalledTimes(1);
+    view.unmount();
+    window.dispatchEvent(new Event('pagehide'));
+    expect(mocks.savePinPlace).toHaveBeenCalledTimes(1);
+  });
+
+  it('XR10 a first engine without pins reads the pin place away and keeps the restored place instead', async () => {
+    mocks.takePinPlace.mockReturnValue({ id: 'services', progress: 0.4, pin: true });
+    mocks.placeNow.mockReturnValue({ id: 'voices', progress: 0 });
+    home('/?tier=1');
+    await waitFor(() => expect(mocks.engines).toHaveLength(1));
+    expect(mocks.takePinPlace).toHaveBeenCalledTimes(1);
+    expect(mocks.engines[0]!.restore).toEqual({ id: 'voices', progress: 0 });
   });
 
   it('XR3 scene_view: once per registry scene when its top crosses the viewport middle', async () => {

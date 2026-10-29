@@ -128,6 +128,11 @@ function ExperienceHost(props: {
       const y = engineModule.placeScrollY(root, place);
       if (y !== null) window.scrollTo({ top: y, behavior: 'instant' });
     }
+    // A first engine with pins returns a reload inside a pin to the progress kept at `pagehide`:
+    // the document without pins has no place for it. Read at every first engine, so a place kept
+    // before a load without pins never outlives that load.
+    const taken = kept === null ? engineModule.takePinPlace() : null;
+    const pinPlace = tier.layout.pinnedScenes ? taken : null;
     // Three frames, three short tasks (report, risk table: the engine is created on idle after
     // `load`): this commit's attribute writes are recalculated by the next frame, ScrollTrigger
     // registers on the frame after it where the layout makes triggers (every tier from 1), and
@@ -144,7 +149,8 @@ function ExperienceHost(props: {
             layout: tier.layout,
             settings: settingsRef.current,
             scenes: SCENES,
-            restore: (kept === null ? engineModule.placeNow(root) : place) ?? undefined,
+            restore:
+              (kept === null ? (pinPlace ?? engineModule.placeNow(root)) : place) ?? undefined,
           });
           experience.set({ engine: created });
           tierStore?.setScrollProbe(created);
@@ -153,7 +159,9 @@ function ExperienceHost(props: {
     });
     // The next engine replaces this one in the same effect pass, so the canvas never sees
     // `engine: null` (which would unmount it and lose the WebGL context).
+    window.addEventListener('pagehide', engineModule.savePinPlace);
     return () => {
+      window.removeEventListener('pagehide', engineModule.savePinPlace);
       if (frame !== 0) cancelAnimationFrame(frame);
       if (created === null) return;
       placeRef.current = { place: created.activeScene(), pinned: tier.layout.pinnedScenes };
