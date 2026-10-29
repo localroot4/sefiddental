@@ -397,6 +397,42 @@ test('T-SV5 keyboard in the pin: a Tab to the fourth world scrolls the page so t
   expect(fourth?.right ?? 1e9).toBeLessThanOrEqual(rail.right + 1);
 });
 
+test('T-SV8 a fast Tab from the track into restoration keeps every focused element in view', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  await page.goto('/?tier=2');
+  const { start } = await pinRange(page);
+  await scrollTo(page, start);
+  const links = page.locator(TRACK).getByRole('link');
+  await links.first().evaluate((el) => (el as HTMLElement).focus());
+  const focused = () =>
+    page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el) throw new Error('no focus');
+      const r = el.getBoundingClientRect();
+      return {
+        inView: r.top >= 0 && r.bottom <= window.innerHeight,
+        top: Math.round(r.top),
+        bottom: Math.round(r.bottom),
+        scene: el.closest('[data-scene]')?.getAttribute('data-scene') ?? null,
+        cta: el.hasAttribute('data-booking-cta'),
+      };
+    });
+  // 150 ms per Tab: an animated scroll from the world before still runs at the next Tab.
+  let last = await focused();
+  for (let i = 0; i < 12 && !(last.scene === 'restoration' && last.cta); i += 1) {
+    await page.keyboard.press('Tab');
+    await page.waitForTimeout(150);
+    last = await focused();
+    expect(last.inView, JSON.stringify(last)).toBe(true);
+  }
+  expect(last).toMatchObject({ scene: 'restoration', cta: true });
+  await page.waitForTimeout(1500);
+  const settled = await focused();
+  expect(settled.inView, JSON.stringify(settled)).toBe(true);
+});
+
 test('T-SV6 a theme switch mid-pin leaves the track transform unchanged', async ({
   page,
 }, testInfo) => {

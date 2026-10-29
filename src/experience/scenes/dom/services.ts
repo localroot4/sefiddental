@@ -148,8 +148,12 @@ const scene: DomScene = {
         const i = p.worlds.findIndex((world) => world.contains(target));
         if (i < 0) return;
         if (tl === null) p.worlds[i]?.scrollIntoView({ inline: 'center', block: 'nearest' });
+        // Immediate: an animated Lenis scroll still running at the next Tab overwrote the
+        // browser's own focus scroll, which left a fast Tab into restoration off screen.
         else if (tl.scrollTrigger)
-          ctx.engine.scrollTo(worldScrollY(tl.scrollTrigger.start, tl.scrollTrigger.end, i, n));
+          ctx.engine.scrollTo(worldScrollY(tl.scrollTrigger.start, tl.scrollTrigger.end, i, n), {
+            immediate: true,
+          });
       };
       p.track.addEventListener('focusin', onFocus);
       cleanups.push(() => p.track.removeEventListener('focusin', onFocus));

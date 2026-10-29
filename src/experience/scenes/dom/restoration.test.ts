@@ -149,7 +149,8 @@ describe('scene 4 restoration helpers', () => {
     trigger.onUpdate({ isActive: true, progress: 0.05, direction: 1 });
 
     radios[2]!.click(); // a trusted change, as a tap or an arrow key
-    expect(scrollTo).toHaveBeenCalledWith(1750);
+    // A tap: no keyboard focus, so the scroll is smooth.
+    expect(scrollTo).toHaveBeenCalledWith(1750, { immediate: false });
     // On its way through VIP's third the chip stays CIP ...
     now.mockReturnValue(10_000 + LOCK_MS - 1);
     trigger.onUpdate({ isActive: true, progress: 0.5, direction: 1 });
@@ -160,6 +161,29 @@ describe('scene 4 restoration helpers', () => {
     expect(radios.map((r) => r.checked)).toEqual([false, true, false]);
     cleanup();
     now.mockRestore();
+  });
+
+  it('RS-S8 a keyboard choice scrolls at once, so a fast Tab after it keeps the focus in view', () => {
+    document.body.innerHTML = `<div data-scene="restoration"><section>
+      ${['plain', 'vip', 'cip'].map((l) => `<svg data-level="${l}"></svg>`).join('')}
+      ${[0, 1, 2].map((i) => `<input type="radio" name="home-tier" value="t${i}">`).join('')}
+    </section></div>`;
+    const el = document.querySelector<HTMLElement>('[data-scene]')!;
+    const radios = Array.from(el.querySelectorAll('input'));
+    const scrollTo = vi.fn();
+    const ctx = {
+      el,
+      conditions: { reduce: false, fine: true, wide: true },
+      engine: { scrollTo },
+    } as unknown as Parameters<NonNullable<DomScene['pin']>>[0] & Parameters<DomScene['setup']>[0];
+    g.create.mockClear();
+    scene.pin!(ctx);
+    const cleanup = scene.setup(ctx) as () => void;
+    // An arrow key: the radio it checks has the keyboard focus (focus-visible).
+    vi.spyOn(radios[1]!, 'matches').mockReturnValue(true);
+    radios[1]!.click();
+    expect(scrollTo).toHaveBeenCalledWith(1450, { immediate: true });
+    cleanup();
   });
 
   it('RS-S7 under 1024 px the pin moves no step: the scroll a resize reflow causes before the relatch keeps the chosen chip', () => {

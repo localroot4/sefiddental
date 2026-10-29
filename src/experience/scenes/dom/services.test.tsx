@@ -238,7 +238,7 @@ describe('services scene setup', () => {
     expect(ctx.engine.scrollTo).not.toHaveBeenCalled();
     keyboardFocus(link(ctx.el, '/b'));
     expect(ctx.engine.scrollTo).toHaveBeenCalledTimes(1);
-    expect(ctx.engine.scrollTo).toHaveBeenCalledWith(500);
+    expect(ctx.engine.scrollTo).toHaveBeenCalledWith(500, { immediate: true });
     expect(scrollIntoView).not.toHaveBeenCalled();
 
     // The context revert leaves the scrubbed track at its start transform; the cleanup clears it.

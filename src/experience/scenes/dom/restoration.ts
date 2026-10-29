@@ -215,7 +215,9 @@ const scene: DomScene = {
         direction: y < window.scrollY ? -1 : 1,
         until: performance.now() + LOCK_MS,
       };
-      engine.scrollTo(y);
+      // A keyboard choice scrolls at once: an animated Lenis scroll still running at the next Tab
+      // overwrote the browser's own focus scroll, which left the focus off screen.
+      engine.scrollTo(y, { immediate: state.radios[index]?.matches(':focus-visible') === true });
     };
     el.addEventListener('change', onChange);
     return () => {

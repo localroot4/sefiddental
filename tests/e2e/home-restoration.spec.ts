@@ -282,6 +282,39 @@ test('T-RS3 arrow keys move the step, scroll to it and keep the focused chip in 
   expect(await tierSelects(beacons)).toEqual(['tier', 'tier', 'tier']);
 });
 
+test('T-RS8 arrow keys and then a fast Tab out of the pin keep every focused element in view', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  await page.goto('/?tier=2');
+  const range = await pinRange(page);
+  await scrollTo(page, range.start + 10);
+  await scene(page).getByRole('radio').nth(0).focus();
+  const focused = () =>
+    page.evaluate(() => {
+      const el = document.activeElement;
+      if (!el) throw new Error('no focus');
+      const r = el.getBoundingClientRect();
+      return {
+        inView: r.top >= 0 && r.bottom <= window.innerHeight,
+        top: Math.round(r.top),
+        scene: el.closest('[data-scene]')?.getAttribute('data-scene') ?? null,
+      };
+    });
+  // 150 ms per key: the step's scroll from the choice before still runs at the next Tab.
+  for (const key of ['ArrowDown', 'ArrowDown', 'Tab', 'Tab', 'Tab']) {
+    await page.keyboard.press(key);
+    await page.waitForTimeout(150);
+    const now = await focused();
+    expect(now.inView, `${key} ${JSON.stringify(now)}`).toBe(true);
+  }
+  // The third Tab left the scene.
+  expect((await focused()).scene).not.toBe('restoration');
+  await page.waitForTimeout(1500);
+  const settled = await focused();
+  expect(settled.inView, JSON.stringify(settled)).toBe(true);
+});
+
 /** The scrub lag on a coarse pointer (0.32 s) and the settle window, with margin (home-phone). */
 const SCRUB_WAIT_MS = 700;
 
