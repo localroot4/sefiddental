@@ -1,6 +1,6 @@
 import { ArticleMeta } from '@/components/ui/Article';
 import { ButtonLink } from '@/components/ui/Button';
-import { ServiceCard } from '@/components/ui/Cards';
+import { ServiceCard, STRETCHED } from '@/components/ui/Cards';
 import { cx } from '@/components/ui/cx';
 import { EmptyState } from '@/components/ui/Feedback';
 import { Icon } from '@/components/ui/Icon';
@@ -81,7 +81,7 @@ export function FeaturedArticle(props: { article: ArticleCard }) {
   return (
     <article
       data-featured=""
-      className="relative grid gap-6 rounded-card border border-line bg-surface-raised p-4 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] md:items-center md:gap-8 md:p-6"
+      className="relative grid gap-6 rounded-card border border-line bg-surface-raised p-4 md:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] md:items-center md:gap-8 md:p-6"
     >
       {cover ? (
         <MediaFrame ratio="16:9">
@@ -95,10 +95,7 @@ export function FeaturedArticle(props: { article: ArticleCard }) {
       <div className="grid content-start gap-3">
         <p className="text-small font-semibold text-brand-strong">{A['articles.featured']}</p>
         <h2 className="font-display text-display-2 font-bold">
-          <a
-            href={articlePath(article)}
-            className="after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
-          >
+          <a href={articlePath(article)} className={STRETCHED}>
             {ltr(article.title)}
           </a>
         </h2>

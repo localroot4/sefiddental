@@ -104,4 +104,48 @@ describe('form fields (DESIGN.md Input and Chips; conversion.md 5.2)', () => {
     expect(radios[2]?.disabled).toBe(true);
     expect(screen.getByRole('radio', { name: 'عصر' })).toBe(radios[1]);
   });
+
+  it('UF7 a chip is a pill span after its radio, so checked, hover and ring are peer and group styles (no :has())', () => {
+    const { container } = render(
+      <ChipGroup
+        legend="l"
+        name="time"
+        options={[
+          { value: 'morning', label: 'صبح' },
+          { value: 'any', label: 'فرقی ندارد', disabled: true },
+        ]}
+      />,
+    );
+    const [enabled, disabled] = [...container.querySelectorAll('label')];
+    expect([...enabled!.children].map((el) => el.tagName)).toEqual(['INPUT', 'SPAN']);
+    const [input, pill] = [...enabled!.children].map((el) => el.className.split(' '));
+    expect(input).toContain('peer');
+    expect(pill).toEqual(
+      expect.arrayContaining([
+        'min-h-target',
+        'rounded-pill',
+        'border-[1.5px]',
+        'border-line-strong',
+        'bg-surface-raised',
+        'group-hover/chip:border-brand',
+        'peer-checked:border-brand',
+        'peer-checked:bg-brand-soft',
+        'peer-checked:text-brand-strong',
+        'outline-offset-2',
+        'outline-focus',
+        'peer-focus-visible:outline-2',
+      ]),
+    );
+    expect(enabled!.children[1]!.textContent).toBe('صبح');
+    expect(enabled!.className.split(' ')).toEqual(
+      expect.arrayContaining(['relative', 'rounded-pill', 'group/chip', 'cursor-pointer']),
+    );
+    // Disabled is known when it renders: the whole pill dims, no hover.
+    expect(disabled!.className.split(' ')).toEqual(
+      expect.arrayContaining(['cursor-not-allowed', 'opacity-50']),
+    );
+    expect(disabled!.className).not.toContain('group/chip');
+    expect(container.innerHTML).not.toContain('has-');
+    expect(screen.getByRole('radio', { name: 'فرقی ندارد' })).toBeTruthy();
+  });
 });

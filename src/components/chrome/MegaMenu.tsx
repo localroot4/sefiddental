@@ -66,7 +66,8 @@ export function MegaMenu(props: { nav: NavTree }) {
         <Icon
           name="caret-down"
           size="sm"
-          className="text-brand transition-transform group-has-[:popover-open]/mega:rotate-180"
+          // aria-expanded from ChromeScripts (megaMenu.ts); `:has()` only without JavaScript.
+          className="text-brand transition-transform [[aria-expanded=true]>&]:rotate-180 noscript:group-has-[:popover-open]/mega:rotate-180"
         />
       </SectionButton>
       <div

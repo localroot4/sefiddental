@@ -37,10 +37,21 @@ const controllers = (doc: Document, dialog: HTMLDialogElement) =>
  * the browser lacks them, remembers the opener and returns focus to it on close, syncs
  * aria-expanded, and wraps Tab inside an open dialog (a modal alone lets Tab reach the browser
  * chrome). Focus on open is native: showModal() focuses the `autofocus` control, before hydration
- * too. Document-level listeners, so later dialogs share it.
+ * too. Document-level listeners, so later dialogs share it. `data-modal` on <html> tells CSS a
+ * modal other than the intro is open (the scroll lock, the sticky bar) without `:has()`, which
+ * makes every DOM insertion restyle the whole page: an `open` attribute observer sees every way a
+ * dialog opens or closes, Invoker Commands included, before the next frame.
  */
 export function setupDialogs(doc: Document): () => void {
   const native = 'command' in HTMLButtonElement.prototype;
+  const syncModal = () => {
+    const open = Array.from(doc.querySelectorAll('dialog[open]:not(#intro)'));
+    doc.documentElement.toggleAttribute(
+      'data-modal',
+      open.some((dialog) => dialog.matches(':modal')),
+    );
+  };
+  const observer = new MutationObserver(syncModal);
   const onClick = (event: MouseEvent) => {
     const button = event.target instanceof Element ? event.target.closest('[commandfor]') : null;
     const dialog = button && doc.getElementById(button.getAttribute('commandfor') ?? '');
@@ -81,7 +92,10 @@ export function setupDialogs(doc: Document): () => void {
   // `close` does not bubble: a capture listener on the document still sees it.
   doc.addEventListener('close', onClose, true);
   doc.addEventListener('keydown', onKey);
+  observer.observe(doc.body, { subtree: true, attributeFilter: ['open'] });
+  syncModal(); // a modal opened before hydration
   return () => {
+    observer.disconnect();
     doc.removeEventListener('click', onClick);
     doc.removeEventListener('close', onClose, true);
     doc.removeEventListener('keydown', onKey);

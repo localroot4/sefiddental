@@ -15,7 +15,9 @@ const HEIGHT = 'h-[calc(var(--sticky-bar-h)+env(safe-area-inset-bottom))]';
  * The phone and tablet sticky bar (conversion.md 4, nav spec 1.7): «تماس» | «واتساپ» |
  * «رزرو نوبت», WhatsApp only once verified (F12). The spacer before it keeps the end of the page
  * clear of the bar, hidden or not, and matches the footer surface. Hidden from 1024 px, while a
- * dialog is open (CSS), and as ChromeScripts decides (`data-hidden`, inert).
+ * dialog is open (CSS: html's `data-modal` from dialogs.ts and `data-intro="playing"` from the
+ * intro script; `:has()` only without JavaScript), and as ChromeScripts decides (`data-hidden`,
+ * inert).
  */
 export function StickyBar(props: { phone: string; whatsapp: string | null }) {
   return (
@@ -27,7 +29,8 @@ export function StickyBar(props: { phone: string; whatsapp: string | null }) {
         data-call-sheet=""
         className={cx(
           HEIGHT,
-          'fixed inset-x-0 bottom-0 z-40 grid gap-2 border-t border-line bg-surface-raised px-2 pt-2 pb-[calc(var(--space-2)+env(safe-area-inset-bottom))] shadow-floating transition-transform duration-(--dur-3) data-hidden:translate-y-[120%] lg:hidden [body:has(dialog[open])_&]:translate-y-[120%]',
+          'fixed inset-x-0 bottom-0 z-40 grid gap-2 border-t border-line bg-surface-raised px-2 pt-2 pb-[calc(var(--space-2)+env(safe-area-inset-bottom))] shadow-floating transition-transform duration-(--dur-3) data-hidden:translate-y-[120%] lg:hidden',
+          'in-data-modal:translate-y-[120%] in-data-[intro=playing]:translate-y-[120%] noscript:[body:has(dialog[open])_&]:translate-y-[120%]',
           props.whatsapp ? 'grid-cols-3' : 'grid-cols-2',
         )}
       >

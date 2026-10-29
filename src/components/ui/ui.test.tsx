@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { render, screen } from '@testing-library/react';
+import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -10,7 +11,7 @@ import type { Media } from '@/payload-types';
 import { Alert } from './Alert';
 import { ArticleMeta, SourceList, Toc } from './Article';
 import { Badge, Tag } from './Badge';
-import { CategoryIcon, CategoryTile, DentistCard, ServiceCard } from './Cards';
+import { CardRail, CategoryIcon, CategoryTile, DentistCard, ServiceCard } from './Cards';
 import { DirectionsLinks, PhoneNumber } from './Contact';
 import { Fact, FactsRow, FaqList, Quote, Steps } from './Content';
 import { EmptyState, Loading, SkeletonCard, SuccessCheck, Toast } from './Feedback';
@@ -243,8 +244,41 @@ describe('ui components: content, media, cards', () => {
     const links = screen.getAllByRole('link');
     expect(links).toHaveLength(1);
     expect(links[0]!.textContent).toBe('لمینت سرامیکی');
-    expect(links[0]!.className).toContain('after:inset-0');
     expect(screen.getByRole('heading', { level: 3 }).textContent).toBe('لمینت سرامیکی');
+  });
+
+  it("UK1b the focus ring sits on the link's ::after over the card border box, never on the card (:has())", () => {
+    const { container } = render(<ServiceCard href="/x" title="t" accent="cosmetic" />);
+    const link = screen.getByRole('link').className.split(' ');
+    for (const cls of [
+      'after:absolute',
+      'after:-inset-px', // the card's 1 px border: the ring follows the card's own box
+      'after:rounded-card',
+      'focus-visible:outline-none',
+      'focus-visible:after:outline-2',
+      'focus-visible:after:outline-offset-2',
+      'focus-visible:after:outline-focus',
+    ]) {
+      expect(link).toContain(cls);
+    }
+    const card = container.querySelector('article')!.className;
+    expect(card).not.toContain('has-');
+    expect(card.split(' ')).toEqual(expect.arrayContaining(['border', 'rounded-card']));
+  });
+
+  it('UK1c a rail of one card takes the row up to 24rem; more cards peek (no :has())', () => {
+    const card = (key: string) => <DentistCard key={key} name={key} media={<i />} />;
+    const rail = (children: ReactNode) =>
+      render(<CardRail label="r">{children}</CardRail>)
+        .getAllByRole('region')
+        .at(-1)!
+        .className.split(' ');
+    const one = rail([card('a')]);
+    expect(one).toContain('auto-cols-[min(100%,24rem)]');
+    expect(one).not.toContain('auto-cols-[min(84%,20rem)]');
+    const two = rail([card('a'), card('b')]);
+    expect(two).toContain('auto-cols-[min(84%,20rem)]');
+    expect(two).not.toContain('auto-cols-[min(100%,24rem)]');
   });
 
   it('UK2 category icons: the allowlisted admin glyph or the accent default, colored by class', () => {

@@ -2,6 +2,7 @@ import { fireEvent, render } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { setupChoices } from '@/components/chrome/choices';
 import { RestorationTiers, TIER_INPUT } from '@/components/services/RestorationTiers';
 import { track } from '@/lib/track/track';
 import type { Service, ServiceTier } from '@/payload-types';
@@ -64,6 +65,37 @@ describe('home scene 4 tier step (F24, CV9)', () => {
     fireEvent.click(document.querySelector(`input[name="${TIER_INPUT}"][value="cip"]`)!);
     expect(track).toHaveBeenCalledTimes(1);
     expect(track).toHaveBeenCalledWith('tier_select', { location: 'tier', tier: 'cip' });
+  });
+
+  it('RS5 the chosen step shows its panel by position: data-choice with JavaScript (choices.ts), :has() only without', () => {
+    const { container } = render(
+      <RestorationSection tiers={TIERS} path={null} copy={{ heading: 'h', intro: null }} />,
+    );
+    const stop = setupChoices(document);
+    const group = container.querySelector('[data-choices]')!;
+    expect(group.className.split(' ')).toContain('group/tiers');
+    const panels = [...group.querySelectorAll('[data-tier-panel]')].map((el) =>
+      el.className.split(' ').filter((c) => c.includes('/tiers:')),
+    );
+    expect(panels).toEqual([
+      ['group-data-choice/tiers:hidden', 'noscript:group-has-[input:checked]/tiers:hidden'],
+      [
+        'group-data-[choice=1]/tiers:grid',
+        'noscript:group-has-[label:nth-of-type(1)>input:checked]/tiers:grid',
+      ],
+      [
+        'group-data-[choice=2]/tiers:grid',
+        'noscript:group-has-[label:nth-of-type(2)>input:checked]/tiers:grid',
+      ],
+      [
+        'group-data-[choice=3]/tiers:grid',
+        'noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:grid',
+      ],
+    ]);
+    expect(group.hasAttribute('data-choice')).toBe(false);
+    fireEvent.click(group.querySelector('input[value="cip"]')!);
+    expect(group.getAttribute('data-choice')).toBe('3');
+    stop();
   });
 
   it('RS4 a tier CTA carries its tier for the chrome route and booking_open (CB11, TL3)', () => {

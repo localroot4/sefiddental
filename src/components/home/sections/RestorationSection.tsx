@@ -10,13 +10,15 @@ import { ltr } from '@/components/ui/ltr';
 
 import { HomeSection, type Copy } from './HomeSection';
 
-// The step control shows the panel of the checked tier with CSS alone (no JS, every panel in the
-// server HTML). Static classes per position: Tailwind cannot build a class from a tier key.
+// The step control shows the panel of the checked tier (every panel in the server HTML) by its
+// position, `data-choice` (ChromeScripts' choices.ts); without JavaScript a `:has()` rule that
+// exists only then (`noscript:`). Static classes per position: Tailwind cannot build a class from
+// a tier key.
 const PANEL = [
-  'group-has-[label:nth-of-type(1)>input:checked]/tiers:grid',
-  'group-has-[label:nth-of-type(2)>input:checked]/tiers:grid',
-  'group-has-[label:nth-of-type(3)>input:checked]/tiers:grid',
-  'group-has-[label:nth-of-type(4)>input:checked]/tiers:grid',
+  'group-data-[choice=1]/tiers:grid noscript:group-has-[label:nth-of-type(1)>input:checked]/tiers:grid',
+  'group-data-[choice=2]/tiers:grid noscript:group-has-[label:nth-of-type(2)>input:checked]/tiers:grid',
+  'group-data-[choice=3]/tiers:grid noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:grid',
+  'group-data-[choice=4]/tiers:grid noscript:group-has-[label:nth-of-type(4)>input:checked]/tiers:grid',
 ];
 
 /**
@@ -46,7 +48,7 @@ export function RestorationSection(props: {
   );
   return (
     <HomeSection scene="restoration" section="restoration" family="D" copy={props.copy} split>
-      <div className="group/tiers grid gap-6">
+      <div data-choices="" className="group/tiers grid gap-6">
         <fieldset className="min-w-0">
           <legend className="sr-only">{t('home.restoration.legend')}</legend>
           <div className="flex flex-wrap gap-2">
@@ -63,7 +65,7 @@ export function RestorationSection(props: {
         </fieldset>
         <div
           data-tier-panel=""
-          className="grid justify-items-start group-has-[input:checked]/tiers:hidden"
+          className="grid justify-items-start group-data-choice/tiers:hidden noscript:group-has-[input:checked]/tiers:hidden"
         >
           {book(null)}
         </div>

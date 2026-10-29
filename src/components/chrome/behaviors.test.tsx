@@ -1,6 +1,7 @@
 import { afterEach, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 
 import { bookingRoute, inView, prefill, setupBookingRoute } from './bookingRoute';
+import { setupChoices } from './choices';
 import { setupClosedSheet } from './closedSheet';
 import { closeModals, setupDialogs } from './dialogs';
 import { getFormSession, renewFormSession } from './formSession';
@@ -16,7 +17,15 @@ beforeAll(() => {
     this.removeAttribute('open');
     this.dispatchEvent(new Event('close'));
   };
+  // No top layer either: an open dialog counts as modal (every site dialog opens with showModal).
+  const matches = Element.prototype.matches;
+  HTMLDialogElement.prototype.matches = function modal(this: HTMLDialogElement, selector: string) {
+    return selector === ':modal' ? this.open : matches.call(this, selector);
+  };
 });
+
+/** MutationObserver callbacks run as microtasks. */
+const mutationsDelivered = () => new Promise<void>((resolve) => queueMicrotask(resolve));
 
 let observed: IntersectionObserverCallback | null = null;
 beforeEach(() => {
@@ -191,6 +200,67 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     closeModals(document);
     expect(document.activeElement).not.toBe(open);
     stop();
+  });
+
+  it('CB6b html data-modal follows any open modal but the intro, however it opens or closes (CSS without :has())', async () => {
+    document.body.innerHTML = `
+      <dialog id="intro"></dialog>
+      <button id="open" command="show-modal" commandfor="d">o</button>
+      <dialog id="d"><button id="close" command="close" commandfor="d">c</button></dialog>
+      <dialog id="early"></dialog>`;
+    const html = document.documentElement;
+    // A modal opened before hydration (native Invoker Commands) is there at setup.
+    (document.getElementById('early') as HTMLDialogElement).showModal();
+    const stop = setupDialogs(document);
+    expect(html.hasAttribute('data-modal')).toBe(true);
+    (document.getElementById('early') as HTMLDialogElement).close();
+    await mutationsDelivered();
+    expect(html.hasAttribute('data-modal')).toBe(false);
+    // The intro is a modal too, but the page under it neither scrolls nor shows the bar anyway.
+    (document.getElementById('intro') as HTMLDialogElement).showModal();
+    await mutationsDelivered();
+    expect(html.hasAttribute('data-modal')).toBe(false);
+    click(document.getElementById('open')!);
+    await mutationsDelivered();
+    expect(html.hasAttribute('data-modal')).toBe(true);
+    click(document.getElementById('close')!);
+    await mutationsDelivered();
+    expect(html.hasAttribute('data-modal')).toBe(false);
+    // Any other script's showModal() too.
+    (document.getElementById('d') as HTMLDialogElement).showModal();
+    await mutationsDelivered();
+    expect(html.hasAttribute('data-modal')).toBe(true);
+    stop();
+    html.removeAttribute('data-modal');
+  });
+
+  it('CB6c radio groups mirror the checked position and item for CSS (choices.ts), at setup and on change', () => {
+    document.body.innerHTML = `
+      <div data-choices>
+        <article data-choice-item><input type="radio" name="t" value="a"></article>
+        <article data-choice-item><input type="radio" name="t" value="b"></article>
+        <article data-choice-item><input type="radio" name="t" value="c"></article>
+      </div>
+      <div data-choices id="restored"><input type="radio" name="u"><input type="radio" name="u" checked></div>`;
+    const stop = setupChoices(document);
+    const [group, restored] = [...document.querySelectorAll('[data-choices]')];
+    const items = [...document.querySelectorAll('[data-choice-item]')];
+    const radios = [...group!.querySelectorAll('input')];
+    expect(group!.hasAttribute('data-choice')).toBe(false);
+    expect(restored!.getAttribute('data-choice')).toBe('2'); // restored or checked before hydration
+    const pick = (i: number) => {
+      radios[i]!.checked = true;
+      radios[i]!.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    pick(1);
+    expect(group!.getAttribute('data-choice')).toBe('2');
+    expect(items.map((item) => item.hasAttribute('data-checked'))).toEqual([false, true, false]);
+    pick(2);
+    expect(group!.getAttribute('data-choice')).toBe('3');
+    expect(items.map((item) => item.hasAttribute('data-checked'))).toEqual([false, false, true]);
+    stop();
+    pick(0); // no listener after teardown
+    expect(group!.getAttribute('data-choice')).toBe('3');
   });
 
   it('CB7 a closed clinic turns an opted-in call press into the sheet; an open one dials', async () => {

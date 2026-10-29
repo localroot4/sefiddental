@@ -25,9 +25,11 @@ export function setupMegaMenu(doc: Document, win: Window = window): () => void {
     timer = win.setTimeout(fn, ms);
   };
 
-  const sync = () => {
-    if (!isOpen()) hoverOpened = false;
-    button.setAttribute('aria-expanded', String(isOpen()));
+  // From `beforetoggle`, so the caret (MegaMenu) turns in the frame the panel opens.
+  const sync = (event?: ToggleEvent) => {
+    const open = event ? event.newState === 'open' : isOpen();
+    if (!open) hoverOpened = false;
+    button.setAttribute('aria-expanded', String(open));
   };
   const onFocusOut = (event: FocusEvent) => {
     const next = event.relatedTarget;
@@ -59,7 +61,7 @@ export function setupMegaMenu(doc: Document, win: Window = window): () => void {
   };
 
   sync();
-  panel.addEventListener('toggle', sync);
+  panel.addEventListener('beforetoggle', sync);
   root.addEventListener('focusout', onFocusOut);
   root.addEventListener('pointerenter', onEnter);
   root.addEventListener('pointerleave', onLeave);
@@ -67,7 +69,7 @@ export function setupMegaMenu(doc: Document, win: Window = window): () => void {
   return () => {
     win.clearTimeout(timer);
     if (isOpen()) panel.hidePopover();
-    panel.removeEventListener('toggle', sync);
+    panel.removeEventListener('beforetoggle', sync);
     root.removeEventListener('focusout', onFocusOut);
     root.removeEventListener('pointerenter', onEnter);
     root.removeEventListener('pointerleave', onLeave);

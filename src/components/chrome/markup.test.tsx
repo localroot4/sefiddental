@@ -104,6 +104,34 @@ describe('chrome markup (nav spec 1, ia.md 3)', () => {
     expect(three).toMatch(/>واتساپ</);
   });
 
+  it('CM2b open states reach CSS without :has(): the caret from aria-expanded, the bar from html data-modal and data-intro', () => {
+    const dom = document.createElement('div');
+    dom.innerHTML =
+      html(<SiteHeader nav={NAV} contact={CONTACT} />) +
+      html(<StickyBar phone="+982155101054" whatsapp={null} />);
+    const caret = dom.querySelector('[popovertarget="mega-menu"] > svg')!;
+    expect(caret.getAttribute('class')?.split(' ')).toEqual(
+      expect.arrayContaining([
+        '[[aria-expanded=true]>&]:rotate-180',
+        'noscript:group-has-[:popover-open]/mega:rotate-180',
+      ]),
+    );
+    expect(dom.querySelector('[data-sticky-bar]')!.className.split(' ')).toEqual(
+      expect.arrayContaining([
+        'in-data-modal:translate-y-[120%]',
+        'in-data-[intro=playing]:translate-y-[120%]',
+        'noscript:[body:has(dialog[open])_&]:translate-y-[120%]',
+      ]),
+    );
+    // Every :has() class of the chrome exists only without JavaScript (scripts/check-has.mjs).
+    const classes = [...dom.querySelectorAll('[class]')].flatMap((el) =>
+      (el.getAttribute('class') ?? '').split(' '),
+    );
+    const hasClasses = classes.filter((c) => c.includes('has-') || c.includes(':has('));
+    expect(hasClasses.length).toBeGreaterThan(0);
+    expect(hasClasses.filter((c) => !c.startsWith('noscript:'))).toEqual([]);
+  });
+
   it('CM3 the closed-hours sheet carries no hours sentence in the server HTML', () => {
     const out = html(<ClosedSheet phone="+982155101054" />);
     expect(out).toMatch(/<p id="closed-sheet-text" data-sheet-text="" class="[^"]*"><\/p>/);

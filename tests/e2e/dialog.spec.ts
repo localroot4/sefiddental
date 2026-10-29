@@ -80,7 +80,7 @@ test('T-DLG1 keyboard: Enter opens it on the phone field, Tab stays inside, Esc 
   await page.keyboard.press('PageDown');
   await page.waitForTimeout(300);
   expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
-  // A token check: SiteShell's `max-lg:has-[dialog:modal]:overflow-hidden` is always there.
+  // The booking route's own lock class (under 1024 px html's data-modal locks too).
   await expect(page.locator('html')).toContainClass('overflow-hidden');
   await expectNoA11yViolations(page);
 

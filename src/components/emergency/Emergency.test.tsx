@@ -137,8 +137,17 @@ describe('/اورژانس page (conversion.md 7, emergency spec 4)', () => {
     expect(reveal.querySelector('[data-call-sheet] a')?.getAttribute('data-location')).toBe(
       'section',
     );
-    // CSS hides it until the box is checked; a browser without :has() drops the rule (EM-D3).
-    expect(box.closest('div')!.className).toContain('[&:not(:has(:checked))>[data-reveal]]:hidden');
+    // CSS shows it while the box is checked, as a later sibling of the box (`peer-checked:`):
+    // with JavaScript or without, before hydration too, and without :has().
+    expect(reveal.parentElement).toBe(box.parentElement);
+    expect(box.compareDocumentPosition(reveal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(box.className.split(' ')).toContain('peer');
+    expect(reveal.className.split(' ')).toEqual(
+      expect.arrayContaining(['hidden', 'peer-checked:grid']),
+    );
+    expect(open.querySelector(`label[for="${box.id}"]`)?.textContent).toBe(
+      t('emergency.triage.avulsion'),
+    );
     const closed = (await render(CLOSED)).querySelector('[data-reveal]')!;
     expect(closed.textContent).toContain(t('emergency.avulsion.closed'));
     expect(closed.querySelector('a')).toBeNull();

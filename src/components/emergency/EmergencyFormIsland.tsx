@@ -302,40 +302,40 @@ export function EmergencyFormIsland(props: {
         className="grid gap-1"
       >
         <legend className="mb-2 text-body font-semibold">{labels.legend}</legend>
-        {labels.triage.map(([item, label], i) => {
-          const box = (
-            <label className="flex min-h-target cursor-pointer items-start gap-3 py-2 text-body">
-              {/* Drawn, not native: a native box stays grey in dark, without the input border. */}
-              <span className="mt-[.3em] grid size-[1.25rem] shrink-0">
-                <input
-                  type="checkbox"
-                  name="triage"
-                  value={item}
-                  defaultChecked={initial.triage.includes(item)}
-                  autoFocus={i === 0 && autoFocusOn('triage')}
-                  onChange={() => setErrors((prev) => ({ ...prev, triage: undefined }))}
-                  className="peer col-start-1 row-start-1 size-full cursor-pointer appearance-none rounded-[.25rem] border-[1.5px] border-line-strong bg-surface-raised transition-colors checked:border-brand checked:bg-brand"
-                />
-                <span className="pointer-events-none col-start-1 row-start-1 hidden place-self-center text-on-brand peer-checked:block">
-                  {props.icons.tick}
-                </span>
-              </span>
-              <span>{label}</span>
+        {labels.triage.map(([item, label], i) => (
+          // The box, its tick and the label share one grid cell (the label's padding keeps the
+          // box's place and the 44 px row a click anywhere checks), so the avulsion first aid,
+          // a later sibling of its box, shows while it is checked through `peer-checked:` alone:
+          // no JavaScript, no `:has()` (one in the site CSS makes every DOM insertion restyle
+          // the whole page). `relative` keeps the box and the tick over the label.
+          <div key={item} className="grid text-body">
+            {/* Drawn, not native: a native box stays grey in dark, without the input border. */}
+            <input
+              id={`${p}-triage-${item}`}
+              type="checkbox"
+              name="triage"
+              value={item}
+              defaultChecked={initial.triage.includes(item)}
+              autoFocus={i === 0 && autoFocusOn('triage')}
+              onChange={() => setErrors((prev) => ({ ...prev, triage: undefined }))}
+              className="peer relative col-start-1 row-start-1 mt-[calc(var(--space-2)+.3em)] size-[1.25rem] cursor-pointer appearance-none rounded-[.25rem] border-[1.5px] border-line-strong bg-surface-raised transition-colors checked:border-brand checked:bg-brand"
+            />
+            <span className="pointer-events-none relative col-start-1 row-start-1 mt-[calc(var(--space-2)+.3em)] hidden size-[1.25rem] place-items-center text-on-brand peer-checked:grid">
+              {props.icons.tick}
+            </span>
+            <label
+              htmlFor={`${p}-triage-${item}`}
+              className="col-start-1 row-start-1 min-h-target cursor-pointer py-2 ps-8"
+            >
+              {label}
             </label>
-          );
-          return item === 'avulsion' ? (
-            // Shown only while its box is checked where :has() exists; an older browser drops
-            // the rule as invalid and always shows the first aid (EM-D3).
-            <div key={item} className="[&:not(:has(:checked))>[data-reveal]]:hidden">
-              {box}
-              <div data-reveal="" className="ms-8 mb-2 grid gap-3 text-small">
+            {item === 'avulsion' ? (
+              <div data-reveal="" className="ms-8 mb-2 hidden gap-3 text-small peer-checked:grid">
                 {props.avulsion}
               </div>
-            </div>
-          ) : (
-            <div key={item}>{box}</div>
-          );
-        })}
+            ) : null}
+          </div>
+        ))}
         {errors.triage ? (
           <p id={`${p}-triage-error`} className="flex gap-1 text-small font-medium text-danger">
             {props.icons.error}

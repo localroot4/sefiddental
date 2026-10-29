@@ -11,7 +11,7 @@
     "dev": "next dev",
     "prebuild": "node scripts/sync-public-assets.mjs",
     "build": "next build",
-    "postbuild": "node -e \"for (const f of ['.env', '.env.production']) require('node:fs').rmSync('.next/standalone/' + f, { force: true })\" && node scripts/compile-hints.mjs",
+    "postbuild": "node -e \"for (const f of ['.env', '.env.production']) require('node:fs').rmSync('.next/standalone/' + f, { force: true })\" && node scripts/compile-hints.mjs && node scripts/check-has.mjs",
     "start": "node scripts/start-standalone.mjs",
     "start:standalone": "node scripts/start-standalone.mjs",
     "lint": "eslint . --max-warnings=0",

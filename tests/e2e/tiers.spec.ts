@@ -1,6 +1,7 @@
 // Restoration tiers finalized (phase 5 deliverable 6, freeze G13 and F24): swipeable cards on
 // phones and three columns from 1024 px; nothing chosen on load; choosing a tier warms only its card
-// (CSS :has, so also without JavaScript) and the one «رزرو نوبت» under the cards carries the tier;
+// (CSS from data-choice and data-checked, ChromeScripts; without JavaScript from :has() rules that
+// exist only then) and the one «رزرو نوبت» under the cards carries the tier;
 // with JavaScript the booking block gets the tier and tier_select is sent once. T-SV3 in
 // services.spec.ts keeps its phase 4 assertions: one visible «رزرو نوبت», `?service=restoration`.
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
@@ -122,6 +123,11 @@ test('T-TR4 without JavaScript the choice still swaps the CTA, which opens the b
   // A tap on the card: the label's ::after covers it, so the label takes the click.
   await tiers.locator('article').nth(1).click();
   await expect(tiers.getByRole('radio', { name: 'VIP' })).toBeChecked();
+  // The card turns warm with its badge, through the no-JS :has() rules.
+  const warm = await tokenColor(page, '--color-warm-soft');
+  await expect(tiers.locator('article').nth(1)).toHaveCSS('background-color', warm);
+  expect((await backgrounds(page)).filter((c) => c === warm)).toHaveLength(1);
+  await expect(tiers.getByText(t('pages.tiers.chosen')).filter({ visible: true })).toHaveCount(1);
   await expect(book).toHaveCount(1);
   await expect(book).toHaveAttribute('href', /\?service=restoration&tier=vip$/);
   await book.click();

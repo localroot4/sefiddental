@@ -38,22 +38,28 @@ describe('tier choice mode (freeze G13, F24)', () => {
     expect(screen.getByRole('radio', { name: 'VIP' }).closest('h3')).not.toBeNull();
   });
 
-  it('TC2 the checked card turns warm and shows its badge through CSS alone', () => {
+  it('TC2 the checked card turns warm and shows its badge: data-checked with JavaScript, :has() only without', () => {
     render(<TierComparison label="سطح‌ها" tiers={TIERS} choice={choice} />);
     const card = screen.getByRole('radio', { name: 'VIP' }).closest('article')!;
-    expect(card.className).toContain('has-[input:checked]:bg-warm-soft');
-    expect(card.className).toContain('has-[input:checked]:border-warm');
+    expect(card.hasAttribute('data-choice-item')).toBe(true);
+    const cls = card.className.split(' ');
+    expect(cls).toContain('data-checked:bg-warm-soft');
+    expect(cls).toContain('data-checked:border-warm');
+    expect(cls).toContain('noscript:has-[input:checked]:bg-warm-soft');
+    expect(cls).toContain('noscript:has-[input:checked]:border-warm');
     expect(card.className).not.toMatch(/(^|\s)bg-warm-soft/);
     const badge = [...card.querySelectorAll('span')].findLast(
       (s) => s.textContent === 'انتخاب شما',
     );
-    expect(badge?.parentElement?.className).toMatch(/^hidden group-has-\[input:checked\]\/card:/);
+    expect(badge?.parentElement?.className).toBe(
+      'hidden group-data-checked/card:block noscript:group-has-[input:checked]/card:block',
+    );
     fireEvent.click(card.querySelector('label')!); // the label covers the card (::after)
     const checked = screen.getAllByRole('radio').filter((r) => (r as HTMLInputElement).checked);
     expect(checked.map((r) => (r as HTMLInputElement).value)).toEqual(['vip']);
   });
 
-  it('TC3 one CTA for no tier and one per tier; CSS shows the no-tier one until a choice', () => {
+  it('TC3 one CTA for no tier and one per tier; CSS shows the no-tier one until a choice (data-choice, :has() only without JavaScript)', () => {
     const { container } = render(<TierComparison label="سطح‌ها" tiers={TIERS} choice={choice} />);
     const links = [...container.querySelectorAll('a')];
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
@@ -63,14 +69,19 @@ describe('tier choice mode (freeze G13, F24)', () => {
       '/book?tier=cip',
     ]);
     const wrappers = links.map((a) => a.parentElement!.className);
-    expect(wrappers[0]).toBe('group-has-[input:checked]/tiers:hidden');
+    expect(wrappers[0]).toBe(
+      'group-data-choice/tiers:hidden noscript:group-has-[input:checked]/tiers:hidden',
+    );
     expect(wrappers.slice(1)).toEqual([
-      'hidden group-has-[article:nth-of-type(1)_input:checked]/tiers:block',
-      'hidden group-has-[article:nth-of-type(2)_input:checked]/tiers:block',
-      'hidden group-has-[article:nth-of-type(3)_input:checked]/tiers:block',
+      'hidden group-data-[choice=1]/tiers:block noscript:group-has-[article:nth-of-type(1)_input:checked]/tiers:block',
+      'hidden group-data-[choice=2]/tiers:block noscript:group-has-[article:nth-of-type(2)_input:checked]/tiers:block',
+      'hidden group-data-[choice=3]/tiers:block noscript:group-has-[article:nth-of-type(3)_input:checked]/tiers:block',
     ]);
-    // The radios and the CTAs share the group the CSS reads.
-    expect(container.querySelector('.group\\/tiers')?.querySelectorAll('input')).toHaveLength(3);
+    // The radios and the CTAs share the group the CSS reads; choices.ts finds it by data-choices.
+    const group = container.querySelector('.group\\/tiers');
+    expect(group?.hasAttribute('data-choices')).toBe(true);
+    expect(group?.hasAttribute('data-choice')).toBe(false); // none chosen in the server HTML
+    expect(group?.querySelectorAll('input')).toHaveLength(3);
   });
 
   it('TC5 the card fades with the motion tokens, so reduced motion makes the change instant', () => {

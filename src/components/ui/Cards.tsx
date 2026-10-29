@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { Children, type ReactNode } from 'react';
 
 import { toPersianDigits } from '@/lib/persianText';
 
@@ -58,9 +58,14 @@ export function CategoryIcon(props: {
 // sits on a pseudo-element and fades by opacity (DESIGN.md X-16). The lift transitions `translate`
 // only: a scene that tweens `transform` would restart a CSS transition every frame.
 const LINK_CARD =
-  "relative isolate rounded-card border border-line bg-surface-raised transition-[translate] hover:-translate-y-[2px] has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-2 has-[a:focus-visible]:outline-focus before:absolute before:-inset-px before:-z-10 before:rounded-[inherit] before:opacity-0 before:shadow-raised before:transition-opacity before:content-[''] hover:before:opacity-100";
+  "relative isolate rounded-card border border-line bg-surface-raised transition-[translate] hover:-translate-y-[2px] before:absolute before:-inset-px before:-z-10 before:rounded-[inherit] before:opacity-0 before:shadow-raised before:transition-opacity before:content-[''] hover:before:opacity-100";
 
-const STRETCHED = "after:absolute after:inset-0 after:content-[''] focus-visible:outline-none";
+/**
+ * The link's ::after covers the card's border box with the card's radius and carries its ring
+ * (the card itself would need `:has()`, which makes every DOM insertion restyle the whole page).
+ */
+export const STRETCHED =
+  "after:absolute after:-inset-px after:rounded-card after:content-[''] focus-visible:outline-none focus-visible:after:outline-2 focus-visible:after:outline-offset-2 focus-visible:after:outline-focus";
 
 /**
  * Service card (DESIGN.md 3.17): 4:3 media, the title with its category icon, one line, short
@@ -223,13 +228,15 @@ export function DentistCard(props: {
  * A single card shows no peek of a next one: it takes the row up to 24rem.
  */
 export function CardRail(props: { label: string; children: ReactNode; className?: string }) {
+  const single = Children.toArray(props.children).length === 1;
   return (
     <div
       role="region"
       aria-label={props.label}
       tabIndex={0}
       className={cx(
-        '-mx-gutter grid snap-x snap-mandatory auto-cols-[min(84%,20rem)] grid-flow-col gap-3 overflow-x-auto scroll-px-gutter px-gutter pt-1 pb-3 has-[>:only-child]:auto-cols-[min(100%,24rem)] lg:mx-0 lg:grid-flow-row lg:grid-cols-3 lg:overflow-visible lg:px-0 [&>*]:snap-start',
+        '-mx-gutter grid snap-x snap-mandatory grid-flow-col gap-3 overflow-x-auto scroll-px-gutter px-gutter pt-1 pb-3 lg:mx-0 lg:grid-flow-row lg:grid-cols-3 lg:overflow-visible lg:px-0 [&>*]:snap-start',
+        single ? 'auto-cols-[min(100%,24rem)]' : 'auto-cols-[min(84%,20rem)]',
         props.className,
       )}
     >

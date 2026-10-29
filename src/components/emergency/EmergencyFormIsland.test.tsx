@@ -378,7 +378,7 @@ describe('emergency form island (conversion.md 7.3, 5.1-5.4)', () => {
     const tick = input.nextElementSibling!;
     expect(tick.querySelector('[data-icon="tick"]')).not.toBeNull();
     expect(tick.className.split(' ')).toEqual(
-      expect.arrayContaining(['hidden', 'peer-checked:block']),
+      expect.arrayContaining(['hidden', 'peer-checked:grid']),
     );
     expect(classes).toContain('peer');
     expect(input.getAttribute('type')).toBe('checkbox');

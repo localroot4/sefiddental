@@ -25,8 +25,10 @@ const NO_STICKY_BAR = [PAGE_PATHS.booking, PAGE_PATHS['booking-success'], PAGE_P
  * readers answer static fallbacks when the database is down (CC-7). Under 1024 px the scroll
  * padding keeps focused fields and anchors clear of the sticky bar, and an open modal stops the
  * page behind it from scrolling, except the home intro `#intro` (phase 7, C17): the page is at
- * the top and inert under it, and taking the scrollbar away would shift it 15 px. `extras`
- * renders after the wrapper (JSON-LD, the track listener).
+ * the top and inert under it, and taking the scrollbar away would shift it 15 px. The open modal
+ * reaches CSS as `data-modal` (ChromeScripts, dialogs.ts); without JavaScript a `:has()` rule
+ * under `noscript:` does it (scripts/check-has.mjs). `extras` renders after the wrapper (JSON-LD,
+ * the track listener).
  */
 export async function SiteShell(props: {
   nonce: string | undefined;
@@ -39,7 +41,7 @@ export async function SiteShell(props: {
     <html
       lang={lang}
       dir={dir}
-      className={`${Vazirmatn.variable} ${Estedad.variable} max-lg:scroll-pbe-[calc(var(--sticky-bar-h)+env(safe-area-inset-bottom)+var(--space-2))] max-lg:has-[dialog:modal:not(#intro)]:overflow-hidden`}
+      className={`${Vazirmatn.variable} ${Estedad.variable} max-lg:scroll-pbe-[calc(var(--sticky-bar-h)+env(safe-area-inset-bottom)+var(--space-2))] max-lg:data-modal:overflow-hidden noscript:max-lg:has-[dialog:modal:not(#intro)]:overflow-hidden`}
       suppressHydrationWarning
     >
       {/* The root document of the App Router (rendered by root layouts): next/head is Pages Router only. */}

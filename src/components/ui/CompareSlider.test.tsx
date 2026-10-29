@@ -34,6 +34,27 @@ describe('compare slider (DESIGN.md 3.21)', () => {
     expect(range.getAttribute('aria-valuetext')).toBe('۷۳ درصد');
   });
 
+  it('CM2b the handle ring follows the range input before it (a sibling selector, no :has())', () => {
+    const { container } = render(
+      <CompareSlider before={<i />} after={<b />} handle={<s />} labels={labels} />,
+    );
+    const range = screen.getByRole('slider');
+    const knob = container.querySelector('s')!.parentElement!;
+    expect(knob.className.split(' ')).toEqual(
+      expect.arrayContaining([
+        '[input:focus-visible~*>&]:outline-2',
+        '[input:focus-visible~*>&]:outline-offset-2',
+        '[input:focus-visible~*>&]:outline-focus',
+      ]),
+    );
+    // The knob's wrapper is a later sibling of the range.
+    expect(
+      range.compareDocumentPosition(knob.parentElement!) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(knob.parentElement!.parentElement).toBe(range.parentElement);
+    expect(container.innerHTML).not.toContain('has-');
+  });
+
   it('CM3 labels sit at the start and end sides; the clip has an LTR counterpart', () => {
     const html = renderToStaticMarkup(
       <CompareSlider before={<i />} after={<b />} handle={<s />} labels={labels} />,

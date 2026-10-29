@@ -130,7 +130,9 @@ export function TextAreaField({
 
 /**
  * One radio styled as a 44 px pill (DESIGN.md Chips): the native input covers the label at
- * opacity 0, so arrow keys move inside the group and the ring shows on the pill.
+ * opacity 0, so arrow keys move inside the group and the ring shows on the pill. The pill is a
+ * span after the input, so its checked, hover and ring styles are `peer-*` and `group-*` variants
+ * (no `:has()`), with or without JavaScript; `className` styles the pill.
  */
 export function Chip({
   label,
@@ -143,18 +145,25 @@ export function Chip({
   return (
     <label
       className={cx(
-        'relative inline-flex min-h-target cursor-pointer items-center gap-1 rounded-pill border-[1.5px] border-line-strong bg-surface-raised px-4 text-small font-medium transition-colors',
-        'hover:not-has-disabled:border-brand has-checked:border-brand has-checked:bg-brand-soft has-checked:text-brand-strong',
-        'outline-offset-2 outline-focus has-focus-visible:outline-2 has-disabled:cursor-not-allowed has-disabled:opacity-50',
-        className,
+        'relative inline-flex rounded-pill',
+        input.disabled ? 'cursor-not-allowed opacity-50' : 'group/chip cursor-pointer',
       )}
     >
       <input
         {...input}
         type="radio"
-        className="absolute inset-0 m-0 size-full cursor-pointer rounded-[inherit] opacity-0 disabled:cursor-not-allowed"
+        className="peer absolute inset-0 m-0 size-full cursor-pointer rounded-[inherit] opacity-0 disabled:cursor-not-allowed"
       />
-      {label}
+      <span
+        className={cx(
+          'inline-flex min-h-target items-center gap-1 rounded-pill border-[1.5px] border-line-strong bg-surface-raised px-4 text-small font-medium transition-colors',
+          'group-hover/chip:border-brand peer-checked:border-brand peer-checked:bg-brand-soft peer-checked:text-brand-strong',
+          'outline-offset-2 outline-focus peer-focus-visible:outline-2',
+          className,
+        )}
+      >
+        {label}
+      </span>
     </label>
   );
 }

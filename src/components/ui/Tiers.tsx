@@ -23,13 +23,14 @@ export type TierChoice = {
   action: (tierKey: string | null) => ReactNode;
 };
 
-// Which CTA shows, by the position of the checked card: Tailwind cannot build a class from a tier
-// key. shortcut: four tiers at most in choice mode (three today); add a row for a fifth.
+// Which CTA shows, by the position of the checked card (`data-choice`, ChromeScripts' choices.ts;
+// `:has()` only without JavaScript): Tailwind cannot build a class from a tier key.
+// shortcut: four tiers at most in choice mode (three today); add a row for a fifth.
 const SHOW = [
-  'group-has-[article:nth-of-type(1)_input:checked]/tiers:block',
-  'group-has-[article:nth-of-type(2)_input:checked]/tiers:block',
-  'group-has-[article:nth-of-type(3)_input:checked]/tiers:block',
-  'group-has-[article:nth-of-type(4)_input:checked]/tiers:block',
+  'group-data-[choice=1]/tiers:block noscript:group-has-[article:nth-of-type(1)_input:checked]/tiers:block',
+  'group-data-[choice=2]/tiers:block noscript:group-has-[article:nth-of-type(2)_input:checked]/tiers:block',
+  'group-data-[choice=3]/tiers:block noscript:group-has-[article:nth-of-type(3)_input:checked]/tiers:block',
+  'group-data-[choice=4]/tiers:block noscript:group-has-[article:nth-of-type(4)_input:checked]/tiers:block',
 ];
 
 /**
@@ -38,8 +39,9 @@ const SHOW = [
  * equal columns, so a tablet never cuts a card without a cue. `selectedKey` (the warm state with
  * its badge) is for a page where the visitor picked one. With `choice` the visitor picks on the
  * page: a native radio in each card heading, none checked in the server HTML (F24), the whole card
- * its hit area; the checked card turns warm and the CTA under the cards carries its tier, through
- * CSS alone, so it works without JavaScript.
+ * its hit area; the checked card turns warm and the CTA under the cards carries its tier. CSS
+ * reads the choice from `data-choice` and `data-checked` (choices.ts); without JavaScript from
+ * `:has()` rules that exist only then (`noscript:`), so it works without JavaScript too.
  */
 export function TierComparison(props: {
   tiers: TierColumn[];
@@ -70,11 +72,12 @@ export function TierComparison(props: {
         return (
           <article
             key={tier.key}
+            data-choice-item={choice ? '' : undefined}
             className={cx(
               'grid snap-start content-start gap-4 rounded-card border-[1.5px] p-6',
               selected ? 'border-warm bg-warm-soft' : 'border-line bg-surface-raised',
               choice &&
-                'group/card relative transition-colors hover:border-line-strong has-[input:checked]:border-warm has-[input:checked]:bg-warm-soft',
+                'group/card relative transition-colors hover:border-line-strong data-checked:border-warm data-checked:bg-warm-soft noscript:has-[input:checked]:border-warm noscript:has-[input:checked]:bg-warm-soft',
             )}
           >
             <div className="flex flex-wrap items-center justify-between gap-2">
@@ -98,7 +101,7 @@ export function TierComparison(props: {
                 )}
               </Heading>
               {choice ? (
-                <span className="hidden group-has-[input:checked]/card:block">
+                <span className="hidden group-data-checked/card:block noscript:group-has-[input:checked]/card:block">
                   <Badge tone="warm">{choice.badge}</Badge>
                 </span>
               ) : selected && props.selectedLabel ? (
@@ -124,13 +127,15 @@ export function TierComparison(props: {
   );
   if (!choice) return scroller;
   return (
-    <div className={cx('group/tiers grid gap-8', props.className)}>
+    <div data-choices="" className={cx('group/tiers grid gap-8', props.className)}>
       <fieldset className="min-w-0">
         <legend className="sr-only">{choice.legend}</legend>
         {scroller}
       </fieldset>
       <div>
-        <div className="group-has-[input:checked]/tiers:hidden">{choice.action(null)}</div>
+        <div className="group-data-choice/tiers:hidden noscript:group-has-[input:checked]/tiers:hidden">
+          {choice.action(null)}
+        </div>
         {tiers.map((tier, i) => (
           <div key={tier.key} className={cx('hidden', SHOW[i])}>
             {choice.action(tier.key)}

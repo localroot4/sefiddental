@@ -30,7 +30,7 @@ export function CompareSlider(props: {
     <div
       ref={root}
       className={cx(
-        'group relative aspect-square w-full max-w-[28rem] touch-pan-y overflow-hidden rounded-media bg-surface-sunken [--pos:50]',
+        'relative aspect-square w-full max-w-[28rem] touch-pan-y overflow-hidden rounded-media bg-surface-sunken [--pos:50]',
         props.className,
       )}
     >
@@ -65,12 +65,13 @@ export function CompareSlider(props: {
         }}
         className="absolute inset-0 z-10 m-0 size-full cursor-ew-resize opacity-0 focus-visible:outline-none"
       />
-      {/* The 44 px handle is centered on the 2 px divider by flex (it overflows both sides). */}
+      {/* The 44 px handle is centered on the 2 px divider by flex (it overflows both sides); its
+          ring follows the range input before it (a sibling selector, not `:has()`). */}
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-y-0 start-[calc(var(--pos)*1%)] flex w-[2px] translate-x-1/2 items-center justify-center bg-surface-raised ltr:-translate-x-1/2"
       >
-        <span className="flex size-target shrink-0 items-center justify-center rounded-full border-[1.5px] border-brand bg-surface-raised text-brand shadow-raised group-has-[input:focus-visible]:outline-2 group-has-[input:focus-visible]:outline-offset-2 group-has-[input:focus-visible]:outline-focus">
+        <span className="flex size-target shrink-0 items-center justify-center rounded-full border-[1.5px] border-brand bg-surface-raised text-brand shadow-raised [input:focus-visible~*>&]:outline-2 [input:focus-visible~*>&]:outline-offset-2 [input:focus-visible~*>&]:outline-focus">
           {props.handle}
         </span>
       </span>
