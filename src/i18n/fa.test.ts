@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { allMessages, getLocale, SYSTEM_LINKS } from '@/i18n/fa';
 import { CONTENT_MESSAGES } from '@/i18n/fa-content';
+import { demoCopy } from '@/lib/demoContent';
 import { hoursState, hoursSummary, type ClinicHours } from '@/lib/hoursState';
 import { TOO_MANY_ATTEMPTS_FA } from '@/lib/http/systemResponses';
 import { PHONE_ERRORS, REGISTERED_NUMBER_LABEL } from '@/lib/phone';
@@ -55,6 +56,7 @@ function visibleCopy(): string[] {
       ...hoursCopy(),
       ...Object.values(PHONE_ERRORS),
       REGISTERED_NUMBER_LABEL,
+      ...demoCopy(),
     ]),
   ];
 }

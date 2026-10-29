@@ -6,6 +6,11 @@ import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 
 import { LockupSprite } from '@/components/brand/LockupParts';
+import {
+  DemoCasesSection,
+  DemoDentistsSection,
+  DemoVoicesSection,
+} from '@/components/demo/DemoSections';
 import { HomeBookingPrefill } from '@/components/home/HomeBookingPrefill';
 import { HomeHero } from '@/components/home/HomeHero';
 import { IntroOverlay, IntroScript } from '@/components/home/intro/IntroOverlay';
@@ -95,9 +100,21 @@ export default async function HomePage() {
           copy={sectionCopy(page, 'restoration')}
         />
         <WorkflowSection items={block(page, 'workflow')?.items ?? []} />
-        <CasesSection cases={data.cases} copy={sectionCopy(page, 'compare')} />
-        <DentistsSection doctors={data.doctors} copy={sectionCopy(page, 'dentists')} />
-        <VoicesSection testimonials={data.testimonials} copy={sectionCopy(page, 'voices')} />
+        {data.demo.cases ? (
+          <DemoCasesSection copy={sectionCopy(page, 'compare')} />
+        ) : (
+          <CasesSection cases={data.cases} copy={sectionCopy(page, 'compare')} />
+        )}
+        {data.demo.dentists ? (
+          <DemoDentistsSection copy={sectionCopy(page, 'dentists')} />
+        ) : (
+          <DentistsSection doctors={data.doctors} copy={sectionCopy(page, 'dentists')} />
+        )}
+        {data.demo.voices ? (
+          <DemoVoicesSection copy={sectionCopy(page, 'voices')} />
+        ) : (
+          <VoicesSection testimonials={data.testimonials} copy={sectionCopy(page, 'voices')} />
+        )}
         {/* Scene 9 holds the first visit and the FAQ (experience-direction 2). */}
         <div data-scene="first-visit">
           <JourneySection

@@ -69,6 +69,9 @@ render_app_env() {
     NEXT_TELEMETRY_DISABLED=1 TZ=UTC LOG_LEVEL=info "PORT=$PORT" HOSTNAME=localhost
     "INTERNAL_ORIGIN=$2"
   )
+  # Demo content on the client preview only (docs/deploy.md 2.3): a live run drops the line,
+  # since DEMO_CONTENT is never kept as a hand-added line below.
+  if [ "${PHASE:-}" = preview ]; then managed+=(DEMO_CONTENT=true); fi
   echo "# Written by deploy/vps/provision.sh. The names above the blank line are rewritten from"
   echo "# server.env on every provision; the rest is kept. Secrets: never print this file."
   printf '%s\n' "${managed[@]}"
@@ -82,9 +85,11 @@ render_app_env() {
   printf 'DATABASE_URL=%s\n' "${value:-postgres://sefid:$(openssl rand -hex 32)@127.0.0.1:5432/sefid}"
   value=$(env_get "$old" MAINTENANCE_MODE)
   printf 'MAINTENANCE_MODE=%s\n' "${value:-off}"
-  # Lines added by hand (SMTP_*, TELEGRAM_BOT_TOKEN, ...) stay as they are.
-  known=$(printf '%s|' "${managed[@]%%=*}" "${SECRET_NAMES[@]}" DATABASE_URL MAINTENANCE_MODE)
-  if [ -f "$old" ]; then grep -Ev "^(#|$|(${known%|})=)" "$old" || true; fi
+  # Lines added by hand (SMTP_*, TELEGRAM_BOT_TOKEN, ...) stay as they are. A known name goes in
+  # any spacing systemd reads (` NAME = value`).
+  known=$(printf '%s|' "${managed[@]%%=*}" "${SECRET_NAMES[@]}" DATABASE_URL MAINTENANCE_MODE \
+    DEMO_CONTENT)
+  if [ -f "$old" ]; then grep -Ev "^[[:space:]]*(#|$|(${known%|})[[:space:]]*=)" "$old" || true; fi
 }
 
 # render_site TEMPLATE NGINX_VERSION IPV6(yes|no) UPSTREAM: the nginx site on stdout.

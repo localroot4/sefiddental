@@ -6,6 +6,8 @@ import { Breadcrumbs } from '@/components/ui/Navigation';
 import { t } from '@/i18n/fa';
 import { getDoctors } from '@/lib/data/content';
 import { getClinic } from '@/lib/data/globals';
+import { DEMO_DOCTORS } from '@/lib/demoContent';
+import { readEnv } from '@/lib/env';
 import { buildPath, PAGE_PATHS } from '@/lib/paths';
 import { breadcrumbNode, itemListNode, jsonLdGraph } from '@/lib/seo/jsonld';
 import type { Page } from '@/payload-types';
@@ -17,10 +19,14 @@ import { contentBodies, dentistName } from './view';
 /**
  * T-dentists-hub (docs/ia.md): hero (A), the dentists (F) or, before the client publishes one,
  * an empty state that names no one (freeze F9), how the team works when the page has that text
- * (K), booking (J).
+ * (K), booking (J). Exception: DEMO_CONTENT on the client preview only (docs/deploy.md 2.3),
+ * labelled, refused on the live site.
  */
 export async function DentistsHub({ page }: { page: Page }) {
-  const [doctors, clinic] = await Promise.all([getDoctors(), getClinic()]);
+  const [published, clinic] = await Promise.all([getDoctors(), getClinic()]);
+  // Demo cards (DEMO_CONTENT) until a dentist is published: no profile, so no link, JSON-LD
+  // entry or booking binding.
+  const doctors = published.length === 0 && readEnv().demoContent ? DEMO_DOCTORS : published;
   const crumbs = [
     { label: t('pages.crumb.home'), href: '/' },
     { label: t('pages.dentists.crumb'), href: PAGE_PATHS['dentists-hub'] },
@@ -33,9 +39,9 @@ export async function DentistsHub({ page }: { page: Page }) {
         titleSize={heroTitleSize(page.title)}
         breadcrumbs={<Breadcrumbs items={crumbs} />}
         title={page.title}
-        // The lead introduces the dentists; until one is published it would promise what the
-        // empty state below takes back.
-        summary={doctors.length ? (page.lead ?? undefined) : undefined}
+        // The lead introduces the dentists by name and council number; until one is published
+        // it would promise what the empty state or the demo cards below cannot show.
+        summary={published.length ? (page.lead ?? undefined) : undefined}
         media={<HeroMedia media={page.heroMedia} caption={t('pages.photo.dentistsHub')} />}
       />
       <Alternating
@@ -63,7 +69,7 @@ export async function DentistsHub({ page }: { page: Page }) {
         data={jsonLdGraph(
           breadcrumbNode(crumbs.map((c) => ({ name: c.label, path: c.href }))),
           itemListNode(
-            doctors.flatMap((doctor) => {
+            published.flatMap((doctor) => {
               const path = buildPath('doctors', doctor);
               return path ? [{ name: dentistName(doctor.name), path }] : [];
             }),

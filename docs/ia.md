@@ -203,6 +203,8 @@ The table is the order as built in phase 4: the order of
 share scene 9 (`data-scene="first-visit"`). A section without published
 records renders nothing (before/after, dentists and patient videos until
 the client sends them, F9); the order of the rest stays.
+Exception: DEMO_CONTENT on the client preview only (docs/deploy.md 2.3),
+labelled, refused on the live site.
 The storyboard's digital-workflow scene («از اسکن تا لبخند») is not built:
 its captions are unconfirmed claims (gaps 7 and 48), and phase 7 decides.
 Section headings and intros live in the home page's `sections` field; the

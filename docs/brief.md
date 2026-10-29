@@ -296,7 +296,8 @@ environment variables.
 
 Honesty: no invented facts, numbers, device brands, doctor names or reviews.
 Placeholders are explicit `[[NEEDS_CLIENT: ...]]` markers and are tracked in
-`docs/content/gaps.md`.
+`docs/content/gaps.md`. Exception: DEMO_CONTENT on the client preview only
+(docs/deploy.md 2.3), labelled, refused on the live site.
 
 ## 8. Decisions log
 

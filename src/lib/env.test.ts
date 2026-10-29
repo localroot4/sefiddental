@@ -189,4 +189,28 @@ describe('env', () => {
       /MEDIA_DIR must be an absolute/,
     );
   });
+
+  it('E11 DEMO_CONTENT: off by default, on for the preview, refused for the live site', () => {
+    const preview = { ...PROD, SITE_URL: 'https://new.sefiddental.ir' };
+    expect(parseEnv(preview).demoContent).toBe(false);
+    expect(parseEnv({ ...preview, DEMO_CONTENT: 'true' }).demoContent).toBe(true);
+    expect(parseEnv({ ...BASE, DEMO_CONTENT: '1' }).demoContent).toBe(true);
+    // The live values of deploy/vps/server.env, each sign on its own.
+    for (const live of [
+      { ...preview, ALLOW_INDEXING: 'true' },
+      { ...preview, SITE_URL: 'https://sefiddental.ir' },
+      { ...preview, SITE_URL: 'https://sefiddental.ir.' },
+      { ...BASE, SITE_URL: 'https://sefiddental.ir' },
+      { ...BASE, ALLOW_INDEXING: 'on' },
+    ]) {
+      expect(() => parseEnv({ ...live, DEMO_CONTENT: 'true' }), JSON.stringify(live)).toThrow(
+        /DEMO_CONTENT is on for the live site/,
+      );
+      // Off, the same environment boots.
+      expect(() => parseEnv(live)).not.toThrow();
+    }
+    expect(() =>
+      parseEnv({ ...preview, SITE_URL: 'https://www.sefiddental.ir', DEMO_CONTENT: 'true' }),
+    ).toThrow(/SITE_URL must use the apex host/);
+  });
 });

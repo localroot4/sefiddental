@@ -289,6 +289,7 @@ Request handling:
 | Name | Required in production | Secret | Purpose |
 |---|---|---|---|
 | `ALLOW_INDEXING` | `true` on production only | no | `false`: robots.txt disallows everything, pages carry `X-Robots-Tag: noindex`, sitemaps list no URL. Staging stays `false`. |
+| `DEMO_CONTENT` | never (default `false`) | no | `true` on the client preview only: while nothing of that kind is published, the home page shows demo dentists, patient voices and a before/after pair, and «پزشکان» shows demo dentists (`src/lib/demoContent.ts`). Nothing is stored; the first published item of a kind replaces its demo. Demo items have no page, link, JSON-LD, sitemap entry, booking binding, consent line or analytics event. The start fails when it is on with `ALLOW_INDEXING=true` or `SITE_URL` on `sefiddental.ir`. On the VPS, `provision` writes it with `PHASE=preview` only (3.7). |
 | `TRUST_PROXY_HEADERS` | `true` behind a proxy | no | Trust `X-Forwarded-For`, `X-Forwarded-Proto` and an incoming `X-Request-Id` (2.4). `X-Forwarded-Host` is never read: the canonical check uses `Host`. With `false` in production, the System status view shows the row red; the start does not fail. |
 | `TRUSTED_PROXY_HOPS` | no (default `1`) | no | Number of proxies in front of Node that append to `X-Forwarded-For` (2.4). When the trust is on and the admin's own address cannot be read, the System status view shows the trust row red in every mode. |
 | `MAINTENANCE_MODE` | no (default `off`) | no | `on`: public requests get the 503 maintenance response (2.12). |
@@ -838,7 +839,7 @@ cron timer and nightly backups.
 | Access | SSH as `deploy` with one ed25519 key, from GitHub Actions only |
 | Server code | `deploy/vps/` (`provision.sh`, the files it installs, `server.env`, `known_hosts`) |
 | Workflow | `.github/workflows/server.yml` ("Server") |
-| Phase | Preview: `https://new.sefiddental.ir`, `ALLOW_INDEXING=false`. `sefiddental.ir` stays at the old host until the client approves the switch (3.7). |
+| Phase | Preview: `https://new.sefiddental.ir`, `ALLOW_INDEXING=false`, `DEMO_CONTENT=true`. `sefiddental.ir` stays at the old host until the client approves the switch (3.7). |
 
 ### 3.1 How it works
 
@@ -1118,7 +1119,9 @@ only after `provision` knows it, and with a real certificate only after
    record needs the client's confirmation.
 3. In `deploy/vps/server.env`, change the one line `PHASE=preview` to
    `PHASE=live`. That sets `SITE_URL=https://sefiddental.ir`,
-   `DOMAINS="sefiddental.ir www.sefiddental.ir"` and `ALLOW_INDEXING=true`.
+   `DOMAINS="sefiddental.ir www.sefiddental.ir"` and `ALLOW_INDEXING=true`,
+   and drops `DEMO_CONTENT` from `/etc/sefid/app.env`: no demo item reaches
+   the live site, and the app refuses to start with it there.
    Commit to main.
 4. Run `provision` while the DNS still points at the old host. Visitors still
    reach the old host; the preview at `new.sefiddental.ir` stops.

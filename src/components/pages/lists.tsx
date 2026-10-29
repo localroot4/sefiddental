@@ -9,7 +9,9 @@ import type { Doctor } from '@/payload-types';
 
 import { dentistName, mediaOf } from './view';
 
-type DentistItem = Pick<Doctor, 'id' | 'name' | 'slug' | 'specialty' | 'councilNumber' | 'photo'>;
+type DentistItem = Pick<Doctor, 'id' | 'name' | 'slug' | 'specialty' | 'councilNumber'> & {
+  photo: Doctor['photo'] | null;
+};
 
 /** «رزرو نوبت» of an empty state: scrolls to the page's booking block (the chrome's route). */
 function BookAction() {
@@ -27,7 +29,8 @@ function BookAction() {
 
 /**
  * The dentists (family F): portrait cards linking to the profiles. With none published, one
- * sentence and one action, never a placeholder name (freeze F9, master section 3).
+ * sentence and one action, never a placeholder name (freeze F9, master section 3). Exception:
+ * DEMO_CONTENT on the client preview only (docs/deploy.md 2.3), labelled, refused on the live site.
  */
 export function DentistList(props: { doctors: DentistItem[] }) {
   if (props.doctors.length === 0) {

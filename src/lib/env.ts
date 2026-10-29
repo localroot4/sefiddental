@@ -29,6 +29,8 @@ export interface ServerEnv {
   formTokenTtlSeconds: number;
   allowFirstUser: boolean;
   allowIndexing: boolean;
+  /** Demo content of the client preview (src/lib/demoContent.ts); refused on the live site. */
+  demoContent: boolean;
   trustProxyHeaders: boolean;
   trustedProxyHops: number;
   maintenance: boolean;
@@ -143,6 +145,7 @@ const rawSchema = z.object({
   FORM_TOKEN_TTL_SECONDS: integer(7200, 60),
   ALLOW_FIRST_USER: flag(false),
   ALLOW_INDEXING: flag(false),
+  DEMO_CONTENT: flag(false),
   TRUST_PROXY_HEADERS: flag(false),
   TRUSTED_PROXY_HOPS: integer(1, 1),
   MAINTENANCE_MODE: flag(false),
@@ -182,6 +185,9 @@ const rawSchema = z.object({
  * `request.url`, so every proxy rewrite looks external and Next proxies it to itself (CSP-1).
  */
 const LOOPBACK_IP = /^(?:127(?:\.\d{1,3}){3}|::1|\[::1\])$/;
+
+/** Host of the live site (deploy/vps/server.env, PHASE=live); SITE_URL never takes www. */
+const LIVE_HOST = 'sefiddental.ir';
 
 /** Production at run time is strict; the build phase and dev/test fall back to defaults. */
 function isStrict(nodeEnv: ServerEnv['nodeEnv'], source: Source): boolean {
@@ -276,6 +282,14 @@ export function parseEnv(source: Source): ServerEnv {
   if (strict && !raw.SITE_URL) {
     missing('SITE_URL', 'set it to the public origin, e.g. https://sefiddental.ir');
   }
+  // Demo dentists, voices and cases stand in on the client preview only, never where search
+  // engines or the clinic's patients look. `sefiddental.ir.` (trailing dot) is the same host.
+  const siteHost = raw.SITE_URL ? new URL(raw.SITE_URL).hostname.replace(/\.$/, '') : '';
+  if (raw.DEMO_CONTENT && (raw.ALLOW_INDEXING || siteHost === LIVE_HOST)) {
+    problems.push(
+      'DEMO_CONTENT is on for the live site (ALLOW_INDEXING on or SITE_URL on sefiddental.ir): demo content is for the preview only. Remove DEMO_CONTENT; provision with PHASE=live drops it',
+    );
+  }
   if (strict && !raw.GIT_SHA) missing('GIT_SHA', 'the build or deploy step sets the commit SHA');
 
   let mediaDir = raw.MEDIA_DIR;
@@ -345,6 +359,7 @@ export function parseEnv(source: Source): ServerEnv {
     formTokenTtlSeconds: raw.FORM_TOKEN_TTL_SECONDS,
     allowFirstUser: raw.ALLOW_FIRST_USER,
     allowIndexing: raw.ALLOW_INDEXING,
+    demoContent: raw.DEMO_CONTENT,
     trustProxyHeaders: raw.TRUST_PROXY_HEADERS,
     trustedProxyHops: raw.TRUSTED_PROXY_HOPS,
     maintenance: raw.MAINTENANCE_MODE,

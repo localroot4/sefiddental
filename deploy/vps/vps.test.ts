@@ -172,6 +172,33 @@ describe('provision.sh helpers', { timeout: 30_000 }, () => {
     expect(render(`${dir}/app.env`).stdout).toBe(second.stdout);
   });
 
+  it('VPS19 app.env: DEMO_CONTENT=true on the preview only; the live switch drops it', () => {
+    const dir = tmp();
+    const text = readFileSync(path.join(DIR, 'server.env'), 'utf8');
+    writeFileSync(`${dir}/live.env`, text.replace(/^PHASE=preview$/m, 'PHASE=live'));
+    const render = (config: string, old: string) =>
+      provision(`load_config "${config}"; render_app_env "${old}" http://127.0.0.1:3000`).stdout;
+    const preview = render('./server.env', `${dir}/missing`);
+    expect(preview.split('\n').filter((l) => l.startsWith('DEMO_CONTENT='))).toEqual([
+      'DEMO_CONTENT=true',
+    ]);
+    writeFileSync(`${dir}/app.env`, preview);
+    expect(render('./server.env', `${dir}/app.env`)).toBe(preview);
+    // Provision with PHASE=live (docs/deploy.md 3.7) keeps the secrets, not the demo line, in
+    // any spacing systemd reads.
+    writeFileSync(
+      `${dir}/app.env`,
+      `${preview.trimEnd()}\n DEMO_CONTENT=true\nDEMO_CONTENT = true\n`,
+    );
+    const live = render(`${dir}/live.env`, `${dir}/app.env`);
+    expect(live).not.toMatch(/DEMO_CONTENT/);
+    expect(env(live)).toMatchObject({
+      SITE_URL: 'https://sefiddental.ir',
+      ALLOW_INDEXING: 'true',
+      PAYLOAD_SECRET: env(preview).PAYLOAD_SECRET,
+    });
+  });
+
   it('VPS6 loopback settings follow what localhost resolves to', () => {
     expect(provision('loopback 127.0.0.1').stdout.split('\n')).toEqual([
       'http://127.0.0.1:3000',
