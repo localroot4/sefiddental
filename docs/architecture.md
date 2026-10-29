@@ -309,18 +309,21 @@ with zod; the forms also work as plain HTML posts.
   the CSP (no inline styles in server HTML). `<Picture>` renders a
   `<picture>` from the Payload media sizes (AVIF with WebP fallback,
   responsive `srcset`). A missing photo renders `MediaPlaceholder`: the
-  exact aspect ratio, a neutral token fill and a visible caption
+  exact aspect ratio, a brand-tinted token fill with the mark as a quiet
+  relief (the icon sprite, no image request) and a visible caption
   «جای عکس: …», each with a row in `docs/content/gaps.md`. The home hero
   photo is one art-directed `<picture>`: from 744 px the landscape crop is
   the LCP element and is preloaded with `fetchpriority="high"` through one
   preload with a media query; under 744 px a scrim text element (the H1 or
   the subtext) is the LCP element, never an image, and the 4:5 band starts
   below the first screen and loads without priority. Both crops come from
-  one shoot. Until that photo exists (gap 36), the landscape is a neutral
-  raster placeholder that sharp generates at prebuild
-  (`public/placeholders/hero-*.avif` and `.jpg` at the hero widths), so the
-  preload, `fetchpriority` and LCP pipeline is the real one; its caption is
-  DOM text. On other pages the LCP image gets `fetchpriority="high"`.
+  one shoot. Until that photo exists (gap 36), both crops are an abstract
+  raster stand-in (a defocused bright room drawn in SVG, no photo) that
+  sharp generates at prebuild (`public/placeholders/hero-*.avif` and `.jpg`
+  at the hero widths, rebuilt when the recipe stamp changes), so the
+  preload, `fetchpriority` and LCP pipeline is the real one; a fine grain
+  keeps each file above the low-entropy LCP cut. Its caption is DOM text.
+  On other pages the LCP image gets `fetchpriority="high"`.
 - Build assets (`/_next/static`) immutable for one year. Media files
   `public, max-age=604800` (seven days), because crops regenerate under the
   same name when an editor moves the focal point. HTML renders per request

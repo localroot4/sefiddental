@@ -110,39 +110,103 @@ if (sprite.hash !== ICON_SPRITE_HASH) {
 }
 writeFileSync(path.join(pub, 'brand', 'icons.svg'), sprite.svg);
 
-// Home hero placeholders (freeze F3): neutral grain rasters at the hero widths, so the preload,
-// fetchpriority and LCP pipeline is real before the client's photo exists (gap 36). Files that
-// exist are kept: the encode takes seconds and every `dev` start runs this script.
+// Home hero placeholders (freeze F3, gap 36): an abstract stand-in at the hero widths, so the
+// preload, fetchpriority and LCP pipeline is real before the client's photo exists. It is no photo
+// and shows no place: a bright room out of focus (daylight through a window, warm neutrals,
+// brand-tinted shade) drawn in SVG with three depths of blur, framed 640x360 inside an 80 unit
+// margin that keeps the blur edges out of the crops. The 4:5 band is a crop of the same scene, as
+// both crops of the photo come from one shoot (DESIGN.md section 4). Files that exist are kept
+// while the recipe stamp matches: the encode takes seconds and every `dev` start runs this script.
+const HERO_RECIPE = 'room-1'; // change it with the scene, the grain or the encode settings
+const HERO_SCENE = `<svg xmlns="http://www.w3.org/2000/svg"
+  width="800" height="520" viewBox="-80 -80 800 520">
+  <defs>
+    <linearGradient id="room" x1="0" y1="0" x2="0" y2="1">
+      <stop offset=".15" stop-color="#EEE8DF"/><stop offset=".57" stop-color="#E5DDD1"/>
+      <stop offset=".62" stop-color="#D2C7B9"/><stop offset=".85" stop-color="#C0B4A4"/>
+    </linearGradient>
+    <radialGradient id="day" cx=".56" cy=".3" r=".55">
+      <stop offset="0" stop-color="#FFFCF5" stop-opacity=".8"/>
+      <stop offset="1" stop-color="#FFFCF5" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="edge" cx=".52" cy=".38" r=".85">
+      <stop offset=".5" stop-color="#7D7468" stop-opacity="0"/>
+      <stop offset="1" stop-color="#7D7468" stop-opacity=".38"/>
+    </radialGradient>
+    <filter id="far"><feGaussianBlur stdDeviation="8"/></filter>
+    <filter id="mid" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="16"/>
+    </filter>
+    <filter id="near" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="28"/>
+    </filter>
+  </defs>
+  <g filter="url(#far)">
+    <rect x="-80" y="-80" width="800" height="520" fill="url(#room)"/>
+    <path d="M292 34h56v176h-56zM354 34h56v176h-56zM416 34h56v176h-56z" fill="#FFFCF6"/>
+  </g>
+  <rect x="-40" y="-40" width="720" height="440" fill="url(#day)"/>
+  <g filter="url(#mid)">
+    <path d="M292 248H472L548 330H236Z" fill="#FBF3E7" opacity=".7"/>
+    <rect x="34" y="92" width="118" height="300" rx="34" fill="#B7CBC7" opacity=".72"/>
+    <ellipse cx="214" cy="272" rx="62" ry="44" fill="#E8C9A7" opacity=".6"/>
+    <rect x="540" y="150" width="110" height="230" rx="34" fill="#BFD1CE" opacity=".7"/>
+  </g>
+  <g filter="url(#near)">
+    <ellipse cx="70" cy="392" rx="190" ry="80" fill="#A4988A" opacity=".6"/>
+    <ellipse cx="640" cy="384" rx="150" ry="70" fill="#9AAFAB" opacity=".45"/>
+  </g>
+  <rect x="-40" y="-40" width="720" height="440" fill="url(#edge)"/>
+</svg>`;
 const { heroPlaceholderFiles } = await import(
   pathToFileURL(from('src', 'components', 'home', 'heroPlaceholder.ts')).href
 );
 const { default: sharp } = await import('sharp');
+const placeholderDir = path.join(pub, 'placeholders');
+const stamp = path.join(placeholderDir, 'recipe.txt');
+const fresh = existsSync(stamp) && readFileSync(stamp, 'utf8') === HERO_RECIPE;
+const room = await sharp(Buffer.from(HERO_SCENE)).png().toBuffer();
+const crop = (left, width) =>
+  sharp(room).extract({ left, top: 80, width, height: 360 }).png().toBuffer();
+const scene = { landscape: await crop(80, 640), portrait: await crop(400, 288) };
+// Grain noise from an integer hash (lowbias32): the same bytes on every build, no visible lattice.
+const hash = (i) => {
+  i = Math.imul(i ^ (i >>> 16), 0x7feb352d);
+  i = Math.imul(i ^ (i >>> 15), 0x846ca68b);
+  return ((i ^ (i >>> 16)) >>> 0) / 2 ** 32 - 0.5;
+};
+mkdirSync(placeholderDir, { recursive: true });
 let placeholders = 0;
-for (const file of heroPlaceholderFiles()) {
-  const out = path.join(pub, file.url);
-  if (existsSync(out)) continue;
-  mkdirSync(path.dirname(out), { recursive: true });
-  // Soft grain around a light neutral grey (noise at a quarter size, scaled up): about 0.15 bits
-  // per pixel, three times the low-entropy LCP cut, a quarter of the storyboard byte caps.
-  const seed = await sharp({
-    create: {
-      width: Math.round(file.width / 4),
-      height: Math.round(file.height / 4),
-      channels: 3,
-      noise: { type: 'gaussian', mean: 128, sigma: 40 },
-    },
-  })
-    .linear(0.12, 200 - 0.12 * 128)
-    .png()
+for (const { url, width, height } of heroPlaceholderFiles()) {
+  const out = path.join(pub, url);
+  if (fresh && existsSync(out)) continue;
+  const pixels = await sharp(width > height ? scene.landscape : scene.portrait)
+    .resize(width, height)
+    .removeAlpha()
+    .raw()
     .toBuffer();
-  const grain = sharp(seed).resize(file.width, file.height, { kernel: 'cubic' });
+  // A fine film grain, ±6 of 255 at half size scaled up, added to the luminance: it holds every
+  // file near 0.17 bits per pixel in AVIF and 0.1 in JPEG, at least twice the low-entropy LCP cut
+  // (0.05) and far under the storyboard byte caps. A smooth image alone encodes to about 0.02.
+  const half = { width: Math.ceil(width / 2), height: Math.ceil(height / 2), channels: 1 };
+  const noise = Uint8Array.from({ length: half.width * half.height }, (_, i) =>
+    Math.round(128 + 12 * hash(i)),
+  );
+  const grain = await sharp(noise, { raw: half })
+    .resize(width, height, { kernel: 'cubic' })
+    .raw()
+    .toBuffer();
+  const rgb = new Uint8ClampedArray(pixels.buffer, pixels.byteOffset, pixels.length);
+  for (let i = 0; i < rgb.length; i++) rgb[i] += grain[(i / 3) | 0] - 128;
+  const image = sharp(pixels, { raw: { width, height, channels: 3 } });
   await (
-    file.url.endsWith('.avif')
-      ? grain.avif({ quality: 40, effort: 2 })
-      : grain.jpeg({ quality: 50, mozjpeg: true })
+    url.endsWith('.avif')
+      ? image.avif({ quality: 50, effort: 2 })
+      : image.jpeg({ quality: 60, mozjpeg: true })
   ).toFile(out);
   placeholders++;
 }
+writeFileSync(stamp, HERO_RECIPE);
 
 console.log(
   `sync-public-assets: ${copies.length} brand and font files, ${cards} share cards, favicon.ico, detect-gpu benchmarks, brand/icons.svg (${Object.keys(ICONS).length} icons), ${placeholders} hero placeholders written; maintenance.html and brand/lockup.svg ${maintenance}`,

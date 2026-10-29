@@ -4,6 +4,16 @@ import { cx } from './cx';
 import { Icon } from './Icon';
 
 /**
+ * The panel of content still to come: missing photos (MediaPlaceholder), missing text
+ * (TextPlaceholder) and empty states. Brand mixed into surface-raised at 14%, the share
+ * `PLACEHOLDER` in design/tools/contrast.py (change both together); ink-muted captions and
+ * brand-strong prefixes hold AA on it (DESIGN.md 1.1). Here, not in Media.tsx, so the island-safe
+ * HoursBadge (which imports Skeleton) never reaches the message table.
+ */
+export const PLACEHOLDER_SURFACE =
+  'bg-[color-mix(in_srgb,var(--color-brand)_14%,var(--color-surface-raised))]';
+
+/**
  * Transient message (DESIGN.md toast): fixed above the sticky bar under 1024 px, 24 px from the
  * bottom from 1024; enters with a 16 px rise and a fade over --dur-3. The `role="status"` wrapper
  * is always exposed, so assistive tech already watches it when the panel appears; only the panel
@@ -66,17 +76,19 @@ export function SkeletonCard() {
 
 /**
  * Empty state (DESIGN.md): one sentence that names the next step and one action, around the brand
- * mark in brand-soft.
+ * mark, on the placeholder panel with no outline, so content still to come reads the same as a
+ * missing photo or text (MediaPlaceholder).
  */
 export function EmptyState(props: { children: ReactNode; action?: ReactNode; className?: string }) {
   return (
     <div
       className={cx(
-        'grid content-center justify-items-center gap-3 rounded-card border border-dashed border-line-strong px-6 py-12 text-center',
+        'grid content-center justify-items-center gap-3 rounded-card px-6 py-12 text-center',
+        PLACEHOLDER_SURFACE,
         props.className,
       )}
     >
-      <Icon name="mark" size="custom" className="h-[2.75rem] w-[2.25rem] text-line-strong" />
+      <Icon name="mark" size="custom" className="h-[2.75rem] w-[2.25rem] text-brand/45" />
       <p className="text-small text-ink-muted">{props.children}</p>
       {props.action}
     </div>

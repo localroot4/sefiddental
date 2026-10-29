@@ -38,6 +38,8 @@ pairs=[('--color-ink','--color-surface','body text',4.5),('--color-ink','--color
 ('#FFFFFF','#C81E2E','white on danger-strong (danger button hover, both themes)',4.5),('#C81E2E','--color-surface','danger-strong button shape (non-text, 3:1)',3.0)]
 # tinted alerts (src/components/ui/Alert.tsx): the fill mixed into surface-raised at this share; ink text, icon in the tone's text color
 TINTS=[('info',.22),('success',.22),('warning',.22),('danger',.14)]  # copies of the color-mix shares in Alert.tsx: change both together
+# placeholders and empty states (PLACEHOLDER_SURFACE in src/components/ui/Feedback.tsx): brand mixed into surface-raised at this share; caption in ink-muted, its prefix and the empty state's secondary button in brand
+PLACEHOLDER=.14  # copy of the color-mix share in PLACEHOLDER_SURFACE: change both together
 # home hero layers over the photo: (text token, layer token, alpha, layer name, role, minimum)
 SCRIM_A,BAND_A=.88,.90  # copies of the color-mix alphas of .scrim and .trust (b.html; the app hero from phase 4) and of DESIGN.md 1.1 and 7: change all of them together
 SCRIM=('--color-surface',SCRIM_A,f'hero scrim (surface {SCRIM_A:.0%})'); BAND=('--color-surface-raised',BAND_A,f'trust band (surface-raised {BAND_A:.0%})')
@@ -60,6 +62,9 @@ for tone,share in TINTS:
     label=f'{tone} alert tint ({tint(light)} / {tint(dark)})'
     row(f'--color-ink on {label}','alert text',ratio(light['--color-ink'],tint(light)),ratio(dark['--color-ink'],tint(dark)),4.5)
     row(f'--color-{tone} on {label}','alert icon (non-text, 3:1)',ratio(light[f'--color-{tone}'],tint(light)),ratio(dark[f'--color-{tone}'],tint(dark)),3.0)
+panel=lambda theme: over(theme['--color-brand'],PLACEHOLDER,theme['--color-surface-raised'])
+for t,role,mn in (('--color-ink-muted','placeholder caption, empty-state sentence',4.5),('--color-brand-strong','caption prefix, empty-state button label',4.5),('--color-brand','empty-state button border (non-text, 3:1)',3.0)):
+    row(f'{t} on placeholder panel ({panel(light)} / {panel(dark)})',role,ratio(light[t],panel(light)),ratio(dark[t],panel(dark)),mn)
 for t,s,alpha,name,role,mn in photo_pairs:
     row(f'{t} on {name}',role,worst_over_photo(light[t],light[s],alpha),worst_over_photo(dark[t],dark[s],alpha),mn)
 def min_alpha(theme):

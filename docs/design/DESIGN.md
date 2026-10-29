@@ -90,6 +90,9 @@ only.
 | --color-warning on warning alert tint (#F8E3D3 / #3B3D42) | alert icon (non-text, 3:1) | 4.43 OK | 5.11 OK | 3.0 |
 | --color-ink on danger alert tint (#FAE0E2 / #2A2942) | alert text | 12.58 OK | 12.30 OK | 4.5 |
 | --color-danger on danger alert tint (#FAE0E2 / #2A2942) | alert icon (non-text, 3:1) | 4.57 OK | 6.19 OK | 3.0 |
+| --color-ink-muted on placeholder panel (#DBECEB / #113D53) | placeholder caption, empty-state sentence | 5.63 OK | 5.70 OK | 4.5 |
+| --color-brand-strong on placeholder panel (#DBECEB / #113D53) | caption prefix, empty-state button label | 5.69 OK | 6.24 OK | 4.5 |
+| --color-brand on placeholder panel (#DBECEB / #113D53) | empty-state button border (non-text, 3:1) | 4.27 OK | 4.57 OK | 3.0 |
 | --color-ink on hero scrim (surface 88%) | hero headline | 11.20 OK | 11.00 OK | 4.5 |
 | --color-ink-muted on hero scrim (surface 88%) | hero subtext | 4.90 OK | 6.20 OK | 4.5 |
 | --color-brand-strong on hero scrim (surface 88%) | secondary button label | 4.95 OK | 6.78 OK | 4.5 |
@@ -118,6 +121,15 @@ as `TINTS`; a change in `Alert.tsx` changes them in the same commit. The
 danger button hover is `--color-danger-strong` (`#C81E2E`, the light
 `danger` red in both themes, `src/app/globals.css`): white labels hold
 5.70:1, and the button shape holds 3.09:1 against the dark surface.
+
+Phase 7 adds the panel of content still to come (section 4):
+`PLACEHOLDER_SURFACE` in `src/components/ui/Feedback.tsx`, shared by
+`MediaPlaceholder`, `TextPlaceholder` and `EmptyState`, mixes
+`--color-brand` into `--color-surface-raised` at 14%. Ink-muted captions
+and sentences and brand-strong prefixes and button labels hold 4.5:1 in
+both themes, the secondary button's brand border 3:1. The mark inside is
+decorative and never sits under text. The script holds the share as
+`PLACEHOLDER`; a change in `Feedback.tsx` changes it in the same commit.
 
 The script exits non-zero on any failure and runs in CI from phase 3.
 
@@ -220,8 +232,21 @@ justify; no italic for Persian; no fake bold; measure 62ch; headlines max
   (430 to 320 px).
   AVIF with WebP fallback, responsive sizes, blur placeholders, Persian
   `alt` on every image. AI-generated people, stock smiles and clip-art
-  teeth are banned. Missing photos are neutral labeled blocks of the exact
-  ratio plus a row in `docs/content/gaps.md`.
+  teeth are banned. Missing photos are labeled brand placeholders of the
+  exact ratio (`MediaPlaceholder`) plus a row in `docs/content/gaps.md`:
+  a calm panel of brand mixed into surface-raised (section 1.1), the mark
+  centered in it as a quiet relief (surface-raised at 75% in light, brand
+  at 15% in dark: porcelain and teal glass, section 10) and the label
+  «جای عکس: …» in caption size at the bottom start; no outline, nothing
+  moves. On a panel under 10rem tall the relief steps back (a container
+  query) instead of shrinking to a stray icon. Missing client text
+  (`TextPlaceholder`) is the same panel at card radius with the mark as a
+  small brand glyph at the start and the label «جای متن: …»; the empty
+  state (section 7) is the same panel with the mark above its sentence and
+  action. Until the home hero photo exists (gap 36), the hero shows an
+  abstract stand-in: a defocused bright room drawn in SVG (daylight, warm
+  neutrals, brand-tinted shade), no photo of any place
+  (`scripts/sync-public-assets.mjs`).
 
 ## 5. Brand assets and motifs
 

@@ -3,6 +3,7 @@ import { Fragment, type ReactNode } from 'react';
 import { BookingForm } from '@/components/booking/BookingForm';
 import { MapBlock } from '@/components/ui/Contact';
 import { cx } from '@/components/ui/cx';
+import { PLACEHOLDER_SURFACE } from '@/components/ui/Feedback';
 import { HoursTable } from '@/components/ui/Hours';
 import { Icon } from '@/components/ui/Icon';
 import { Section, SectionHeader } from '@/components/ui/Layout';
@@ -70,16 +71,29 @@ export function HeroMedia(props: { media: number | Media | null | undefined; cap
   );
 }
 
-/** Missing client text (gap 13): a neutral block naming what goes here, like a photo placeholder. */
+/**
+ * Missing client text (gap 13), in the photo placeholder's language (MediaPlaceholder): the brand
+ * panel, the mark as a small quiet glyph at the start (decorative, one caption line tall) and the
+ * label «جای متن: …» with its prefix in brand-strong.
+ */
 export function TextPlaceholder(props: { caption: string; className?: string }) {
   return (
     <p
       className={cx(
-        'max-w-measure rounded-card border border-dashed border-line-strong bg-surface-sunken p-4 text-caption text-ink-muted',
+        'flex max-w-measure items-start gap-3 rounded-card p-4 text-caption text-ink-muted',
+        PLACEHOLDER_SURFACE,
         props.className,
       )}
     >
-      <span className="font-semibold">{t('pages.textPlaceholder')}</span> {props.caption}
+      <Icon
+        name="mark"
+        size="custom"
+        className="aspect-[184/223] h-[1.3rem] w-auto text-brand/45"
+      />
+      <span>
+        <span className="font-semibold text-brand-strong">{t('pages.textPlaceholder')}</span>{' '}
+        {props.caption}
+      </span>
     </p>
   );
 }

@@ -14,7 +14,14 @@ import { Badge, Tag } from './Badge';
 import { CardRail, CategoryIcon, CategoryTile, DentistCard, ServiceCard } from './Cards';
 import { DirectionsLinks, PhoneNumber } from './Contact';
 import { Fact, FactsRow, FaqList, Quote, Steps } from './Content';
-import { EmptyState, Loading, SkeletonCard, SuccessCheck, Toast } from './Feedback';
+import {
+  EmptyState,
+  Loading,
+  PLACEHOLDER_SURFACE,
+  SkeletonCard,
+  SuccessCheck,
+  Toast,
+} from './Feedback';
 import { hoursBadgeLabels } from './Hours';
 import { HoursBadge } from './HoursBadge';
 import { heroTitleSize, PageHero, Section, SectionHeader } from './Layout';
@@ -184,6 +191,41 @@ describe('ui components: content, media, cards', () => {
     const text = screen.getByText('پرترهٔ پزشک', { exact: false });
     expect(text.textContent).toBe('جای عکس: پرترهٔ پزشک');
     expect(text.parentElement!.className).toContain('aspect-[4/5]');
+  });
+
+  it('UM5 every placeholder variant is a brand panel: the mark relief, then the caption row, no outline', () => {
+    for (const variant of ['fill', 'card', 'standalone'] as const) {
+      const { container, unmount } = render(
+        <MediaPlaceholder variant={variant} caption="پرترهٔ پزشک" />,
+      );
+      const panel = container.firstElementChild!;
+      expect(panel.className).toContain(PLACEHOLDER_SURFACE);
+      expect(PLACEHOLDER_SURFACE).toContain('var(--color-brand)_14%');
+      expect(panel.className).toContain(
+        variant === 'standalone' ? 'rounded-media aspect-[4/3]' : 'absolute inset-0',
+      );
+      expect(panel.className).not.toMatch(/dashed|border/);
+      // A size container: small panels hide the relief instead of shrinking it to an icon.
+      expect(panel.className).toContain('@container-size');
+      expect(panel.children).toHaveLength(2);
+      const [mark, caption] = panel.children;
+      expect(mark!.getAttribute('aria-hidden')).toBe('true');
+      expect(mark!.querySelector('use')!.getAttribute('href')).toMatch(
+        /^\/brand\/icons\.svg\?v=\w+#mark$/,
+      );
+      expect(mark!.getAttribute('class')).toMatch(/\[@container\(height<[\d.]+rem\)\]:invisible/);
+      expect(caption!.tagName).toBe('P');
+      expect(caption!.textContent).toBe('جای عکس: پرترهٔ پزشک');
+      unmount();
+    }
+  });
+
+  it('UM6 the empty state shares the placeholder panel: the mark, one sentence, one action, no outline', () => {
+    const { container } = render(<EmptyState action={<a href="/x">a</a>}>e</EmptyState>);
+    const panel = container.firstElementChild!;
+    expect(panel.className).toContain(PLACEHOLDER_SURFACE);
+    expect(panel.className).not.toMatch(/dashed|border/);
+    expect([...panel.children].map((child) => child.tagName)).toEqual(['svg', 'P', 'A']);
   });
 
   it('UC1 empty content renders nothing: facts, FAQ, steps, tiers, sources, a short TOC', () => {
