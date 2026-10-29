@@ -5,7 +5,9 @@
  *
  * Tier 1 at every width, and tiers 2 and 3 under 1024 px: the tap control; `data-motion` on the
  * molar slot turns on the CSS crossfade (opacity) and scale (transform) of `MolarStepper.tsx`
- * in `--dur-4`; tier 0 and reduced motion run no scene and keep the instant switch.
+ * in `--dur-4`; tier 0 and reduced motion run no scene and keep the instant switch. Under 1024 px
+ * (phone spec scene 4) the molar slot also settles and the chip row and the shown panel rise as
+ * they enter (phone.ts Settle and Rise, one trigger each); the scroll never checks a step there.
  * Tiers 2 and 3 from 1024 px: the section is pinned for one viewport; the pin's scrub timeline
  * crossfades the layers at the thirds, and crossing a third checks that step's radio
  * programmatically with a script `change` (untrusted: no `tier_select`; choices.ts moves the
@@ -22,6 +24,8 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import type { DomScene } from '../types';
+
+import { phoneMotion } from './phone';
 
 const RADIOS = 'input[name="home-tier"]';
 const WIDE = '(min-width: 1024px)';
@@ -183,12 +187,22 @@ const scene: DomScene = {
     };
   },
 
-  setup({ el, engine }) {
+  setup({ el, engine, conditions }) {
     const slot = el.querySelector<HTMLElement>('[data-world-slot="molar"]');
     const state = pinned;
     if (state === null) {
       slot?.setAttribute('data-motion', '');
-      return () => slot?.removeAttribute('data-motion');
+      // The hidden panels have an empty rect, so phone.ts's guard gives them no entrance.
+      const off = conditions.wide
+        ? null
+        : phoneMotion({
+            settle: slot === null ? [] : [slot],
+            rise: el.querySelectorAll('fieldset, [data-tier-panel]'),
+          });
+      return () => {
+        off?.();
+        slot?.removeAttribute('data-motion');
+      };
     }
     const onChange = (event: Event): void => {
       const index = state.radios.indexOf(event.target as HTMLInputElement);

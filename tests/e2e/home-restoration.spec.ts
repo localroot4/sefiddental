@@ -2,8 +2,9 @@
 // from 1024 px the section is pinned for one viewport and the scroll selects the step (معمولی,
 // VIP, CIP at thirds) without a `tier_select`; a user choice sends one and scrolls to its step;
 // arrow keys move the step with the chip in view; on phones and at tier 1 the tap control
-// crossfades the molar with no pin. Fast back-scroll and a resize mid-pin leave the layers where a
-// fresh load puts them.
+// crossfades the molar with no pin, and on phones the molar settles and the chip row and the panel
+// rise as they enter (phone spec scene 4). Fast back-scroll and a resize mid-pin leave the layers
+// where a fresh load puts them.
 import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test';
 
 import { recordBeacons } from '../helpers/booking';
@@ -281,8 +282,26 @@ test('T-RS3 arrow keys move the step, scroll to it and keep the focused chip in 
   expect(await tierSelects(beacons)).toEqual(['tier', 'tier', 'tier']);
 });
 
+/** The scrub lag on a coarse pointer (0.32 s) and the settle window, with margin (home-phone). */
+const SCRUB_WAIT_MS = 700;
+
+/** Document top (the offset chain, transforms ignored), opacity, and an identity transform. */
+const look = (page: Page, selector: string) =>
+  page.locator(selector).evaluate((el) => {
+    let top = 0;
+    for (let e = el as HTMLElement | null; e; e = e.offsetParent as HTMLElement | null) {
+      top += e.offsetTop;
+    }
+    const style = getComputedStyle(el);
+    return {
+      top,
+      opacity: Number(style.opacity),
+      identity: style.transform === 'none' || new DOMMatrixReadOnly(style.transform).isIdentity,
+    };
+  });
+
 test.describe('390 px touch', () => {
-  test('T-RS4 ?tier=3 on a phone: the tap control, 44 px chips, no pin, the molar crossfades, tier_select once', async ({
+  test('T-RS4 ?tier=3 on a phone: no pin and no step from the scroll; the molar settles and the chip row and the panel rise to rest at their reading lines; a tap on a 44 px chip crossfades the molar, tier_select once', async ({
     page,
   }, testInfo) => {
     only(testInfo, 'phone-light');
@@ -296,6 +315,38 @@ test.describe('390 px touch', () => {
     // The scene ran (no pin on a phone): it switched the CSS crossfade on.
     await expect(page.locator('[data-world-slot="molar"][data-motion]')).toHaveCount(1);
     await expect(page.locator('.pin-spacer')).toHaveCount(0);
+
+    // Settle on the molar (reading line 60 %), Rise on the chip row and the shown panel (80 %),
+    // one trigger each (phone spec 2.1): dim at the bar top, at rest at the reading line.
+    const bar = await page.evaluate(
+      () => document.querySelector<HTMLElement>('[data-sticky-bar]')?.offsetHeight ?? 0,
+    );
+    const scrub = async (y: number) => {
+      await scrollTo(page, Math.round(y));
+      await page.waitForTimeout(SCRUB_WAIT_MS);
+    };
+    for (const [selector, line] of [
+      ['[data-world-slot="molar"]', 0.6],
+      ['[data-scene="restoration"] fieldset', 0.8],
+      ['[data-scene="restoration"] [data-tier-panel=""]', 0.8],
+    ] as const) {
+      await expect(page.locator(`${selector}[data-scrub]`)).toHaveCount(1);
+      const atBar = (await look(page, selector)).top - (height - bar);
+      await scrub(atBar);
+      const start = await look(page, selector);
+      expect(start.opacity, `${selector} at the bar top`).toBeLessThanOrEqual(0.61);
+      await scrub(atBar + (height - bar - height * line) / 2);
+      expect((await look(page, selector)).opacity).toBeGreaterThan(start.opacity);
+      await scrub(start.top - height * line + 4);
+      expect(await look(page, selector), `${selector} at its reading line`).toMatchObject({
+        opacity: 1,
+        identity: true,
+      });
+    }
+    // The hidden panels got no entrance, and the scroll checked no step.
+    await expect(scene(page).locator('[data-tier-panel][data-scrub]')).toHaveCount(1);
+    expect(await checkedKey(page)).toBeNull();
+
     const section = scene(page);
     for (const chip of await section.locator('fieldset label').all()) {
       expect((await chip.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);

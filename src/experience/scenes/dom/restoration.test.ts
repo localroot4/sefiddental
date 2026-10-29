@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { setupChoices } from '@/components/chrome/choices';
 
 import type { DomScene } from '../types';
+import type { PhoneTargets } from './phone';
 import scene, { LOCK_MS, lockHolds, selectStep, stepAt, stepScrollY } from './restoration';
 
 // gsap stands in as spies: RS-S5 reads the inline base state `pin` writes and drives the trigger's
@@ -18,6 +19,12 @@ const g = vi.hoisted(() => {
 });
 vi.mock('gsap', () => ({ gsap: { set: g.set, timeline: () => g.timeline } }));
 vi.mock('gsap/ScrollTrigger', () => ({ ScrollTrigger: { create: g.create } }));
+// The phone scroll set is phone.ts's (phone.test.tsx, T-RS4); here only what the scene hands it.
+const phone = vi.hoisted(() => {
+  const off = vi.fn();
+  return { off, motion: vi.fn((_targets: unknown) => off) };
+});
+vi.mock('./phone', () => ({ phoneMotion: phone.motion }));
 // jsdom has no matchMedia: the viewport is wide unless a test narrows it.
 const media = { wide: true };
 window.matchMedia = (query: string) =>
@@ -181,5 +188,53 @@ describe('scene 4 restoration helpers', () => {
     cleanup();
     expect(radios.map((r) => r.checked)).toEqual([false, false, true]);
     media.wide = true;
+  });
+
+  /** The parts the phone scroll set reads: the molar slot, the chip row and the four panels. */
+  const phoneScene = (wide: boolean) => {
+    document.body.innerHTML = `<div data-scene="restoration"><section>
+      <div data-world-slot="molar">${['plain', 'vip', 'cip']
+        .map((l) => `<svg data-level="${l}"></svg>`)
+        .join('')}</div>
+      <fieldset>${[0, 1, 2]
+        .map((i) => `<input type="radio" name="home-tier" value="t${i}">`)
+        .join('')}</fieldset>
+      ${['', 't0', 't1', 't2'].map((key) => `<div data-tier-panel="${key}"></div>`).join('')}
+    </section></div>`;
+    const el = document.querySelector<HTMLElement>('[data-scene]')!;
+    phone.motion.mockClear();
+    phone.off.mockClear();
+    return {
+      el,
+      conditions: { reduce: false, fine: false, wide },
+      engine: { scrollTo: vi.fn() },
+    } as unknown as Parameters<NonNullable<DomScene['pin']>>[0] & Parameters<DomScene['setup']>[0];
+  };
+
+  it('RS-S8 under 1024 px (phone spec scene 4): the molar slot settles and the chip row and the panels rise, one call to phone.ts beside the tap crossfade; the cleanup ends both', () => {
+    const ctx = phoneScene(false);
+    const slot = ctx.el.querySelector('[data-world-slot="molar"]')!;
+    const cleanup = scene.setup(ctx) as () => void;
+    expect(phone.motion).toHaveBeenCalledTimes(1);
+    const targets = phone.motion.mock.calls[0]![0] as PhoneTargets;
+    expect(Object.keys(targets).sort()).toEqual(['rise', 'settle']);
+    expect(targets.settle).toHaveLength(1);
+    expect(targets.settle?.[0]).toBe(slot);
+    // The hidden panels go along; phone.ts's guard skips them (a display: none box is empty).
+    expect(
+      Array.from(targets.rise ?? []).map((t) => t.getAttribute('data-tier-panel') ?? t.tagName),
+    ).toEqual(['FIELDSET', '', 't0', 't1', 't2']);
+    expect(slot.hasAttribute('data-motion')).toBe(true);
+    cleanup();
+    expect(phone.off).toHaveBeenCalledTimes(1);
+    expect(slot.hasAttribute('data-motion')).toBe(false);
+  });
+
+  it('RS-S9 from 1024 px the phone scroll set stays off: tier 1 has the crossfade alone and the pinned scrub owns the layers', () => {
+    const ctx = phoneScene(true);
+    (scene.setup(ctx) as () => void)();
+    scene.pin!(ctx);
+    (scene.setup(ctx) as () => void)();
+    expect(phone.motion).not.toHaveBeenCalled();
   });
 });
