@@ -8,6 +8,7 @@ import type { ServiceTier } from '@/payload-types';
 
 import { ltr } from '@/components/ui/ltr';
 
+import { MolarStepper } from '../MolarStepper';
 import { HomeSection, type Copy } from './HomeSection';
 
 // The step control shows the panel of the checked tier (every panel in the server HTML) by its
@@ -22,10 +23,13 @@ const PANEL = [
 ];
 
 /**
- * Scene 4 (family D, the static stepper of phase 4): three steps, a line each, one «رزرو نوبت»
+ * Scene 4 (family D): the molar stepper (D16) beside three steps, a line each, one «رزرو نوبت»
  * that carries the chosen tier to the scene 10 block (C15), and the full comparison on the
  * restoration page. No tier is preselected (F24): until a step is chosen, the button carries
- * the service only. HomeBookingPrefill sends `tier_select` (name `home-tier`).
+ * the service only and the molar shows the plain level. HomeBookingPrefill sends `tier_select`
+ * (name `home-tier`) on a user choice; the pinned scrub of `scenes/dom/restoration.ts` checks
+ * the step from the scroll without one. The molar and the panels share the `group/tiers`, so
+ * both follow the same `data-choice`.
  */
 export function RestorationSection(props: {
   tiers: ServiceTier[];
@@ -49,40 +53,48 @@ export function RestorationSection(props: {
   return (
     <HomeSection scene="restoration" section="restoration" family="D" copy={props.copy} split>
       <div data-choices="" className="group/tiers grid gap-6">
-        <fieldset className="min-w-0">
-          <legend className="sr-only">{t('home.restoration.legend')}</legend>
-          <div className="flex flex-wrap gap-2">
-            {tiers.map((tier) => (
-              <Chip
+        {/* The molar beside the steps, except in the split's content column from 1024 to 1279 px,
+            where the three chips would wrap beside it: there it stacks above them, smaller
+            (MolarStepper), so the pinned stage fits a 768 px high viewport. */}
+        <div className="grid gap-6 md:grid-cols-[auto_minmax(0,1fr)] md:gap-8 lg:grid-cols-1 xl:grid-cols-[auto_minmax(0,1fr)]">
+          <MolarStepper className="justify-self-center md:justify-self-start" />
+          <div className="grid content-start gap-6">
+            <fieldset className="min-w-0">
+              <legend className="sr-only">{t('home.restoration.legend')}</legend>
+              <div className="flex flex-wrap gap-2">
+                {tiers.map((tier) => (
+                  <Chip
+                    key={tier.key}
+                    name="home-tier"
+                    value={tier.key}
+                    label={ltr(tier.name)}
+                    className="min-w-24 justify-center"
+                  />
+                ))}
+              </div>
+            </fieldset>
+            <div
+              data-tier-panel=""
+              className="grid justify-items-start group-data-choice/tiers:hidden noscript:group-has-[input:checked]/tiers:hidden"
+            >
+              {book(null)}
+            </div>
+            {tiers.map((tier, i) => (
+              <div
                 key={tier.key}
-                name="home-tier"
-                value={tier.key}
-                label={ltr(tier.name)}
-                className="min-w-24 justify-center"
-              />
+                data-tier-panel={tier.key}
+                className={cx(
+                  'hidden content-start justify-items-start gap-4 rounded-card border border-line bg-surface-raised p-6',
+                  PANEL[i],
+                )}
+              >
+                <h3 className="text-heading font-semibold">{ltr(tier.name)}</h3>
+                <p className="max-w-measure text-body text-ink-muted">{ltr(tier.description)}</p>
+                {book(tier)}
+              </div>
             ))}
           </div>
-        </fieldset>
-        <div
-          data-tier-panel=""
-          className="grid justify-items-start group-data-choice/tiers:hidden noscript:group-has-[input:checked]/tiers:hidden"
-        >
-          {book(null)}
         </div>
-        {tiers.map((tier, i) => (
-          <div
-            key={tier.key}
-            data-tier-panel={tier.key}
-            className={cx(
-              'hidden content-start justify-items-start gap-4 rounded-card border border-line bg-surface-raised p-6',
-              PANEL[i],
-            )}
-          >
-            <h3 className="text-heading font-semibold">{ltr(tier.name)}</h3>
-            <p className="max-w-measure text-body text-ink-muted">{ltr(tier.description)}</p>
-            {book(tier)}
-          </div>
-        ))}
         {props.path ? (
           <TextLink
             standalone

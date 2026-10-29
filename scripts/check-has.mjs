@@ -33,6 +33,15 @@ export const ALLOW = new Set([
   'noscript:group-has-[label:nth-of-type(2)>input:checked]/tiers:grid',
   'noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:grid',
   'noscript:group-has-[label:nth-of-type(4)>input:checked]/tiers:grid',
+  // MolarStepper: the layer of the checked step.
+  'noscript:group-has-[label:nth-of-type(2)>input:checked]/tiers:opacity-0',
+  'noscript:group-has-[label:nth-of-type(2)>input:checked]/tiers:transform-[scale(.94)]',
+  'noscript:group-has-[label:nth-of-type(2)>input:checked]/tiers:opacity-100',
+  'noscript:group-has-[label:nth-of-type(2)>input:checked]/tiers:transform-none',
+  'noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:opacity-0',
+  'noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:transform-[scale(.94)]',
+  'noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:opacity-100',
+  'noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:transform-none',
 ]);
 
 /** `@media (scripting: none)`, alone or joined by `and`: matches only without JavaScript. */

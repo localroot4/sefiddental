@@ -8,6 +8,7 @@ import { track } from '@/lib/track/track';
 import type { Service, ServiceTier } from '@/payload-types';
 
 import { HomeBookingPrefill } from './HomeBookingPrefill';
+import { MOLAR_LEVELS, MolarStepper } from './MolarStepper';
 import { RestorationSection } from './sections/RestorationSection';
 
 // The section module also renders the booking block, whose data readers need Payload.
@@ -30,7 +31,8 @@ describe('home scene 4 tier step (F24, CV9)', () => {
       <RestorationSection tiers={TIERS} path={null} copy={{ heading: 'h', intro: null }} />,
     );
     expect(html).not.toMatch(/<input[^>]*\schecked=/); // the attribute, not a checked: class
-    const hrefs = [...html.matchAll(/href="([^"]+)"/g)].map((m) => decodeURI(m[1]!));
+    // The links only: the molar's <use href> references its own art (RS6).
+    const hrefs = [...html.matchAll(/<a [^>]*href="([^"]+)"/g)].map((m) => decodeURI(m[1]!));
     expect(hrefs).toEqual([
       '/رزرو-نوبت?service=restoration',
       '/رزرو-نوبت?service=restoration&amp;tier=standard',
@@ -50,6 +52,11 @@ describe('home scene 4 tier step (F24, CV9)', () => {
       </>,
     );
     fireEvent.click(document.querySelector('input[name="other"]')!);
+    expect(track).not.toHaveBeenCalled();
+    // A script's change (scene 4's scroll-set step) is untrusted and no choice.
+    document
+      .querySelector('input[name="home-tier"]')!
+      .dispatchEvent(new Event('change', { bubbles: true }));
     expect(track).not.toHaveBeenCalled();
     fireEvent.click(document.querySelector('input[name="home-tier"]')!);
     expect(track).toHaveBeenCalledWith('tier_select', { location: 'tier', tier: 'vip' });
@@ -104,5 +111,43 @@ describe('home scene 4 tier step (F24, CV9)', () => {
     expect(vip.hasAttribute('data-booking-cta')).toBe(true);
     expect(new URL(vip.href).searchParams.get('service')).toBe('restoration');
     expect(vip.getAttribute('data-tier')).toBe('vip');
+  });
+
+  it('RS6 the molar is three pre-colored sibling layers in one decorative slot, no style attribute (D16, CSP)', () => {
+    const { container } = render(
+      <RestorationSection tiers={TIERS} path={null} copy={{ heading: 'h', intro: null }} />,
+    );
+    // Inside the chips' group, so the group's `data-choice` reaches the layers.
+    const slot = container.querySelector('.group\\/tiers [data-world-slot="molar"]');
+    expect(slot).not.toBeNull();
+    expect(slot?.getAttribute('aria-hidden')).toBe('true');
+    const layers = [...(slot?.children ?? [])];
+    expect(layers.map((el) => el.tagName)).toEqual(['svg', 'svg', 'svg']);
+    expect(layers.map((el) => el.getAttribute('data-level'))).toEqual(['plain', 'vip', 'cip']);
+    // Each level is a different enamel; the CIP layer alone adds the characterization strokes.
+    const fills = layers.map((el) => el.querySelector('g[fill]')?.getAttribute('fill'));
+    expect(fills).toEqual(MOLAR_LEVELS.map((level) => level.fill));
+    expect(new Set(fills).size).toBe(3);
+    expect(layers.map((el) => el.querySelectorAll('path[stroke]').length)).toEqual([0, 0, 2]);
+    // The layer follows `data-choice`; a `:has()` rule exists only without JavaScript (D21).
+    const classes = layers.map((el) => el.getAttribute('class')!.split(' '));
+    expect(classes.flat().filter((c) => c.includes('has-') && !c.startsWith('noscript:'))).toEqual(
+      [],
+    );
+    expect(classes.map((list) => list.filter((c) => c.endsWith(':opacity-100')))).toEqual([
+      [],
+      [
+        'group-data-[choice=2]/tiers:opacity-100',
+        'noscript:group-has-[label:nth-of-type(2)>input:checked]/tiers:opacity-100',
+      ],
+      [
+        'group-data-[choice=3]/tiers:opacity-100',
+        'noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:opacity-100',
+      ],
+    ]);
+    expect(container.querySelector('[style]')).toBeNull();
+    // The art budget (lane brief): the markup of the stepper, without its class attributes.
+    const art = renderToStaticMarkup(<MolarStepper />).replace(/ class="[^"]*"/g, '');
+    expect(art.length).toBeLessThanOrEqual(1536);
   });
 });
