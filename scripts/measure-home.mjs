@@ -13,10 +13,17 @@
 //   --sections scrolls the frames lane from one viewport above the first listed section to the
 //   bottom of the last one (a pinned scene's spacer included) and reports those sections only
 //   (`footer` is the playground stage; an id not on the page is an error);
-//   --viewport=phone runs the frames lane at 390x844 with touch scrolling at 6x on the default
-//   GPU (Lighthouse and INP keep their own presets);
-//   --pace=<px> is the wheel step every 50 ms (default 80): a short section holds a full 1 s
-//   window only at a slower pace (hero and trust at 16).
+//   --viewport=phone runs the frames lane at 390x844 with touch scrolling at 4x and 6x on the
+//   default GPU, CPU throttled from the navigation, tiers 0, 1 and 2 by default, and checks the
+//   phone profile first (phone spec 4.1: coarse, under 1024 px, no Lenis; exit 1 otherwise); the
+//   per-section table then compares each tier with tier 0 (the T0 gate and the frames row of
+//   phone spec section 4: recorded, the exit code does not change); the INP lane adds the phone
+//   taps (an FAQ summary at tiers 1 and 2, the light notice's switch from tier 0);
+//   --pace=<px> is the wheel step every 50 ms, or the finger travel per 50 ms of a touch swipe
+//   (default 80): a short section holds a full 1 s window only at a slower pace (hero and trust
+//   at 16);
+//   --fling lifts the finger without the 100 ms hold and records the scroll after each lift
+//   (flingPx; information only: headless Chromium may not fling).
 //   (after `npm run build` and `npm run db:e2e`; CHROME_PATH and PW_CHROMIUM_EXECUTABLE set, as
 //   in .env; ports E2E_PORT and E2E_PORT + 1 free)
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
@@ -40,10 +47,12 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let TIERS = [0, 1];
 /** `--sections` ids, or null for the whole page. */
 let SECTIONS = null;
-/** `--viewport`: desktop (wheel, 4x and 6x, both GPUs) or phone (touch, 6x, default GPU). */
+/** `--viewport`: desktop (wheel, 4x and 6x, both GPUs) or phone (touch, 4x and 6x, default GPU). */
 let VIEWPORT = 'desktop';
-/** Wheel step in px every 50 ms (`--pace`). */
+/** Wheel step, or finger travel, in px every 50 ms (`--pace`). */
 let PACE = 80;
+/** `--fling`: touch swipes lift without the hold. */
+let FLING = false;
 const RUNS = 3;
 const BOOKING = '/رزرو-نوبت';
 const MiB = 1024 * 1024;
@@ -64,6 +73,85 @@ export function median(values) {
 export function p95(values) {
   const sorted = [...values].sort((a, b) => a - b);
   return sorted.length ? round(sorted[Math.ceil(sorted.length * 0.95) - 1], 1) : null;
+}
+
+/** Phone spec 4.1 item 2: what keeps a context from being the phone profile, or null. */
+export function phoneProfileProblem({ coarse, wide, lenis }) {
+  const failed = [
+    !coarse && 'the pointer is not coarse',
+    wide && '(min-width: 1024px) matches',
+    lenis && 'Lenis runs',
+  ].filter(Boolean);
+  return failed.length ? `the phone profile is not coarse and narrow (${failed.join(', ')})` : null;
+}
+
+/**
+ * Layout shift of a run (pure): `clsAll` sums every entry, input included (a swipe start counts
+ * as input, phone spec section 4); `cls` is the web-vitals rule: no entry after recent input, the
+ * largest session window (shifts under 1 s apart, at most 5 s long).
+ */
+export function clsFrom(shifts) {
+  let clsAll = 0;
+  let cls = 0;
+  let session = 0;
+  let first = -Infinity;
+  let last = -Infinity;
+  for (const { t, value, hadRecentInput } of shifts) {
+    clsAll += value;
+    if (hadRecentInput) continue;
+    if (t - last < 1000 && t - first < 5000) session += value;
+    else {
+      session = value;
+      first = t;
+    }
+    last = t;
+    cls = Math.max(cls, session);
+  }
+  return { clsAll: round(clsAll, 4), cls: round(cls, 4) };
+}
+
+/** The phone rows of phone spec section 4 (the T0 gate and the frames row "P-F"). */
+export const PHONE_BUDGET = { t0MedianFps: 58, t0MinWindowFps: 55, framesOver33Share: 0.02 };
+
+/**
+ * What a phone section misses (pure; an empty list passes). Tier 0 at 4x: the T0 gate (median 1 s
+ * window at least 58 fps, slowest at least 55). Tiers 1 and up at 4x, against the same section at
+ * tier 0 (`t0`): median at least min(59, T0 - 1), slowest at least min(55, T0 - 2), worst frame at
+ * most max(50 ms, T0 worst), no long task over 100 ms, at most 2 % of frames over 33 ms. A section
+ * without a full 1 s window has no window numbers to compare.
+ */
+export function phoneMisses(section, t0, tier, rate) {
+  if (rate !== 4) return [];
+  const misses = [];
+  const known = (v) => typeof v === 'number' && v > 0;
+  if (tier === 0) {
+    if (known(section.medianFps) && section.medianFps < PHONE_BUDGET.t0MedianFps)
+      misses.push(`median ${round(section.medianFps, 1)} < 58`);
+    if (known(section.minWindowFps) && section.minWindowFps < PHONE_BUDGET.t0MinWindowFps)
+      misses.push(`slowest ${round(section.minWindowFps, 1)} < 55`);
+    return misses;
+  }
+  if (t0 && known(section.medianFps) && known(t0.medianFps)) {
+    const floor = Math.min(59, t0.medianFps - 1);
+    if (section.medianFps < floor)
+      misses.push(`median ${round(section.medianFps, 1)} < ${round(floor, 1)}`);
+  }
+  if (t0 && known(section.minWindowFps) && known(t0.minWindowFps)) {
+    const floor = Math.min(55, t0.minWindowFps - 2);
+    if (section.minWindowFps < floor)
+      misses.push(`slowest ${round(section.minWindowFps, 1)} < ${round(floor, 1)}`);
+  }
+  const worstCap = Math.max(50, t0?.worstFrameMs ?? 50);
+  if (section.worstFrameMs > worstCap)
+    misses.push(`worst ${round(section.worstFrameMs, 1)} ms > ${round(worstCap, 1)}`);
+  if (section.longTasksOver100ms > 0)
+    misses.push(`${section.longTasksOver100ms} long task(s) over 100 ms`);
+  if (
+    section.frames > 0 &&
+    section.framesOver33ms / section.frames > PHONE_BUDGET.framesOver33Share
+  )
+    misses.push(`${section.framesOver33ms}/${section.frames} frames over 33 ms`);
+  return misses;
 }
 
 /**
@@ -165,10 +253,12 @@ export function lighthouseSummary(lhrs) {
 export function frameSummary(samples) {
   const ids = [...new Set(samples.flatMap((r) => r.sections.map((s) => s.section)))];
   return {
-    ...medianFields(samples.map(({ sections, page, heap, ...rest }) => rest)),
+    ...medianFields(samples.map(({ sections, page, heap, layout, engine, ...rest }) => rest)),
     runs: samples.length,
     page: medianFields(samples.map((r) => r.page)),
     heap: medianFields(samples.map((r) => r.heap)),
+    layout: medianFields(samples.map((r) => r.layout ?? {})),
+    engine: medianFields(samples.map((r) => r.engine ?? {})),
     sections: ids.map((id) =>
       medianFields(samples.flatMap((r) => r.sections.filter((s) => s.section === id))),
     ),
@@ -366,10 +456,59 @@ async function scrollThrough(page, h, drive) {
     await page.waitForTimeout(300);
   }
   await page.evaluate(startSampler);
-  const reachedBottom = await h.scrollThrough(page, 1, { drive, endY: range?.endY, stepPx: PACE });
+  const flingPx = [];
+  const reachedBottom = await h.scrollThrough(page, 1, {
+    drive,
+    endY: range?.endY,
+    stepPx: PACE,
+    ...(drive === 'touch'
+      ? { fingerPx: PACE, fling: FLING, onFling: (px) => flingPx.push(px) }
+      : {}),
+  });
   await page.waitForTimeout(500);
   const raw = await page.evaluate(() => window.__measureHome.stop());
-  return { ...raw, reachedBottom };
+  return { ...raw, reachedBottom, flingPx };
+}
+
+/**
+ * Before any script of the page (an init script; tests/perf/scenes.spec.ts shares it): layout
+ * shifts and long tasks from the navigation on, so a run reads its layout shift and the engine
+ * creation's longest task.
+ */
+export function observeShiftsAndTasks() {
+  const w = window;
+  w.__shifts = [];
+  w.__tasks = [];
+  new PerformanceObserver((list) => {
+    for (const e of list.getEntries())
+      w.__shifts.push({ t: e.startTime, value: e.value, hadRecentInput: e.hadRecentInput });
+  }).observe({ type: 'layout-shift', buffered: true });
+  new PerformanceObserver((list) => {
+    for (const e of list.getEntries()) w.__tasks.push({ start: e.startTime, duration: e.duration });
+  }).observe({ type: 'longtask', buffered: true });
+}
+
+/**
+ * Engine creation (phone spec 4.1 item 7): the engine's `initMs` measure and the longest task
+ * from the engine request (the first script after `load`, T-EX5's rule) to 1 s after the
+ * creation, where the deferred scene setups run one task each; null at tier 0.
+ */
+export function engineCreation() {
+  const [nav] = performance.getEntriesByType('navigation');
+  const load = nav?.loadEventStart ?? 0;
+  const request = performance
+    .getEntriesByType('resource')
+    .filter((e) => e.startTime >= load && /\.js(\?|$)/.test(e.name))
+    .map((e) => e.startTime)
+    .sort((a, b) => a - b)[0];
+  const init = performance.getEntriesByName('sefid:engine-init')[0];
+  if (request === undefined || !init) return { initMs: null, longestTaskMs: null };
+  const end = init.startTime + init.duration + 1000;
+  const tasks = window.__tasks.filter((t) => t.start >= request && t.start <= end);
+  return {
+    initMs: init.duration,
+    longestTaskMs: tasks.length ? Math.max(...tasks.map((t) => t.duration)) : 0,
+  };
 }
 
 /** Closes a context without hiding the error that got us here when the browser is already gone. */
@@ -378,14 +517,39 @@ const closeQuietly = (context) => context.close().catch(() => {});
 async function measureFrames(browser, origin, h, tier, rate) {
   const context = await (await browser()).newContext({ ...h.VIEWPORTS[VIEWPORT], ...CONTEXT });
   const page = await context.newPage();
+  const phone = VIEWPORT === 'phone';
   try {
+    await page.addInitScript(observeShiftsAndTasks);
+    // A slow phone is slow from the first byte: the phone lane throttles from the navigation, so
+    // the engine creation is measured at the run's rate too.
+    const restorePhone = phone ? await h.throttleCpu(page, rate) : null;
     await page.goto(`${origin}/?tier=${tier}`, { waitUntil: 'load' });
     await settle(page);
+    if (phone) {
+      const problem = phoneProfileProblem(
+        await page.evaluate(() => ({
+          coarse: matchMedia('(pointer: coarse)').matches,
+          wide: matchMedia('(min-width: 1024px)').matches,
+          lenis: document.documentElement.classList.contains('lenis'),
+        })),
+      );
+      if (problem) throw Object.assign(new Error(problem), { precondition: true });
+      if (tier >= 1) {
+        await page.waitForFunction(
+          () => performance.getEntriesByName('sefid:engine-init').length > 0,
+          null,
+          { timeout: 20_000 },
+        );
+        await page.waitForTimeout(1000);
+      }
+    }
     if (VIEWPORT === 'desktop') await page.mouse.move(720, 450);
     await h.collectGarbage(page);
     const heapBeforeMiB = await heapMiB(page);
-    const restore = await h.throttleCpu(page, rate);
-    const raw = await scrollThrough(page, h, VIEWPORT === 'phone' ? 'touch' : 'wheel');
+    const restore = restorePhone ?? (await h.throttleCpu(page, rate));
+    const raw = await scrollThrough(page, h, phone ? 'touch' : 'wheel');
+    const layout = clsFrom(await page.evaluate(() => window.__shifts));
+    const engine = await page.evaluate(engineCreation);
     await restore();
     const heapAfterMiB = await heapMiB(page);
     await h.collectGarbage(page);
@@ -411,6 +575,9 @@ async function measureFrames(browser, origin, h, tier, rate) {
         .sectionFrameStats(raw.frames, raw.longTasks, raw.changes)
         .filter((s) => !SECTIONS || SECTIONS.includes(s.section)),
       heap: { beforeMiB: heapBeforeMiB, afterMiB: heapAfterMiB, afterGcMiB: heapAfterGcMiB },
+      layout,
+      engine: { initMs: round(engine.initMs, 1), longestTaskMs: round(engine.longestTaskMs) },
+      ...(FLING ? { flingPx: raw.flingPx } : {}),
     };
   } finally {
     await closeQuietly(context);
@@ -497,6 +664,55 @@ async function measureInp(browser, origin, h, viewport, tier, form) {
 }
 
 /**
+ * A phone tap's Event Timing (phone spec 4.1 item 6, CPU 4x): an FAQ summary at `?tier=N`, or the
+ * light notice's switch on a weak phone (deviceMemory 2 injected, no `?tier`: the light version
+ * from hydration), opened by scrolling past the hero card and waiting for it.
+ */
+async function measureTap(browser, origin, h, tier, row) {
+  const context = await (await browser()).newContext({ ...h.VIEWPORTS.phone, ...CONTEXT });
+  const page = await context.newPage();
+  try {
+    await page.addInitScript(observeEventTiming);
+    if (row === 'notice') {
+      await page.addInitScript(() =>
+        Object.defineProperty(Navigator.prototype, 'deviceMemory', {
+          get: () => 2,
+          configurable: true,
+        }),
+      );
+    }
+    await page.goto(`${origin}/${row === 'notice' ? '' : `?tier=${tier}`}`, { waitUntil: 'load' });
+    await settle(page);
+    let target;
+    if (row === 'notice') {
+      await page.evaluate(() => {
+        const card = document.getElementById('bk-hero')?.parentElement;
+        const top = (card?.getBoundingClientRect().bottom ?? 0) + window.scrollY;
+        window.scrollTo({ top, behavior: 'instant' });
+      });
+      target = page.locator('[data-light-notice] button').first();
+      await target.waitFor({ timeout: 10_000 });
+    } else {
+      target = page.locator('[data-scene="first-visit"] summary').first();
+      await target.scrollIntoViewIfNeeded();
+    }
+    await page.waitForTimeout(500);
+    const restore = await h.throttleCpu(page, 4);
+    const from = await page.evaluate(() => performance.now());
+    await target.tap();
+    await page.waitForTimeout(1000);
+    await restore();
+    const entries = (await page.evaluate(() => window.__eventTiming)).filter(
+      (e) => e.start >= from,
+    );
+    const worst = entries.reduce((w, e) => (w && w.duration >= e.duration ? w : e), null);
+    return { tapMs: worst?.duration ?? null, event: worst?.name ?? null };
+  } finally {
+    await closeQuietly(context);
+  }
+}
+
+/**
  * One measurement run, and once more after a failure: Chromium has died mid-run here (the
  * browser process went away during an INP run at tier 1), and a second run on a fresh browser
  * is the whole cure. A second failure is a real problem, so it propagates.
@@ -505,6 +721,7 @@ export async function retried(label, run) {
   try {
     return await run();
   } catch (error) {
+    if (error?.precondition) throw error;
     console.log(
       `measure-home: ${label} failed (${String(error).split('\n')[0]}); running it once more`,
     );
@@ -563,16 +780,23 @@ function readme(results, bundleMd) {
     lines.push(
       `## Frame times and heap (${phone ? 'phone 390x844 touch' : 'desktop 1440x900'}, median of ${RUNS} runs field by field)`,
       '',
-      `Chromium launched as tests/helpers/launch.ts does: \`default\` (headless as is)${phone ? '' : ' and `swiftshader` (the software GPU profile of the perf project)'}; CDP CPU throttling, ${phone ? 'one-finger swipes of 500 px (CDP touch events, no fling)' : `mouse wheel ${results.pace ?? 80} px every 50 ms`} from the top to the bottom of the page${results.sections ? ` (\`--sections\`: from one viewport above ${results.sections[0]} to the bottom of ${results.sections.at(-1)}, a pin spacer included)` : ''}. Frames are requestAnimationFrame deltas; long tasks come from a PerformanceObserver (over 50 ms). Heap is CDP Runtime.getHeapUsage: before the scroll after a forced GC, right after it, and after another GC.`,
+      `Chromium launched as tests/helpers/launch.ts does: \`default\` (headless as is)${phone ? '' : ' and `swiftshader` (the software GPU profile of the perf project)'}; CDP CPU throttling${phone ? ' from the navigation on' : ''}, ${phone ? `one-finger swipes of 500 px (CDP touch events, ${results.pace ?? 80} px of finger travel per 50 ms, ${results.fling ? 'lifted at once: flings allowed' : 'held 100 ms before the lift: no fling'})` : `mouse wheel ${results.pace ?? 80} px every 50 ms`} from the top to the bottom of the page${results.sections ? ` (\`--sections\`: from one viewport above ${results.sections[0]} to the bottom of ${results.sections.at(-1)}, a pin spacer included)` : ''}. Frames are requestAnimationFrame deltas; long tasks come from a PerformanceObserver (over 50 ms). Heap is CDP Runtime.getHeapUsage: before the scroll after a forced GC, right after it, and after another GC.`,
       '',
-      '| GPU | Tier | CPU | Median fps (1 s windows) | Slowest window fps | p95 frame ms | Worst frame ms | Frames over 33 ms | Long tasks (over 100 ms) | Longest task ms | Heap MiB before / after / after GC | Scroll s | Reached bottom |',
-      '|---|---|---|---|---|---|---|---|---|---|---|---|---|',
+      '| GPU | Tier | CPU | Median fps (1 s windows) | Slowest window fps | p95 frame ms | Worst frame ms | Frames over 33 ms | Long tasks (over 100 ms) | Longest task ms | Heap MiB before / after / after GC | clsAll / cls | Engine initMs / longest task ms | Scroll s | Reached bottom |',
+      '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',
       ...runs.map(
         (r) =>
-          `| ${r.gpu} | ${r.tier} | ${r.rate}x | ${round(r.page.medianFps, 1)} | ${round(r.page.minWindowFps, 1)} | ${round(r.page.p95FrameMs, 1)} | ${round(r.page.worstFrameMs, 1)} | ${round(r.page.framesOver33ms)} | ${round(r.page.longTasks)} (${round(r.page.longTasksOver100ms)}) | ${round(r.page.longestTaskMs)} | ${round(r.heap.beforeMiB, 1)} / ${round(r.heap.afterMiB, 1)} / ${round(r.heap.afterGcMiB, 1)} | ${round(r.scrollMs / 1000, 1)} | ${r.reachedBottom ? 'yes' : 'no'} |`,
+          `| ${r.gpu} | ${r.tier} | ${r.rate}x | ${round(r.page.medianFps, 1)} | ${round(r.page.minWindowFps, 1)} | ${round(r.page.p95FrameMs, 1)} | ${round(r.page.worstFrameMs, 1)} | ${round(r.page.framesOver33ms)} | ${round(r.page.longTasks)} (${round(r.page.longTasksOver100ms)}) | ${round(r.page.longestTaskMs)} | ${round(r.heap.beforeMiB, 1)} / ${round(r.heap.afterMiB, 1)} / ${round(r.heap.afterGcMiB, 1)} | ${r.layout?.clsAll ?? '-'} / ${r.layout?.cls ?? '-'} | ${r.engine?.initMs ?? '-'} / ${r.engine?.longestTaskMs ?? '-'} | ${round(r.scrollMs / 1000, 1)} | ${r.reachedBottom ? 'yes' : 'no'} |`,
       ),
       '',
     );
+    if (results.fling) {
+      const flings = runs.flatMap((r) => r.samples.flatMap((x) => x.flingPx ?? []));
+      lines.push(
+        `Fling: median ${round(median(flings), 0) ?? 'unknown'} px after a lift over ${flings.length} swipes.${flings.every((px) => px === 0) ? ' Headless Chromium did not fling from CDP touch events: this lane is information only.' : ''}`,
+        '',
+      );
+    }
     const order = [...new Set(runs.flatMap((r) => r.sections.map((s) => s.section)))];
     lines.push(
       '### Per section (median window fps / slowest window fps / worst frame ms / p95 frame ms / long tasks, longest ms)',
@@ -593,6 +817,43 @@ function readme(results, bundleMd) {
       }),
       '',
     );
+    if (phone) {
+      // Phone spec section 4: each tier against tier 0 at the same rate; recorded, never gating.
+      const t0Of = (rate, id) =>
+        runs.find((r) => r.tier === 0 && r.rate === rate)?.sections.find((s) => s.section === id);
+      const delta = (a, b) => {
+        if (!a || !b) return '-';
+        const d = round(a - b, 1);
+        return `${d > 0 ? '+' : ''}${d}`;
+      };
+      lines.push(
+        '### Phone budgets (phone spec section 4: T0 gate on tier 0 at 4x; the frames row "P-F" at 4x against tier 0)',
+        '',
+        'Per section: the median and slowest window fps minus tier 0 at the same rate, then `ok` or the misses. Recorded; the exit code does not change.',
+        '',
+        `| Section | ${runs.map((r) => `tier ${r.tier}, ${r.rate}x`).join(' | ')} |`,
+        `|---|${runs.map(() => '---').join('|')}|`,
+        ...order.map((id) => {
+          const cells = runs.map((r) => {
+            const s = r.sections.find((x) => x.section === id);
+            if (!s) return '-';
+            const t0 = t0Of(r.rate, id);
+            const misses = phoneMisses(s, t0, r.tier, r.rate);
+            const verdict =
+              r.rate !== 4
+                ? ''
+                : `${r.tier === 0 ? 'T0 gate' : 'P-F'} ${misses.length ? `miss: ${misses.join('; ')}` : 'ok'}`;
+            const deltas =
+              r.tier === 0
+                ? ''
+                : `${delta(s.medianFps, t0?.medianFps)} / ${delta(s.minWindowFps, t0?.minWindowFps)} `;
+            return `${deltas}${verdict}`.trim() || '-';
+          });
+          return `| ${id} | ${cells.join(' | ')} |`;
+        }),
+        '',
+      );
+    }
   }
   if (results.inp) {
     lines.push(
@@ -608,6 +869,21 @@ function readme(results, bundleMd) {
         const e = slowest.submitEvent;
         return `| ${row.viewport} | ${row.tier} | ${row.form} | ${inpMs(median(values.map((v) => v ?? 0)))} (${values.map(inpMs).join(', ')}) | ${e ? `${e.name}, ${e.inputDelayMs} / ${e.processingMs} / ${e.presentationMs}` : '-'} | ${inpMs(median(row.runs.map((r) => r.typingWorstMs ?? 0)))} | ${row.runs.filter((r) => r.success).length}/${row.runs.length} |`;
       }),
+      '',
+    );
+  }
+  if (results.taps) {
+    lines.push(
+      `## INP of the phone taps (390x844, CPU 4x, median of ${RUNS}; budget at most 200 ms)`,
+      '',
+      'Event Timing of the tap, as above. `faq`: the first FAQ summary at `?tier=N`. `notice`: the light notice switch on a weak phone (deviceMemory 2 injected, no `?tier`, so tier 0 from hydration).',
+      '',
+      '| Row | Tier | Tap ms (runs) | Event |',
+      '|---|---|---|---|',
+      ...results.taps.map(
+        (row) =>
+          `| ${row.row} | ${row.tier} | ${inpMs(median(row.runs.map((r) => r.tapMs ?? 0)))} (${row.runs.map((r) => inpMs(r.tapMs)).join(', ')}) | ${row.runs.find((r) => r.event)?.event ?? '-'} |`,
+      ),
       '',
     );
   }
@@ -628,10 +904,10 @@ function readme(results, bundleMd) {
 const option = (args, name) =>
   args.find((a) => a.startsWith(`--${name}=`))?.slice(`--${name}=`.length);
 
-/** `--tiers=1,2` picks the tiers Lighthouse, frames and INP run at (default 0 and 1). */
-export function parseTiers(args) {
+/** `--tiers=1,2` picks the tiers Lighthouse, frames and INP run at (default 0 and 1, phone 0 to 2). */
+export function parseTiers(args, fallback = [0, 1]) {
   const arg = option(args, 'tiers');
-  if (arg === undefined) return [0, 1];
+  if (arg === undefined) return fallback;
   const tiers = [...new Set(arg.split(',').map(Number))].filter(
     (t) => Number.isInteger(t) && t >= 0 && t <= 3,
   );
@@ -683,10 +959,11 @@ async function main() {
     process.exit(2);
   }
   const only = new Set((option(args, 'only') ?? 'bundle,lighthouse,frames,inp').split(','));
-  TIERS = parseTiers(args);
   SECTIONS = parseSections(args);
   VIEWPORT = parseViewport(args);
+  TIERS = parseTiers(args, VIEWPORT === 'phone' ? [0, 1, 2] : [0, 1]);
   PACE = parsePace(args);
+  FLING = args.includes('--fling');
   const envFile = path.join(root, '.env');
   if (existsSync(envFile)) process.loadEnvFile(envFile);
   const outDir = path.resolve(root, outArg);
@@ -697,10 +974,11 @@ async function main() {
   const results = {
     label: path.relative(path.join(root, 'docs', 'qa'), outDir),
     measuredAt: new Date().toISOString(),
-    command: `E2E_PORT=${port} node scripts/measure-home.mjs ${path.relative(root, outDir)}${option(args, 'only') ? ` --only=${[...only].join(',')}` : ''}${option(args, 'tiers') ? ` --tiers=${TIERS.join(',')}` : ''}${SECTIONS ? ` --sections=${SECTIONS.join(',')}` : ''}${VIEWPORT === 'phone' ? ' --viewport=phone' : ''}${PACE === 80 ? '' : ` --pace=${PACE}`}`,
+    command: `E2E_PORT=${port} node scripts/measure-home.mjs ${path.relative(root, outDir)}${option(args, 'only') ? ` --only=${[...only].join(',')}` : ''}${option(args, 'tiers') ? ` --tiers=${TIERS.join(',')}` : ''}${SECTIONS ? ` --sections=${SECTIONS.join(',')}` : ''}${VIEWPORT === 'phone' ? ' --viewport=phone' : ''}${PACE === 80 ? '' : ` --pace=${PACE}`}${FLING ? ' --fling' : ''}`,
     viewport: VIEWPORT,
     sections: SECTIONS,
     pace: PACE,
+    fling: FLING,
     host: {
       commit: git('rev-parse', '--short', 'HEAD'),
       dirty: git('status', '--porcelain').length > 0,
@@ -770,12 +1048,12 @@ async function main() {
         results.frames = [];
         // The software GPU the master prompt asks for, and the default headless path: on
         // SwiftShader the GPU side can hide what CPU throttling does to the main thread. The
-        // phone lane is the low-end Android proxy: default GPU, 6x only.
+        // phone lane is the low-end Android proxy: default GPU, 4x (the budgets) and 6x.
         const phone = VIEWPORT === 'phone';
         for (const gpu of phone ? ['default'] : ['default', 'swiftshader']) {
           launchOptions = gpu === 'swiftshader' ? swiftShaderLaunch() : defaultLaunch();
           for (const tier of TIERS) {
-            for (const rate of phone ? [6] : [4, 6]) {
+            for (const rate of [4, 6]) {
               const label = `frames ${gpu} tier ${tier} ${rate}x`;
               const samples = [];
               for (let i = 0; i < RUNS; i += 1) {
@@ -813,6 +1091,24 @@ async function main() {
             }
           }
         }
+        if (VIEWPORT === 'phone') {
+          // Phone spec 4.1 item 6: the taps of the scenes landed so far, at tiers 1 and 2, and
+          // the notice switch from tier 0.
+          results.taps = [];
+          const rows = [
+            ...TIERS.filter((tier) => tier >= 1).map((tier) => ['faq', tier]),
+            ['notice', 0],
+          ];
+          for (const [row, tier] of rows) {
+            const label = `tap ${row} tier ${tier}`;
+            const runs = [];
+            for (let i = 0; i < RUNS; i += 1) {
+              runs.push(await retried(label, () => measureTap(getBrowser, origin, h, tier, row)));
+            }
+            results.taps.push({ row, tier, runs });
+            console.log(`measure-home: ${label} done`);
+          }
+        }
         save();
       }
     }
@@ -826,7 +1122,10 @@ async function main() {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) {
   main().catch((error) => {
-    console.error(`measure-home: ${error.stack ?? error.message}`);
+    // A failed precondition says what to fix; anything else shows where it broke.
+    console.error(
+      `measure-home: ${error.precondition ? error.message : (error.stack ?? error.message)}`,
+    );
     process.exit(1);
   });
 }

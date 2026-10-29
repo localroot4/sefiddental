@@ -150,6 +150,14 @@ export interface ScrollOptions {
   endY?: number;
   /** Wheel step in px every 50 ms (default 80); smaller is slower, so short sections hold 1 s. */
   stepPx?: number;
+  /**
+   * Touch: finger travel in px per 50 ms (measure-home `--pace`; 80 moves a 500 px swipe in about
+   * 310 ms). Without it a swipe is 10 moves 16 ms apart.
+   */
+  fingerPx?: number;
+  /** Touch: lift without the 100 ms hold, so the page may fling; `onFling` gets the px it went. */
+  fling?: boolean;
+  onFling?: (px: number) => void;
   /** Gives up after this long (default 3 minutes); the result says so. */
   deadlineMs?: number;
 }
@@ -158,8 +166,9 @@ export interface ScrollOptions {
  * Scrolls from where the page is to `endY` (default: the bottom going down, the top going up).
  * `wheel` turns the mouse wheel `stepPx` every 50 ms; `touch` swipes one finger 500 px per
  * gesture through CDP touch events (`Input.dispatchTouchEvent`, as Playwright's own tap does;
- * `Input.synthesizeScrollGesture` moved nothing in headless Chromium), with a 100 ms hold before
- * the finger lifts so no fling follows and every swipe moves the same distance. A swipe that
+ * `Input.synthesizeScrollGesture` moved nothing in headless Chromium), moves 16 ms apart
+ * (`fingerPx` per 50 ms sets their length), with a 100 ms hold before the finger lifts so no
+ * fling follows and every swipe moves the same distance (`fling` lifts at once instead). A swipe that
  * starts on a part with `touch-action: none` (the playground's Draggables) drags the part, not
  * the page: when the page did not move, the next swipe starts 120 px further along its own path
  * (shortened where the path would leave the viewport) until one moves it. Resolves with whether
@@ -170,7 +179,7 @@ export async function scrollThrough(
   direction: 1 | -1,
   options: ScrollOptions = {},
 ): Promise<boolean> {
-  const { drive = 'wheel', endY, stepPx = 80, deadlineMs = 180_000 } = options;
+  const { drive = 'wheel', endY, stepPx = 80, deadlineMs = 180_000, fingerPx, fling } = options;
   const cdp = drive === 'touch' ? await page.context().newCDPSession(page) : null;
   const size = page.viewportSize() ?? { width: 390, height: 844 };
   // The finger starts at 80% of the height going down (20% going up).
@@ -188,13 +197,20 @@ export async function scrollThrough(
           type,
           touchPoints: type === 'touchEnd' ? [] : [{ x, y }],
         });
+      // `fingerPx` per 50 ms is `fingerPx * 16 / 50` per 16 ms move.
+      const moves = fingerPx ? Math.max(1, Math.ceil(Math.abs(to - from) / (fingerPx * 0.32))) : 10;
       await touch('touchStart', from);
-      for (let step = 1; step <= 10; step += 1) {
-        await touch('touchMove', Math.round(from + ((to - from) * step) / 10));
+      for (let step = 1; step <= moves; step += 1) {
+        await touch('touchMove', Math.round(from + ((to - from) * step) / moves));
         await page.waitForTimeout(16);
       }
-      await page.waitForTimeout(100);
+      if (!fling) await page.waitForTimeout(100);
+      const liftY = fling ? await page.evaluate(() => window.scrollY) : 0;
       await touch('touchEnd', 0);
+      if (fling) {
+        await page.waitForTimeout(600);
+        options.onFling?.(Math.abs((await page.evaluate(() => window.scrollY)) - liftY));
+      }
     } else {
       await page.mouse.wheel(0, stepPx * direction);
     }

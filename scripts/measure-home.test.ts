@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  clsFrom,
   frameSummary,
   lighthouseSummary,
   median,
   medianFields,
   parsePace,
+  phoneMisses,
+  phoneProfileProblem,
   parseSections,
   parseTiers,
   parseViewport,
@@ -168,6 +171,9 @@ describe('lighthouseSummary', () => {
 describe('parseTiers', () => {
   it('defaults to 0 and 1, reads --tiers, drops repeats and values outside 0 to 3', () => {
     expect(parseTiers(['docs/qa/x', '--only=frames'])).toEqual([0, 1]);
+    // The phone lane's default (phone spec 4.1 item 1).
+    expect(parseTiers(['--viewport=phone'], [0, 1, 2])).toEqual([0, 1, 2]);
+    expect(parseTiers(['--tiers=1'], [0, 1, 2])).toEqual([1]);
     expect(parseTiers(['docs/qa/x', '--tiers=1,2,2'])).toEqual([1, 2]);
     expect(parseTiers(['--tiers=2,9'])).toEqual([2]);
     expect(() => parseTiers(['--tiers=9'])).toThrow('--tiers');
@@ -197,5 +203,80 @@ describe('parseSections, parseViewport and parsePace', () => {
     expect(() => parsePace(['--pace=0'])).toThrow('--pace');
     expect(() => parsePace(['--pace=1.5'])).toThrow('1.5');
     expect(() => parsePace(['--pace=fast'])).toThrow('fast');
+  });
+});
+
+describe('phone profile, layout shift and the phone budgets (phone spec 4.1)', () => {
+  it('names what keeps a context from the phone profile', () => {
+    expect(phoneProfileProblem({ coarse: true, wide: false, lenis: false })).toBeNull();
+    expect(phoneProfileProblem({ coarse: false, wide: true, lenis: true })).toBe(
+      'the phone profile is not coarse and narrow (the pointer is not coarse, (min-width: 1024px) matches, Lenis runs)',
+    );
+  });
+
+  it('sums every shift in clsAll and keeps the web-vitals session window in cls', () => {
+    const shifts = [
+      { t: 0, value: 0.01, hadRecentInput: false },
+      { t: 500, value: 0.02, hadRecentInput: false },
+      { t: 900, value: 0.5, hadRecentInput: true },
+      { t: 3000, value: 0.04, hadRecentInput: false },
+    ];
+    expect(clsFrom(shifts)).toEqual({ clsAll: 0.57, cls: 0.04 });
+    expect(clsFrom([])).toEqual({ clsAll: 0, cls: 0 });
+    // One window never spans more than 5 s.
+    const steady = Array.from({ length: 12 }, (_, i) => ({
+      t: i * 900,
+      value: 0.01,
+      hadRecentInput: false,
+    }));
+    expect(clsFrom(steady).cls).toBe(0.06);
+  });
+
+  const row = {
+    medianFps: 59,
+    minWindowFps: 56,
+    worstFrameMs: 30,
+    longTasksOver100ms: 0,
+    framesOver33ms: 1,
+    frames: 600,
+  };
+
+  it('the T0 gate: tier 0 at 4x needs 58 median and 55 slowest; 6x is recorded only', () => {
+    expect(phoneMisses(row, undefined, 0, 4)).toEqual([]);
+    expect(phoneMisses({ ...row, medianFps: 57, minWindowFps: 50 }, undefined, 0, 4)).toEqual([
+      'median 57 < 58',
+      'slowest 50 < 55',
+    ]);
+    expect(phoneMisses({ ...row, medianFps: 40 }, undefined, 0, 6)).toEqual([]);
+  });
+
+  it('P-F: a tier at 4x against tier 0 (at most 1 fps of median, 2 of slowest; frames and tasks)', () => {
+    const t0 = { ...row, medianFps: 58, minWindowFps: 54, worstFrameMs: 70 };
+    expect(
+      phoneMisses({ ...row, medianFps: 57, minWindowFps: 52, worstFrameMs: 70 }, t0, 1, 4),
+    ).toEqual([]);
+    expect(
+      phoneMisses(
+        {
+          ...row,
+          medianFps: 56.5,
+          minWindowFps: 51,
+          worstFrameMs: 71,
+          longTasksOver100ms: 1,
+          framesOver33ms: 13,
+        },
+        t0,
+        2,
+        4,
+      ),
+    ).toEqual([
+      'median 56.5 < 57',
+      'slowest 51 < 52',
+      'worst 71 ms > 70',
+      '1 long task(s) over 100 ms',
+      '13/600 frames over 33 ms',
+    ]);
+    // A section without a full window is not a fps miss.
+    expect(phoneMisses({ ...row, medianFps: 0, minWindowFps: 0 }, t0, 1, 4)).toEqual([]);
   });
 });
