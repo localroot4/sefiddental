@@ -215,6 +215,11 @@ export function placeScrollY(root: HTMLElement, place: ScenePlace<SceneId>): num
   return scrollYAt(place, measureBounds(root), maxScroll());
 }
 
+/** The reader's place in the current document, measured now; null above the first scene. */
+export function placeNow(root: HTMLElement): ScenePlace<SceneId> | null {
+  return activeScene(scrollFraction(window.scrollY, maxScroll()), measureBounds(root));
+}
+
 /**
  * The frame monitor while no canvas renders (D5, phone spec D26): the same sampler and step rule
  * as the canvas probe, fed only while the page scrolls. Its own requestAnimationFrame loop runs
@@ -292,7 +297,10 @@ export function createScrollEngine(opts: {
   layout: LayoutLatch;
   settings: TierSettings;
   scenes: readonly SceneDefinition[];
-  /** Keep-place across a relatch: applied again after the refresh the new pins queue. */
+  /**
+   * Keep-place across a relatch, or the place the browser restored for a first engine: applied
+   * again by the refresh the new pins queue, run in the creation task.
+   */
   restore?: ScenePlace<SceneId>;
 }): ScrollEngine {
   const t0 = performance.now();
@@ -689,6 +697,10 @@ export function createScrollEngine(opts: {
     }
     placeChildren();
     context.ignore(triggerMaster);
+    // A place to keep: the refresh the pins queued runs now instead of on the next frame, which
+    // would paint the content their spacers pushed into view (clsAll 1 on a reload at desktop
+    // tier 2); a synchronous refresh makes the queued one a no-op.
+    if (pending !== null) ScrollTrigger.refresh();
 
     return () => {
       live = false;

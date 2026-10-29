@@ -67,6 +67,9 @@ describe('IntroRemover (report C4)', () => {
     expect(container.querySelector('#intro')).not.toBeNull();
     await settle('done');
     expect(container.querySelector('#intro')).toBeNull();
+    // An inert element keeps the dialog's place: the scenes after it keep their :nth-child
+    // indices, which Chrome's scroll restoration of a reload resolves in the server markup.
+    expect(Array.from(container.children, (el) => el.tagName)).toEqual(['TEMPLATE']);
   });
 
   it('IR3 the end event wakes it up: removed when the value is not playing, kept while it is', async () => {

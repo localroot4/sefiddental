@@ -9,7 +9,12 @@ import type { LayoutLatch } from '../tier/latch';
  * Turns the trust scene into one that adds a scrub to the master (no shipped scene does on a
  * phone): at `setup`, or later through `later` (a lazy chunk).
  */
-const scrub = vi.hoisted(() => ({ on: false, later: null as null | (() => void) }));
+const scrub = vi.hoisted(() => ({
+  on: false,
+  later: null as null | (() => void),
+  /** The test's fresh ScrollTrigger (the mock factory outlives a module reset): trust pins. */
+  pin: null as null | { create(vars: object): unknown },
+}));
 
 vi.mock('../scenes/dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../scenes/dom')>();
@@ -17,6 +22,9 @@ vi.mock('../scenes/dom', async (importOriginal) => {
     DOM_SCENES: {
       ...actual.DOM_SCENES,
       trust: {
+        pin: ({ el }: { el: HTMLElement }) => {
+          scrub.pin?.create({ trigger: el, pin: true, end: '+=500' });
+        },
         setup: ({ master, label }: { master: gsap.core.Timeline; label: string }) => {
           const add = () => {
             master.to({ v: 0 }, { v: 1 }, label);
@@ -77,6 +85,7 @@ async function engineFor(
   settings = {} as TierSettings,
   prepare = true,
   html = SCENES_HTML,
+  restore?: { id: 'trust'; progress: number },
 ) {
   // Fresh modules per test: ScrollTrigger's registration is per page.
   const { gsap } = await import('gsap');
@@ -96,7 +105,7 @@ async function engineFor(
   root.innerHTML = html;
   document.body.append(root);
   if (prepare) prepareScrollEngine(layout);
-  const engine = createScrollEngine({ root, layout, settings, scenes: SCENES });
+  const engine = createScrollEngine({ root, layout, settings, scenes: SCENES, restore });
   return { engine, register, ScrollTrigger, unscoped, root, gsap };
 }
 
@@ -119,6 +128,7 @@ beforeEach(() => {
   );
   scrub.on = false;
   scrub.later = null;
+  scrub.pin = null;
 });
 
 afterEach(() => {
@@ -225,6 +235,34 @@ describe('scroll engine: registration and the master (dom)', () => {
     expect(engine.master?.scrollTrigger).toBeUndefined();
     // Adopted, the spine would shrink to the first scene's segment.
     expect(engine.master?.duration()).toBe(1);
+    engine.destroy();
+  });
+});
+
+describe('scroll engine: keep-place with pins (dom)', () => {
+  /** A wide pinned layout whose trust scene pins; the spy sees ScrollTrigger's full refreshes. */
+  async function pinnedEngine(restore?: { id: 'trust'; progress: number }) {
+    media.wide = true;
+    window.scrollTo = vi.fn();
+    const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+    scrub.pin = ScrollTrigger;
+    const refresh = vi.spyOn(ScrollTrigger, 'refresh');
+    const { engine } = await engineFor(TABLET, {} as TierSettings, true, SCENES_HTML, restore);
+    expect(ScrollTrigger.getAll().some((trigger) => trigger.pin)).toBe(true);
+    return { engine, refresh };
+  }
+
+  it('SE12 a place to keep runs the refresh the pins queue in the creation task', async () => {
+    // A reload the browser restored in the document without pins: a frame painted before the
+    // queued refresh would show the content the spacers pushed into view (clsAll 1, desktop t2).
+    const { engine, refresh } = await pinnedEngine({ id: 'trust', progress: 0.5 });
+    expect(refresh).toHaveBeenCalledTimes(1);
+    engine.destroy();
+  });
+
+  it('SE13 without a place to keep the pins refresh on the next frame, as before', async () => {
+    const { engine, refresh } = await pinnedEngine();
+    expect(refresh).not.toHaveBeenCalled();
     engine.destroy();
   });
 });

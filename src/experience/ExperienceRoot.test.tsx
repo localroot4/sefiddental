@@ -18,6 +18,8 @@ type GpuOptions = { override: { loadBenchmarks: (file: string) => Promise<unknow
 const mocks = vi.hoisted(() => ({
   engines: [] as FakeEngine[],
   placeScrollY: vi.fn(() => 1234),
+  /** The place the browser restored before the first engine; none (the top) unless set. */
+  placeNow: vi.fn((): { id: string; progress: number } | null => null),
   monitorFrames: vi.fn((_opts: { tier: number }) => () => {}),
   canvasImports: 0,
   /** Renders of the canvas host: the factory count above sees only the file's first import. */
@@ -63,6 +65,7 @@ vi.mock('./engine/scrollEngine', () => ({
     };
   },
   placeScrollY: mocks.placeScrollY,
+  placeNow: mocks.placeNow,
   monitorFrames: mocks.monitorFrames,
   prepareScrollEngine: () => {},
 }));
@@ -162,6 +165,7 @@ beforeEach(() => {
   window.scrollTo = vi.fn();
   mocks.engines.length = 0;
   mocks.placeScrollY.mockClear();
+  mocks.placeNow.mockClear().mockReturnValue(null);
   mocks.monitorFrames.mockClear().mockImplementation(() => () => {});
   mocks.canvasMounts = 0;
   mocks.gpu.options = null;
@@ -212,6 +216,22 @@ describe('ExperienceRoot (dom)', () => {
     expect(second.destroy).toHaveBeenCalledTimes(1);
     expect(mocks.engines).toHaveLength(2);
     expect(mocks.placeScrollY).toHaveBeenCalledTimes(1);
+  });
+
+  it('XR8 a first engine keeps the place the browser restored (a reload at voices); a relatch does not read it again', async () => {
+    mocks.placeNow.mockReturnValue({ id: 'voices', progress: 0 });
+    const view = home('/?tier=2');
+    await waitFor(() => expect(mocks.engines).toHaveLength(1));
+    const root = document.querySelector('[data-experience-root]');
+    expect(mocks.placeNow).toHaveBeenCalledWith(root);
+    // The reader is there already: no scroll before the engine, which applies it after its pins.
+    expect(mocks.engines[0]!.restore).toEqual({ id: 'voices', progress: 0 });
+    expect(window.scrollTo).not.toHaveBeenCalled();
+
+    await act(async () => view.getByTestId('tier').click());
+    await waitFor(() => expect(mocks.engines).toHaveLength(2));
+    expect(mocks.engines[1]!.restore).toEqual({ id: 'services', progress: 0.5 });
+    expect(mocks.placeNow).toHaveBeenCalledTimes(1);
   });
 
   it('XR3 scene_view: once per registry scene when its top crosses the viewport middle', async () => {

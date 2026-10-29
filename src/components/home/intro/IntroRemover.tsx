@@ -53,5 +53,8 @@ export function IntroRemover(props: { children: ReactNode }): ReactNode {
     );
     return () => window.clearTimeout(timer);
   }, []);
-  return playing ? props.children : null;
+  // An inert element keeps the dialog's place among the scenes: Chrome restores a reload's scroll
+  // from an anchor selector with :nth-child indices, read from the page without the dialog and
+  // resolved in the server markup with it, which put a reload at voices on dentists.
+  return playing ? props.children : <template />;
 }

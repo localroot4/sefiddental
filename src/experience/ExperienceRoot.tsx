@@ -109,7 +109,8 @@ function ExperienceHost(props: {
   // pin that went away or arrived moves the content, so a phone relatch never scrolls): the
   // reader's scene and progress are recorded before the old engine goes, restored at once in the
   // document without pins, and again by the new engine after the refresh its pins queue, never on
-  // unmount.
+  // unmount. A first engine is handed the place the browser restored (a reload, a deep link),
+  // read in the document without pins, which its pins would otherwise move off screen.
   const placeRef = useRef<{ place: ScenePlace<SceneId> | null; pinned: boolean } | null>(null);
   // Settings follow the tier at once; the engine reads them at creation only, so they are not a
   // dependency (a monitor cap must not rebuild the engine).
@@ -143,7 +144,7 @@ function ExperienceHost(props: {
             layout: tier.layout,
             settings: settingsRef.current,
             scenes: SCENES,
-            restore: place ?? undefined,
+            restore: (kept === null ? engineModule.placeNow(root) : place) ?? undefined,
           });
           experience.set({ engine: created });
           tierStore?.setScrollProbe(created);

@@ -260,6 +260,46 @@ test('T-EN4b a «کیفیت» change from 1 to 3 (the pins arrive) keeps the rea
   expect(await sectionUnderMiddle(page)).toBe(before);
 });
 
+test('T-EN4c a reload at voices (tier 2, the pins arrive after the restored scroll) keeps the reader there with no layout shift', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  await page.goto('/?tier=2');
+  await page.waitForFunction(
+    () => performance.getEntriesByName('sefid:engine-first-refresh').length > 0,
+  );
+  // The voices top at the viewport top, where an in-page link or the engine's scrollTo puts it.
+  const voicesTop = () =>
+    page.evaluate(() => {
+      const el = document.querySelector('[data-scene="voices"]');
+      if (!el) throw new Error('no [data-scene="voices"]');
+      return Math.round(el.getBoundingClientRect().top);
+    });
+  await page.evaluate((top) => window.scrollBy({ top, behavior: 'instant' }), await voicesTop());
+  await frames(page);
+  expect(await voicesTop()).toBe(0);
+  await page.addInitScript(() => {
+    const w = window as unknown as { __shifts: number[] };
+    w.__shifts = [];
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries())
+        w.__shifts.push((entry as PerformanceEntry & { value: number }).value);
+    }).observe({ type: 'layout-shift', buffered: true });
+  });
+  await page.reload();
+  await page.waitForFunction(
+    () => performance.getEntriesByName('sefid:engine-first-refresh').length > 0,
+  );
+  await frames(page);
+  await frames(page);
+  // Chrome restores the scroll in the document without pins; the engine's pins then add their
+  // spacers above the reader, which must stay at voices in the frame that paints them.
+  expect(await page.evaluate(() => (window as unknown as { __shifts: number[] }).__shifts)).toEqual(
+    [],
+  );
+  expect(Math.abs(await voicesTop())).toBeLessThanOrEqual(2);
+});
+
 test.describe('375 px touch', () => {
   test.use({ viewport: { width: 375, height: 667 }, hasTouch: true, isMobile: true });
 
