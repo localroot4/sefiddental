@@ -1,0 +1,194 @@
+[
+  {
+    "tier": 0,
+    "htmlTier": "0",
+    "viewport": "desktop",
+    "theme": "light",
+    "atLoad": {
+      "violations": [],
+      "passes": 32,
+      "incomplete": [
+        "#hero-sub :: Element's background color could not be determined because element contains an image node",
+        ".px-8 :: Element's background color could not be determined because element contains an image node"
+      ]
+    },
+    "afterScroll": {
+      "violations": [],
+      "passes": 32,
+      "incomplete": [
+        "#hero-sub :: Element's background color could not be determined because element contains an image node",
+        ".px-8 :: Element's background color could not be determined because element contains an image node"
+      ]
+    }
+  },
+  {
+    "tier": 0,
+    "htmlTier": "0",
+    "viewport": "desktop",
+    "theme": "dark",
+    "atLoad": {
+      "violations": [],
+      "passes": 32,
+      "incomplete": [
+        "#hero-sub :: Element's background color could not be determined because element contains an image node",
+        ".px-8 :: Element's background color could not be determined because element contains an image node"
+      ]
+    },
+    "afterScroll": {
+      "violations": [],
+      "passes": 32,
+      "incomplete": [
+        "#hero-sub :: Element's background color could not be determined because element contains an image node",
+        ".px-8 :: Element's background color could not be determined because element contains an image node"
+      ]
+    }
+  },
+  {
+    "tier": 0,
+    "htmlTier": "0",
+    "viewport": "phone",
+    "theme": "light",
+    "atLoad": {
+      "violations": [],
+      "passes": 33,
+      "incomplete": [
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(3) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(4) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node"
+      ]
+    },
+    "afterScroll": {
+      "violations": [],
+      "passes": 33,
+      "incomplete": [
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(3) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(4) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node"
+      ]
+    }
+  },
+  {
+    "tier": 0,
+    "htmlTier": "0",
+    "viewport": "phone",
+    "theme": "dark",
+    "atLoad": {
+      "violations": [],
+      "passes": 33,
+      "incomplete": [
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(3) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(4) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node"
+      ]
+    },
+    "afterScroll": {
+      "violations": [],
+      "passes": 33,
+      "incomplete": [
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(3) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(4) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node"
+      ]
+    }
+  },
+  {
+    "tier": 2,
+    "htmlTier": "2",
+    "viewport": "desktop",
+    "theme": "light",
+    "atLoad": {
+      "violations": [],
+      "passes": 34,
+      "incomplete": [
+        "#hero-sub :: Element's background color could not be determined because element contains an image node",
+        ".px-8 :: Element's background color could not be determined because element contains an image node"
+      ]
+    },
+    "afterScroll": {
+      "violations": [],
+      "passes": 33,
+      "incomplete": [
+        "#hero-sub :: Element's background color could not be determined because element contains an image node",
+        ".px-8 :: Element's background color could not be determined because element contains an image node"
+      ]
+    }
+  },
+  {
+    "tier": 2,
+    "htmlTier": "2",
+    "viewport": "desktop",
+    "theme": "dark",
+    "atLoad": {
+      "violations": [],
+      "passes": 34,
+      "incomplete": [
+        "#hero-sub :: Element's background color could not be determined because element contains an image node",
+        ".px-8 :: Element's background color could not be determined because element contains an image node"
+      ]
+    },
+    "afterScroll": {
+      "violations": [],
+      "passes": 33,
+      "incomplete": [
+        "#hero-sub :: Element's background color could not be determined because element contains an image node",
+        ".px-8 :: Element's background color could not be determined because element contains an image node"
+      ]
+    }
+  },
+  {
+    "tier": 2,
+    "htmlTier": "2",
+    "viewport": "phone",
+    "theme": "light",
+    "atLoad": {
+      "violations": [],
+      "passes": 35,
+      "incomplete": [
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(3) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(4) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node"
+      ]
+    },
+    "afterScroll": {
+      "violations": [],
+      "passes": 35,
+      "incomplete": [
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(3) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(4) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node"
+      ]
+    }
+  },
+  {
+    "tier": 2,
+    "htmlTier": "2",
+    "viewport": "phone",
+    "theme": "dark",
+    "atLoad": {
+      "violations": [],
+      "passes": 35,
+      "incomplete": [
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(3) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(4) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node"
+      ]
+    },
+    "afterScroll": {
+      "violations": [],
+      "passes": 35,
+      "incomplete": [
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(2) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(3) > .border-s-2.ps-3.gap-\\[2px\\] > .text-caption.text-ink-muted :: Element's background color could not be determined because element contains an image node",
+        ".last\\:odd\\:col-span-2.lg\\:last\\:odd\\:col-span-1:nth-child(4) > .border-s-2.ps-3.gap-\\[2px\\] > .leading-\\[1\\.5\\].text-body :: Element's background color could not be determined because element contains an image node"
+      ]
+    }
+  }
+]

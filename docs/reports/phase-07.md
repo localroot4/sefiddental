@@ -1,7 +1,8 @@
 # Phase 07 - Home scroll experience (DOM and 2D layer)
 
-Date: 2026-10-26 to (open). Commit range: `f1f6b1f` (baseline measured on
-this commit with the uncommitted measurement script) to (open).
+Date: 2026-10-26 to 2026-10-29. Commit range: `f1f6b1f` (baseline measured
+on this commit with the uncommitted measurement script) to `98b774a`, then
+the close commit.
 
 Versions: Next.js 16.4.3, React 19.3.0, Payload 3.92.0, gsap 3.15.0 (standard
 no-charge license; the README says every bonus plugin is free for commercial
@@ -311,37 +312,259 @@ scenes in the phase 7 recordings of the sample fixture.
 
 ## Delivered
 
-(filled at the close)
+Commit range on `main`: `a1c7d59` (the baseline) to `98b774a`, then the
+commit that closes this report (it adds this text and
+`docs/qa/phase-07/close/`). Oldest first, grouped by the brief's
+deliverables.
+
+1. Scroll engine (brief 1): `c5a77fb` engine, scene contract, tier wiring,
+   `scene_view`; `daa225e` Lenis synced before an engine `scrollTo`;
+   `4339393` the media query that fired decides the wide layout;
+   `de5c8f7` engine import in a task of its own; `24d59c3` ScrollTrigger
+   registered only where a trigger is made; `e1837f9` weak-phone detection
+   and the light scroll engine on capable phones; `98b774a` keep-place
+   when a reload adds the home pins.
+2. Intro (brief 2): `2eda8ae` session-once overlay with a hashed inline
+   script; `d299934` the script after the hero's first row; `a0b9edf` the
+   `skipIntro` helper in every spec that opens `/`.
+3. Scenes 1-3 and 5-11 (brief 3): `7002d11` hero settle and the trust band
+   window; `4f9e7ad` pinned services row and the MorphSVG mark; `0b53e93`
+   and `f6dd06a` services fixes (D27, D28); `630fcc3` hero Drift and
+   services Slide on phones; `3a83cd1` the light notice; `6dd0c4a` and
+   `31fef4d` the workflow scene; `d9fde05` compare, dentists, voices and
+   first visit; `89a9552`, `d926012`, `0bca3d5` booking, footer playground
+   and the «کیفیت» switch. The optional hero mask contraction was built and
+   removed (D29). The hero mark relief is off by default (D3).
+4. Scene 4 (brief 4): `446c76c` the molar stepper and its pinned scene;
+   `0d585a9` its phone motion; `ed9fa8b` the tier-0 check of the molar's
+   rest scale.
+5. Tier wiring (brief 5): every scene reads `layout`, `settings` and
+   `conditions` (section 3); the «کیفیت» control in the footer stage (D9);
+   the developer overlay (`?debug=1`) shows tier, reason, fps, the scene
+   and the monitor.
+6. Measurement events (brief 6): `scene_view` (D13, `docs/analytics.md`);
+   `tier_select` only on a user choice (the scroll-set radio is
+   untrusted); `case_slider_use` from the existing `CompareSlider`.
+7. Performance evidence (brief 7): `a1c7d59` baseline; `a9ccb8f`
+   measurement tooling and gates; `docs/qa/phase-07/steps/` per step;
+   `cd5c896` the combined steps 5 to 8 run; `docs/qa/phase-07/close/`.
+8. This report.
+
+Outside the brief, in the same range: `a9f0ea4`, `1e63a42` (step 0
+markup and the `workflow` block); `20a497a` compile hints (D22);
+`e5939f1` no active `:has()` (D21); `71a602d` the worker GPU probe (D20);
+`a2ce69c`, `1866667` brand-panel placeholders (D33); `36f0e81`
+`DEMO_CONTENT` (D25); CI and Lighthouse tooling (`dcc74b6`, `efd4b90`,
+`1f316bb`, `252c811`, `d101742`, `0811161`); test stability (`498862e`,
+`7936d17`, `beaa0e6`, `2eac079`, `a86fcc8`, `e779286`, `7dd841a`);
+`87e0228` the graphql-scalars 2.0.1 override for a high advisory;
+`2dfc52c` reverted `01e24d4` (the scrollbar gutter).
 
 ## Decisions and deviations (what, why)
 
-(section 1 of the plan, extended at the close)
+D1 to D22 are in section 1 of the plan. Added during the build and at the
+close:
+
+| # | Decision | Reason |
+|---|---|---|
+| D23 | The Server workflow may deploy the preview when CI is red only on Lighthouse (`allow_red_ci`, `0811161`, preview only). A live deploy still needs green CI. | Owner decision 2026-10-28 («C»): the client sees the work while the tier 1 Lighthouse fix runs through CI. Used once (Server run 17). |
+| D24 | Phones: capable phones get scroll-linked effects; weak phones are detected and get the light version, with a notice and a switch; native touch scrolling stays, no Lenis on touch. This replaces the phone half of D6 and the fine-pointer-only motion. The phone spec's own decisions, cited in code comments as D21 to D28 «of the phone spec»: (21) under 1024 px tiers 1 to 3 run the scroll set (ScrollTrigger scrubs on native scroll, transform and opacity only, no `normalizeScroll`); (22) no pin under 1024 px at any tier; (23) weak-phone detection adds deviceMemory at most 2, a CPU blocking signal and a light floor remembered after the second stepped-down page view in 14 days; the engine gate is the probe answer or `load` + 1500 ms; (24) the phone layout is the same box at every tier; (25) a monitor or late detection relatch waits for 1000 ms without scroll, and scrubbed targets settle by a CSS transition; (26) the frame monitor samples only while the page scrolls; (27) the light notice: non-modal, once per session, never over the first screen, closed for 30 days; (28) in phone mode no window resize refreshes ScrollTrigger. | Owner decision 2026-10-28: «phones matter». The spec is the session document `p7/phone/spec.md` (not in the repo); its records and measurements are `docs/qa/phase-07/steps/04b-phone/`. |
+| D25 | The preview shows render-time demo items (`DEMO_CONTENT`, `36f0e81`): dentists «فرضی N», «بیمار فرضی» voices and a «طرح نمایشی» before/after pair, only while nothing of that kind is published, with no photo, council number, profile, JSON-LD, booking binding or consent line. The app refuses to start with the flag and `ALLOW_INDEXING` or a `sefiddental.ir` `SITE_URL`; provision writes it only with `PHASE=preview`. | Owner decision 2026-10-29 («دیتای الکی بذار فعلا»). The first form, a sample pack written into the database, was rejected by review before it landed: its removal deleted real records, its load published an editor's draft, set-null foreign keys cleared reviewers and photos, sample dentists passed the reviewer gate, and «نمونه» read as real. Rule: never write fake records into the database that goes live. |
+| D26 | Phase 8 (WebGL) moves after the launch. Order: the rest of phase 7, the phase 6 leftovers, phase 9, phase 10 (launch), then phase 8. | Owner priority 2026-10-29 («سریعتر بیاد بالا»). Section 6 (phase 8 seams) stands unchanged. |
+| D27 | Services: the plan's tier 1 line reveal is dropped; the card hover transition is `translate` only (`0b53e93`). | `transition-transform` restarted a 200 ms CSS transition on every tile at every gsap write (services tier 1 51 fps at 4x); with the fix the reveal still cost 3 fps (56 against 59, 21 runs). A step that breaks a budget is reverted (`steps/04-services/tier1-fix.md`). |
+| D28 | `59dddd0` (pointer events off on the pinned services row while it scrolls) is reverted (`f6dd06a`). Rule: a decision is committed only after its review returns. | It was committed before its review finished. The review found clicks lost for about 1.3 s after the last wheel tick and no separable frame gain (Mann-Whitney p = 0.53). `b223a62` holds the services tier 2 pin at 59 / 55 / 50 (evidence in the session scratchpad, `p7/svc-t2`). |
+| D29 | The optional hero mask contraction (brief 3, tiers 2 and 3) is removed. `settings.heroExitMask` stays, unused. | It did not hold 60 fps at 4x (about 10 fps recorded by the HERO lane); the brief keeps it only if it does. |
+| D30 | The intro's `rel=expect` link names the intro script itself, not an empty element after it. | Review B1's empty-element target closed a hero-before-overlay paint (5 of 120 loads to 0 of 120) but raised the simulated tier 0 LCP median from 2415 to 2570 ms (projected CI best-of-5 failure 7.8 % against 0.24 %). The residual paint (about 4 % of loads, 12 to 72 ms) is a recorded risk. |
+| D31 | The workflow pin uses `pinType: 'transform'` (`31fef4d`). | A fixed pin made Chromium report a 0.777 layout shift of the stage at each pin edge (clsAll 1.554 per desktop tier 2 scroll); with a transform pin 0.0002. Not checked on a touch laptop (coarse pointer, no Lenis), where a transform pin can lag native scroll. |
+| D32 | The «کیفیت» switch checks its radio at once and writes the store after the next frame (`d926012`); its island loads after `load` and one task (`0bca3d5`). | INP desktop 2 to 1 was 272 ms (the old engine's teardown ran in the click task); now 32 ms. Home initial JS was 160.8 KiB against the 160 KiB target; now 160.0 KiB. The relatch is still a long task after the paint. |
+| D33 | Placeholders are brand panels and the hero has an abstract stand-in with a short caption (`a2ce69c`, `1866667`). They ship to live. | The preview looked unfinished with neutral blocks; each panel says what photo goes there (gaps 4, 36, 44 to 49, 52). |
+| D34 | The close made no fix batch. | Every finding of the close review (below) needs JavaScript or a design decision; the close brief allowed only CSS and copy fixes. They are open items for the owner. |
+
+Deviations from the brief that stand: the workflow scene renders nothing
+until the client confirms gap 48 (D2); scenes 6 to 8 show only the e2e
+fixture or the preview's demo items (D4, D25); WebGL world slots are
+transparent placeholders (D5, section 6); the tier-1 services reveal is
+gone (D27); the hero mask is gone (D29).
 
 ## Verification (what, how, result)
 
-(filled at the close)
+| What | How | Result |
+|---|---|---|
+| Unit, DOM and integration suites | `npm test` by each lane and the integrator at each step; CI | Green in CI on `7dd841a` (run 40941867864). Each later commit (`31fef4d`, `d926012`, `0bca3d5`, `98b774a`) records its own tests or measurements in its message. Not re-run at the close (no code changed). |
+| e2e (six viewport and theme projects, http, admin, no-webgl2, perf recorders) | `npm run test:e2e` locally per lane; CI | CI green on `7dd841a`. CI on `98b774a` was running at the close; `cd5c896` and `0bca3d5` were cancelled by the next push. |
+| Lighthouse (LHCI, tiers 0 and 1, both themes) | `npm run lhci` in CI | Green in CI run 70 (`e779286`) after the CI 63 fixes; red before it (D23). Not re-run locally at the close. |
+| Frames, INP, heap, CLS per step | `scripts/measure-home.mjs` and the quiet-host driver, median of 3 at load under 1 | `docs/qa/phase-07/steps/*/README.md`; the summary is the Budgets table. Steps 5 to 8 failed six rows at `ed9fa8b`: three were fixed (desktop tier 2 clsAll `31fef4d`, the «کیفیت» INP `d926012`, the reload at voices `98b774a`), the bundle went from 160.8 to 160.0 KiB (`0bca3d5`), and the gated T-PS single-run misses and the measure-home heap row stand (Budgets). |
+| Step 9 full run (`measure-home` without `--only`) | - | **Not run** at `98b774a`. The last full Lighthouse plus frames run is step 2 and the step READMEs. |
+| Build and bundle at the close | `npm run build`, `npm run db:e2e`, `npm run check:bundle` on `98b774a` | Build and seed passed; `check:bundle` exit 0 (numbers in Budgets). |
+| Screenshots at the close | 390x844, 820x1180, 1440x900; light and dark; `/?tier=2` with reduced motion off and on; DEMO_CONTENT at 390 and 1440 (`close/README.md`) | 88 files, 7.7 MB. `html[data-tier]` 2 with motion and 0 with reduced motion in every run; no horizontal overflow; no page or console error. Defects: Independent review, V1 to V4. |
+| axe at the close | `@axe-core/playwright`, WCAG 2.2 AA tags, `/?tier=0` and `/?tier=2`, desktop and phone, light and dark, at load and after a full scroll | 0 violations in 16 scans. Incomplete: color-contrast on text over the hero photo (2 nodes desktop, 4 phone); checked by eye only (`close/axe.json`). |
+| Keyboard, focus and scroll integrity at the close | Playwright probes (session scratchpad `p7/close/probe/`): a Tab walk through the whole page at tiers 0, 1, 2 (1440x900); Tab at 120, 200, 450, 900 ms intervals from the services track; deep links to five anchors; back and forward through a header link; reload inside each pinned scene; desktop tiers 0 to 2 and phone tier 2 | Findings F1 to F4 (Independent review). Tiers 0 and 1 and the phone passed every probe. |
+| Reduced motion, tier switch mid-scene, route-change teardown, the 375 px touch run | e2e (T-EN*, T-TR*, T-PH*, T-SV*) | Green in CI on `7dd841a`; the close screenshots confirm reduced motion gives the tier 0 page. |
+| Real devices | - | **Untested**: the owner's phone checkpoint (`steps/04b-phone/README.md` section 2), an iPhone (no WebKit in this environment), Firefox, a touch laptop. |
+| Screen reader | - | **Untested** with a screen reader. The DOM order was read: pins wrap an element and never reorder it; world slots and the molar are `aria-hidden`. |
+| Tier 3 | - | **Not measured**: no frame run at tier 3. |
 
 ## Budgets (metric, target, measured, per tier where relevant)
 
-(section 5 of the plan with the measured column, filled at the close)
+| Metric | Baseline | Target after phase 7 | Measured (source) | Result |
+|---|---|---|---|---|
+| Home initial JS | 155.2 KiB | at most 160 KiB, gate 170 | 160.0 KiB, 163,846 bytes (close, `98b774a`) | gate pass; target missed by 6 bytes |
+| Content and booking pages initial JS | 144.2 to 149.2 / 148.4, 147.8 KiB | unchanged within 0.3 KiB, gate 150 | 144.7 to 149.6 / 148.9, 148.2 KiB; shared chunk 143.5 → 143.9 KiB (close) | gate pass; target missed (+0.4 to +0.5 KiB); 0.4 KiB headroom left |
+| Engine chunk | 50.1 KB gz | at most 64 KiB | 54.7 KiB at step 4b (T-EX5); scenes 5 to 11 added later, T-EX5 green in CI on `7dd841a` | pass |
+| MorphSVG chunk / Draggable and Inertia chunk | none | at most 12 / 16 KiB | 10.7 / 15.4 KiB (gzip -9 of the built chunks at the close; T-SV3 and T-BF3 read the served size, green in CI) | pass |
+| Lighthouse mobile `/?tier=0` | 0.98, 2346, 100, 0 | score 0.95, LCP 2446, TBT 200, CLS 0 | 0.96, 2265, 179, 0 (step 2, median of 3); CI run 70 green | pass |
+| Lighthouse mobile `/?tier=1` | 0.86, 2636, 457, 444 KiB | score 0.90, LCP 2500, TBT 200, JS 235 KiB | step 2: 0.94, 2413, **249**, 208 KiB; after D20 and D22, local CI model: LCP best 2262 to 2271, TBT 181 to 191, score 0.95 (one LHCI run at exactly 0.90); 4b local 5.5x TBT median 110; CI run 70 green | pass on CI; thin margin on the score |
+| Lighthouse desktop | 564 / 553 | 664 / 653 | 594 / 618 (step 2) | pass |
+| Frames 4x, desktop, tiers 1 and 2, every section | tier 1: 48.4 to 60 | median 59, slowest window 55, worst frame 50 ms, no task over 100 ms | hero, trust: 60 / 58 / 33.4 and 60 / 59 / 33.3 (step 3 sections); services t1 59 / 59 / 33.4, t2 57 / 55 / 50 then 59 / 55 / 50 at `b223a62`; restoration, workflow, compare, dentists, voices, first visit, faq, booking, footer: 18 of 18 rows pass on the median of 3 (`05-08-combined`); 0 tasks over 100 ms. Gated T-PS tier 2: 2 of 3 runs at `ed9fa8b`, 6 of 9 at `31fef4d` (single dropped frames, no long task) | pass on the median of 3; single runs miss; tier 3 not measured |
+| Frames 6x | tier 1: 42.3 | tier 1 median at least 50 | whole page tier 1: 58.5 (step 1), 54 (step 3), 56 (step 4); services at tier 1, 6x: 39 at step 4 | recorded, not re-measured after step 4 |
+| Frames on SwiftShader | tier 0 about 44.5, tier 1 about 22 | tier 0 within 2 fps; tier 1 at least 44 | tier 0 43.8 (step 1); tier 1 31.5 (step 1), 21 to 26 later | tier 0 pass; **tier 1 missed** (recorded only; a software renderer is tier 0 in production) |
+| Phone frames (phone profile, 4x) | - | tier 0: median 58, slowest 55; tiers 1 and 2 against tier 0 | 27 of 27 judged rows pass (`05-08-combined` 2.2); 4b hero and services rows pass | pass |
+| INP, 4x | 120 to 208 ms | at most 200 ms on every row | submits 56 to 96 ms (12 rows, tiers 0 to 2); chip, slider, «بعدی», part press 24 to 80 ms; «کیفیت» 32 to 64 ms after `d926012` | pass |
+| Heap after a full scroll and GC | +0.2 to +0.4 MiB | at most +0.5 MiB | T-PS (down and up): t2 +0.3, +0.3, +0.4; t1 +0.7, 0.0, 0.0. measure-home (down only): +0.5 to +0.8, a one-time cost of the first pass (lazy chunks), not a leak | partial |
+| Intro | none | at most 1400 ms, bar 400 ms, JS under 2048 B, CSS 3.5 KB, CLS 0 | 1250 to 1400 ms by design (the 1300 ms stage timer; T-IN1); JS 1929 B, CSS 3474 B (IS2); CLS 0 (step 2). The lockup SVG size was not read at the close | pass |
+| CSS / fonts | 14.1 / 90.1 KiB | at most +4 KiB of CSS; fonts unchanged | home 17.2 KiB (+3.1), content pages 16.7 KiB / 90.1 KiB | pass |
+| clsAll, load and full scroll | 0 | 0, gate 0.05 | desktop tier 2 1.554 at `ed9fa8b`, 0.0002 after `31fef4d`; reload at voices desktop tier 2 1.0, then 0 after `98b774a`; close probes: reload inside a pin and a deep link into a pin at desktop tier 2 give 1.0 (F2, F3) | **open at desktop tier 2** |
+| Route change | 0 triggers | 0 triggers, Lenis, ticker, Draggable, observer, intro listener | T-EN3, green in CI | pass |
+| Reduced motion | tier 0 page | equals tier 0, toggled mid-scene | e2e; close screenshots `data-tier` 0 | pass |
 
 ## Screenshots and recordings (paths)
 
-`docs/qa/phase-07/baseline/` (before). Steps and final runs under
-`docs/qa/phase-07/steps/` and `docs/qa/phase-07/final/` (filled at the close).
+- `docs/qa/phase-07/baseline/`: the baseline measurement (before).
+- `docs/qa/phase-07/steps/<step>/`: measurements per step;
+  `01-qa/intro-50-390-light-ghost-label.png`.
+- `docs/qa/phase-07/close/`: the step 9 set (88 JPEG files and
+  `axe.json`; method in its README): home at 390, 820 and 1440 in light
+  and dark, `/?tier=2` with reduced motion off and on, full page plus ten
+  sections, the three pinned scenes halfway at 1440, and the DEMO_CONTENT
+  variants at 390 and 1440.
+- Recordings: **none committed**. `T-SS recording` writes
+  `docs/qa/phase-07/final/recordings/home-tier2-{390,1440}.webm` with
+  `QA_SCREENSHOTS=phase-07`; it was not run for the close. The owner
+  checkpoint (4b) asks for a 390 px recording on the preview.
 
 ## Independent review (findings, fixes)
 
-(filled at the close)
+### During the build
+
+Each lane was reviewed by an agent that did not write it before it
+landed: RESTORATION (RR1 to RR6, D16), the intro (B1, D30), the tier 1
+Lighthouse fix (`p7/lh-fix/review`), the phone step 4b (among its fixes: no
+canvas under `?debug=1` on phones, which could step the owner's phone down;
+each fix red-proved, `04b-phone/README.md` sections 4 and 5), the services pointer change
+(reverted, D28) and the database sample pack (rejected, D25).
+
+### At the close (step 9)
+
+A reviewer who built none of the scenes read the scene modules, the
+screenshots and the probe results, against the brief's three questions.
+Severity: major (a reader is blocked or loses their place), minor, note.
+Nothing was fixed (D34).
+
+**Motion motivation.** Every scene module opens with a one-line
+motivation, and each effect serves the story it names: the hero photo's
+lag gives depth, the services worlds pass in reading direction while the
+mark changes, the molar changes state under the reader's scroll, the
+workflow beats follow one line, the warm light marks the arrival at care,
+the booking card arrives once, the playground ends the journey. The
+weakest is the shared 16 px rise of scenes 6 to 9 (an entrance only); it
+is one-shot, completes on focus and costs nothing measurable. No effect
+was found that should go.
+
+**Scroll integrity and pinned-scene accessibility.** Tiers 0 and 1 and the
+phone at tier 2 passed every probe. The findings are all desktop tier 2,
+where the pins exist:
+
+| # | Severity | Where | Finding | Status |
+|---|---|---|---|---|
+| F1 | major | services → restoration, keyboard, 1440x900, tier 2 | Tabbing out of the services track at a fast pace leaves focus below the viewport. At 120 and 200 ms per Tab the focus ended on restoration's «رزرو نوبت» at y 1173 in a 900 px viewport, still there 1.5 s after the last Tab; at 450 ms the first restoration chip was 205 px below the viewport until the next Tab; at 900 ms every stop was in view. Probable cause (not verified in code): the services focus handler scrolls with an animated Lenis `scrollTo`, which overwrites the browser's own focus scroll of the next stops until it ends. Proposed: an immediate scroll for keyboard focus (`engine.scrollTo(y, { immediate: true })` in `services.ts`), then a fast-Tab e2e. WCAG 2.4.11. | open |
+| F2 | major | reload inside a pin, 1440x900, tier 2 | A reload halfway through a pinned scene does not keep the reader's place: services 2227 → 4032 (restoration), restoration 4344 → 7636, workflow 6567 → 10014 (voices); clsAll 1.0 for services and restoration. Tiers 0 and 1 and the phone keep the place within 8 px. Probable cause: the browser restores a pinned scroll offset into the document without pins, and the first engine keeps the scene found there (`placeNow`, `98b774a`). Proposed: store the active scene and its progress on `pagehide` and hand them to the first engine. | open |
+| F3 | minor | deep links into or after a pin, 1440x900, tier 2 | `/?tier=2#home-restoration-title` and `#home-workflow-title` land with the target in view but clsAll 1.0; `#bk-block`, `#home-faq-title`, `#home-voices-title` give 0. No link on the site points at these anchors today. | open |
+| F4 | minor | test tooling | A full-page capture (the viewport resized to the page height) re-creates the engine and hides the reveals below the fold again; a 1440x900 → 1280x800 resize does not. No media query changed; the cause was not traced. The close shots are stitched instead; the `T-SS home-tier2` full-page shot of `tests/e2e/screenshots.spec.ts` has the same defect. | open |
+| F5 | minor | restoration radios, keyboard, tier 2 | The chip group takes two Tab stops (standard, then VIP, none checked) at tier 2 and one at tiers 0 and 1. | open |
+| F6 | note | workflow, tier 2 | Steps out of focus sit at opacity 0.15 to 0.3 during the pin, so their text is under 4.5:1 while on screen. They carry no control, the step in focus is at full contrast, and a screen reader reads all four. A design decision; axe scans at the page top did not flag it. | open |
+
+**Visual defects (screenshots).** No overflow, no clipped text, no
+broken layout at any width or theme.
+
+| # | Severity | Where | Defect | Status |
+|---|---|---|---|---|
+| V1 | minor | services and restoration pins, 1440x900 | During the pin the stage fills the top 55 to 60 % of the viewport and leaves the rest empty (`*-services-mid.jpg`, `*-restoration-mid.jpg`). Phase 8's backdrop and molar slots are meant to fill it; until then a design check. | open |
+| V2 | minor | workflow pin, 1440 | Mid-pin, the step in focus has its text over the previous step's receding photo (`*-workflow-mid.jpg`; grey fixture photos). Check again with real photos (gap 48). | open |
+| V3 | note | booking band, dark | The warm-soft surface (`#2A2419`) reads brown next to the navy sections (`home-tier2-1440-dark-booking.jpg`). A token choice for the designer. | open |
+| V4 | note | DEMO_CONTENT compare, 1440 | The two 1:1 demo panels and their line fill about a third of the section's width; the section reads sparse. Preview only. | open |
+
+The pattern behind F1 to F3: a pinned layout changes the document's
+geometry after the browser has done its own scroll work (a focus scroll,
+a restored offset, an anchor); every such browser scroll needs a check at
+desktop tier 2, not only at tier 0.
 
 ## Content gaps added or closed
 
-(filled at the close)
+None added, none closed. `a2ce69c` reworded rows 44, 45, 47 and 52 («a
+labeled brand placeholder» instead of «a labeled neutral block»). The
+scenes still wait on: 36 (the real hero photo; the relief decision, D3),
+48 (the digital workflow; the scene renders nothing until then, D2), 2, 5
+and 6 (dentists, testimonial videos, before/after pairs for scenes 6 to 8;
+the preview shows demo items meanwhile, D25), 53 (captions for the
+testimonial videos) and 52 (the services tile photo).
 
 ## Risks and open questions (max 5 questions for the client)
 
-(section 8 of the plan, updated at the close)
+Questions for the client, on `https://new.sefiddental.ir`, phone and
+desktop (plan section 8; D17 is said first, as a statement):
+
+1. For each scene that renders (intro, hero and the trust band, services,
+   restoration levels, first visit and FAQ, booking, footer playground,
+   and the demo dentists, voices and before/after): keep, tone down, or
+   change?
+2. Which scene feels closest to immersive-g.com and hidokmeh.com, and
+   which does not?
+3. Does the playground feel right (the parts drop, you throw them, they
+   return after 6 seconds)?
+4. On your phone: is the motion enough, or do you want more? Which of
+   `/?scrollcss=0` and `/?scrollcss=1` moves the hero photo more smoothly?
+   Please send one `?debug=1` screenshot after a full scroll
+   (`steps/04b-phone/README.md` section 2).
+5. On a slow connection the text first shows in a fallback font and moves
+   once when the brand font arrives. Keep that (text at once), or show
+   the fallback font for the whole first visit on slow networks (no
+   movement)?
+
+Pending inputs, listed again, not asked anew: gaps 36, 48, 2, 5, 6.
+
+Engineering risks:
+
+- F1 to F3: keyboard focus and reader place at desktop tier 2 (pins).
+  Fix before the launch (phase 10) or cap desktop at tier 1 until fixed.
+- Font swap: with the fonts delayed 1.5 s the desktop home shifts 0.058
+  (over the 0.05 Lighthouse gate); CI saw 0.016 once (T-HR4). Question 5.
+- Intro: Safari and Firefox ignore `rel=expect`, so 9023 bytes of HTML
+  before the dialog can paint first there (T-IN11 caps it at 10 KB); in
+  Chromium about 4 % of loads paint the hero 12 to 72 ms before the
+  overlay (D30).
+- Lighthouse tier 1 on CI has a thin margin (one LHCI run scored exactly
+  0.90); load-sensitive tests: T-EN7, T-IN1, T-IN3, T-BK6, T-HR4 and the
+  unit SI1 import timeout.
+- No WebKit, Firefox, real phone or touch laptop was tested (Safari 16
+  APIs only; the workflow transform pin, D31, is unverified on coarse
+  pointers). The content pages have 0.4 KiB of script headroom.
 
 ## Prerequisites for the next phase
 
-(filled at the close)
+The next phase is the phase 6 leftovers, then phases 9 and 10; phase 8
+follows the launch (D26).
+
+1. CI green on the commit that closes this report, the preview deployed
+   from it through the Server workflow, then the Persian hand-off with the
+   questions above.
+2. A decision on F1 to F3 before the launch: fix (proposals in the
+   review table, each with an e2e) or accept with desktop capped at
+   tier 1.
+3. The owner checkpoint of step 4b (question 4), recorded in
+   `steps/04b-phone/README.md`.
+4. For phase 10: provision with `PHASE=live` drops `DEMO_CONTENT`, and the
+   app refuses to start with it on the live site (D25).
+5. For phase 8: the seams of section 6 stand: choose when the D20 WebGL 2
+   confirm runs, fill `webgl.load` and the assets per scene, load three.js
+   at the hero exit, never at `load`; `settings.heroExitMask` is free
+   (D29).
