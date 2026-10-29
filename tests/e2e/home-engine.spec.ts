@@ -94,8 +94,10 @@ async function expectTierZeroPage(page: Page): Promise<void> {
       if (el.style.getPropertyValue('--warm') !== '') out.push(`--warm on ${el.tagName}`);
       if (el.style.willChange !== '') out.push(`will-change on ${el.tagName}`);
       const transform = getComputedStyle(el).transform;
-      // The compare slider (the box around its range input) owns the one transform of tier 0.
-      if (transform !== 'none' && !el.closest('div:has(> input[type="range"])'))
+      // The compare slider (the box around its range input) owns a transform of tier 0, and the
+      // molar's hidden layers keep their CSS scale (MolarStepper.tsx); an inline one is a leftover.
+      const restScale = el.matches('[data-level]') && el.style.transform === '';
+      if (transform !== 'none' && !restScale && !el.closest('div:has(> input[type="range"])'))
         out.push(`${el.tagName}.${el.className} transform ${transform}`);
     }
     return out;
