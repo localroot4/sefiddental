@@ -77,7 +77,8 @@ const subscribeStorage = (onChange: () => void): (() => void) => {
   return () => window.removeEventListener('storage', onChange);
 };
 
-export function QualityControl(props: { labels: QualityLabels }) {
+// The default export: the lazy island (QualityControlDeferred) imports the module default.
+export default function QualityControl(props: { labels: QualityLabels }) {
   const { labels } = props;
   const tier = useTier();
   const choice = useSyncExternalStore(subscribeStorage, readChoice, serverChoice);

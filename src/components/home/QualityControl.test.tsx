@@ -6,7 +6,7 @@ import { TierProvider } from '@/experience/tier/TierProvider';
 import { t } from '@/i18n/fa';
 import type { Tier } from '@/lib/qualityTier';
 
-import { QualityControl, whyDiffers, type QualityLabels } from './QualityControl';
+import QualityControl, { whyDiffers, type QualityLabels } from './QualityControl';
 
 const LABELS: QualityLabels = {
   legend: t('home.quality.label'),

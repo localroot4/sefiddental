@@ -1,4 +1,4 @@
-import { QualityControl } from '@/components/home/QualityControl';
+import { QualityControlDeferred } from '@/components/home/QualityControlDeferred';
 import { Button } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
 import { t } from '@/i18n/fa';
@@ -87,7 +87,7 @@ export function PlaygroundSection() {
           ))}
         </div>
         <div className="flex flex-wrap items-start justify-between gap-6">
-          <QualityControl
+          <QualityControlDeferred
             labels={{
               legend: t('home.quality.label'),
               auto: t('home.quality.auto'),

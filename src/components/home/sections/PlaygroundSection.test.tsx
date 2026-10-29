@@ -4,7 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import { PlaygroundSection } from './PlaygroundSection';
 
 // The control reads the tier store (QualityControl.test.tsx covers it); the markup is the subject.
-vi.mock('@/components/home/QualityControl', () => ({ QualityControl: () => null }));
+vi.mock('@/components/home/QualityControlDeferred', () => ({
+  QualityControlDeferred: () => null,
+}));
 
 describe('scene 11 markup (phone spec scene 11, D24)', () => {
   it('PG1 «پخش دوباره» keeps its box at every tier: invisible and inert in the server HTML, never display none', () => {
