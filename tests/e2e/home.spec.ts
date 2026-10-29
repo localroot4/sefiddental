@@ -76,6 +76,27 @@ const acceptBookings = (page: Page) => answerBookings(page, { status: 200, json:
 
 /** axe with every rule, best practices included (landmark-unique is not a WCAG-tagged rule). */
 async function expectNoAxeViolations(page: Page): Promise<void> {
+  // A jump to the booking block plays the journey's reveal (320 ms, staggered): axe must never
+  // read a step mid-fade. Settled = no inline style written for 300 ms.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        const done = (): void => {
+          observer.disconnect();
+          resolve();
+        };
+        let timer = setTimeout(done, 300);
+        const observer = new MutationObserver(() => {
+          clearTimeout(timer);
+          timer = setTimeout(done, 300);
+        });
+        observer.observe(document.documentElement, {
+          subtree: true,
+          attributes: true,
+          attributeFilter: ['style'],
+        });
+      }),
+  );
   const { violations } = await new AxeBuilder({ page }).exclude('[data-dev-overlay]').analyze();
   const summary = violations.map(
     (v) => `${v.id} (${v.impact ?? 'n/a'}): ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`,

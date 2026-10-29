@@ -154,7 +154,9 @@ test('T-S7 touch: no pointermove listener on the dentist cards; fine pointer at 
   const box = await page.locator(card).first().boundingBox();
   if (!box) throw new Error('no card box');
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  await page.mouse.move(box.x + 1, box.y + 1, { steps: 4 }); // the top-left corner, inside
+  // Near the top-left corner, 10 px in: inside the card's 20 px rounded corner (Chrome 156 hit-tests
+  // (1, 1) to the rail, a pointerleave) and still past 7.5 px of travel on a 397 × 628 card.
+  await page.mouse.move(box.x + 10, box.y + 10, { steps: 4 });
   await expect
     .poll(async () => translation(await computed(page, portrait, 'transform')).map(Math.round))
     .toEqual([-MAX_PARALLAX_PX, -MAX_PARALLAX_PX]);

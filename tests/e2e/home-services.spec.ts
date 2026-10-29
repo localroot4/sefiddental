@@ -287,7 +287,20 @@ test('T-SV3 the MorphSVG chunk loads only at ?tier=2 from 1024 px, after load, o
   // Written by the first morph tween's render, the committed outline the restore puts back.
   await expect(path).toHaveAttribute('data-original', SERVICE_MARK_OUTLINE);
   await scrollTo(page, start - 10);
-  const dStart = await path.getAttribute('d');
+  // anticipatePin can hold the pin at progress 0.0001 just before its start until ScrollTrigger's
+  // scroll end (200 ms without a scroll; MorphSVG writes 136.99 for 137): the start shape is the
+  // `d` that holds across 400 ms.
+  let dStart: string | null = null;
+  await expect
+    .poll(
+      async () => {
+        const before = dStart;
+        dStart = await path.getAttribute('d');
+        return dStart === before;
+      },
+      { intervals: [400] },
+    )
+    .toBe(true);
   await scrollTo(page, end);
   await expect.poll(() => path.getAttribute('d')).not.toBe(dStart);
   await scrollTo(page, start - 10);
