@@ -99,10 +99,11 @@ export interface SceneContext {
  * Draggables and delayed calls, plus every class, attribute and property it added, go in the
  * returned cleanup (`mm.revert()` undoes inline styles only). `pin` runs before the master, in
  * document order, only when the layout pins; it pins an inner element, never `el`. `setup` runs
- * on phones too and branches on `conditions.wide`, `layout.pinnedScenes` and `settings`. Under
- * 1024 px without Lenis the engine registers ScrollTrigger only for a child of `master` (one
- * added after `setup` gets the master's trigger on the next refresh) or a `nearViewport` call,
- * so scroll-linked work there goes through one of the two.
+ * on phones too and branches on `conditions.wide`, `layout.pinnedScenes` and `settings`; under
+ * 1024 px its scroll-linked work is the phone scroll set (`scenes/dom/phone.ts`). The engine
+ * registers ScrollTrigger one frame before creation at every tier from 1, so `setup` may create
+ * triggers directly. Under 1024 px a scene beyond two viewport heights runs `setup` only when it
+ * comes near, and every setup runs in a task of its own, after the engine's creation task.
  */
 export interface DomScene {
   pin?(ctx: Omit<SceneContext, 'master' | 'label' | 'segment'>): void;

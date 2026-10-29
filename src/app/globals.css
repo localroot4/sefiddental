@@ -259,3 +259,14 @@
     outline: none;
   }
 }
+
+/* The scroll engine's settle (phone spec D25): while `data-settling` is on the experience root
+   (one --dur-3 window after the engine starts and when it goes), the targets it scrubs ease to
+   and from their scrubbed state instead of jumping. Only the marked targets get it, so no other
+   element's own transition is overridden. Unlayered, so it wins over a utility. The tokens are
+   0 ms under reduced motion. */
+[data-experience-root][data-settling] [data-scrub] {
+  transition-property: transform, translate, scale, opacity;
+  transition-duration: var(--dur-3);
+  transition-timing-function: var(--ease-out);
+}

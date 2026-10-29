@@ -92,9 +92,10 @@ function rows(s: DebugSnapshot): string {
         : renderer;
   return [
     `fps     ${fmt(s.fps)}  p50 ${fmt(s.frameMsP50)} ms  p95 ${fmt(s.frameMsP95)} ms`,
-    `tier    ${s.tier} (${s.reason})  detected ${s.detectedTier ?? 'n/a'}  ${s.mode}  cap ${s.monitorCap ?? '-'}  ${s.status}`,
+    `tier    ${s.tier} (${s.reason})  detected ${s.detectedTier ?? 'n/a'}  ${s.mode}  cap ${s.monitorCap ?? '-'}  ${s.status}  cpu ${s.cpuBlockingMs ?? 'n/a'} ms`,
     `layout  pins ${s.layout.pinnedScenes ? 'on' : 'off'}  lenis ${s.layout.lenis ? 'on' : 'off'}  latched ${s.layout.latchedAtTier}`,
-    `gpu     ${s.gpu ? `${s.gpu.type} t${s.gpu.tier} ${fmt(s.gpu.fps, 0)} fps ${shortRenderer}` : `webgl2 ${s.webgl2 ?? 'n/a'}`}`,
+    `gpu     ${s.gpu ? `${s.gpu.type} t${s.gpu.tier} ${fmt(s.gpu.fps, 0)} fps ${shortRenderer}` : `webgl2 ${s.webgl2 ?? 'n/a'}${s.gpuNull ? ` (gpu ${s.gpuNull}${s.gpuError ? ` ${s.gpuError}` : ''})` : ''}`}`,
+    `monitor slow ${s.monitor.slowMs} ms  windows ${s.monitor.slowWindows}/${s.monitor.windows} slow  frames ${s.monitor.frames}  steps ${s.monitor.steps}`,
     `dpr     device ${fmt(s.dpr.device, 2)}  cap ${fmt(s.dpr.cap, 2)}  scale ${fmt(s.dpr.renderScale, 2)}  gl ${fmt(s.dpr.pixelRatio, 2)}  perf ${fmt(s.dpr.performance, 2)}`,
     `memory  heap ${fmt(s.memory.heapUsedMB)}/${fmt(s.memory.heapLimitMB, 0)} MB  geo ${s.memory.geometries ?? 'n/a'}  tex ${s.memory.textures ?? 'n/a'}  prog ${s.memory.programs ?? 'n/a'}  calls ${s.memory.calls ?? 'n/a'}  tris ${s.memory.triangles ?? 'n/a'}`,
     `gate    ${s.gate}  frames ${s.framesRendered}`,
@@ -145,7 +146,11 @@ export function DevOverlay(props: {
     const snapshot = () =>
       buildSnapshot({ tier: tierRef.current, runtime, experience, fps, sceneFps });
     snapshotRef.current = snapshot;
-    const uninstall = installDebugHook(snapshot, (o) => tierRef.current.setUserOverride(o));
+    const uninstall = installDebugHook(
+      snapshot,
+      (o) => tierRef.current.setUserOverride(o),
+      () => tierRef.current.stepDown('monitor'),
+    );
     const timer = window.setInterval(() => setText(rows(snapshot())), UPDATE_MS);
     return () => {
       window.clearInterval(timer);

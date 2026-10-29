@@ -74,6 +74,16 @@ describe('createMonitorSampler', () => {
     expect(windows).toEqual([]);
   });
 
+  it('V4 each window reports its length; cut drops a partial window and keeps the warm-up', () => {
+    const windows: { fps: number; windowMs: number }[] = [];
+    const sampler = createMonitorSampler(SAMPLER_DEFAULTS, (s) => windows.push(s));
+    sampler.reset(0);
+    feed(sampler, 0, 20, 60); // warm-up until 1000 ms, then 200 ms of a window
+    sampler.cut();
+    feed(sampler, 1200, 50, 5);
+    expect(windows).toEqual([{ nowMs: 1450, fps: 20, windowMs: 250 }]);
+  });
+
   it('V4 negative or NaN deltas reset instead of counting', () => {
     const windows: number[] = [];
     const sampler = createMonitorSampler({ windowMs: 250, warmupMs: 0, maxDeltaMs: 250 }, (s) =>

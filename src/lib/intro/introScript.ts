@@ -6,8 +6,11 @@
  * (introScript.test.ts recomputes it and pins the size under 2048 bytes).
  *
  * What the script does, in order. It exits (no overlay, `html[data-intro]` absent) off the home
- * path, under reduced motion, with Save-Data, with a saved «کیفیت» of 0, or once per session
- * (`sessionStorage['sefid-intro']`). Else it arms the 1400 ms cap, marks `html[data-intro]`
+ * path, under reduced motion, with Save-Data, with a saved «کیفیت» of 0, once per session
+ * (`sessionStorage['sefid-intro']`), with an active light floor (`localStorage['sefid-light']`,
+ * `n` at least 2 and `until` ahead), or in phone mode (no fine pointer, under 1024 px) with
+ * `navigator.deviceMemory` at most 2: a weak phone's keyframes would compete with its LCP and
+ * hydration (phone spec D23). Else it arms the 1400 ms cap, marks `html[data-intro]`
  * `playing`, opens the dialog as a modal (the page behind is inert, Esc closes it natively),
  * marks `intro:start`, and stages the choreography by timers from its own start: `s2` at 500 ms
  * (strokes snap, the word fills), `s3` at 900 ms (the frame opens onto the hero), the end at
@@ -26,10 +29,10 @@
  * Everything after the cap timer runs in one try/catch whose catch ends the intro.
  */
 export const INTRO_SCRIPT =
-  '(function(){var d=document,h=d.documentElement,D=d.getElementById("intro"),M=matchMedia("(prefers-reduced-motion:reduce)"),S={},L=[],E=0;function g(f){try{return f()}catch(e){}}if(location.pathname!=="/"||M.matches||(navigator.connection||{}).saveData||g(function(){return sessionStorage.getItem("sefid-intro")})||g(function(){return localStorage.getItem("sefid-quality")==="0"}))return;function end(k){if(E)return;E=1;g(function(){D.close();var b=d.body;b.tabIndex=-1;b.focus();b.removeAttribute("tabindex")});h.dataset.intro="done";g(function(){sessionStorage.setItem("sefid-intro","1")});performance.mark("intro:end");L.forEach(function(a){a[0].removeEventListener(a[1],a[2])});d.dispatchEvent(new CustomEvent("sefid:intro-end",{detail:{skipped:!!k,reduced:M.matches}}))}function on(t,n,f){t.addEventListener(n,f);L.push([t,n,f])}function up(){var n=0,s=0,k;for(k in S){n++;s+=S[k]}D.style.setProperty("--intro-p",s/n)}function m(k){return function(){S[k]=1;up()}}function skip(){end(1)}setTimeout(end,1400);try{h.dataset.intro="playing";D.showModal();performance.mark("intro:start");setTimeout(function(){D.classList.add("s2")},500);setTimeout(function(){D.classList.add("s3")},900);setTimeout(end,1300);S.t=S.f=S.i=S.l=0;up();setTimeout(m("t"),400);on(window,"load",m("l"));requestAnimationFrame(function(){requestAnimationFrame(function(){d.fonts.ready.then(m("f"))})});on(d,"DOMContentLoaded",function(){var i=d.querySelector(\'[data-scene="hero"] img\');i?i.decode().then(m("i"),m("i")):m("i")()});on(d,"sefid:intro-progress",function(e){S.h=Math.max(0,Math.min(1,+e.detail.p||0));up()});on(D,"click",skip);on(d,"keydown",skip);on(D,"close",skip);on(M,"change",skip);on(D,"wheel",function(e){e.preventDefault()})}catch(e){end(1)}})();';
+  '(function(){var d=document,h=d.documentElement,D=d.getElementById("intro"),M=matchMedia("(prefers-reduced-motion:reduce)"),S={},L=[],E=0;function g(f){try{return f()}catch(e){}}if(location.pathname!=="/"||M.matches||(navigator.connection||{}).saveData||g(function(){return sessionStorage.getItem("sefid-intro")})||g(function(){return localStorage.getItem("sefid-quality")==="0"})||g(function(){var r=JSON.parse(localStorage.getItem("sefid-light"));return r.n>=2&&Date.now()<r.until})||!matchMedia("(pointer:fine),(min-width:1024px)").matches&&navigator.deviceMemory<=2)return;function end(k){if(E)return;E=1;g(function(){D.close();var b=d.body;b.tabIndex=-1;b.focus();b.removeAttribute("tabindex")});h.dataset.intro="done";g(function(){sessionStorage.setItem("sefid-intro","1")});performance.mark("intro:end");L.forEach(function(a){a[0].removeEventListener(a[1],a[2])});d.dispatchEvent(new CustomEvent("sefid:intro-end",{detail:{skipped:!!k,reduced:M.matches}}))}function on(t,n,f){t.addEventListener(n,f);L.push([t,n,f])}function up(){var n=0,s=0,k;for(k in S){n++;s+=S[k]}D.style.setProperty("--intro-p",s/n)}function m(k){return function(){S[k]=1;up()}}function skip(){end(1)}setTimeout(end,1400);try{h.dataset.intro="playing";D.showModal();performance.mark("intro:start");setTimeout(function(){D.classList.add("s2")},500);setTimeout(function(){D.classList.add("s3")},900);setTimeout(end,1300);S.t=S.f=S.i=S.l=0;up();setTimeout(m("t"),400);on(window,"load",m("l"));requestAnimationFrame(function(){requestAnimationFrame(function(){d.fonts.ready.then(m("f"))})});on(d,"DOMContentLoaded",function(){var i=d.querySelector(\'[data-scene="hero"] img\');i?i.decode().then(m("i"),m("i")):m("i")()});on(d,"sefid:intro-progress",function(e){S.h=Math.max(0,Math.min(1,+e.detail.p||0));up()});on(D,"click",skip);on(d,"keydown",skip);on(D,"close",skip);on(M,"change",skip);on(D,"wheel",function(e){e.preventDefault()})}catch(e){end(1)}})();';
 
 /** base64 SHA-256 of INTRO_SCRIPT, for `script-src 'sha256-…'`. */
-export const INTRO_SCRIPT_SHA256 = 'do90HQcwGkvhGCO/Sa+7hcoh8tAHPU3jlcOWxIGWnSA=';
+export const INTRO_SCRIPT_SHA256 = '0tNx+ymxQkGkApZU+SDpYkR81K0zFKuZhAiPdVaXOc8=';
 
 /**
  * The dialog's stylesheet, rendered as `<style nonce>` inside the dialog (at most 3.5 KB).

@@ -56,7 +56,15 @@ interface FakeOptions {
   /** What a main-thread <canvas> answers for WebGL 2 (default yes). */
   mainThread?: boolean;
   deviceMemory?: number | null;
+  /** The CPU blocking sum the watcher reads (default 0); null: no entry type. */
+  cpu?: number | null;
 }
+
+/** Wall-clock start of every fake page view. */
+const EPOCH = 1_700_000_000_000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** Phone mode: a coarse pointer at 390 px. */
+const PHONE: FakeOptions = { fine: false, width: 390 };
 
 function fakeEnv(o: FakeOptions = {}) {
   let width = o.width ?? 1440;
@@ -68,10 +76,12 @@ function fakeEnv(o: FakeOptions = {}) {
   let loadCb: (() => void) | null = null;
   let resolveProbe: ((r: ProbeResult) => void) | null = null;
   const benchmarkCalls: (string | null)[] = [];
+  const probeSignals: AbortSignal[] = [];
   let mainThreadChecks = 0;
   const timers = new Set<() => void>();
   let now = 0;
   let scrollY = 0;
+  const cpu = { ms: o.cpu === undefined ? 0 : o.cpu, watching: 0, reads: 0 };
   const env: TierEnv = {
     reducedMotion,
     finePointer,
@@ -88,18 +98,32 @@ function fakeEnv(o: FakeOptions = {}) {
         loadCb = null;
       };
     },
-    probe: ({ benchmark }) =>
+    probe: ({ benchmark, signal }) =>
       new Promise<ProbeResult>((resolve) => {
         const result = o.probe ?? { webgl2: true, renderer: RTX, gpu: null };
         benchmarkCalls.push(benchmark(result.renderer) ? result.renderer : null);
+        probeSignals.push(signal);
         resolveProbe = resolve;
       }),
+    watchCpuBlocking: () => {
+      cpu.watching += 1;
+      return {
+        readMs: () => {
+          cpu.reads += 1;
+          return cpu.ms;
+        },
+        stop: () => {
+          cpu.watching -= 1;
+        },
+      };
+    },
     webgl2OnMainThread: () => {
       mainThreadChecks++;
       return o.mainThread ?? true;
     },
     scrollY: () => scrollY,
     now: () => now,
+    epochMs: () => EPOCH + now,
     every: (_ms, cb) => {
       timers.add(cb);
       return () => timers.delete(cb);
@@ -113,11 +137,21 @@ function fakeEnv(o: FakeOptions = {}) {
     local,
     session,
     benchmarkCalls,
+    probeSignals,
+    cpu,
     mainThreadChecks: () => mainThreadChecks,
     /** Fires `load` and resolves the probe with `result`. */
     async load(result?: ProbeResult) {
       loadCb?.();
       resolveProbe?.(result ?? o.probe ?? { webgl2: true, renderer: RTX, gpu: null });
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    },
+    /** Fires `load` only: the probe stays pending until `answer`. */
+    fireLoad() {
+      loadCb?.();
+    },
+    async answer(result: ProbeResult) {
+      resolveProbe?.(result);
       await new Promise((resolve) => setTimeout(resolve, 0));
     },
     tick(ms: number, y = scrollY) {
@@ -205,11 +239,13 @@ describe('tier store: probe after load and the detection relatch (X30)', () => {
     expect(state().layout).toEqual({ pinnedScenes: false, lenis: true, latchedAtTier: 1 });
   });
 
-  it('TS8b a detection drop to tier 0 removes Lenis even after the first pinned scene', async () => {
+  it('TS8b a detection drop to tier 0 removes Lenis after the first pinned scene, at scroll idle (D25)', async () => {
     const { fake, store, state } = started({ probe: { webgl2: false, renderer: null, gpu: null } });
     store.setScrollProbe({ insidePinnedRange: () => false, reachedFirstPinnedScene: () => true });
     await fake.load();
     expect(state().tier).toBe(0);
+    expect(state().layout.lenis).toBe(true);
+    fake.tick(RELATCH_POLL_MS * 4);
     expect(state().layout).toEqual({ pinnedScenes: false, lenis: false, latchedAtTier: 0 });
   });
 
@@ -363,11 +399,14 @@ describe('tier store: live changes and controls', () => {
 
   it('TS21 no GPU probe while the tier is fixed at 0; it runs once that can change', async () => {
     const reduced = started({ reducedMotion: true });
+    expect(reduced.state().status).toBe('pending');
     await reduced.fake.load();
     expect(reduced.fake.benchmarkCalls).toHaveLength(0);
-    expect(reduced.state()).toMatchObject({ tier: 0, status: 'pending' });
+    // A probe that is not needed counts as decided (phone spec 1.6).
+    expect(reduced.state()).toMatchObject({ tier: 0, status: 'ready' });
     reduced.fake.reducedMotion.set(false);
     expect(reduced.fake.benchmarkCalls).toHaveLength(1);
+    expect(reduced.state().status).toBe('pending');
 
     const pinned = started({ search: '?tier=0' });
     await pinned.fake.load();
@@ -451,5 +490,179 @@ describe('tier store: live changes and controls', () => {
     const before = state();
     fake.reducedMotion.set(true);
     expect(state()).toBe(before);
+  });
+});
+
+describe('tier store: phone mode (phone spec section 1)', () => {
+  const benchmark1: ProbeResult = {
+    webgl2: true,
+    renderer: 'Adreno (TM) 610',
+    gpu: { tier: 1, type: 'BENCHMARK', fps: 33 },
+  };
+  const floorOf = (fake: ReturnType<typeof fakeEnv>) =>
+    JSON.parse(fake.local.data.get('sefid-light') ?? 'null') as { n: number; until: number } | null;
+
+  it('U-PH5 a monitor drop to 0 counts toward the light floor; the second one lights it for later views', async () => {
+    const view1 = started({ ...PHONE, probe: { ...benchmark1, gpu: benchmark3 } });
+    await view1.fake.load();
+    expect(view1.state()).toMatchObject({ tier: 3, phone: true });
+    view1.state().stepDown('monitor');
+    // One step to tier 0 in phone mode; a first drop is no floor yet.
+    expect(view1.state()).toMatchObject({ tier: 0, reason: 'monitor', monitorCap: 0 });
+    expect(view1.state().lastStep).toMatchObject({ source: 'monitor', tier: 0 });
+    expect(floorOf(view1.fake)).toEqual({ n: 1, until: EPOCH + 14 * DAY_MS });
+
+    // A later page view in a new session, within 14 days.
+    const record1 = view1.fake.local.data.get('sefid-light') ?? '';
+    const view2 = started({ ...PHONE, probe: benchmark1, local: { 'sefid-light': record1 } });
+    await view2.fake.load();
+    expect(view2.state()).toMatchObject({ tier: 1, reason: 'gpu-benchmark' });
+    view2.state().stepDown('monitor');
+    expect(floorOf(view2.fake)).toEqual({ n: 2, until: EPOCH + 14 * DAY_MS });
+    expect(view2.state().reason).toBe('monitor');
+
+    const record2 = view2.fake.local.data.get('sefid-light') ?? '';
+    const view3 = started({ ...PHONE, probe: benchmark1, local: { 'sefid-light': record2 } });
+    expect(view3.state()).toMatchObject({ tier: 0, reason: 'light-floor', mode: 'auto' });
+    expect(view3.state().layout.latchedAtTier).toBe(0);
+    await view3.fake.load();
+    expect(view3.fake.benchmarkCalls).toHaveLength(0);
+    expect(view3.state().status).toBe('ready');
+
+    // A fine pointer ignores the record; an expired one starts again at 1 and lights nothing.
+    expect(started({ local: { 'sefid-light': record2 } }).state().reason).not.toBe('light-floor');
+    const expired = JSON.stringify({ n: 5, until: EPOCH - 1 });
+    const view4 = started({ ...PHONE, probe: benchmark1, local: { 'sefid-light': expired } });
+    await view4.fake.load();
+    expect(view4.state().tier).toBe(1);
+    view4.state().stepDown('monitor');
+    expect(floorOf(view4.fake)).toEqual({ n: 1, until: EPOCH + 14 * DAY_MS });
+    // A corrupt record is no record.
+    const corrupt = started({ ...PHONE, local: { 'sefid-light': '{"n":"2"' } });
+    expect(corrupt.state().reason).not.toBe('light-floor');
+
+    // Any explicit choice removes it.
+    view3.state().setUserOverride('auto');
+    expect(view3.fake.local.data.has('sefid-light')).toBe(false);
+    expect(view3.state().reason).not.toBe('light-floor');
+  });
+
+  it('U-PH5b a fine pointer steps one tier and writes no floor; a context loss writes none either', async () => {
+    const desktop = started({ search: '?tier=3&monitor=1' });
+    await desktop.fake.load();
+    desktop.state().stepDown('monitor');
+    expect(desktop.state().tier).toBe(2);
+    expect(desktop.fake.local.data.has('sefid-light')).toBe(false);
+    const phone = started({ ...PHONE, search: '?tier=3' });
+    await phone.fake.load();
+    phone.state().stepDown('context-loss');
+    expect(phone.state().tier).toBe(0);
+    expect(phone.fake.local.data.has('sefid-light')).toBe(false);
+  });
+
+  it('U-PH6 a monitor drop and a late detection wait for 1000 ms without scroll even with the same pins', async () => {
+    const monitor = started({ ...PHONE, search: '?tier=1&monitor=1' });
+    monitor.store.setScrollProbe({
+      insidePinnedRange: () => false,
+      reachedFirstPinnedScene: () => false,
+    });
+    await monitor.fake.load();
+    monitor.state().stepDown('monitor');
+    expect(monitor.state().tier).toBe(0);
+    expect(monitor.state().layout.latchedAtTier).toBe(1);
+    monitor.fake.tick(RELATCH_POLL_MS * 3, 100); // still scrolling
+    monitor.fake.tick(RELATCH_POLL_MS * 3, 100);
+    expect(monitor.state().layout.latchedAtTier).toBe(1);
+    monitor.fake.tick(RELATCH_POLL_MS, 100); // 1000 ms since the last scroll
+    expect(monitor.state().layout).toEqual({ pinnedScenes: false, lenis: false, latchedAtTier: 0 });
+    expect(monitor.fake.pendingTimers()).toBe(0);
+
+    // A probe answer after the engine started (it registered its scroll facts).
+    const late = started({ ...PHONE });
+    late.fake.fireLoad();
+    late.store.setScrollProbe({
+      insidePinnedRange: () => false,
+      reachedFirstPinnedScene: () => false,
+    });
+    await late.fake.answer({ webgl2: false, renderer: null, gpu: null });
+    expect(late.state()).toMatchObject({ tier: 0, reason: 'no-webgl2' });
+    expect(late.state().layout.latchedAtTier).toBe(1);
+    late.fake.tick(RELATCH_POLL_MS * 4);
+    expect(late.state().layout.latchedAtTier).toBe(0);
+
+    // The reader's own choice relatches at once.
+    const user = started({ ...PHONE });
+    user.store.setScrollProbe({
+      insidePinnedRange: () => false,
+      reachedFirstPinnedScene: () => false,
+    });
+    user.state().setUserOverride(0);
+    expect(user.state().layout.latchedAtTier).toBe(0);
+  });
+
+  it('U-PH14 2 GB, an active floor or a CPU sum over the threshold at load start no probe; status is ready', async () => {
+    const memory = started({ ...PHONE, deviceMemory: 2 });
+    expect(memory.state()).toMatchObject({ tier: 0, reason: 'device-memory', status: 'pending' });
+    expect(memory.state().layout.latchedAtTier).toBe(0);
+    await memory.fake.load();
+    expect(memory.fake.benchmarkCalls).toHaveLength(0);
+    expect(memory.state().status).toBe('ready');
+
+    const record = JSON.stringify({ n: 2, until: EPOCH + DAY_MS });
+    const floor = started({ ...PHONE, local: { 'sefid-light': record } });
+    await floor.fake.load();
+    expect(floor.fake.benchmarkCalls).toHaveLength(0);
+    expect(floor.state()).toMatchObject({ tier: 0, reason: 'light-floor', status: 'ready' });
+
+    const cpu = started({ ...PHONE, cpu: 401 });
+    expect(cpu.state()).toMatchObject({ tier: 1, status: 'pending' });
+    await cpu.fake.load();
+    expect(cpu.fake.benchmarkCalls).toHaveLength(0);
+    expect(cpu.state()).toMatchObject({ tier: 0, reason: 'device-cpu', status: 'ready' });
+    // Before the engine started, the layout follows at once.
+    expect(cpu.state().layout.latchedAtTier).toBe(0);
+  });
+
+  it('U-PH15a the gate deadline reads the CPU a last time and aborts the benchmark fetch; the state carries each reading', async () => {
+    const { fake, state } = started({ ...PHONE, cpu: 120 });
+    expect(fake.cpu.watching).toBe(1);
+    expect(state().cpuBlockingMs).toBeNull();
+    fake.fireLoad();
+    expect(fake.cpu.reads).toBe(1);
+    expect(fake.probeSignals).toHaveLength(1);
+    expect(state()).toMatchObject({ tier: 1, status: 'pending', cpuBlockingMs: 120 });
+    fake.cpu.ms = 650; // hydration and the chunks kept the main thread busy
+    state().openGate();
+    expect(fake.probeSignals[0]?.aborted).toBe(true);
+    expect(fake.cpu).toMatchObject({ reads: 2, watching: 0 });
+    expect(state()).toMatchObject({ tier: 0, reason: 'device-cpu', cpuBlockingMs: 650 });
+    expect(state().layout.latchedAtTier).toBe(0);
+    // A later answer cannot lift a weak phone (detection keeps the CPU rule).
+    await fake.answer({ ...benchmark1, gpu: benchmark3 });
+    expect(state()).toMatchObject({ tier: 0, reason: 'device-cpu', status: 'ready' });
+    state().openGate();
+    expect(fake.cpu.reads).toBe(2);
+  });
+
+  it('U-PH15b the probe answer passes the gate: the CPU is read once more and nothing is aborted', async () => {
+    const { fake, state } = started({ ...PHONE, cpu: 120, probe: benchmark1 });
+    await fake.load();
+    expect(fake.cpu).toMatchObject({ reads: 2, watching: 0 });
+    expect(state()).toMatchObject({ tier: 1, status: 'ready' });
+    state().openGate();
+    expect(fake.probeSignals[0]?.aborted).toBe(false);
+  });
+
+  it('U-PH15c no CPU watcher on a fine pointer, under a query tier or a saved choice', async () => {
+    expect(started().fake.cpu.watching).toBe(0);
+    const query = started({ ...PHONE, search: '?tier=1&monitor=1' });
+    expect(query.fake.cpu.watching).toBe(0);
+    await query.fake.load();
+    expect(query.state().cpuBlockingMs).toBeNull();
+    expect(started({ ...PHONE, local: { 'sefid-quality': '2' } }).fake.cpu.watching).toBe(0);
+    const phone = started({ ...PHONE, cpu: null });
+    expect(phone.fake.cpu.watching).toBe(1);
+    phone.unsubscribe();
+    expect(phone.fake.cpu.watching).toBe(0);
   });
 });

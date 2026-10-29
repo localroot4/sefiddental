@@ -5,7 +5,9 @@
  * Precedence (decision D-Q3): reduced motion > no WebGL 2 > site cap > explicit override >
  * detection. The frame monitor only acts in 'auto' mode and never steps up within a visit.
  * WebGL 2 seen only in the probe's worker counts until a tier that mounts the canvas confirms it
- * on the main thread (tierStore).
+ * on the main thread (tierStore). Phone mode (a coarse pointer under 1024 px, phone spec D23)
+ * adds three weak-phone rules to detection: 2 GB or less, a remembered light floor, and the CPU
+ * blocking measured from FCP to the engine gate.
  */
 
 export type Tier = 0 | 1 | 2 | 3;
@@ -35,6 +37,10 @@ export interface TierInputs {
   /** `?tier=N` is 'fixed'; `?tier=N&monitor=1` is 'auto' starting at N. */
   queryMode: 'fixed' | 'auto';
   siteCap: Tier | null;
+  /** Long-animation-frame blocking from FCP (ms); null without the entry type (WebKit, Gecko). */
+  cpuBlockingMs: number | null;
+  /** An active `sefid-light` record (the second stepped-down page view in 14 days). */
+  lightFloor: boolean;
 }
 
 export type TierReason =
@@ -44,6 +50,8 @@ export type TierReason =
   | 'save-data'
   | 'gpu-benchmark'
   | 'device-memory'
+  | 'device-cpu'
+  | 'light-floor'
   | 'user-override'
   | 'query-override'
   | 'site-cap';
@@ -88,7 +96,16 @@ export const DETECT_GPU_TIERS: { desktop: number[]; mobile: number[] } = {
 };
 
 export const MONITOR_FPS_FLOOR = 55;
+/** Slow time that drops one tier; in phone mode MONITOR_PHONE_HOLD_MS drops to tier 0 at once. */
 export const MONITOR_HOLD_MS = 2000;
+/** [guess: calibrated on the owner's phone, a GE8320 phone and an iPhone before step 9] */
+export const MONITOR_PHONE_HOLD_MS = 1000;
+/** Phone mode: a blocking sum over this from FCP to the engine gate is a weak CPU. [guess: 300-500] */
+export const CPU_BLOCKING_MS = 400;
+/** localStorage, { n, until }: monitor drops to tier 0 in phone mode; active from n = 2. */
+export const LIGHT_FLOOR_KEY = 'sefid-light';
+/** How long a floor record lasts after its last drop. [guess] */
+export const LIGHT_FLOOR_MS = 14 * 24 * 60 * 60 * 1000;
 /** localStorage, TierOverride as a string. */
 export const QUALITY_STORAGE_KEY = 'sefid-quality';
 /** localStorage, { v: '5.0.70', renderer, tier, type, fps }. */
@@ -122,9 +139,27 @@ export function siteCapFrom(value: string | null | undefined): Tier | null {
   return typeof value === 'string' && /^[0-3]$/.test(value) ? (Number(value) as Tier) : null;
 }
 
+/** A coarse pointer under 1024 px: where the weak-phone rules, the one-step drop and D28 apply. */
+export function isPhoneMode(inputs: Pick<TierInputs, 'viewport' | 'finePointer'>): boolean {
+  return !inputs.finePointer && inputs.viewport.width < PIN_MIN_WIDTH;
+}
+
 function detect(inputs: TierInputs): { tier: Tier; reason: TierReason } {
-  if (isSoftwareRenderer(inputs.renderer)) return { tier: 0, reason: 'software-renderer' };
+  // Save-Data first (phone spec 1.2, class D before W): the visitor's own setting names the reason,
+  // so the light notice, which explains only the device's decisions, stays closed.
   if (inputs.saveData) return { tier: 0, reason: 'save-data' };
+  if (isSoftwareRenderer(inputs.renderer)) return { tier: 0, reason: 'software-renderer' };
+  // D23: the GPU benchmark rates the common weak phones (PowerVR GE8320, Mali-G52 MC2) tier 1.
+  if (isPhoneMode(inputs)) {
+    // Chromium reports a power of two: a 3 GB phone reports 2. [guess on the rounding]
+    if (inputs.deviceMemory !== null && inputs.deviceMemory <= 2) {
+      return { tier: 0, reason: 'device-memory' };
+    }
+    if (inputs.lightFloor) return { tier: 0, reason: 'light-floor' };
+    if (inputs.cpuBlockingMs !== null && inputs.cpuBlockingMs > CPU_BLOCKING_MS) {
+      return { tier: 0, reason: 'device-cpu' };
+    }
+  }
 
   const { gpu } = inputs;
   let tier: Tier;
@@ -225,29 +260,31 @@ export function tierSettings(
 
 export interface MonitorState {
   tier: Tier;
-  belowSinceMs: number | null;
+  /** Slow sampled time since the last good window (D26: it adds up, a good window resets it). */
+  slowMs: number;
   mode: 'auto' | 'fixed';
+  /** Phone mode: MONITOR_PHONE_HOLD_MS goes to tier 0 in one step. */
+  phone: boolean;
 }
 
 /**
- * One frame-rate sample (a 250 ms window average). Under MONITOR_FPS_FLOOR for MONITOR_HOLD_MS
- * drops one tier and restarts the window; a good sample resets it. Fixed mode and tier 0 never
- * change, and the tier never steps up.
+ * One frame-rate sample (a window of `windowMs`, about 250 ms). A window under MONITOR_FPS_FLOOR
+ * adds its length to `slowMs`; a good one resets it. At MONITOR_HOLD_MS the tier drops by one, in
+ * phone mode at MONITOR_PHONE_HOLD_MS it goes to 0 (tiers 1 to 3 are one scroll set there, so a
+ * middle step only prolongs the jank), and `slowMs` restarts. Fixed mode and tier 0 never change,
+ * and the tier never steps up.
  */
 export function monitorStep(
   state: MonitorState,
-  sample: { nowMs: number; fps: number },
+  sample: { windowMs: number; fps: number },
 ): MonitorState {
   if (state.mode === 'fixed' || state.tier === 0) return state;
-  if (!Number.isFinite(sample.fps) || !Number.isFinite(sample.nowMs)) return state;
-  if (sample.fps >= MONITOR_FPS_FLOOR) {
-    return state.belowSinceMs === null ? state : { ...state, belowSinceMs: null };
+  if (!Number.isFinite(sample.fps) || !(sample.windowMs >= 0)) return state;
+  if (sample.fps >= MONITOR_FPS_FLOOR) return state.slowMs === 0 ? state : { ...state, slowMs: 0 };
+  const slowMs = state.slowMs + sample.windowMs;
+  if (state.phone && slowMs >= MONITOR_PHONE_HOLD_MS) return { ...state, tier: 0, slowMs: 0 };
+  if (!state.phone && slowMs >= MONITOR_HOLD_MS) {
+    return { ...state, tier: (state.tier - 1) as Tier, slowMs: 0 };
   }
-  if (state.belowSinceMs === null || sample.nowMs < state.belowSinceMs) {
-    return { ...state, belowSinceMs: sample.nowMs };
-  }
-  if (sample.nowMs - state.belowSinceMs >= MONITOR_HOLD_MS) {
-    return { ...state, tier: (state.tier - 1) as Tier, belowSinceMs: null };
-  }
-  return state;
+  return { ...state, slowMs };
 }

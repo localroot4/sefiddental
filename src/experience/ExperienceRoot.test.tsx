@@ -13,11 +13,26 @@ interface FakeEngine {
   destroy: ReturnType<typeof vi.fn>;
 }
 
+type GpuOptions = { override: { loadBenchmarks: (file: string) => Promise<unknown> } };
+
 const mocks = vi.hoisted(() => ({
   engines: [] as FakeEngine[],
   placeScrollY: vi.fn(() => 1234),
-  monitorFrames: vi.fn((_engine: unknown, _opts: { tier: number }) => () => {}),
+  monitorFrames: vi.fn((_opts: { tier: number }) => () => {}),
   canvasImports: 0,
+  /** Renders of the canvas host: the factory count above sees only the file's first import. */
+  canvasMounts: 0,
+  /** detect-gpu: the options of the last call and the answer it waits for. */
+  gpu: { options: null as GpuOptions | null, answer: (_: unknown) => {} },
+}));
+
+// The benchmark runs only in auto mode without a query tier (XR5); it answers when told to.
+vi.mock('detect-gpu', () => ({
+  getGPUTier: (options: GpuOptions) =>
+    new Promise((resolve) => {
+      mocks.gpu.options = options;
+      mocks.gpu.answer = resolve;
+    }),
 }));
 
 // The engine chunk (gsap, Lenis) needs a layout engine; the root only wires it.
@@ -54,7 +69,12 @@ vi.mock('./engine/scrollEngine', () => ({
 // The factory runs on the first `import()` only: a count of 0 proves the chunk was never asked for.
 vi.mock('./canvas/CanvasRoot', () => {
   mocks.canvasImports += 1;
-  return { CanvasRoot: () => null };
+  return {
+    CanvasRoot: () => {
+      mocks.canvasMounts += 1;
+      return null;
+    },
+  };
 });
 
 /** Controllable matchMedia: jsdom has none. */
@@ -142,7 +162,9 @@ beforeEach(() => {
   window.scrollTo = vi.fn();
   mocks.engines.length = 0;
   mocks.placeScrollY.mockClear();
-  mocks.monitorFrames.mockClear();
+  mocks.monitorFrames.mockClear().mockImplementation(() => () => {});
+  mocks.canvasMounts = 0;
+  mocks.gpu.options = null;
   localStorage.clear();
   sessionStorage.clear();
 });
@@ -212,7 +234,7 @@ describe('ExperienceRoot (dom)', () => {
     expect(disconnected).toBe(1);
   });
 
-  it('XR4 the frame monitor rides the ticker in auto mode only, while no canvas is mounted', async () => {
+  it('XR4 the frame monitor runs in auto mode only, while no canvas is mounted', async () => {
     const fixed = home('/?tier=2');
     await waitFor(() => expect(mocks.engines).toHaveLength(1));
     await flush();
@@ -221,6 +243,64 @@ describe('ExperienceRoot (dom)', () => {
 
     home('/?tier=2&monitor=1');
     await waitFor(() => expect(mocks.monitorFrames).toHaveBeenCalledTimes(1));
-    expect(mocks.monitorFrames.mock.calls[0]?.[1]).toMatchObject({ tier: 2 });
+    expect(mocks.monitorFrames.mock.calls[0]?.[0]).toMatchObject({ tier: 2 });
+  });
+
+  it('XR5 U-PH15 coarse pointer: the engine waits for load + 1500 ms; the deadline aborts the benchmark fetch; a late tier 0 relatches at idle', async () => {
+    installMatchMedia({ '(pointer: fine)': false, '(min-width: 1024px)': false });
+    const fetches: (AbortSignal | null | undefined)[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) => {
+        fetches.push(init?.signal);
+        return new Promise(() => {});
+      }),
+    );
+    const start = performance.now();
+    const view = home('/');
+    await waitFor(() => expect(mocks.gpu.options).not.toBeNull());
+    await act(() => new Promise((resolve) => setTimeout(resolve, 1000)));
+    expect(mocks.engines).toHaveLength(0);
+    await waitFor(() => expect(mocks.engines).toHaveLength(1), { timeout: 2000 });
+    expect(performance.now() - start).toBeGreaterThanOrEqual(1500);
+    expect(view.getByTestId('tier').textContent).toBe('1|1');
+    // The fetch detect-gpu would start now carries the gate's aborted signal.
+    void mocks.gpu.options?.override.loadBenchmarks('m-apple.json');
+    expect(fetches[0]?.aborted).toBe(true);
+
+    // The probe answers late with a blocklisted GPU: the tier drops at once, the layout at idle.
+    await act(async () => mocks.gpu.answer({ tier: 0, type: 'BLOCKLISTED' }));
+    await waitFor(() => expect(view.getByTestId('tier').textContent).toBe('0|1'));
+    expect(mocks.engines).toHaveLength(1);
+    await waitFor(() => expect(mocks.engines).toHaveLength(2), { timeout: 2500 });
+    expect(view.getByTestId('tier').textContent).toBe('0|0');
+    expect(mocks.engines[0]?.destroy).toHaveBeenCalledTimes(1);
+    // No pin came or went, so the page did not move (D25).
+    expect(window.scrollTo).not.toHaveBeenCalled();
+    expect(mocks.engines[1]?.restore).toBeUndefined();
+  }, 10_000);
+
+  it('XR7 a phone with the debug flag mounts no canvas: the DOM frame monitor runs and keeps running', async () => {
+    installMatchMedia({ '(pointer: fine)': false, '(min-width: 1024px)': false });
+    const stop = vi.fn();
+    mocks.monitorFrames.mockImplementation(() => stop);
+    home('/?tier=1&monitor=1&debug=1');
+    await waitFor(() => expect(mocks.monitorFrames).toHaveBeenCalledTimes(1));
+    expect(mocks.monitorFrames.mock.calls[0]?.[0]).toMatchObject({ tier: 1, phone: true });
+    // Past the idle mount (a 200 ms timer in jsdom): a canvas would have mounted and stopped it.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 400)));
+    expect(mocks.canvasMounts).toBe(0);
+    expect(stop).not.toHaveBeenCalled();
+  });
+
+  it('XR6 coarse pointer with an explicit tier: the probe answer opens the gate; a phone relatch never scrolls', async () => {
+    installMatchMedia({ '(pointer: fine)': false, '(min-width: 1024px)': false });
+    const view = home('/?tier=1');
+    await waitFor(() => expect(mocks.engines).toHaveLength(1));
+    expect(mocks.gpu.options).toBeNull(); // no benchmark under a query tier
+    await act(async () => view.getByTestId('tier').click());
+    await waitFor(() => expect(mocks.engines).toHaveLength(2));
+    expect(mocks.placeScrollY).not.toHaveBeenCalled();
+    expect(window.scrollTo).not.toHaveBeenCalled();
   });
 });

@@ -26,7 +26,25 @@ export interface DebugSnapshot {
   lastStep: TierState['lastStep'];
   layout: TierState['layout'];
   gpu: { type: string; tier: number; fps: number | null; renderer: string | null } | null;
+  /**
+   * Why `gpu` is null with WebGL 2: the probe's own reason, the benchmark was 'skipped' (an
+   * explicit tier, Save-Data, a software GPU) or 'failed' (it threw: `gpuError` names the error).
+   * 'masked' (no renderer string) only when the probe gave none: detect-gpu answers FALLBACK, not
+   * null, for a masked renderer.
+   */
+  gpuNull: 'skipped' | 'failed' | 'masked' | null;
+  gpuError: string | null;
   webgl2: boolean | null;
+  /**
+   * The CPU signal (phone spec 1.1): long-animation-frame blocking from FCP to the engine gate;
+   * null without the entry type or when it is not measured (a saved or query tier, a fine pointer).
+   */
+  cpuBlockingMs: number | null;
+  /**
+   * The frame monitor (phone spec 1.5): current slow time, the frames of its loop (it runs only
+   * while the page scrolls), sampled windows, slow windows and steps.
+   */
+  monitor: { slowMs: number; frames: number; windows: number; slowWindows: number; steps: number };
   dpr: {
     device: number;
     cap: number | null;
@@ -68,6 +86,8 @@ declare global {
       snapshot(): DebugSnapshot;
       /** The «کیفیت» choice for tests that run before the control lands (T-EN4). */
       setUserOverride(override: TierOverride): void;
+      /** A frame-monitor drop now, as if the page had been slow (T-PH5, T-PH8). */
+      stepDown(): void;
     };
   }
 }
@@ -169,6 +189,7 @@ export function buildSnapshot(sources: {
   const heap = (performance as HeapPerformance).memory;
   const fps = sources.fps.read();
   const place = engine?.activeScene() ?? null;
+  const probe = tier.probe;
   if (place) sources.sceneFps?.record(place.id, fps.fps);
   return {
     fps: fps.fps === null ? null : round(fps.fps, 1),
@@ -190,7 +211,14 @@ export function buildSnapshot(sources: {
           renderer: tier.probe.renderer,
         }
       : null,
+    gpuNull:
+      probe === null || !probe.webgl2 || probe.gpu !== null
+        ? null
+        : (probe.gpuNull ?? (probe.renderer === null ? 'masked' : null)),
+    gpuError: probe?.gpuError ?? null,
     webgl2: tier.probe?.webgl2 ?? null,
+    cpuBlockingMs: tier.cpuBlockingMs === null ? null : Math.round(tier.cpuBlockingMs),
+    monitor: { ...runtime.monitor },
     dpr: {
       device: window.devicePixelRatio || 1,
       cap: tier.settings.dprCap,
@@ -227,8 +255,9 @@ export function buildSnapshot(sources: {
 export function installDebugHook(
   snapshot: () => DebugSnapshot,
   setUserOverride: (override: TierOverride) => void,
+  stepDown: () => void,
 ): () => void {
-  window.__sefid = { snapshot, setUserOverride };
+  window.__sefid = { snapshot, setUserOverride, stepDown };
   return () => {
     delete window.__sefid;
   };

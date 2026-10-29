@@ -72,7 +72,13 @@ describe('probeGpu', () => {
     const terminate = installWorker({ renderer: SOFTWARE });
     const canvas = installCanvas(RENDERER);
     const result = await probeGpu({ benchmark: () => false, storage: storage() });
-    expect(result).toEqual({ webgl2: true, renderer: SOFTWARE, gpu: null, workerOnly: true });
+    expect(result).toEqual({
+      webgl2: true,
+      renderer: SOFTWARE,
+      gpu: null,
+      workerOnly: true,
+      gpuNull: 'skipped',
+    });
     expect(canvas.createElement).not.toHaveBeenCalled();
     expect(terminate).toHaveBeenCalledTimes(1);
   });
@@ -101,7 +107,13 @@ describe('probeGpu', () => {
     installWorker(reply);
     const canvas = installCanvas(RENDERER);
     const result = await probeGpu({ benchmark: () => false, storage: storage() });
-    expect(result).toEqual({ webgl2: true, renderer: RENDERER, gpu: null, workerOnly: false });
+    expect(result).toEqual({
+      webgl2: true,
+      renderer: RENDERER,
+      gpu: null,
+      workerOnly: false,
+      gpuNull: 'skipped',
+    });
     expect(canvas.createElement).toHaveBeenCalledWith('canvas');
     expect(canvas.loseContext).toHaveBeenCalledTimes(1);
   });
@@ -124,7 +136,13 @@ describe('probeGpu', () => {
     await vi.advanceTimersByTimeAsync(1);
     expect(terminate).toHaveBeenCalledTimes(1);
     expect(canvas.createElement).toHaveBeenCalledWith('canvas');
-    expect(result).toEqual({ webgl2: true, renderer: RENDERER, gpu: null, workerOnly: false });
+    expect(result).toEqual({
+      webgl2: true,
+      renderer: RENDERER,
+      gpu: null,
+      workerOnly: false,
+      gpuNull: 'skipped',
+    });
   });
 
   it('GP6 a benchmark after a worker answer runs on a main-thread context, which confirms WebGL 2', async () => {
@@ -154,9 +172,53 @@ describe('probeGpu', () => {
     const terminate = installWorker({ renderer: SOFTWARE }, true);
     const canvas = installCanvas(RENDERER);
     const result = await probeGpu({ benchmark: () => false, storage: storage() });
-    expect(result).toEqual({ webgl2: true, renderer: SOFTWARE, gpu: null, workerOnly: true });
+    expect(result).toMatchObject({ renderer: SOFTWARE, gpu: null, gpuNull: 'skipped' });
     expect(terminate).toHaveBeenCalledTimes(1);
     expect(canvas.createElement).not.toHaveBeenCalled();
+  });
+
+  it('GP10 a benchmark that throws keeps WebGL 2 with gpu null, reason failed, and the error name', async () => {
+    installWorker({ renderer: RENDERER });
+    installCanvas(RENDERER);
+    getGPUTier.mockRejectedValue(new TypeError('driver'));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const result = await probeGpu({ benchmark: () => true, storage: storage() });
+    expect(result).toEqual({
+      webgl2: true,
+      renderer: RENDERER,
+      gpu: null,
+      workerOnly: false,
+      gpuNull: 'failed',
+      gpuError: 'TypeError',
+    });
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it('GP11 the gate signal reaches the benchmark fetch; a result after the abort is not cached', async () => {
+    installWorker({ renderer: RENDERER });
+    installCanvas(RENDERER);
+    const fetches: { url: string; signal: AbortSignal | undefined }[] = [];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((url: string, init?: RequestInit) => {
+        fetches.push({ url, signal: init?.signal ?? undefined });
+        return Promise.resolve({ json: () => Promise.resolve(['5.0.70', ['a', 'b', 'c', 0, []]]) });
+      }),
+    );
+    const gate = new AbortController();
+    getGPUTier.mockImplementation(
+      async (o: { override: { loadBenchmarks: (f: string) => Promise<unknown[]> } }) => {
+        // detect-gpu's loader gets the data without its version line.
+        expect(await o.override.loadBenchmarks('m-adreno.json')).toEqual([['a', 'b', 'c', 0, []]]);
+        gate.abort();
+        return { tier: 1, type: 'FALLBACK' };
+      },
+    );
+    const store = storage();
+    const result = await probeGpu({ benchmark: () => true, storage: store, signal: gate.signal });
+    expect(fetches).toEqual([{ url: '/detect-gpu/benchmarks/m-adreno.json', signal: gate.signal }]);
+    expect(result.gpu).toEqual({ tier: 1, type: 'FALLBACK' });
+    expect(store.set).not.toHaveBeenCalled();
   });
 });
 

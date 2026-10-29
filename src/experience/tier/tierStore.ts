@@ -3,10 +3,18 @@
  * `selectTier` from qualityTier, applies the frame-monitor cap and the layout latch, and exposes
  * one immutable snapshot for `useSyncExternalStore`. Every transition runs in a plain callback
  * (media change, probe result, control call), so React never sets state in an effect.
+ *
+ * Phone mode (phone spec section 1): the CPU blocking signal is read at `load` and once more at
+ * the engine gate (the probe's answer, or `openGate()` at `load` + 1500 ms, which also aborts
+ * the benchmark fetch); a monitor drop goes to tier 0 in one step and counts toward the light
+ * floor (`sefid-light`), which a later page view reads at creation in auto mode.
  */
 import {
   DEBUG_SESSION_KEY,
+  isPhoneMode,
   isSoftwareRenderer,
+  LIGHT_FLOOR_KEY,
+  LIGHT_FLOOR_MS,
   parseSavedOverride,
   QUALITY_STORAGE_KEY,
   selectTier,
@@ -16,6 +24,7 @@ import {
   type TierDecision,
   type TierInputs,
   type TierOverride,
+  type TierReason,
   type TierSettings,
 } from '@/lib/qualityTier';
 
@@ -43,6 +52,12 @@ export interface MediaSignal {
   subscribe(onChange: () => void): () => void;
 }
 
+/** Long-animation-frame blocking since FCP; `readMs()` is null without the entry type. */
+export interface CpuBlocking {
+  readMs(): number | null;
+  stop(): void;
+}
+
 /** Everything the store reads from the browser; tests pass a fake. */
 export interface TierEnv {
   reducedMotion: MediaSignal;
@@ -57,11 +72,18 @@ export interface TierEnv {
   session: KeyValueStore;
   /** Calls back once the document has loaded (at once when it already has). */
   onLoad(cb: () => void): () => void;
-  probe(opts: { benchmark: (renderer: string | null) => boolean }): Promise<ProbeResult>;
+  probe(opts: {
+    benchmark: (renderer: string | null) => boolean;
+    signal: AbortSignal;
+  }): Promise<ProbeResult>;
+  /** Starts summing the CPU blocking (phone spec 1.1); read it with `readMs()`. */
+  watchCpuBlocking(): CpuBlocking;
   /** Whether a main-thread `<canvas>` gets a WebGL 2 context: what the canvas needs. */
   webgl2OnMainThread(): boolean;
   scrollY(): number;
   now(): number;
+  /** Wall-clock time for the light floor's expiry (`now()` restarts with every page). */
+  epochMs(): number;
   every(ms: number, cb: () => void): () => void;
 }
 
@@ -79,7 +101,10 @@ export type EffectiveReason = TierDecision['reason'] | StepSource;
 export interface TierState {
   /** False only in the server snapshot (and during hydration). */
   hydrated: boolean;
-  /** 'pending' until the post-load probe decided; the canvas never mounts while pending. */
+  /**
+   * 'pending' until the post-load probe decided, or `load` showed that no probe is needed; the
+   * canvas never mounts while pending.
+   */
   status: 'pending' | 'ready';
   decision: TierDecision | null;
   /** Effective tier: the decision, lowered by the frame monitor (auto mode) or a context loss. */
@@ -94,11 +119,25 @@ export interface TierState {
   lastStep: { source: StepSource; tier: Tier; atMs: number } | null;
   debug: boolean;
   stress: number;
-  /** The «کیفیت» control (phase 7): saved in localStorage. */
+  finePointer: boolean;
+  /** A coarse pointer under 1024 px (phone spec D23). */
+  phone: boolean;
+  /**
+   * The CPU signal's last reading (at `load` and at the engine gate), in ms; null when it is not
+   * measured (no entry type, a saved or query tier, a fine pointer). The overlay shows it, so the
+   * owner's phone calibrates `CPU_BLOCKING_MS`.
+   */
+  cpuBlockingMs: number | null;
+  /** The «کیفیت» control (phase 7): saved in localStorage; removes the light floor record. */
   setUserOverride(override: TierOverride): void;
   /** Overlay buttons: a query-style tier for this page load only ('auto' clears it). */
   setPageOverride(override: TierOverride): void;
   stepDown(source: StepSource): void;
+  /**
+   * The engine gate's deadline on a coarse pointer (D23): reads the CPU signal a last time and
+   * aborts the benchmark fetch. The probe's answer passes the gate by itself.
+   */
+  openGate(): void;
 }
 
 export interface TierStore {
@@ -130,15 +169,41 @@ export const SERVER_TIER_STATE: TierState = Object.freeze({
   lastStep: null,
   debug: false,
   stress: 0,
+  finePointer: false,
+  phone: false,
+  cpuBlockingMs: null,
   setUserOverride: noop,
   setPageOverride: noop,
   stepDown: noop,
+  openGate: noop,
 });
 
 const parseCap = (raw: string | null): Tier | null => {
   const value = parseSavedOverride(raw);
   return value === 'auto' ? null : value;
 };
+
+/** `sefid-light`: the monitor drops to tier 0 in phone mode, and when the record expires. */
+export interface FloorRecord {
+  n: number;
+  until: number;
+}
+
+/** Storage is a boundary: anything but a positive count and a finite time is no record. */
+export function parseFloor(raw: string | null): FloorRecord | null {
+  try {
+    const { n, until } = JSON.parse(raw ?? 'null') as Partial<FloorRecord>;
+    if (Number.isInteger(n) && (n ?? 0) > 0 && Number.isFinite(until)) {
+      return { n: n as number, until: until as number };
+    }
+  } catch {
+    // Corrupt JSON or null: no record.
+  }
+  return null;
+}
+
+/** Weak-phone reasons that fix tier 0 before the probe (D23): no probe, no benchmark fetch. */
+const WEAK_PHONE: ReadonlySet<TierReason> = new Set(['device-memory', 'light-floor', 'device-cpu']);
 
 export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): TierStore {
   const query = parseExperienceQuery(env.search());
@@ -157,6 +222,13 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
   let detectionUsed = false;
   let lastStep: TierState['lastStep'] = null;
   let scrollProbe: ScrollProbe | null = null;
+  let floor = parseFloor(env.local.get(LIGHT_FLOOR_KEY));
+  // Active from the second drop, for the page views after it: a drop in this view never adds it.
+  let lightFloor = floor !== null && floor.n >= 2 && env.epochMs() < floor.until;
+  let cpu: CpuBlocking | null = null;
+  let cpuMs: number | null = null;
+  let gatePassed = false;
+  let benchmarkAbort: AbortController | null = null;
 
   const readSignals = () => {
     const viewport = env.viewport();
@@ -191,6 +263,8 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
     queryOverride: page.tier,
     queryMode: page.mode,
     siteCap: opts.siteCap,
+    cpuBlockingMs: cpuMs,
+    lightFloor,
   });
 
   const derive = () => {
@@ -222,6 +296,7 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
 
   const listeners = new Set<() => void>();
   let stopPending: (() => void) | null = null;
+  const explicitChoice = (): boolean => page.tier !== null || savedOverride !== 'auto';
 
   const scrollFacts = () => ({
     insidePinnedRange: scrollProbe?.insidePinnedRange() ?? false,
@@ -264,7 +339,7 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
     const d = derive();
     return {
       hydrated: true,
-      status: probe === null ? 'pending' : 'ready',
+      status: probe !== null || (loadSeen && !probeCanChangeTier()) ? 'ready' : 'pending',
       decision: d.decision,
       tier: d.tier,
       reason: d.reason,
@@ -276,9 +351,13 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
       lastStep,
       debug,
       stress: debug ? query.stress : 0,
+      finePointer: signals.finePointer,
+      phone: isPhoneMode(signals),
+      cpuBlockingMs: cpuMs,
       setUserOverride,
       setPageOverride,
       stepDown,
+      openGate,
     };
   };
 
@@ -293,12 +372,17 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
     confirmWebgl2();
     const { desired } = derive();
     if (reason !== null && !sameLayout(desired, layout)) {
-      if (desired.pinnedScenes === layout.pinnedScenes) {
+      const samePins = desired.pinnedScenes === layout.pinnedScenes;
+      // D25: a change the reader did not ask for once the engine runs (a monitor drop, a late
+      // probe answer) waits for 1000 ms without scroll even with the same pins, so the engine's
+      // scrubbed targets settle while nothing moves under the finger.
+      const unasked = reason === 'monitor' || (reason === 'detection' && scrollProbe !== null);
+      if (samePins && !unasked) {
         // Same pins, so no pin spacer appears or goes: Lenis and the master timeline can change
-        // without moving the page under the reader (tier 1 to 0 drops Lenis at once).
+        // without moving the page under the reader.
         layout = desired;
         clearPending();
-      } else if (reason === 'monitor') {
+      } else if (samePins || reason === 'monitor') {
         waitForIdle();
       } else if (reason === 'detection') {
         // Once per page load; otherwise the latch holds for the visit.
@@ -318,6 +402,10 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
     savedOverride = override;
     if (override === 'auto') env.local.remove(QUALITY_STORAGE_KEY);
     else env.local.set(QUALITY_STORAGE_KEY, String(override));
+    // Any explicit choice ends the light floor: the visitor decided.
+    floor = null;
+    lightFloor = false;
+    env.local.remove(LIGHT_FLOOR_KEY);
     update('user');
   }
 
@@ -334,29 +422,71 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
     } else if (current.decision.mode !== 'auto' || current.tier === 0) {
       return;
     }
-    const next: Tier = source === 'context-loss' ? 0 : ((current.tier - 1) as Tier);
+    // Phone mode (D26): tiers 1 to 3 are one scroll set there, so the monitor goes to 0 at once.
+    const phone = isPhoneMode(signals);
+    const next: Tier = source === 'context-loss' || phone ? 0 : ((current.tier - 1) as Tier);
     monitorCap = monitorCap === null ? next : (Math.min(monitorCap, next) as Tier);
     env.session.set(TIER_CAP_SESSION_KEY, String(monitorCap));
+    if (source === 'monitor' && phone) rememberDrop();
     lastStep = { source, tier: next, atMs: env.now() };
     update('monitor');
   }
 
-  // The probe only feeds the tier. While reduced motion, a tier pinned at 0 or a site cap of 0 fix
-  // the tier at 0, it would build a WebGL context for nothing (about 15 ms of main thread at load).
-  const probeCanChangeTier = (): boolean =>
-    !signals.reducedMotion && page.tier !== 0 && savedOverride !== 0 && opts.siteCap !== 0;
+  /** Each monitor drop to tier 0 in phone mode counts; an expired record starts again at 1. */
+  function rememberDrop(): void {
+    const now = env.epochMs();
+    floor = {
+      n: floor !== null && now < floor.until ? floor.n + 1 : 1,
+      until: now + LIGHT_FLOOR_MS,
+    };
+    env.local.set(LIGHT_FLOOR_KEY, JSON.stringify(floor));
+  }
+
+  // The probe only feeds the tier. While reduced motion, a tier pinned at 0, a site cap of 0 or a
+  // weak-phone rule fix the tier at 0, it would build a WebGL context for nothing (about 15 ms of
+  // main thread at load) and a weak phone would fetch the benchmark data.
+  const probeCanChangeTier = (): boolean => {
+    if (signals.reducedMotion || page.tier === 0 || savedOverride === 0 || opts.siteCap === 0) {
+      return false;
+    }
+    const { tier, reason } = selectTier(inputs());
+    return !(tier === 0 && WEAK_PHONE.has(reason));
+  };
+
+  /** D23: the CPU signal at `load`, and a last time at the engine gate, where it stops. */
+  const readCpu = (last: boolean): void => {
+    if (cpu === null) return;
+    cpuMs = cpu.readMs();
+    if (!last) return;
+    cpu.stop();
+    cpu = null;
+  };
+
+  function passGate(): void {
+    if (gatePassed) return;
+    gatePassed = true;
+    readCpu(true);
+  }
+
+  function openGate(): void {
+    if (gatePassed) return;
+    passGate();
+    benchmarkAbort?.abort();
+    update('detection');
+  }
 
   function runProbe(): void {
     if (probeStarted || !loadSeen || !probeCanChangeTier()) return;
     probeStarted = true;
-    const explicit = () => page.tier !== null || savedOverride !== 'auto';
+    benchmarkAbort = new AbortController();
     env
       .probe({
         benchmark: (renderer) =>
           !isSoftwareRenderer(renderer) &&
           !signals.saveData &&
           !signals.reducedMotion &&
-          !explicit(),
+          !explicitChoice(),
+        signal: benchmarkAbort.signal,
       })
       .catch((error: unknown): ProbeResult => {
         console.warn('[experience] GPU probe failed; tier 0.', error);
@@ -364,6 +494,7 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
       })
       .then((result) => {
         probe = result;
+        passGate();
         update('detection');
       });
   }
@@ -385,7 +516,13 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
 
   const onLoad = (): void => {
     loadSeen = true;
-    runProbe();
+    const before = cpuMs;
+    readCpu(false);
+    // A CPU sum over the threshold fixes tier 0 before the probe; with no probe needed the status
+    // is ready now; otherwise the probe starts (fine pointers: as before, no emit).
+    if (cpuMs !== before) update('detection');
+    else if (probeCanChangeTier()) runProbe();
+    else emit();
   };
 
   const start = (): (() => void) => {
@@ -395,6 +532,11 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
       signals = readSignals();
       update(reason);
     };
+    // D23: phone mode and auto mode measure the CPU from hydration to the engine gate; a saved
+    // choice or a query tier skips it (Lighthouse and the tests run with `?tier`).
+    if (cpu === null && !gatePassed && isPhoneMode(signals) && !explicitChoice()) {
+      cpu = env.watchCpuBlocking();
+    }
     const stops = [
       env.reducedMotion.subscribe(onMedia('reduced-motion')),
       env.finePointer.subscribe(onMedia('resize')),
@@ -414,6 +556,8 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
     return () => {
       for (const stop of stops) stop();
       clearPending();
+      cpu?.stop();
+      cpu = null;
     };
   };
 

@@ -1,7 +1,7 @@
 import { gsap } from 'gsap';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SERVER_TIER_STATE } from '../tier/tierStore';
+import { SERVER_TIER_STATE, type TierState } from '../tier/tierStore';
 
 import type { ScrollEngine } from '../engine/scrollEngine';
 
@@ -69,7 +69,11 @@ describe('debug hook', () => {
       mode: 'auto',
       status: 'pending',
       gpu: null,
+      gpuNull: null,
+      gpuError: null,
       webgl2: null,
+      cpuBlockingMs: null,
+      monitor: { slowMs: 0, frames: 0, windows: 0, slowWindows: 0, steps: 0 },
       gate: 'not-mounted',
       framesRendered: 0,
       lenis: false,
@@ -174,14 +178,54 @@ describe('debug hook', () => {
     const experience = createStore<ExperienceState>({ engine: null });
     const fps = { read: () => ({ fps: null, p50: null, p95: null }), stop: () => {} };
     const setUserOverride = vi.fn();
+    const stepDown = vi.fn();
     const uninstall = installDebugHook(
       () => buildSnapshot({ tier: SERVER_TIER_STATE, runtime, experience, fps }),
       setUserOverride,
+      stepDown,
     );
     expect(window.__sefid?.snapshot().gate).toBe('not-mounted');
     window.__sefid?.setUserOverride(0);
     expect(setUserOverride).toHaveBeenCalledWith(0);
+    window.__sefid?.stepDown();
+    expect(stepDown).toHaveBeenCalledTimes(1);
     uninstall();
     expect(window.__sefid).toBeUndefined();
+  });
+
+  it('DH6 the snapshot names why gpu is null, the CPU signal and the monitor counters (phone spec 1.1, 1.5)', () => {
+    const runtime = createFrameRuntime();
+    runtime.recordMonitorWindow({ slowMs: 250, slow: true, stepped: false });
+    runtime.recordMonitorWindow({ slowMs: 0, slow: false, stepped: false });
+    runtime.recordMonitorWindow({ slowMs: 0, slow: true, stepped: true });
+    for (let i = 0; i < 46; i += 1) runtime.countMonitorFrame();
+    const experience = createStore<ExperienceState>({ engine: null });
+    const fps = { read: () => ({ fps: null, p50: null, p95: null }), stop: () => {} };
+    const snap = (probe: TierState['probe'], cpuBlockingMs: number | null = null) =>
+      buildSnapshot({
+        tier: { ...SERVER_TIER_STATE, probe, cpuBlockingMs },
+        runtime,
+        experience,
+        fps,
+      });
+    expect(snap(null).monitor).toEqual({
+      slowMs: 0,
+      frames: 46,
+      windows: 3,
+      slowWindows: 2,
+      steps: 1,
+    });
+    expect(snap(null).cpuBlockingMs).toBeNull();
+    expect(snap(null, 412.6).cpuBlockingMs).toBe(413);
+    const gl = { webgl2: true, renderer: 'Adreno (TM) 610', gpu: null };
+    expect(snap({ ...gl, gpuNull: 'skipped' }).gpuNull).toBe('skipped');
+    expect(snap({ ...gl, gpuNull: 'failed' }).gpuNull).toBe('failed');
+    // The probe's own reason wins: detect-gpu answers FALLBACK for a masked renderer, so a null
+    // gpu with WebGL 2 comes from a skipped or a thrown benchmark (the owner's phone).
+    const thrown = snap({ ...gl, renderer: null, gpuNull: 'failed', gpuError: 'TypeError' });
+    expect(thrown).toMatchObject({ gpuNull: 'failed', gpuError: 'TypeError' });
+    expect(snap({ ...gl, renderer: null }).gpuNull).toBe('masked');
+    expect(snap({ ...gl, gpu: { tier: 1, type: 'FALLBACK' } }).gpuNull).toBeNull();
+    expect(snap({ webgl2: false, renderer: null, gpu: null }).gpuNull).toBeNull();
   });
 });

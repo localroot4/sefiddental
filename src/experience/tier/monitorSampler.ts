@@ -28,11 +28,13 @@ export interface MonitorSampler {
   push(deltaSec: number, nowMs: number): void;
   /** Call on mount, tier change, gate reopen, tab visible and context restored. */
   reset(nowMs: number): void;
+  /** Drops the partial window and keeps the warm-up (a scroll that ended, phone spec D26). */
+  cut(): void;
 }
 
 export function createMonitorSampler(
   cfg: SamplerConfig,
-  onWindow: (sample: { nowMs: number; fps: number }) => void,
+  onWindow: (sample: { nowMs: number; fps: number; windowMs: number }) => void,
 ): MonitorSampler {
   // null until the first push or reset arms the warm-up.
   let warmupUntil: number | null = null;
@@ -55,12 +57,18 @@ export function createMonitorSampler(
     frames += 1;
     elapsedMs += deltaMs;
     if (elapsedMs >= cfg.windowMs) {
-      const fps = (frames * 1000) / elapsedMs;
+      const windowMs = elapsedMs;
+      const fps = (frames * 1000) / windowMs;
       frames = 0;
       elapsedMs = 0;
-      onWindow({ nowMs, fps });
+      onWindow({ nowMs, fps, windowMs });
     }
   };
 
-  return { push, reset };
+  const cut = (): void => {
+    frames = 0;
+    elapsedMs = 0;
+  };
+
+  return { push, reset, cut };
 }

@@ -8,6 +8,12 @@
  * scene's `setup`. Labels and the children added at them are rebuilt from the measured bounds on
  * every ScrollTrigger refresh; `destroy()` runs the scene cleanups, reverts the context and
  * leaves no trigger, ticker callback, listener or observer behind.
+ *
+ * Under 1024 px (phone spec 1.4, D25, D28): every scene setup is a task of its own after the
+ * creation task, a scene within two viewport heights at once, any other when it comes near;
+ * `data-settling` on the root lets the scrubbed targets (`[data-scrub]`) ease to rest for one
+ * `--dur-3` window after creation and at destroy; in phone mode no window resize refreshes the
+ * triggers, the root's ResizeObserver asks for a refresh that waits for the end of the scroll.
  */
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -19,7 +25,7 @@ import { coverRanges, isCovered } from '../core/gates';
 import { DOM_SCENES } from '../scenes/dom';
 import { isSceneId } from '../scenes/registry';
 import type { DomScene, SceneContext, SceneDefinition, SceneId } from '../scenes/types';
-import { createFrameMonitor } from '../tier/frameMonitor';
+import { createFrameMonitor, type MonitorWindow } from '../tier/frameMonitor';
 import type { LayoutLatch } from '../tier/latch';
 
 import { once } from './once';
@@ -93,31 +99,75 @@ const LAG_ADJUSTED_MS = 33;
 /** A child never gets a zero duration: a timeline's duration setter divides by it. */
 const MIN_SEGMENT = 1e-6;
 
-let pluginsRegistered = false;
+/** `--dur-3` plus 50 ms: one settle window of `data-settling` (D25). */
+const SETTLE_MS = 370;
+
 /**
- * Registers ScrollTrigger once per page, and only where a trigger is made (Lenis, a pin, a scrub
- * on the master, `nearViewport`). Its registration writes body's style attribute and reads a
- * 100vh probe: two full style recalculations (26 to 52 ms in one task on home, Lighthouse tier 1,
- * while the site CSS had `:has()` rules). Callers inside the engine's matchMedia context go
- * through `context.ignore`: what registration creates (ScrollTrigger's own matchMedia and
- * delayed calls) must not be reverted with that context.
+ * D28: in phone mode no window resize refreshes the triggers. A forced refresh scrolls the
+ * window to 0 and back, which stops a fling in iOS Safari, and a keyboard opening over a form
+ * must not refresh while the visitor types. ScrollTrigger's default list adds `resize`.
+ */
+const REFRESH_EVENTS = {
+  phone: 'visibilitychange,DOMContentLoaded,load',
+  other: 'visibilitychange,DOMContentLoaded,load,resize',
+} as const;
+
+let pluginsRegistered = false;
+let refreshEvents: string = REFRESH_EVENTS.other;
+let settleTimer = 0;
+/**
+ * Registers ScrollTrigger once per page, and only where a trigger is made (every layout from tier
+ * 1: Lenis, pins, the hero scrub and the phone scroll set). Its registration writes body's style
+ * attribute and reads a 100vh probe: two full style recalculations (26 to 52 ms in one task on
+ * home, Lighthouse tier 1, while the site CSS had `:has()` rules). Callers inside the engine's
+ * matchMedia context go through `context.ignore`: what registration creates (ScrollTrigger's own
+ * matchMedia and delayed calls) must not be reverted with that context.
  */
 function registerScrollTrigger(): void {
   if (pluginsRegistered) return;
   gsap.registerPlugin(ScrollTrigger);
   // Phone address-bar resizes do not refresh the triggers.
-  ScrollTrigger.config({ ignoreMobileResize: true });
+  ScrollTrigger.config(
+    refreshEvents === REFRESH_EVENTS.other
+      ? { ignoreMobileResize: true }
+      : { ignoreMobileResize: true, autoRefreshEvents: refreshEvents },
+  );
   pluginsRegistered = true;
+}
+
+/** The refresh events of the current mode, applied now or at the registration. */
+function refreshOn(events: string): void {
+  if (events === refreshEvents) return;
+  refreshEvents = events;
+  if (pluginsRegistered) ScrollTrigger.config({ autoRefreshEvents: events });
+}
+
+/**
+ * One settle window (D25): the CSS eases `[data-scrub]` targets under `[data-settling]` in
+ * `--dur-3`, so a target the engine moves or releases returns to rest instead of jumping. A new
+ * window (the next engine) replaces the running one.
+ */
+function settle(root: HTMLElement): void {
+  window.clearTimeout(settleTimer);
+  root.setAttribute('data-settling', '');
+  settleTimer = window.setTimeout(() => root.removeAttribute('data-settling'), SETTLE_MS);
+}
+
+/** A task boundary: `scheduler.yield()` where present, else a 0 ms timer. */
+function nextTask(): Promise<void> {
+  const scheduler = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  return typeof scheduler?.yield === 'function'
+    ? scheduler.yield()
+    : new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 /**
  * The root calls this one frame before `createScrollEngine`, so neither task is long at 4x.
- * Only Lenis and the layouts from 1024 px (pins, the hero scrub) make triggers; a phone layout
- * makes none, so it never pays the registration.
+ * Every layout from tier 1 makes triggers (under 1024 px the phone scroll set scrubs, D21); the
+ * tier 0 engine makes none, so it never pays the registration.
  */
 export function prepareScrollEngine(layout: LayoutLatch): void {
-  if (layout.latchedAtTier >= 1 && (layout.lenis || window.matchMedia(QUERIES.wide).matches))
-    registerScrollTrigger();
+  if (layout.latchedAtTier >= 1) registerScrollTrigger();
 }
 
 /** The master's trigger: the whole document, scrubbed, its end re-measured on every refresh. */
@@ -166,26 +216,73 @@ export function placeScrollY(root: HTMLElement, place: ScenePlace<SceneId>): num
 }
 
 /**
- * The frame monitor on the gsap ticker while no canvas renders (D5): the same sampler and step
- * rule as the canvas probe, fed by the engine's tick. Returns the stop.
+ * The frame monitor while no canvas renders (D5, phone spec D26): the same sampler and step rule
+ * as the canvas probe, fed only while the page scrolls. Its own requestAnimationFrame loop runs
+ * from ScrollTrigger's `scrollStart` to `scrollEnd`, so at rest nothing runs, and a frame counts
+ * only when the page moved since the frame before: `scrollEnd` comes 200 to 450 ms after the last
+ * scroll (its 250 ms check) and never while a finger rests, and those still frames are fast, so
+ * counted they made good windows that reset the slow time (at 20x the step never came). The frame
+ * time is the frame clock (the rAF timestamp, wall clock), not the gsap ticker: gsap's
+ * lag-smoothed delta reports a 600 ms freeze as 33 ms, and gsap dispatches its listeners at most
+ * once per 4 ms of `Date.now()`, so two frames whose callbacks run close together (a late main
+ * thread) reach a ticker listener as one 33 ms frame; counted that way, a 60 fps scroll on the 4x
+ * phone profile read 40 to 52 fps and stepped down (step 4b measurement). The first frame after a
+ * start holds the idle gap and is dropped; a partial window at the end is dropped; the warm-up
+ * runs once, from here. Returns the stop.
  */
-export function monitorFrames(
-  engine: ScrollEngine,
-  opts: { tier: Tier; onStepDown: () => void },
-): () => void {
+export function monitorFrames(opts: {
+  tier: Tier;
+  /** Phone mode: 1000 ms of slow time goes to tier 0. */
+  phone: boolean;
+  onStepDown: () => void;
+  onWindow?: (window: MonitorWindow) => void;
+  /** Every frame of the loop, sampled or not: the idle-ticker proof counts them (T-PH12). */
+  onFrame?: () => void;
+}): () => void {
   const monitor = createFrameMonitor({
     tier: opts.tier,
     mode: 'auto',
+    phone: opts.phone,
     onStepDown: () => opts.onStepDown(),
+    onWindow: opts.onWindow,
   });
-  const off = engine.onTick((_, deltaSec) => monitor.push(deltaSec, performance.now()));
+  monitor.reset(performance.now());
+  let last: number | null = null;
+  let lastY = 0;
+  let frame = 0;
+  const onFrame = (now: number): void => {
+    opts.onFrame?.();
+    const y = window.scrollY;
+    if (last !== null && y !== lastY) monitor.push((now - last) / 1000, now);
+    last = now;
+    lastY = y;
+    frame = requestAnimationFrame(onFrame);
+  };
+  const onScrollStart = (): void => {
+    if (frame !== 0) return;
+    last = null;
+    lastY = window.scrollY;
+    frame = requestAnimationFrame(onFrame);
+  };
+  const onScrollEnd = (): void => {
+    cancelAnimationFrame(frame);
+    frame = 0;
+    monitor.cut();
+  };
+  // scrollStart and scrollEnd come from ScrollTrigger's document scroll listener.
+  registerScrollTrigger();
+  ScrollTrigger.addEventListener('scrollStart', onScrollStart);
+  ScrollTrigger.addEventListener('scrollEnd', onScrollEnd);
   // rAF stops in a background tab; the pause must not count as slow frames.
   const onVisibility = (): void => {
     if (document.visibilityState === 'visible') monitor.reset(performance.now());
   };
   document.addEventListener('visibilitychange', onVisibility);
   return () => {
-    off();
+    ScrollTrigger.removeEventListener('scrollStart', onScrollStart);
+    ScrollTrigger.removeEventListener('scrollEnd', onScrollEnd);
+    cancelAnimationFrame(frame);
+    frame = 0;
     document.removeEventListener('visibilitychange', onVisibility);
   };
 }
@@ -405,6 +502,8 @@ export function createScrollEngine(opts: {
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      // Before the revert, so the scrubbed targets ease back to rest in the same style pass.
+      settle(root);
       // Order (spec EXP 3.6 rule 9): tick subscribers, then triggers and timelines, then Lenis.
       subscribers.clear();
       if (tickAdded) gsap.ticker.remove(tick);
@@ -422,14 +521,21 @@ export function createScrollEngine(opts: {
   // more frame (below), so this task forces no full style recalculation (three of them cost
   // 25 of 33 ms at 1x, 160 to 240 ms at 4x, measured before the split).
   measure();
+  settle(root);
   ScrollTrigger.addEventListener('refreshInit', onRefreshInit);
   ScrollTrigger.addEventListener('refresh', onRefresh);
+  let phoneMode = false;
 
   const mm = gsap.matchMedia(root);
   mm.add(QUERIES, (context) => {
     const { reduce = false, fine = false, wide = false } = context.conditions ?? {};
+    // Before the tier-0 return: after a phone step-down ScrollTrigger stays registered, and a
+    // resize refresh would still scroll the window to 0 and back (D28).
+    phoneMode = !fine && !wide;
+    refreshOn(phoneMode ? REFRESH_EVENTS.phone : REFRESH_EVENTS.other);
     // Tier 0 and reduced motion: no Lenis, no master timeline, no pins (spec EXP 3.8).
-    if (reduce || layout.latchedAtTier === 0) return;
+    if (reduce || layout.latchedAtTier === 0) return () => refreshOn(REFRESH_EVENTS.other);
+    let live = true;
 
     let offScroll: (() => void) | null = null;
     let lenisFrame = 0;
@@ -518,10 +624,13 @@ export function createScrollEngine(opts: {
       pinRefresh = true;
     }
 
-    // Without ScrollTrigger (a phone) the master stays paused until a scene adds a scrub;
-    // `progress()` reads the native scroll meanwhile.
+    // Without Lenis under 1024 px (a phone) the master stays paused until a scene adds a child
+    // (the phone scroll set makes triggers of its own); `progress()` reads the native scroll
+    // meanwhile.
     const timeline = gsap.timeline(
-      pluginsRegistered ? { scrollTrigger: masterTrigger() } : { paused: true },
+      pluginsRegistered && (wide || (fine && layout.lenis))
+        ? { scrollTrigger: masterTrigger() }
+        : { paused: true },
     );
     // The spine keeps the master at duration 1 whatever the children do. `to` returns the
     // timeline; `recent()` is the tween, which adopt() must never take for a scene's child.
@@ -529,7 +638,8 @@ export function createScrollEngine(opts: {
     master = timeline;
     placeLabels();
 
-    for (const { id, el, scene } of present) {
+    /** One scene's setup; true when it added a child to the master. */
+    const setupScene = ({ id, el, scene }: PresentScene): boolean => {
       const before = new Set(timeline.getChildren(false, true, true));
       const ctx: SceneContext = {
         id,
@@ -541,15 +651,48 @@ export function createScrollEngine(opts: {
         nearViewport: nearViewport(el),
       };
       const cleanup = scene.setup(ctx);
+      let added = false;
       for (const child of timeline.getChildren(false, true, true)) {
-        if (!before.has(child)) children.set(child, id);
+        if (before.has(child)) continue;
+        children.set(child, id);
+        added = true;
       }
       if (typeof cleanup === 'function') cleanups.push(cleanup);
+      return added;
+    };
+
+    if (wide) {
+      for (const scene of present) setupScene(scene);
+    } else {
+      // Under 1024 px (phone spec 1.4 step 4, rule 2.2-10): the creation cost of the far scenes
+      // waits until they come near, and each setup is its own task, the first one too, so no task
+      // of the creation is long at 4x (Lighthouse mobile runs this branch). The hero's Drift (a
+      // ScrollTrigger and its first refresh, 13 to 28 ms at 4x) made the creation task 52 to 64 ms
+      // when it ran inline; the settle window opened above covers its first render.
+      const whenNear = (scene: PresentScene): void => {
+        const run = (): void => {
+          if (!setupScene(scene)) return;
+          placeChildren();
+          context.ignore(triggerMaster);
+        };
+        // Near now: no waiting trigger at all.
+        if (scene.el.getBoundingClientRect().top <= window.innerHeight * 2) run();
+        else cleanups.push(nearViewport(scene.el)(run));
+      };
+      void (async () => {
+        for (const scene of present) {
+          await nextTask();
+          if (!live) return;
+          context.add(() => whenNear(scene));
+        }
+      })();
     }
     placeChildren();
     context.ignore(triggerMaster);
 
     return () => {
+      live = false;
+      refreshOn(REFRESH_EVENTS.other);
       // The scene cleanups first (listeners, observers, Draggables, classes), newest first, then
       // the master, then Lenis; the context revert that follows kills every trigger and tween.
       for (const cleanup of cleanups.splice(0).reverse()) cleanup();
@@ -570,12 +713,15 @@ export function createScrollEngine(opts: {
     };
   });
 
-  // A child a lazy chunk added at a label since gives the master its trigger first. Without
-  // ScrollTrigger the engine measures itself: `ScrollTrigger.refresh()` would register it.
+  // A child a lazy chunk added at a label since gives the master its trigger first. Without a
+  // trigger the engine measures itself: `ScrollTrigger.refresh()` would register ScrollTrigger,
+  // and once registered it scrolls the window to 0 and back even with no trigger to measure (the
+  // tier-0 engine after a phone step-down; on iOS that stops a fling).
   const refresh = (): void => {
     adopt();
     triggerMaster();
-    if (pluginsRegistered) ScrollTrigger.refresh();
+    // Phone mode (D28): `refresh(true)` debounces 200 ms and then waits for the scroll to end.
+    if (pluginsRegistered && ScrollTrigger.getAll().length > 0) ScrollTrigger.refresh(phoneMode);
     else {
       measure();
       placeLabels();

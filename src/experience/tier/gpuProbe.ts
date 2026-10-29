@@ -7,8 +7,12 @@
  * thread makes one only without the worker's answer, or for detect-gpu on a cache miss. A
  * context in the worker does not promise one on a main-thread `<canvas>` (Chromium's
  * --disable-webgl2 blocks only the latter), so such a result is `workerOnly` and the tier store
- * confirms it with `webgl2OnMainThread()` before a tier that mounts the canvas.
+ * confirms it with `webgl2OnMainThread()` before a tier that mounts the canvas. The engine gate
+ * on coarse pointers (phone spec D23) aborts the benchmark fetch through `signal`: detect-gpu then
+ * reports FALLBACK, which is not cached.
  */
+import type { ModelEntry } from 'detect-gpu';
+
 import {
   DETECT_GPU_TIERS,
   GPU_BENCHMARKS_URL,
@@ -25,6 +29,10 @@ export interface ProbeResult {
   gpu: GpuResult | null;
   /** Only the worker's OffscreenCanvas had a context: WebGL 2 is not confirmed on the main thread. */
   workerOnly?: boolean;
+  /** Why `gpu` is null with WebGL 2: the caller did not allow the benchmark, or it threw. */
+  gpuNull?: 'skipped' | 'failed';
+  /** With 'failed': the name of what the benchmark threw, for the debug overlay. */
+  gpuError?: string;
 }
 
 /** A worker that has not answered by then (a stalled start) is ended; the main thread probes. */
@@ -83,26 +91,41 @@ export function webgl2OnMainThread(): boolean {
   return gl !== null;
 }
 
+/**
+ * detect-gpu's own benchmark loader plus the gate's signal (an aborted fetch rejects, and
+ * detect-gpu reads a rejected file as no match: FALLBACK). The self-hosted data is synced from the
+ * pinned package, so its version line needs no check.
+ */
+async function loadBenchmarks(file: string, signal?: AbortSignal): Promise<ModelEntry[]> {
+  const response = await fetch(`${GPU_BENCHMARKS_URL}/${file}`, { signal });
+  const data = (await response.json()) as ModelEntry[];
+  data.shift(); // the data version line
+  return data;
+}
+
 export async function probeGpu(opts: {
   /** Whether detect-gpu may run for this renderer (no software GPU, data saver, override...). */
   benchmark: (renderer: string | null) => boolean;
   /** localStorage, for the `sefid-gpu` cache. */
   storage: { get(key: string): string | null; set(key: string, value: string): void };
+  /** Aborted at the engine gate deadline (load + 1500 ms on a coarse pointer). */
+  signal?: AbortSignal;
 }): Promise<ProbeResult> {
   const fromWorker = await probeInWorker();
   let gl = fromWorker === null ? createContext() : null;
   if (fromWorker === null && gl === null) return NO_WEBGL2;
 
   let renderer = fromWorker?.renderer ?? null;
-  const found = (gpu: GpuResult | null): ProbeResult => ({
+  const found = (gpu: GpuResult | null, gpuNull?: ProbeResult['gpuNull']): ProbeResult => ({
     webgl2: true,
     renderer,
     gpu,
     workerOnly: gl === null,
+    gpuNull,
   });
   try {
     if (gl !== null) renderer = readRenderer(gl);
-    if (!opts.benchmark(renderer)) return found(null);
+    if (!opts.benchmark(renderer)) return found(null, 'skipped');
     // Loaded only here: the cache parser (zod) and detect-gpu stay out of the initial JS.
     const { parseGpuCache, serializeGpuCache } = await import('./gpuCache');
     const cached =
@@ -114,22 +137,30 @@ export async function probeGpu(opts: {
     gl ??= createContext();
     if (gl === null) return NO_WEBGL2;
     const { getGPUTier } = await import('detect-gpu');
+    const { signal } = opts;
     const result = await getGPUTier({
       glContext: gl,
       benchmarksURL: GPU_BENCHMARKS_URL,
       desktopTiers: DETECT_GPU_TIERS.desktop,
       mobileTiers: DETECT_GPU_TIERS.mobile,
+      override: { loadBenchmarks: (file) => loadBenchmarks(file, signal) },
     });
     const gpu: GpuResult = { tier: result.tier, type: result.type };
     if (typeof result.fps === 'number') gpu.fps = result.fps;
     if (typeof result.isMobile === 'boolean') gpu.isMobile = result.isMobile;
     if (typeof result.gpu === 'string') gpu.gpu = result.gpu;
-    if (renderer !== null) opts.storage.set(GPU_CACHE_KEY, serializeGpuCache(renderer, gpu));
+    // A FALLBACK from the gate's abort says nothing about the GPU: the next visit measures again.
+    if (renderer !== null && signal?.aborted !== true) {
+      opts.storage.set(GPU_CACHE_KEY, serializeGpuCache(renderer, gpu));
+    }
     return found(gpu);
   } catch (error) {
     // Benchmark data unreachable or a driver error: keep WebGL 2 without a benchmark (tier 1).
     console.warn('[experience] GPU benchmark failed; using the WebGL 2 result only.', error);
-    return found(null);
+    return {
+      ...found(null, 'failed'),
+      gpuError: error instanceof Error ? error.name : typeof error,
+    };
   } finally {
     release(gl);
   }

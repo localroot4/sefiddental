@@ -18,6 +18,11 @@ function stage(
     storageThrows?: boolean;
     image?: boolean;
     showModalThrows?: boolean;
+    /** `localStorage['sefid-light']`. */
+    floor?: string;
+    /** Phone mode: no fine pointer and under 1024 px (default true, as in jsdom). */
+    phone?: boolean;
+    deviceMemory?: number;
   } = {},
 ) {
   document.body.innerHTML = `<dialog id="intro"></dialog><section data-scene="hero">${opts.image === false ? '' : '<img alt="">'}</section>`;
@@ -27,6 +32,7 @@ function stage(
   localStorage.clear();
   if (opts.session) sessionStorage.setItem('sefid-intro', opts.session);
   if (opts.quality) localStorage.setItem('sefid-quality', opts.quality);
+  if (opts.floor) localStorage.setItem('sefid-light', opts.floor);
   if (opts.storageThrows) {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('blocked');
@@ -42,9 +48,15 @@ function stage(
     removeEventListener: (_: string, f: () => void) => listeners.delete(f),
     fire: () => listeners.forEach((f) => f()),
   } as unknown as Mql;
-  window.matchMedia = () => mql;
+  const layout = { matches: opts.phone === false } as MediaQueryList;
+  window.matchMedia = (query: string) =>
+    query === '(pointer:fine),(min-width:1024px)' ? layout : mql;
   Object.defineProperty(navigator, 'connection', {
     value: opts.saveData ? { saveData: true } : undefined,
+    configurable: true,
+  });
+  Object.defineProperty(navigator, 'deviceMemory', {
+    value: opts.deviceMemory,
     configurable: true,
   });
   const dialog = document.getElementById('intro') as HTMLDialogElement;
@@ -91,10 +103,12 @@ describe('intro script: bytes and hash (report section 3)', () => {
   });
 
   it('IS3 pinned: an edit to the script or its hash forces a CSP review', () => {
-    expect(INTRO_SCRIPT_SHA256).toBe('do90HQcwGkvhGCO/Sa+7hcoh8tAHPU3jlcOWxIGWnSA=');
+    expect(INTRO_SCRIPT_SHA256).toBe('0tNx+ymxQkGkApZU+SDpYkR81K0zFKuZhAiPdVaXOc8=');
     for (const needle of [
       '"sefid-intro"',
       '"sefid-quality"',
+      '"sefid-light"',
+      '"(pointer:fine),(min-width:1024px)"',
       '"sefid:intro-end"',
       '"sefid:intro-progress"',
       '"intro:start"',
@@ -135,6 +149,9 @@ describe('intro script: branches (D14, lane INTRO)', () => {
     ['Save-Data', { saveData: true }],
     ['a saved quality of 0', { quality: '0' }],
     ['a repeat visit in the session', { session: '1' }],
+    // U-PH12 (phone spec D23): the light version's LCP window has no intro animation.
+    ['an active light floor', { floor: JSON.stringify({ n: 2, until: Date.now() + 60_000 }) }],
+    ['phone mode with 2 GB', { deviceMemory: 2 }],
   ])('IS4 exits without an overlay on %s', (_label, opts) => {
     const s = stage(opts);
     run();
@@ -144,6 +161,21 @@ describe('intro script: branches (D14, lane INTRO)', () => {
     vi.advanceTimersByTime(1500);
     expect(state()).toBeUndefined();
     expect(s.ended).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['a floor record of one drop', { floor: JSON.stringify({ n: 1, until: Date.now() + 60_000 }) }],
+    ['an expired floor record', { floor: JSON.stringify({ n: 3, until: Date.now() - 1 }) }],
+    ['a corrupt floor record', { floor: '{"n":' }],
+    ['phone mode with 4 GB', { deviceMemory: 4 }],
+    ['2 GB with a fine pointer or from 1024 px', { deviceMemory: 2, phone: false }],
+  ])('IS4b U-PH12 plays with %s', (_label, opts) => {
+    const s = stage(opts);
+    run();
+    expect(state()).toBe('playing');
+    expect(s.showModal).toHaveBeenCalledOnce();
+    vi.advanceTimersByTime(1400); // ends it, so no listener reaches the next test
+    expect(s.ended).toHaveBeenCalledOnce();
   });
 
   it('IS5 plays: modal before first paint, stages at 500 and 900 ms, the end at 1300 ms', () => {

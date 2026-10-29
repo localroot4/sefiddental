@@ -8,6 +8,7 @@ import { useSyncExternalStore } from 'react';
 import type { RootState } from '@react-three/fiber';
 
 import type { ScrollEngine } from '../engine/scrollEngine';
+import type { MonitorWindow } from '../tier/frameMonitor';
 
 import type { Gate } from './gates';
 
@@ -58,12 +59,25 @@ export interface FrameRuntime {
   readonly resumes: number;
   /** The R3F root while the canvas is mounted. */
   readonly r3f: (() => RootState) | null;
+  /**
+   * The frame monitor in this visit (debug): its slow time, the frames of its loop (it runs only
+   * while the page scrolls), sampled and slow windows, and steps.
+   */
+  readonly monitor: Readonly<{
+    slowMs: number;
+    frames: number;
+    windows: number;
+    slowWindows: number;
+    steps: number;
+  }>;
   setGate(gate: Gate): void;
   countFrame(): void;
   markResume(): void;
   /** Returns the number of losses in this visit. */
   setContextLost(lost: boolean): number;
   setR3f(get: (() => RootState) | null): void;
+  recordMonitorWindow(window: MonitorWindow): void;
+  countMonitorFrame(): void;
 }
 
 export function createFrameRuntime(): FrameRuntime {
@@ -73,6 +87,7 @@ export function createFrameRuntime(): FrameRuntime {
   let contextLossCount = 0;
   let resumes = 0;
   let r3f: (() => RootState) | null = null;
+  const monitor = { slowMs: 0, frames: 0, windows: 0, slowWindows: 0, steps: 0 };
   return {
     get gate() {
       return gate;
@@ -92,6 +107,7 @@ export function createFrameRuntime(): FrameRuntime {
     get r3f() {
       return r3f;
     },
+    monitor,
     setGate(next) {
       gate = next;
     },
@@ -108,6 +124,15 @@ export function createFrameRuntime(): FrameRuntime {
     },
     setR3f(get) {
       r3f = get;
+    },
+    recordMonitorWindow(window) {
+      monitor.slowMs = window.slowMs;
+      monitor.windows += 1;
+      if (window.slow) monitor.slowWindows += 1;
+      if (window.stepped) monitor.steps += 1;
+    },
+    countMonitorFrame() {
+      monitor.frames += 1;
     },
   };
 }

@@ -1,7 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import {
+  CPU_BLOCKING_MS,
   DETECT_GPU_TIERS,
+  isPhoneMode,
   isSoftwareRenderer,
   monitorStep,
   parseSavedOverride,
@@ -30,8 +32,17 @@ const BASE: TierInputs = {
   queryOverride: null,
   queryMode: 'fixed',
   siteCap: null,
+  cpuBlockingMs: null,
+  lightFloor: false,
 };
 const PHONE = { width: 390, height: 844, dpr: 3 };
+// Phone mode (phone spec, D23): a coarse pointer under 1024 px, a GE8320-class benchmark (tier 1).
+const PHONE_MODE: TierInputs = {
+  ...BASE,
+  viewport: PHONE,
+  finePointer: false,
+  gpu: { tier: 1, type: 'BENCHMARK', fps: 21, isMobile: true, gpu: 'powervr ge8320' },
+};
 
 // Table Q of the utilities spec, rows Q1-Q15 plus the freeze rows Q31-Q32.
 const DECISIONS: Array<[id: string, inputs: TierInputs, tier: number, reason: string]> = [
@@ -56,6 +67,12 @@ const DECISIONS: Array<[id: string, inputs: TierInputs, tier: number, reason: st
     'software-renderer',
   ],
   ['Q6 data saver is tier 0', { ...BASE, saveData: true }, 0, 'save-data'],
+  [
+    'Q6b data saver names the reason before a software renderer (phone spec 1.2: class D before W)',
+    { ...BASE, saveData: true, renderer: SWIFTSHADER_ANGLE, gpu: FALLBACK_1 },
+    0,
+    'save-data',
+  ],
   ['Q7 blocklisted GPU', { ...BASE, gpu: { tier: 0, type: 'BLOCKLISTED' } }, 0, 'gpu-benchmark'],
   ['Q8 unknown GPU keeps the library default 1', { ...BASE, gpu: FALLBACK_1 }, 1, 'gpu-benchmark'],
   [
@@ -186,62 +203,127 @@ describe('qualityTier table Q', () => {
 });
 
 describe('qualityTier frame monitor', () => {
-  const AUTO_3: MonitorState = { tier: 3, belowSinceMs: null, mode: 'auto' };
-  const feed = (state: MonitorState, samples: Array<[nowMs: number, fps: number]>) =>
-    samples.reduce((s, [nowMs, fps]) => monitorStep(s, { nowMs, fps }), state);
+  const AUTO_3: MonitorState = { tier: 3, slowMs: 0, mode: 'auto', phone: false };
+  const feed = (state: MonitorState, samples: Array<[windowMs: number, fps: number]>) =>
+    samples.reduce((s, [windowMs, fps]) => monitorStep(s, { windowMs, fps }), state);
+  const slow = (count: number): Array<[number, number]> =>
+    Array.from({ length: count }, (): [number, number] => [250, 50]);
 
-  it('Q25 not yet 2 s under 55 fps', () => {
-    expect(
-      feed(AUTO_3, [
-        [0, 50],
-        [1999, 50],
-      ]).tier,
-    ).toBe(3);
+  it('Q25 not yet 2 s of slow time under 55 fps', () => {
+    expect(feed(AUTO_3, slow(7))).toEqual({ ...AUTO_3, slowMs: 1750 });
   });
 
-  it('Q26 one step after 2 s under 55 fps', () => {
-    expect(
-      feed(AUTO_3, [
-        [0, 50],
-        [1999, 50],
-        [2000, 50],
-      ]).tier,
-    ).toBe(2);
+  it('Q26 one step at 2 s of slow time under 55 fps', () => {
+    expect(feed(AUTO_3, slow(8))).toEqual({ ...AUTO_3, tier: 2, slowMs: 0 });
   });
 
-  it('Q27 the window restarts after a good sample', () => {
-    const state = feed(AUTO_3, [
-      [0, 50],
-      [1999, 50],
-      [2000, 50],
-      [3000, 60],
-      [4600, 50],
-    ]);
-    expect(state).toEqual({ tier: 2, belowSinceMs: 4600, mode: 'auto' });
+  it('Q27 a good window resets the slow time', () => {
+    const state = feed(AUTO_3, [...slow(8), [250, 60], ...slow(3)]);
+    expect(state).toEqual({ ...AUTO_3, tier: 2, slowMs: 750 });
   });
 
   it('Q28 goes all the way to tier 0, then no change', () => {
-    const samples = Array.from({ length: 21 }, (_, i): [number, number] => [i * 1000, 10]);
-    const state = feed(AUTO_3, samples);
+    const state = feed(AUTO_3, slow(24));
     expect(state.tier).toBe(0);
-    expect(monitorStep(state, { nowMs: 30_000, fps: 1 })).toBe(state);
+    expect(monitorStep(state, { windowMs: 250, fps: 1 })).toBe(state);
   });
 
   it('Q29 an explicit override is not auto-corrected', () => {
-    const fixed: MonitorState = { tier: 3, belowSinceMs: null, mode: 'fixed' };
-    const samples = Array.from({ length: 37 }, (_, i): [number, number] => [i * 250, 5]);
-    expect(feed(fixed, samples).tier).toBe(3);
+    const fixed: MonitorState = { ...AUTO_3, mode: 'fixed' };
+    expect(feed(fixed, slow(37)).tier).toBe(3);
   });
 
   it('Q-MON a good stream never steps up and ignores non-finite samples', () => {
-    const state: MonitorState = { tier: 1, belowSinceMs: null, mode: 'auto' };
+    const state: MonitorState = { ...AUTO_3, tier: 1 };
     expect(
       feed(state, [
-        [0, 120],
+        [250, 120],
         [5000, 120],
       ]).tier,
     ).toBe(1);
-    expect(monitorStep(state, { nowMs: 0, fps: Number.NaN })).toBe(state);
+    expect(monitorStep(state, { windowMs: 250, fps: Number.NaN })).toBe(state);
+    expect(monitorStep(state, { windowMs: Number.NaN, fps: 30 })).toBe(state);
+  });
+});
+
+describe('qualityTier phone mode (phone spec D23, D26)', () => {
+  it('U-PH1 phone mode with deviceMemory 2 is tier 0; a fine pointer with 2 GB still caps tier 1', () => {
+    const phone = selectTier({ ...PHONE_MODE, deviceMemory: 2 });
+    expect([phone.tier, phone.reason]).toEqual([0, 'device-memory']);
+    // A narrow window with a mouse is not phone mode: the D-Q2 cap.
+    const narrow = selectTier({ ...PHONE_MODE, deviceMemory: 2, finePointer: true, gpu: BASE.gpu });
+    expect([narrow.tier, narrow.reason]).toEqual([1, 'device-memory']);
+    const fine = selectTier({ ...BASE, deviceMemory: 2 });
+    expect([fine.tier, fine.reason]).toEqual([1, 'device-memory']);
+    // A coarse pointer from 1024 px (a tablet in landscape) is not phone mode either.
+    const tablet = selectTier({
+      ...PHONE_MODE,
+      deviceMemory: 2,
+      viewport: { width: 1180, height: 820, dpr: 2 },
+    });
+    expect([tablet.tier, tablet.reason]).toEqual([1, 'gpu-benchmark']);
+  });
+
+  it('U-PH2 phone mode, auto: CPU blocking over CPU_BLOCKING_MS is tier 0; nothing else is', () => {
+    const over = selectTier({ ...PHONE_MODE, cpuBlockingMs: CPU_BLOCKING_MS + 1 });
+    expect([over.tier, over.reason, over.mode]).toEqual([0, 'device-cpu', 'auto']);
+    const at = selectTier({ ...PHONE_MODE, cpuBlockingMs: CPU_BLOCKING_MS });
+    expect([at.tier, at.reason]).toEqual([1, 'gpu-benchmark']);
+    const saved = selectTier({ ...PHONE_MODE, cpuBlockingMs: 900, savedOverride: 2 });
+    expect([saved.tier, saved.reason]).toEqual([2, 'user-override']);
+    const query = selectTier({ ...PHONE_MODE, cpuBlockingMs: 900, queryOverride: 1 });
+    expect([query.tier, query.reason]).toEqual([1, 'query-override']);
+    // No long-animation-frame entry type (WebKit, Gecko): no judgement.
+    const none = selectTier({ ...PHONE_MODE, cpuBlockingMs: null });
+    expect([none.tier, none.reason]).toEqual([1, 'gpu-benchmark']);
+    const fine = selectTier({ ...BASE, cpuBlockingMs: 900 });
+    expect([fine.tier, fine.reason]).toEqual([3, 'gpu-benchmark']);
+  });
+
+  it('U-PH3 D-Q3 order: a saved 1 beats the memory rule, reduced motion beats all, no WebGL 2 beats a saved choice', () => {
+    const saved = selectTier({ ...PHONE_MODE, deviceMemory: 2, savedOverride: 1 });
+    expect([saved.tier, saved.reason]).toEqual([1, 'user-override']);
+    const reduced = selectTier({
+      ...PHONE_MODE,
+      deviceMemory: 2,
+      lightFloor: true,
+      savedOverride: 3,
+      reducedMotion: true,
+    });
+    expect([reduced.tier, reduced.reason]).toEqual([0, 'reduced-motion']);
+    const noGl = selectTier({ ...PHONE_MODE, webgl2: false, savedOverride: 2 });
+    expect([noGl.tier, noGl.reason]).toEqual([0, 'no-webgl2']);
+  });
+
+  it('U-PH3b an active light floor is tier 0 in phone mode only, and never beats a choice', () => {
+    const floor = selectTier({ ...PHONE_MODE, lightFloor: true });
+    expect([floor.tier, floor.reason, floor.detectedTier]).toEqual([0, 'light-floor', 0]);
+    const fine = selectTier({ ...BASE, lightFloor: true });
+    expect([fine.tier, fine.reason]).toEqual([3, 'gpu-benchmark']);
+    const saved = selectTier({ ...PHONE_MODE, lightFloor: true, savedOverride: 1 });
+    expect([saved.tier, saved.reason]).toEqual([1, 'user-override']);
+    expect(isPhoneMode(PHONE_MODE)).toBe(true);
+    expect(isPhoneMode(BASE)).toBe(false);
+  });
+
+  it('U-PH4 monitorStep: phone mode goes to tier 0 in one step after 1000 ms of slow time', () => {
+    const feed = (state: MonitorState, fps: number[]) =>
+      fps.reduce((s, f) => monitorStep(s, { windowMs: 250, fps: f }), state);
+    const phone: MonitorState = { tier: 3, slowMs: 0, mode: 'auto', phone: true };
+    expect(feed(phone, [50, 50, 50])).toEqual({ ...phone, slowMs: 750 });
+    expect(feed(phone, [50, 50, 50, 50])).toEqual({ ...phone, tier: 0, slowMs: 0 });
+    // Fine pointer: eight slow windows of 250 ms give one step.
+    const fine: MonitorState = { ...phone, phone: false };
+    expect(feed(fine, Array<number>(7).fill(50)).tier).toBe(3);
+    expect(feed(fine, Array<number>(8).fill(50))).toEqual({ ...fine, tier: 2, slowMs: 0 });
+    // One good window resets the slow time.
+    expect(feed(phone, [50, 50, 50, 60, 50, 50, 50])).toEqual({ ...phone, slowMs: 750 });
+    // Fixed mode and tier 0 never change; nothing steps up.
+    const fixed: MonitorState = { ...phone, mode: 'fixed' };
+    expect(feed(fixed, Array<number>(8).fill(10))).toBe(fixed);
+    const zero: MonitorState = { ...phone, tier: 0 };
+    expect(feed(zero, [10, 120])).toBe(zero);
+    expect(feed({ ...phone, tier: 1 }, Array<number>(8).fill(120)).tier).toBe(1);
   });
 });
 
@@ -275,7 +357,7 @@ describe('qualityTier purity and helpers', () => {
     const first = selectTier(frozen);
     expect(selectTier(frozen)).toEqual(first);
     expect(selectTier(structuredClone(BASE))).toEqual(first);
-    monitorStep({ tier: 3, belowSinceMs: 0, mode: 'auto' }, { nowMs: 2000, fps: 30 });
+    monitorStep({ tier: 3, slowMs: 0, mode: 'auto', phone: true }, { windowMs: 250, fps: 30 });
     tierSettings(2, PHONE, false);
     expect(globalsTouched).toEqual([]);
     expect(inputs).toEqual(BASE);
