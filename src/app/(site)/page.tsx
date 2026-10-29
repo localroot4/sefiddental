@@ -117,7 +117,10 @@ export default async function HomePage() {
           path={data.restoration?.path ?? null}
           copy={sectionCopy(page, 'restoration')}
         />
-        <WorkflowSection items={block(page, 'workflow')?.items ?? []} />
+        <WorkflowSection
+          items={block(page, 'workflow')?.items ?? []}
+          copy={sectionCopy(page, 'workflow')}
+        />
         {data.demo.cases ? (
           <DemoCasesSection copy={sectionCopy(page, 'compare')} />
         ) : (

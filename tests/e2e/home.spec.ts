@@ -12,6 +12,7 @@ const SECTIONS = [
   'trust',
   'services',
   'restoration',
+  'workflow',
   'compare',
   'dentists',
   'voices',
