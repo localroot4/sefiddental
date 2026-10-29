@@ -1,5 +1,4 @@
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { TierSettings } from '@/lib/qualityTier';
@@ -251,29 +250,6 @@ describe('services scene setup', () => {
     const cleanup = scene.setup(ctx);
     if (typeof cleanup === 'function') cleanup();
     expect(document.documentElement.hasAttribute('data-pins')).toBe(true);
-  });
-
-  it('wide and pinned: the track takes no pointer while the page scrolls, and none of it stays', () => {
-    const on = vi.spyOn(ScrollTrigger, 'addEventListener');
-    const ctx = context({ wide: true, pinned: true });
-    scene.pin?.(ctx);
-    const cleanup = scene.setup(ctx);
-    const track = ctx.el.querySelector<HTMLElement>('[data-track]') as HTMLElement;
-    const fire = (type: string): void => {
-      const call = on.mock.calls.findLast(([event]) => event === type);
-      (call?.[1] as () => void)();
-    };
-    fire('scrollStart');
-    expect(track.style.pointerEvents).toBe('none');
-    fire('scrollEnd');
-    expect(track.style.pointerEvents).toBe('');
-    fire('scrollStart');
-    window.dispatchEvent(new Event('pointermove'));
-    expect(track.style.pointerEvents).toBe('');
-    fire('scrollStart');
-    if (typeof cleanup === 'function') cleanup();
-    expect(track.style.pointerEvents).toBe('');
-    on.mockRestore();
   });
 
   it('wide and pinned with reduced motion: no morph chunk', () => {

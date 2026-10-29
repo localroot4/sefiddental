@@ -11,8 +11,7 @@
  *   ScrollTrigger (D8). The MorphSVG chunk loads through `nearViewport` and morphs the mark's
  *   silhouette through the five icon outlines while each icon's ink outline crossfades in by
  *   opacity (the `d` write is this scene's D12 exception). A keyboard focus in the track scrolls
- *   the page to the pin position that shows the focused world. While the page scrolls under a
- *   still pointer the track takes no pointer, so the row moving under it starts no hover.
+ *   the page to the pin position that shows the focused world.
  * - From 1024 px without a pin (tier 1): the bento stays still. A line reveal cost 3 fps at 4x
  *   (56 against 59) and the section budget is 59, so the plan's tier-1 reveal is dropped.
  * - Under 1024 px (every tier, D6): the native snap row; a keyboard focus centres the focused
@@ -21,7 +20,6 @@
  * - Tier 0 and reduced motion never reach this module: the engine does not run.
  */
 import { gsap } from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import { applyStyle } from '../../core/applyStyle';
 import type { DomScene, SceneContext } from '../types';
@@ -151,27 +149,6 @@ const scene: DomScene = {
       };
       p.track.addEventListener('focusin', onFocus);
       cleanups.push(() => p.track.removeEventListener('focusin', onFocus));
-    }
-
-    if (tl !== null) {
-      // Hit testing: under a still pointer the moving row puts each card it crosses into or out of
-      // :hover, and the lift and shadow transitions then recalculate style in every frame for
-      // 200 ms (tier 2 trace at 4x: 6 ms more main thread in each of those frames). The track takes
-      // no pointer from ScrollTrigger's scrollStart to its scrollEnd (200 ms after the last
-      // scroll) or to the first real pointer move (the browser's hover update after a scroll
-      // fires none); keyboard focus (rule B4) does not depend on pointer-events.
-      const moving = (): void => applyStyle(p.track, { 'pointer-events': 'none' });
-      // An empty value removes the declaration.
-      const still = (): void => applyStyle(p.track, { 'pointer-events': '' });
-      ScrollTrigger.addEventListener('scrollStart', moving);
-      ScrollTrigger.addEventListener('scrollEnd', still);
-      window.addEventListener('pointermove', still, { passive: true });
-      cleanups.push(() => {
-        ScrollTrigger.removeEventListener('scrollStart', moving);
-        ScrollTrigger.removeEventListener('scrollEnd', still);
-        window.removeEventListener('pointermove', still);
-        still();
-      });
     }
 
     const mark = p.mark;
