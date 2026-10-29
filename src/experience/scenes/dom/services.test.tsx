@@ -1,4 +1,5 @@
 import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { TierSettings } from '@/lib/qualityTier';
@@ -86,6 +87,13 @@ const pointerFocus = (target: HTMLElement): void => focusWith(target, false);
 
 beforeEach(() => {
   vi.stubGlobal('IntersectionObserver', FakeObserver);
+  // jsdom has no matchMedia; the phone scroll set reads the pointer (coarse here).
+  vi.stubGlobal('matchMedia', (query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener() {},
+    removeEventListener() {},
+  }));
   HTMLElement.prototype.scrollIntoView = scrollIntoView;
   FakeObserver.instances = [];
   addMorphs.mockClear();
@@ -272,5 +280,50 @@ describe('services scene setup', () => {
     if (typeof cleanup === 'function') cleanup();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(addMorphs).not.toHaveBeenCalled();
+  });
+});
+
+describe('services scene under 1024 px, the phone scroll set (phone spec scene 3, U-PH10)', () => {
+  it('the row container slides and the mark settles as they enter; the cards never move', () => {
+    gsap.registerPlugin(ScrollTrigger);
+    const ctx = context({ wide: false, pinned: false });
+    const track = ctx.el.querySelector<HTMLElement>('[data-track]') as HTMLElement;
+    const mark = ctx.el.querySelector<HTMLElement>('[data-mark]') as HTMLElement;
+    // Both below the bar top at creation (jsdom lays nothing out: every other rect is at 0).
+    for (const el of [track, mark]) {
+      vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({ top: 2000 } as DOMRect);
+    }
+    const cleanup = scene.setup(ctx);
+    const triggers = ScrollTrigger.getAll();
+    expect(triggers.map((t) => t.trigger)).toEqual([track, mark]);
+    expect(track.hasAttribute('data-scrub')).toBe(true);
+    expect(mark.hasAttribute('data-scrub')).toBe(true);
+    // Slide: x from the inline start by the gutter (LTR in jsdom: -16) and opacity; Settle: scale
+    // and opacity.
+    expect(track.style.transform).toContain('translate(-16px');
+    expect(mark.style.transform).toContain('scale(0.94');
+    for (const card of track.children) expect((card as HTMLElement).style.transform).toBe('');
+
+    if (typeof cleanup === 'function') cleanup();
+    triggers.forEach((t) => t.kill());
+  });
+
+  it('a row already above the bar top at creation gets no entrance (rule 2.2-5)', () => {
+    gsap.registerPlugin(ScrollTrigger);
+    const ctx = context({ wide: false, pinned: false });
+    scene.setup(ctx);
+    expect(ScrollTrigger.getAll()).toHaveLength(0);
+    expect(ctx.el.querySelector<HTMLElement>('[data-track]')?.style.transform).toBe('');
+  });
+
+  it('from 1024 px nothing scrubs', () => {
+    gsap.registerPlugin(ScrollTrigger);
+    const ctx = context({ wide: true, pinned: false });
+    for (const el of ctx.el.querySelectorAll('[data-track], [data-mark]')) {
+      vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({ top: 2000 } as DOMRect);
+    }
+    scene.setup(ctx);
+    expect(ScrollTrigger.getAll()).toHaveLength(0);
+    expect(ctx.el.querySelectorAll('[data-scrub]')).toHaveLength(0);
   });
 });

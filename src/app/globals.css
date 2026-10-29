@@ -279,3 +279,35 @@
   transition-duration: var(--dur-3);
   transition-timing-function: var(--ease-out);
 }
+
+/* The Drift A/B (phone spec 2.5, `?scrollcss=1`): the hero scene writes `data-scroll-css` on the
+   hero instead of scrubbing the photo with gsap, and the img drifts -4 % to +4 % of its band over
+   the band's pass through the viewport on the compositor, under 744 px. The hero is the timeline's
+   subject: it clips with `overflow: hidden`, so it is the band's scroll container and a view
+   timeline of the band itself would never move. The band is the hero's last row, 125vw tall (4:5
+   at full width), so the range runs from the band's top at the viewport's bottom to its bottom at
+   the viewport's top, as the gsap Drift's. Without support the photo stays still. */
+@supports (animation-timeline: view()) {
+  @media (width < 46.5rem) {
+    [data-scroll-css] {
+      view-timeline: --hero-drift block;
+      /* The viewport's edges, as gsap's: the default inset is the root's scroll padding. */
+      view-timeline-inset: 0px;
+    }
+    [data-scroll-css] [data-hero-photo] img {
+      animation: hero-drift linear both;
+      animation-timeline: --hero-drift;
+      /* The end stays `normal`, the timeline's end (cover 100 %): the minifier rewrites a written
+         end of `exit-crossing 100%` or `cover 100%` in the shorthand as `0%`. */
+      animation-range-start: entry-crossing calc(100% - 125vw);
+    }
+  }
+}
+@keyframes hero-drift {
+  from {
+    translate: 0 -4%;
+  }
+  to {
+    translate: 0 4%;
+  }
+}

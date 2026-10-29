@@ -261,7 +261,7 @@ test('T-EN4b a «کیفیت» change from 1 to 3 (the pins arrive) keeps the rea
 test.describe('375 px touch', () => {
   test.use({ viewport: { width: 375, height: 667 }, hasTouch: true, isMobile: true });
 
-  test('T-EN5 ?tier=3 on a touch phone: no pin spacer, no Lenis, the hero photo untransformed', async ({
+  test('T-EN5 ?tier=3 on a touch phone: no pin spacer, no Lenis, the hero photo layer untransformed', async ({
     page,
   }, testInfo) => {
     only(testInfo, 'phone-light');
@@ -275,9 +275,9 @@ test.describe('375 px touch', () => {
     await frames(page);
     await expect(page.locator('.pin-spacer')).toHaveCount(0);
     await expect(page.locator('html.lenis')).toHaveCount(0);
-    const photo = page.locator('[data-scene="hero"] img').first();
-    await expect(photo).toHaveCSS('transform', 'none');
-    expect(await photo.evaluate((el) => getComputedStyle(el.parentElement!).transform)).toBe(
+    // Phone spec scene 1: the layer never moves; its img may drift inside it (phone.ts Drift).
+    await expect(page.locator('[data-scene="hero"] [data-hero-photo]')).toHaveCSS(
+      'transform',
       'none',
     );
   });

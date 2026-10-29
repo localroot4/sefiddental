@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { debugActive, parseExperienceQuery } from './query';
+import { debugActive, parseExperienceQuery, scrollCssActive } from './query';
 
 describe('parseExperienceQuery', () => {
   it('QP1 reads debug, tier, monitor and stress', () => {
@@ -44,5 +44,13 @@ describe('debugActive', () => {
     expect(debugActive(parseExperienceQuery(''), '1')).toBe(true);
     expect(debugActive(parseExperienceQuery(''), null)).toBe(false);
     expect(debugActive(parseExperienceQuery(''), 'x')).toBe(false);
+  });
+});
+
+describe('scrollCssActive', () => {
+  it('QP7 only scrollcss=1 picks the CSS drift of the A/B', () => {
+    expect(scrollCssActive('?tier=2&scrollcss=1')).toBe(true);
+    for (const search of ['', '?scrollcss=0', '?scrollcss=true', '?scrollcss=۱'])
+      expect(scrollCssActive(search)).toBe(false);
   });
 });

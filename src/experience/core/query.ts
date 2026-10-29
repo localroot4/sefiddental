@@ -29,6 +29,14 @@ export function parseExperienceQuery(search: string): ExperienceQuery {
   };
 }
 
+/**
+ * `scrollcss=1`: the hero photo's drift runs on a CSS view timeline instead of its gsap scrub
+ * (phone spec 2.5, the Drift A/B; no link on the site carries it). Any other value keeps gsap.
+ */
+export function scrollCssActive(search: string): boolean {
+  return new URLSearchParams(search).get('scrollcss') === '1';
+}
+
 /** `debug=1` turns the session flag on, `debug=0` off; without the parameter the flag decides. */
 export function debugActive(query: ExperienceQuery, sessionFlag: string | null): boolean {
   if (query.debug !== null) return query.debug === 'on';

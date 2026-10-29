@@ -1,4 +1,5 @@
 import { gsap } from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { TierSettings } from '@/lib/qualityTier';
@@ -15,10 +16,13 @@ function context(overrides: {
   wide?: boolean;
   heroExitParallax?: boolean;
   photo?: boolean;
+  img?: boolean;
 }): SceneContext & { photo: HTMLElement | null } {
   const el = document.createElement('section');
   el.dataset.scene = 'hero';
-  if (overrides.photo !== false) el.innerHTML = '<div data-hero-photo=""></div>';
+  if (overrides.photo !== false) {
+    el.innerHTML = `<div data-hero-photo="">${overrides.img ? '<picture><img alt=""></picture>' : ''}</div>`;
+  }
   vi.spyOn(el, 'getBoundingClientRect').mockReturnValue({ height: HERO_HEIGHT } as DOMRect);
   const master = gsap.timeline({ paused: true });
   master.addLabel('hero', 0);
@@ -55,7 +59,7 @@ describe('scene 1 hero exit (dom/hero.ts)', () => {
     ctx.master.kill();
   });
 
-  it('HS2 under 1024 px or without heroExitParallax (tier 0) nothing is added', () => {
+  it('HS2 under 1024 px or without heroExitParallax (tier 0) nothing is added to the master', () => {
     for (const ctx of [context({ wide: false }), context({ heroExitParallax: false })]) {
       hero.setup(ctx);
       expect(ctx.master.getChildren(false, true, false)).toHaveLength(0);
@@ -69,5 +73,49 @@ describe('scene 1 hero exit (dom/hero.ts)', () => {
     expect(() => hero.setup(ctx)).not.toThrow();
     expect(ctx.master.getChildren(false, true, false)).toHaveLength(0);
     ctx.master.kill();
+  });
+
+  it('HS4 under 1024 px the img drifts in its layer (phone spec scene 1): one scrub off the master, the layer never moves', () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener() {},
+      removeEventListener() {},
+    }));
+    gsap.registerPlugin(ScrollTrigger);
+    const ctx = context({ wide: false, img: true });
+    const img = ctx.el.querySelector('img') as HTMLImageElement;
+    vi.spyOn(ctx.photo as HTMLElement, 'getBoundingClientRect').mockReturnValue({
+      height: 500,
+    } as DOMRect);
+    const cleanup = hero.setup(ctx);
+    expect(typeof cleanup).toBe('function');
+    expect(ctx.master.getChildren(false, true, false)).toHaveLength(0);
+    const triggers = ScrollTrigger.getAll();
+    expect(triggers.map((t) => t.trigger)).toEqual([ctx.photo]);
+    expect(img.hasAttribute('data-scrub')).toBe(true);
+    // -4 % of the 500 px frame at the start, promoted (force3D).
+    expect(gsap.getProperty(img, 'y')).toBe(-20);
+    expect(gsap.getTweensOf(img)[0]?.vars.force3D).toBe(true);
+    expect(ctx.photo?.style.transform).toBe('');
+    if (typeof cleanup === 'function') cleanup();
+    triggers.forEach((t) => t.kill());
+    ctx.master.kill();
+    vi.unstubAllGlobals();
+  });
+
+  it('HS5 under 1024 px with ?scrollcss=1 the hero carries data-scroll-css and nothing scrubs (the Drift A/B); the cleanup removes it', () => {
+    window.history.replaceState(null, '', '/?tier=2&scrollcss=1');
+    const ctx = context({ wide: false, img: true });
+    const img = ctx.el.querySelector('img') as HTMLImageElement;
+    const cleanup = hero.setup(ctx);
+    expect(ctx.el.hasAttribute('data-scroll-css')).toBe(true);
+    expect(ScrollTrigger.getAll()).toHaveLength(0);
+    expect(gsap.getTweensOf(img)).toHaveLength(0);
+    expect(img.hasAttribute('data-scrub')).toBe(false);
+    if (typeof cleanup === 'function') cleanup();
+    expect(ctx.el.hasAttribute('data-scroll-css')).toBe(false);
+    ctx.master.kill();
+    window.history.replaceState(null, '', '/');
   });
 });

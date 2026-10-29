@@ -1,3 +1,6 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -44,7 +47,7 @@ describe('home hero markup', () => {
     expect(photo).toBeGreaterThan(-1);
     expect(band).toBeGreaterThan(photo);
     expect(html.slice(band)).toContain('data-world-slot="hero-exit"');
-    expect(html.slice(band)).toContain('lg:min-h-[40vh]');
+    expect(html.slice(band)).toContain('lg:min-h-[40svh]');
     // The band leaves the photo's bounds: it is outside the clipping wrapper.
     const wrapper = html.indexOf('lg:overflow-clip');
     expect(wrapper).toBeLessThan(photo);
@@ -86,5 +89,25 @@ describe('home hero markup', () => {
     expect(row?.querySelector('form')).not.toBeNull();
     expect(row?.lastElementChild?.tagName).toBe('P'); // the placeholder caption
     expect(html.indexOf('id="intro-script"')).toBeLessThan(html.indexOf('data-hero-photo'));
+  });
+});
+
+describe('phone spec rule 2.2-11', () => {
+  it('U-PH16 the home components and the site CSS size nothing in dvh or bare vh (svh or lvh only)', () => {
+    // Under the experience root a dvh or vh box resizes as the phone toolbar hides, after the
+    // triggers measured it; comments may still name the units.
+    const dir = path.resolve('src/components/home');
+    const files = readdirSync(dir, { recursive: true, encoding: 'utf8' })
+      .filter((file) => /\.tsx?$/.test(file) && !/\.test\.tsx?$/.test(file))
+      .map((file) => path.join(dir, file));
+    const offenders = [...files, path.resolve('src/app/globals.css')].flatMap((file) =>
+      readFileSync(file, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/(^|[^:])\/\/.*$/gm, '$1')
+        .split('\n')
+        .filter((line) => /\d(?:\.\d+)?d?vh\b|\bh-dvh\b/.test(line))
+        .map((line) => `${path.relative(process.cwd(), file)}: ${line.trim()}`),
+    );
+    expect(offenders).toEqual([]);
   });
 });

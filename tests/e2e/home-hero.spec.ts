@@ -137,7 +137,7 @@ test.describe('without the intro', () => {
     await expect.poll(() => translateY(page, PHOTO)).toBe(0);
   });
 
-  test('T-HR3 at 390 px touch (tier 2) and at ?tier=0 on desktop the photo never transforms', async ({
+  test('T-HR3 at 390 px touch (tier 2) and at ?tier=0 on desktop the photo layer never transforms (its img may drift on phones)', async ({
     page,
   }, testInfo) => {
     only(testInfo, 'phone-light', 'desktop-light');

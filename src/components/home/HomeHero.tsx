@@ -48,10 +48,14 @@ const SETTLE_STEP = [
  * moves `[data-hero-photo]` at tiers 1 to 3) never slides under the band. Everything is server
  * HTML at every tier: nothing appears or grows after hydration (CLS 0). Under 1024 px the inner
  * wrapper is `display: contents`, so the grid, the photo and the band keep the phase 4 layout.
- * The slot attribute is present at every width; it is a window only from 1024 px. From 1024 px
- * the sunken surface moves from the section to the inner wrapper (its own stacking context, so it
- * stays under the photo), and the band sits on the page surface: nothing of the hero paints over
- * the world behind the page.
+ * The slot attribute is present at every width; it is a window only from 1024 px. Under 744 px the
+ * 4:5 band clips its photo, scaled 1.1 at every tier, so the drift of the phone scroll set (phone
+ * spec D24, scenes/dom/hero.ts) moves it inside the band and a late engine start does not pop it.
+ * The scale is a `transform`, not the `scale` property: gsap folds `scale` into its own transform
+ * and writes `scale: none`, which dropped the 1.1 (and showed the band's edges) under the drift.
+ * From 1024 px the sunken surface moves from the section to the inner wrapper (its own stacking
+ * context, so it stays under the photo), and the band sits on the page surface: nothing of the
+ * hero paints over the world behind the page.
  */
 export function HomeHero(props: {
   title: string;
@@ -130,7 +134,7 @@ export function HomeHero(props: {
         {props.intro}
         <div
           data-hero-photo=""
-          className="relative -z-10 col-start-1 row-start-2 aspect-[4/5] md:absolute md:inset-0 md:aspect-auto"
+          className="relative -z-10 col-start-1 row-start-2 aspect-[4/5] max-md:overflow-clip md:absolute md:inset-0 md:aspect-auto"
         >
           <picture>
             <source media={WIDE} type="image/avif" srcSet={image.wide.avif} sizes="100vw" />
@@ -147,7 +151,7 @@ export function HomeHero(props: {
               alt={image.img.alt}
               width={image.img.width}
               height={image.img.height}
-              className="absolute inset-0 size-full object-cover"
+              className="absolute inset-0 size-full object-cover max-md:[transform:scale(1.1)]"
             />
           </picture>
           {image.placeholder ? (
@@ -171,7 +175,7 @@ export function HomeHero(props: {
           data-home-section="trust"
           data-family="B"
           data-world-slot="hero-exit"
-          className="relative col-start-1 row-start-2 self-end border-t border-line bg-surface-raised/90 lg:grid lg:min-h-[40vh] lg:content-center lg:bg-transparent"
+          className="relative col-start-1 row-start-2 self-end border-t border-line bg-surface-raised/90 lg:grid lg:min-h-[40svh] lg:content-center lg:bg-transparent"
         >
           <div className="mx-auto w-full max-w-content px-gutter py-6">
             <FactsRow facts={props.facts} label={t('home.trust.label')} />

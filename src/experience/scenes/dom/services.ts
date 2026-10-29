@@ -16,13 +16,17 @@
  *   (56 against 59) and the section budget is 59, so the plan's tier-1 reveal is dropped.
  * - Under 1024 px (every tier, D6): the native snap row; a keyboard focus centres the focused
  *   world in the row; the bar under it follows the card in view through an IntersectionObserver
- *   (`scaleX` through `applyStyle`).
+ *   (`scaleX` through `applyStyle`). The row's scroll container slides in the reading direction
+ *   as it enters and the mark above it settles (phone spec scene 3, phone.ts Slide and Settle);
+ *   the cards, their snap positions and the row's `scrollLeft` never move with the page scroll.
  * - Tier 0 and reduced motion never reach this module: the engine does not run.
  */
 import { gsap } from 'gsap';
 
 import { applyStyle } from '../../core/applyStyle';
 import type { DomScene, SceneContext } from '../types';
+
+import { phoneMotion } from './phone';
 
 /** The pin distance in viewport heights (D7: +200 vh). */
 export const PIN_VH = 2;
@@ -174,6 +178,11 @@ const scene: DomScene = {
         cancel();
         restore?.();
       });
+    }
+
+    if (!wide) {
+      const markBox = ctx.el.querySelector('[data-mark]');
+      cleanups.push(phoneMotion({ slide: [p.track], settle: markBox === null ? [] : [markBox] }));
     }
 
     if (!wide && p.bar !== null && p.fill !== null && n > 0) {
