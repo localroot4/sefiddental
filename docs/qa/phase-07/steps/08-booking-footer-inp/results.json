@@ -1,0 +1,338 @@
+{
+  "label": "phase-07/steps/08-booking-footer-inp",
+  "measuredAt": "2026-10-27T05:27:24.189Z",
+  "command": "E2E_PORT=3800 node scripts/measure-home.mjs docs/qa/phase-07/steps/08-booking-footer-inp --only=inp --tiers=0,1",
+  "host": {
+    "commit": "01e24d4",
+    "dirty": true,
+    "cpus": 4,
+    "loadAverage": [
+      3.11,
+      4.07,
+      4.52
+    ],
+    "chromium": "Chromium 141.0.7390.37"
+  },
+  "inp": [
+    {
+      "viewport": "desktop",
+      "tier": 0,
+      "form": "hero",
+      "runs": [
+        {
+          "success": true,
+          "submitMs": 128,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 13,
+            "processingMs": 9,
+            "presentationMs": 106
+          },
+          "typingWorstMs": 64
+        },
+        {
+          "success": true,
+          "submitMs": 144,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 12,
+            "processingMs": 12,
+            "presentationMs": 120
+          },
+          "typingWorstMs": 56
+        },
+        {
+          "success": true,
+          "submitMs": 160,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 15,
+            "processingMs": 10,
+            "presentationMs": 135
+          },
+          "typingWorstMs": 56
+        }
+      ]
+    },
+    {
+      "viewport": "desktop",
+      "tier": 0,
+      "form": "block",
+      "runs": [
+        {
+          "success": true,
+          "submitMs": 176,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 18,
+            "processingMs": 14,
+            "presentationMs": 144
+          },
+          "typingWorstMs": 64
+        },
+        {
+          "success": true,
+          "submitMs": 192,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 14,
+            "processingMs": 4,
+            "presentationMs": 174
+          },
+          "typingWorstMs": 104
+        },
+        {
+          "success": true,
+          "submitMs": 152,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 20,
+            "processingMs": 17,
+            "presentationMs": 115
+          },
+          "typingWorstMs": 48
+        }
+      ]
+    },
+    {
+      "viewport": "desktop",
+      "tier": 1,
+      "form": "hero",
+      "runs": [
+        {
+          "success": true,
+          "submitMs": 152,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 12,
+            "processingMs": 2,
+            "presentationMs": 139
+          },
+          "typingWorstMs": 64
+        },
+        {
+          "success": true,
+          "submitMs": 120,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 10,
+            "processingMs": 9,
+            "presentationMs": 101
+          },
+          "typingWorstMs": 64
+        },
+        {
+          "success": true,
+          "submitMs": 160,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 14,
+            "processingMs": 12,
+            "presentationMs": 135
+          },
+          "typingWorstMs": 112
+        }
+      ]
+    },
+    {
+      "viewport": "desktop",
+      "tier": 1,
+      "form": "block",
+      "runs": [
+        {
+          "success": true,
+          "submitMs": 200,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 14,
+            "processingMs": 16,
+            "presentationMs": 171
+          },
+          "typingWorstMs": 64
+        },
+        {
+          "success": true,
+          "submitMs": 176,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 14,
+            "processingMs": 15,
+            "presentationMs": 148
+          },
+          "typingWorstMs": 1024
+        },
+        {
+          "success": true,
+          "submitMs": 160,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 10,
+            "processingMs": 9,
+            "presentationMs": 142
+          },
+          "typingWorstMs": 72
+        }
+      ]
+    },
+    {
+      "viewport": "phone",
+      "tier": 0,
+      "form": "hero",
+      "runs": [
+        {
+          "success": true,
+          "submitMs": 152,
+          "submitEvent": {
+            "name": "click",
+            "inputDelayMs": 45,
+            "processingMs": 22,
+            "presentationMs": 85
+          },
+          "typingWorstMs": 88
+        },
+        {
+          "success": true,
+          "submitMs": 136,
+          "submitEvent": {
+            "name": "click",
+            "inputDelayMs": 46,
+            "processingMs": 26,
+            "presentationMs": 64
+          },
+          "typingWorstMs": 88
+        },
+        {
+          "success": true,
+          "submitMs": 176,
+          "submitEvent": {
+            "name": "click",
+            "inputDelayMs": 53,
+            "processingMs": 29,
+            "presentationMs": 94
+          },
+          "typingWorstMs": 80
+        }
+      ]
+    },
+    {
+      "viewport": "phone",
+      "tier": 0,
+      "form": "block",
+      "runs": [
+        {
+          "success": true,
+          "submitMs": 168,
+          "submitEvent": {
+            "name": "click",
+            "inputDelayMs": 72,
+            "processingMs": 73,
+            "presentationMs": 24
+          },
+          "typingWorstMs": 64
+        },
+        {
+          "success": true,
+          "submitMs": 184,
+          "submitEvent": {
+            "name": "click",
+            "inputDelayMs": 65,
+            "processingMs": 99,
+            "presentationMs": 20
+          },
+          "typingWorstMs": 80
+        },
+        {
+          "success": true,
+          "submitMs": 144,
+          "submitEvent": {
+            "name": "click",
+            "inputDelayMs": 39,
+            "processingMs": 84,
+            "presentationMs": 21
+          },
+          "typingWorstMs": 64
+        }
+      ]
+    },
+    {
+      "viewport": "phone",
+      "tier": 1,
+      "form": "hero",
+      "runs": [
+        {
+          "success": true,
+          "submitMs": 176,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 16,
+            "processingMs": 3,
+            "presentationMs": 157
+          },
+          "typingWorstMs": 104
+        },
+        {
+          "success": true,
+          "submitMs": 176,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 29,
+            "processingMs": 4,
+            "presentationMs": 144
+          },
+          "typingWorstMs": 80
+        },
+        {
+          "success": true,
+          "submitMs": 200,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 13,
+            "processingMs": 2,
+            "presentationMs": 185
+          },
+          "typingWorstMs": 88
+        }
+      ]
+    },
+    {
+      "viewport": "phone",
+      "tier": 1,
+      "form": "block",
+      "runs": [
+        {
+          "success": true,
+          "submitMs": 192,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 21,
+            "processingMs": 2,
+            "presentationMs": 169
+          },
+          "typingWorstMs": 96
+        },
+        {
+          "success": true,
+          "submitMs": 200,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 12,
+            "processingMs": 4,
+            "presentationMs": 184
+          },
+          "typingWorstMs": 72
+        },
+        {
+          "success": true,
+          "submitMs": 240,
+          "submitEvent": {
+            "name": "pointerdown",
+            "inputDelayMs": 25,
+            "processingMs": 6,
+            "presentationMs": 209
+          },
+          "typingWorstMs": 88
+        }
+      ]
+    }
+  ]
+}

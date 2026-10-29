@@ -14,6 +14,8 @@ import { media } from './HomeSection';
 /**
  * Scene 10 (family J): the full form on the warm stage with the static map and the hours; the
  * map sits under the form on phones. «رزرو نوبت» links scroll here (the chrome's booking route).
+ * `[data-booking-card]` is the box the scene module (scenes/dom/booking.ts) raises once on
+ * enter at tiers 1 to 3; the server HTML is the resting state.
  */
 export function BookingSection(props: { clinic: Clinic; hours: ClinicHours }) {
   const map = media(props.clinic.maps?.staticMap);
@@ -22,8 +24,10 @@ export function BookingSection(props: { clinic: Clinic; hours: ClinicHours }) {
     <div data-scene="booking" data-home-section="booking" data-family="J" data-sticky-hide="">
       <Section labelledBy="bk-block-title" tone="warm">
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,26rem)] lg:gap-12">
-          {/* No contextual emergency link on home, by the client's wish (conversion.md 3, G10). */}
-          <BookingForm variant="full" instance="block" emergencyLink={false} />
+          <div data-booking-card="" className="min-w-0">
+            {/* No contextual emergency link on home, by the client's wish (conversion.md 3, G10). */}
+            <BookingForm variant="full" instance="block" emergencyLink={false} />
+          </div>
           <div className="grid content-start gap-8">
             <MapBlock
               image={

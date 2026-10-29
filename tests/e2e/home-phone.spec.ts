@@ -530,6 +530,8 @@ test('T-PH6 a weak phone at load (2 GB, no ?tier): no engine, no benchmark; the 
   await expect(toggle).toHaveText(t('home.light.turnOff'));
   await expect(toggle).toBeFocused();
   expect(await page.evaluate(() => localStorage.getItem('sefid-quality'))).toBe('1');
+  // The «کیفیت» control in the footer follows the same saved choice (step 8).
+  await expect(page.getByRole('radio', { name: t('home.quality.tier1') })).toBeChecked();
   await expect.poll(() => seen.engine.size, { timeout: 15_000 }).toBeGreaterThan(0);
   const frame = await docTop(page, PHOTO);
   const height = viewportHeight(page);
@@ -545,6 +547,7 @@ test('T-PH6 a weak phone at load (2 GB, no ?tier): no engine, no benchmark; the 
   await expect(toggle).toHaveText(t('home.light.turnOn'));
   await expect(toggle).toBeFocused();
   expect(await page.evaluate(() => localStorage.getItem('sefid-quality'))).toBe('0');
+  await expect(page.getByRole('radio', { name: t('home.quality.tier0') })).toBeChecked();
 
   // «بستن» by keyboard: focus goes to main; the notice closes.
   await page.keyboard.press('Tab');
