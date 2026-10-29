@@ -205,7 +205,19 @@ DATABASE_URL=postgres://build:build@127.0.0.1:5432/build PAYLOAD_SECRET=build-on
   run time.
 - `prebuild` copies brand files, fonts and `public/maintenance.html` into
   `public/`. `postbuild` deletes `.env` and `.env.production` from
-  `.next/standalone`.
+  `.next/standalone`, then runs one step on the build output:
+  - `scripts/compile-hints.mjs` puts the V8 compile hint
+    `//# allFunctionsCalledOnLoad` first in the bootstrap chunks
+    (`rootMainFiles` of `.next/build-manifest.json`) and the gsap chunks of
+    `.next/static/chunks`. It edits the chunks after Next.js wrote them, so it
+    conflicts with Subresource Integrity (`experimental.sri`: the browser
+    rejects the edited chunks) and with browser source maps
+    (`productionBrowserSourceMaps`: every mapping one line off). Neither is
+    on. Turn one on only after you remove this step. The step fails the
+    build when the manifest lists no root chunk, a listed chunk is missing,
+    or no gsap chunk exists.
+- Copy `.next/static` only after `postbuild` finished: a copy taken between
+  `next build` and `postbuild` has no compile hints.
 
 Assemble the release. Next.js leaves `public/` and `.next/static/` out of the
 standalone folder:
