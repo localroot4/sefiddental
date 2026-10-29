@@ -40,7 +40,11 @@ export const SCROLL_TO_EVENT = 'sefid:scroll-to';
 export interface ScrollEngine {
   /** Null at tier 0, on coarse pointers, and during the engine's first frame (see creation). */
   readonly lenis: Lenis | null;
-  /** Duration 1; its progress is the document scroll fraction. Null at tier 0. */
+  /**
+   * Duration 1; once it has its ScrollTrigger, its progress is the document scroll fraction. Null
+   * at tier 0. On a phone without Lenis it gets the trigger with its first child (at creation, or
+   * on the next refresh for a child added later); until then it stays paused.
+   */
   readonly master: gsap.core.Timeline | null;
   /**
    * Main-thread milliseconds of `createScrollEngine` plus, when a scene pinned, the full refresh
@@ -55,7 +59,7 @@ export interface ScrollEngine {
   activeScene(): ScenePlace<SceneId> | null;
   /** The master's labels in time order (one per present scene); empty without a master. */
   labels(): string[];
-  /** px/s from the master's ScrollTrigger; 0 without a master. */
+  /** px/s from the master's ScrollTrigger; 0 without a master or before it has its trigger. */
   velocity(): number;
   scrollTo(target: HTMLElement | number, opts?: { immediate?: boolean }): void;
   /**
@@ -91,17 +95,38 @@ const MIN_SEGMENT = 1e-6;
 
 let pluginsRegistered = false;
 /**
- * Registers ScrollTrigger once per page. Its registration writes body's style attribute and
- * reads a 100vh probe, which costs one full style recalculation (8 ms at 1x on home): the root
- * calls this one frame before `createScrollEngine`, so neither task is long at 4x.
+ * Registers ScrollTrigger once per page, and only where a trigger is made (Lenis, a pin, a scrub
+ * on the master, `nearViewport`). Its registration writes body's style attribute and reads a
+ * 100vh probe: two full style recalculations (26 to 52 ms in one task on home, Lighthouse tier 1,
+ * while the site CSS had `:has()` rules). Callers inside the engine's matchMedia context go
+ * through `context.ignore`: what registration creates (ScrollTrigger's own matchMedia and
+ * delayed calls) must not be reverted with that context.
  */
-export function prepareScrollEngine(): void {
+function registerScrollTrigger(): void {
   if (pluginsRegistered) return;
   gsap.registerPlugin(ScrollTrigger);
   // Phone address-bar resizes do not refresh the triggers.
   ScrollTrigger.config({ ignoreMobileResize: true });
   pluginsRegistered = true;
 }
+
+/**
+ * The root calls this one frame before `createScrollEngine`, so neither task is long at 4x.
+ * Only Lenis and the layouts from 1024 px (pins, the hero scrub) make triggers; a phone layout
+ * makes none, so it never pays the registration.
+ */
+export function prepareScrollEngine(layout: LayoutLatch): void {
+  if (layout.latchedAtTier >= 1 && (layout.lenis || window.matchMedia(QUERIES.wide).matches))
+    registerScrollTrigger();
+}
+
+/** The master's trigger: the whole document, scrubbed, its end re-measured on every refresh. */
+const masterTrigger = (): ScrollTrigger.Vars => ({
+  start: 0,
+  end: 'max',
+  scrub: true,
+  invalidateOnRefresh: true,
+});
 
 const maxScroll = (): number =>
   Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
@@ -257,6 +282,16 @@ export function createScrollEngine(opts: {
   };
 
   /**
+   * The master scrubs once it has a child. Created outside the context (the caller's job, like
+   * the registration): the context's revert kills the master and, with it, this trigger.
+   */
+  const triggerMaster = (): void => {
+    if (master === null || master.scrollTrigger || children.size === 0) return;
+    registerScrollTrigger();
+    ScrollTrigger.create({ ...masterTrigger(), animation: master });
+  };
+
+  /**
    * A refresh must not move the reader. ScrollTrigger scrolls to 0 to measure and then restores
    * the position it recorded at `refreshInit`; after a context revert (the previous engine's
    * teardown on a relatch) it skips that record and restores 0, so the page would jump to the
@@ -387,7 +422,6 @@ export function createScrollEngine(opts: {
   // more frame (below), so this task forces no full style recalculation (three of them cost
   // 25 of 33 ms at 1x, 160 to 240 ms at 4x, measured before the split).
   measure();
-  prepareScrollEngine();
   ScrollTrigger.addEventListener('refreshInit', onRefreshInit);
   ScrollTrigger.addEventListener('refresh', onRefresh);
 
@@ -400,6 +434,7 @@ export function createScrollEngine(opts: {
     let offScroll: (() => void) | null = null;
     let lenisFrame = 0;
     if (fine && layout.lenis) {
+      context.ignore(registerScrollTrigger);
       // One frame later: Lenis reads the document size and adds classes to <html>, which makes
       // the next layout read recalculate every element's style; after a rendered frame that
       // recalculation rides the frame instead of the creation task. Scroll keeps working
@@ -451,6 +486,7 @@ export function createScrollEngine(opts: {
           trigger = null;
           context.add(cb);
         });
+        context.ignore(registerScrollTrigger);
         trigger = ScrollTrigger.create({
           trigger: el,
           start: 'top bottom+=100%',
@@ -472,6 +508,7 @@ export function createScrollEngine(opts: {
     // their spacers land in the bounds on the full refresh every pin queues (ScrollTrigger),
     // through `onRefresh`, so the creation task reads nothing after they wrote.
     if (layout.pinnedScenes && wide) {
+      context.ignore(registerScrollTrigger);
       for (const { id, el, scene } of present) {
         scene.pin?.({ id, el, ...base, nearViewport: nearViewport(el) });
       }
@@ -481,11 +518,14 @@ export function createScrollEngine(opts: {
       pinRefresh = true;
     }
 
-    const timeline = gsap.timeline({
-      scrollTrigger: { start: 0, end: 'max', scrub: true, invalidateOnRefresh: true },
-    });
-    // The spine keeps the master at duration 1 whatever the children do.
-    spine = timeline.to({}, { duration: 1, ease: 'none' });
+    // Without ScrollTrigger (a phone) the master stays paused until a scene adds a scrub;
+    // `progress()` reads the native scroll meanwhile.
+    const timeline = gsap.timeline(
+      pluginsRegistered ? { scrollTrigger: masterTrigger() } : { paused: true },
+    );
+    // The spine keeps the master at duration 1 whatever the children do. `to` returns the
+    // timeline; `recent()` is the tween, which adopt() must never take for a scene's child.
+    spine = timeline.to({}, { duration: 1, ease: 'none' }).recent() as gsap.core.Tween;
     master = timeline;
     placeLabels();
 
@@ -507,6 +547,7 @@ export function createScrollEngine(opts: {
       if (typeof cleanup === 'function') cleanups.push(cleanup);
     }
     placeChildren();
+    context.ignore(triggerMaster);
 
     return () => {
       // The scene cleanups first (listeners, observers, Draggables, classes), newest first, then
@@ -529,6 +570,18 @@ export function createScrollEngine(opts: {
     };
   });
 
+  // A child a lazy chunk added at a label since gives the master its trigger first. Without
+  // ScrollTrigger the engine measures itself: `ScrollTrigger.refresh()` would register it.
+  const refresh = (): void => {
+    adopt();
+    triggerMaster();
+    if (pluginsRegistered) ScrollTrigger.refresh();
+    else {
+      measure();
+      placeLabels();
+    }
+  };
+
   // Any height change of the root (images, FAQ toggles, the tier attribute, theme CSS, pin
   // spacers) refreshes the triggers, once per frame. The observer's first callback reports the
   // initial size, which the creation just measured.
@@ -542,7 +595,7 @@ export function createScrollEngine(opts: {
     if (refreshFrame !== 0) return;
     refreshFrame = requestAnimationFrame(() => {
       refreshFrame = 0;
-      if (!destroyed) ScrollTrigger.refresh();
+      if (!destroyed) refresh();
     });
   });
   resize.observe(root);
@@ -550,7 +603,7 @@ export function createScrollEngine(opts: {
   // loaded were measured above (a redundant full refresh costs two recalculations).
   if (document.fonts?.status === 'loading') {
     void document.fonts.ready.then(() => {
-      if (!destroyed) ScrollTrigger.refresh();
+      if (!destroyed) refresh();
     });
   }
 

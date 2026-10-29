@@ -99,12 +99,13 @@ function ExperienceHost(props: { children: React.ReactNode }): React.JSX.Element
     }
     // Three frames, three short tasks (report, risk table: the engine is created on idle after
     // `load`): this commit's attribute writes are recalculated by the next frame, ScrollTrigger
-    // registers on the frame after it, and the engine measures and builds on the third, so no
-    // task forces a full style recalculation at 4x. Lenis follows one frame later still.
+    // registers on the frame after it where the layout makes triggers (never on a phone), and
+    // the engine measures and builds on the third, so no task forces a full style recalculation
+    // at 4x. Lenis follows one frame later still.
     let created: ScrollEngine | null = null;
     let frame = requestAnimationFrame(() => {
       frame = requestAnimationFrame(() => {
-        engineModule.prepareScrollEngine();
+        engineModule.prepareScrollEngine(tier.layout);
         frame = requestAnimationFrame(() => {
           frame = 0;
           created = engineModule.createScrollEngine({
