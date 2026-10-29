@@ -18,7 +18,8 @@
 //   phone profile first (phone spec 4.1: coarse, under 1024 px, no Lenis; exit 1 otherwise); the
 //   per-section table then compares each tier with tier 0 (the T0 gate and the frames row of
 //   phone spec section 4: recorded, the exit code does not change); the INP lane adds the phone
-//   taps (an FAQ summary at tiers 1 and 2, the light notice's switch from tier 0);
+//   taps (an FAQ summary and a scene 4 chip at tiers 1 and 2, the light notice's switch from
+//   tier 0);
 //   --pace=<px> is the wheel step every 50 ms, or the finger travel per 50 ms of a touch swipe
 //   (default 80): a short section holds a full 1 s window only at a slower pace (hero and trust
 //   at 16);
@@ -664,9 +665,9 @@ async function measureInp(browser, origin, h, viewport, tier, form) {
 }
 
 /**
- * A phone tap's Event Timing (phone spec 4.1 item 6, CPU 4x): an FAQ summary at `?tier=N`, or the
- * light notice's switch on a weak phone (deviceMemory 2 injected, no `?tier`: the light version
- * from hydration), opened by scrolling past the hero card and waiting for it.
+ * A phone tap's Event Timing (phone spec 4.1 item 6, CPU 4x): an FAQ summary or scene 4's VIP chip
+ * at `?tier=N`, or the light notice's switch on a weak phone (deviceMemory 2 injected, no `?tier`:
+ * the light version from hydration), opened by scrolling past the hero card and waiting for it.
  */
 async function measureTap(browser, origin, h, tier, row) {
   const context = await (await browser()).newContext({ ...h.VIEWPORTS.phone, ...CONTEXT });
@@ -693,7 +694,10 @@ async function measureTap(browser, origin, h, tier, row) {
       target = page.locator('[data-light-notice] button').first();
       await target.waitFor({ timeout: 10_000 });
     } else {
-      target = page.locator('[data-scene="first-visit"] summary').first();
+      target =
+        row === 'chip'
+          ? page.locator('[data-scene="restoration"] input[name="home-tier"]').nth(1)
+          : page.locator('[data-scene="first-visit"] summary').first();
       await target.scrollIntoViewIfNeeded();
     }
     await page.waitForTimeout(500);
@@ -876,7 +880,7 @@ function readme(results, bundleMd) {
     lines.push(
       `## INP of the phone taps (390x844, CPU 4x, median of ${RUNS}; budget at most 200 ms)`,
       '',
-      'Event Timing of the tap, as above. `faq`: the first FAQ summary at `?tier=N`. `notice`: the light notice switch on a weak phone (deviceMemory 2 injected, no `?tier`, so tier 0 from hydration).',
+      'Event Timing of the tap, as above. `faq`: the first FAQ summary at `?tier=N`. `chip`: the VIP chip of scene 4 (restoration) at `?tier=N`. `notice`: the light notice switch on a weak phone (deviceMemory 2 injected, no `?tier`, so tier 0 from hydration).',
       '',
       '| Row | Tier | Tap ms (runs) | Event |',
       '|---|---|---|---|',
@@ -1096,7 +1100,10 @@ async function main() {
           // the notice switch from tier 0.
           results.taps = [];
           const rows = [
-            ...TIERS.filter((tier) => tier >= 1).map((tier) => ['faq', tier]),
+            ...TIERS.filter((tier) => tier >= 1).flatMap((tier) => [
+              ['faq', tier],
+              ['chip', tier],
+            ]),
             ['notice', 0],
           ];
           for (const [row, tier] of rows) {
