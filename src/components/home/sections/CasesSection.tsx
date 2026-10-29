@@ -10,7 +10,12 @@ import { HomeSection, media, type Copy } from './HomeSection';
 
 type HomeCase = Omit<Case, 'service' | 'doctor'> & { service: Service | null };
 
-/** Scene 6 (family E): one compare slider and up to two thumbnails into the gallery. */
+/**
+ * Scene 6 (family E): one compare slider and up to two thumbnails into the gallery. The figure's
+ * wrapper is the `compare` world slot (phase 8 draws the displacement wipe there at tiers 2 and
+ * 3 from 1024 px); it and the side text carry `data-enter`, the elements `compare.ts` reveals
+ * once on enter at tiers 1 to 3. The slider itself moves from user input only (D12).
+ */
 export function CasesSection(props: { cases: HomeCase[]; copy: Copy }) {
   const [featured, ...rest] = props.cases.flatMap((c) => {
     const before = media(c.before);
@@ -31,40 +36,42 @@ export function CasesSection(props: { cases: HomeCase[]; copy: Copy }) {
       }
     >
       <div className="grid gap-8 md:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] md:items-center lg:gap-16">
-        <figure className="grid gap-3" data-service-key={featured.service?.key}>
-          <CompareSlider
-            before={
-              <Picture
-                media={featured.before}
-                crop="square"
-                sizes="(min-width: 744px) 28rem, 100vw"
-              />
-            }
-            after={
-              <Picture
-                media={featured.after}
-                crop="square"
-                sizes="(min-width: 744px) 28rem, 100vw"
-              />
-            }
-            handle={
-              <span className="flex">
-                <Icon name="caret-back" size="sm" />
-                <Icon name="caret-forward" size="sm" />
-              </span>
-            }
-            labels={{
-              before: t('ui.compare.before'),
-              after: t('ui.compare.after'),
-              slider: t('ui.compare.label'),
-              percent: t('ui.compare.percent'),
-            }}
-          />
-          <figcaption className="text-small text-pretty text-ink-muted">
-            {t('ui.compare.consent')}
-          </figcaption>
-        </figure>
-        <div className="grid content-start justify-items-start gap-3">
+        <div data-world-slot="compare" data-enter="">
+          <figure className="grid gap-3" data-service-key={featured.service?.key}>
+            <CompareSlider
+              before={
+                <Picture
+                  media={featured.before}
+                  crop="square"
+                  sizes="(min-width: 744px) 28rem, 100vw"
+                />
+              }
+              after={
+                <Picture
+                  media={featured.after}
+                  crop="square"
+                  sizes="(min-width: 744px) 28rem, 100vw"
+                />
+              }
+              handle={
+                <span className="flex">
+                  <Icon name="caret-back" size="sm" />
+                  <Icon name="caret-forward" size="sm" />
+                </span>
+              }
+              labels={{
+                before: t('ui.compare.before'),
+                after: t('ui.compare.after'),
+                slider: t('ui.compare.label'),
+                percent: t('ui.compare.percent'),
+              }}
+            />
+            <figcaption className="text-small text-pretty text-ink-muted">
+              {t('ui.compare.consent')}
+            </figcaption>
+          </figure>
+        </div>
+        <div className="grid content-start justify-items-start gap-3" data-enter="">
           <h3 className="text-heading font-semibold">{featured.title}</h3>
           {featured.notes ? (
             <p className="max-w-measure text-body text-ink-muted">{featured.notes}</p>

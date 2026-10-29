@@ -234,6 +234,8 @@ export function CardRail(props: { label: string; children: ReactNode; className?
       role="region"
       aria-label={props.label}
       tabIndex={0}
+      // A sideways swipe scrolls the rail, not the page (Lenis reads it as its own wheel).
+      data-lenis-prevent-horizontal=""
       className={cx(
         '-mx-gutter grid snap-x snap-mandatory grid-flow-col gap-3 overflow-x-auto scroll-px-gutter px-gutter pt-1 pb-3 lg:mx-0 lg:grid-flow-row lg:grid-cols-3 lg:overflow-visible lg:px-0 [&>*]:snap-start',
         single ? 'auto-cols-[min(100%,24rem)]' : 'auto-cols-[min(84%,20rem)]',

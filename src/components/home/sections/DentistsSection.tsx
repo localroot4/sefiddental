@@ -9,7 +9,11 @@ import { HomeSection, media, type Copy } from './HomeSection';
 
 type HomeDoctor = Omit<Doctor, 'services'> & { services: Service[] };
 
-/** Scene 7 (family F): hidden until a dentist is published (storyboard scene 7). */
+/**
+ * Scene 7 (family F): hidden until a dentist is published (storyboard scene 7). The portrait
+ * sits in its own `[data-portrait]` box inside the card's clipped frame: `dentists.ts` moves
+ * that box toward a fine pointer (at most 8 px, from 1024 px) and leaves the card itself alone.
+ */
 export function DentistsSection(props: { doctors: HomeDoctor[]; copy: Copy }) {
   if (props.doctors.length === 0) return null;
   return (
@@ -37,7 +41,13 @@ export function DentistsSection(props: { doctors: HomeDoctor[]; copy: Copy }) {
               href={buildPath('doctors', doctor) ?? undefined}
               media={
                 photo ? (
-                  <Picture media={photo} crop="portrait" sizes="(min-width: 1024px) 26rem, 84vw" />
+                  <div data-portrait="" className="size-full">
+                    <Picture
+                      media={photo}
+                      crop="portrait"
+                      sizes="(min-width: 1024px) 26rem, 84vw"
+                    />
+                  </div>
                 ) : null
               }
             />
