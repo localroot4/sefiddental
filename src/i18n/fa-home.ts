@@ -103,10 +103,20 @@ export const HOME_MESSAGES = {
   'home.quality.reducedMotion': 'حرکت کمتر فعال است',
   'home.quality.siteCap': 'محدودیت سایت',
   'home.quality.device': 'دستگاه',
+  'home.quality.saveData': 'صرفه‌جویی داده فعال است',
   'home.playground.replay': 'پخش دوباره',
   // COMPARE+DENTISTS+VOICES+LIGHT: the voices carousel buttons.
   'home.voices.prev': 'قبلی',
   'home.voices.next': 'بعدی',
   // SERVICES: the aria label of the phone row's progress bar.
   'home.services.progress': 'جایگاه در فهرست خدمات',
+  // INTEGRATOR: the light notice (phone spec 3.3). «جلوه» is the one word for an effect; the
+  // switch is one button whose label follows the state.
+  'home.light.loaded': 'جلوه‌ها را روی این دستگاه خاموش کردیم تا سایت روان بماند.',
+  'home.light.stepped': 'جلوه‌ها روی این دستگاه کند بود، پس آن‌ها را خاموش کردیم.',
+  'home.light.on': 'جلوه‌ها را روشن کردیم.',
+  'home.light.off': 'جلوه‌ها را خاموش کردیم.',
+  'home.light.turnOn': 'روشن کردن جلوه‌ها',
+  'home.light.turnOff': 'خاموش کردن جلوه‌ها',
+  'home.light.dismiss': 'بستن',
 } as const;

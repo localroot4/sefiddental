@@ -18,6 +18,14 @@
   --color-on-danger: #ffffff;
   --color-danger-strong: #c81e2e;
   --color-backdrop: rgb(10 36 63 / 0.45);
+  /* The site header's height: h-16 plus its hairline under 1024 px, the nav from 1024 px (the
+     light notice sits under it). */
+  --header-h: calc(4rem + 1px);
+}
+@media (min-width: 1024px) {
+  :root {
+    --header-h: var(--nav-h);
+  }
 }
 [data-theme='dark'] {
   --color-backdrop: rgb(2 10 18 / 0.6);
@@ -198,8 +206,9 @@
     font-synthesis: none;
     accent-color: var(--color-brand);
     caret-color: var(--color-brand);
-    /* Anchors such as #سطح-ترمیم land below the sticky header. */
-    scroll-padding-block-start: calc(var(--nav-h) + var(--space-4));
+    /* Anchors such as #سطح-ترمیم land below the sticky header, and below the light notice
+       while it is open (it writes --light-notice-h on <html>; WCAG 2.4.11). */
+    scroll-padding-block-start: calc(var(--nav-h) + var(--space-4) + var(--light-notice-h, 0px));
   }
   body {
     background: var(--color-surface);

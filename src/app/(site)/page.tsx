@@ -13,6 +13,7 @@ import {
 } from '@/components/demo/DemoSections';
 import { HomeBookingPrefill } from '@/components/home/HomeBookingPrefill';
 import { HomeHero } from '@/components/home/HomeHero';
+import { LightNotice } from '@/components/home/LightNotice';
 import { IntroOverlay, IntroScript } from '@/components/home/intro/IntroOverlay';
 import { BookingSection } from '@/components/home/sections/BookingSection';
 import { CasesSection } from '@/components/home/sections/CasesSection';
@@ -27,6 +28,7 @@ import { WorkflowSection } from '@/components/home/sections/WorkflowSection';
 import { getHomeData, getHomePage } from '@/components/home/homeData';
 import { heroImage, heroSubtext, sectionCopy, trustFacts } from '@/components/home/homeView';
 import { JsonLd } from '@/components/seo/JsonLd';
+import { buttonClasses } from '@/components/ui/Button';
 import { ExperienceRoot } from '@/experience/ExperienceRoot';
 import { t } from '@/i18n/fa';
 import { siteCapFrom } from '@/lib/qualityTier';
@@ -72,7 +74,23 @@ export default async function HomePage() {
       ? `https://wa.me/${clinic.phones.whatsapp.replace(/^\+/, '')}?text=${encodeURIComponent(t('home.whatsappText'))}`
       : null;
   return (
-    <ExperienceRoot siteCap={siteCap}>
+    <ExperienceRoot
+      siteCap={siteCap}
+      notice={
+        <LightNotice
+          labels={{
+            loaded: t('home.light.loaded'),
+            stepped: t('home.light.stepped'),
+            on: t('home.light.on'),
+            off: t('home.light.off'),
+            turnOn: t('home.light.turnOn'),
+            turnOff: t('home.light.turnOff'),
+            dismiss: t('home.light.dismiss'),
+          }}
+          buttonClass={{ toggle: buttonClasses('secondary'), dismiss: buttonClasses('ghost') }}
+        />
+      }
+    >
       <div data-page-type="home">
         {/* Phase 7: the lockup parts once (the intro and the playground use them), then the intro
             overlay (none when the site cap is 0: no experience, no brand moment); its script
