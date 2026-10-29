@@ -94,6 +94,8 @@ const scene: DomScene = {
         scrub: true,
         invalidateOnRefresh: true,
         anticipatePin: 1,
+        // A fixed pin made Chromium report a 0.777 layout shift of the stage at each pin edge.
+        pinType: 'transform',
       },
       defaults: { ease: 'none' },
     });
