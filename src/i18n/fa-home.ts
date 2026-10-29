@@ -66,10 +66,9 @@ export const HOME_MESSAGES = {
   'booking.whatsappText': 'سلام، همین الان در سایت درخواست نوبت ثبت کردم.',
   'home.book': 'رزرو نوبت',
   'home.whatsappText': 'سلام، از سایت کلینیک سفید پیام می‌دهم. سؤالی دربارهٔ نوبت دارم.',
-  'home.hero.photoWide':
-    'عکس افقی (ضلع بلند دست‌کم ۴۰۰۰ پیکسل): فضای خالی کلینیک (اتاق درمان یا پذیرش) با نور طبیعی، بدون چهره. جزئیات اصلی در نوار وسط و بالای کادر.',
-  'home.hero.photoTall':
-    'برش ۴:۵ برای موبایل از همان عکاسی: فضای خالی کلینیک (اتاق درمان یا پذیرش) با نور طبیعی، بدون چهره. جزئیات اصلی در یک‌سوم بالای کادر باشد؛ پایین کادر زیر نوار حقایق می‌رود.',
+  // The photo brief (size, crop, focal band) is gap 36 and the shot list; the page names the scene.
+  'home.hero.photoWide': 'فضای خالی کلینیک با نور طبیعی، بدون چهره',
+  'home.hero.photoTall': 'فضای خالی کلینیک با نور طبیعی، بدون چهره',
   'home.trust.label': 'حقایق کلینیک',
   'home.trust.free': 'مشاورهٔ اول رایگان',
   'home.trust.callbackBefore': 'تماس پذیرش تا',
