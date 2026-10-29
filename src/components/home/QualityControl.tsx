@@ -3,11 +3,11 @@
 /**
  * The «کیفیت» control of the footer stage (phase 7 report D9; spec scene 11): a radio group of
  * «خودکار» and the four tiers, server HTML enabled after hydration, that calls
- * `setUserOverride` (the saved choice, `localStorage['sefid-quality']`; the store relatches at
- * once and the root keeps the reader in place). The line under it names the effective tier and,
- * when that is not the reader's choice, why: reduced motion, the site cap, Save-Data, or the
- * device (no WebGL 2, a software renderer, little memory, a slow CPU, the light floor, the frame
- * monitor). No analytics event.
+ * `setUserOverride` after the next paint (the saved choice, `localStorage['sefid-quality']`; the
+ * store relatches then and the root keeps the reader in place). The line under it names the
+ * effective tier and, when that is not the reader's choice, why: reduced motion, the site cap,
+ * Save-Data, or the device (no WebGL 2, a software renderer, little memory, a slow CPU, the light
+ * floor, the frame monitor). No analytics event.
  * Every string comes from the server component as a prop: a client import of `@/i18n/fa` would
  * put the whole message map into the home initial JS (+17 KiB measured by check:bundle).
  */
@@ -85,6 +85,8 @@ export function QualityControl(props: { labels: QualityLabels }) {
   // The line is live only once the reader has reached the control: the fill at hydration and a
   // monitor step-down before any interaction are not announced out of context.
   const [live, setLive] = useState(false);
+  // The radio a click checked while its relatch waits for the next paint (see onChange).
+  const [pending, setPending] = useState<TierOverride | null>(null);
   const tierName = (value: Tier): string => labels.tiers[value];
   const why = tier.hydrated ? whyDiffers(tier.reason, labels) : null;
   return (
@@ -101,9 +103,19 @@ export function QualityControl(props: { labels: QualityLabels }) {
             name={RADIO_NAME}
             value={String(option)}
             label={option === 'auto' ? labels.auto : tierName(option)}
-            checked={choice === option}
+            checked={(pending ?? choice) === option}
             disabled={!tier.hydrated}
-            onChange={() => tier.setUserOverride(option)}
+            // The relatch (the old engine's teardown) runs in a task after the next paint, so the
+            // click paints at once (desktop INP 2 → 1 was 272 ms with it in the click task).
+            onChange={() => {
+              setPending(option);
+              requestAnimationFrame(() =>
+                setTimeout(() => {
+                  tier.setUserOverride(option);
+                  setPending((now) => (now === option ? null : now));
+                }, 0),
+              );
+            }}
           />
         ))}
       </div>

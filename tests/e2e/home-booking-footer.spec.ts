@@ -636,6 +636,7 @@ test('T-BF8 the «کیفیت» radios move html[data-tier] at once, keep the foo
   await page.emulateMedia({ reducedMotion: 'no-preference' });
 
   await radio(t('home.quality.auto')).check();
-  expect(await page.evaluate(() => localStorage.getItem('sefid-quality'))).toBeNull();
+  // The choice is saved after the next paint (QualityControl), so poll.
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('sefid-quality'))).toBeNull();
   await expect(radio(t('home.quality.auto'))).toBeChecked();
 });

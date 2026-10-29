@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TierProvider } from '@/experience/tier/TierProvider';
@@ -57,6 +57,15 @@ const radio = (name: string) => screen.getByRole('radio', { name });
 const line = () => screen.getByRole('group').getAttribute('aria-describedby')!;
 const lineText = () => document.getElementById(line())!.textContent;
 
+/** Waits for the relatch, which runs in a task after the next frame. */
+const afterPaint = () =>
+  act(() => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0))));
+
+async function choose(name: string) {
+  fireEvent.click(radio(name));
+  await afterPaint();
+}
+
 function mount(siteCap: Tier | null = null) {
   window.history.replaceState(null, '', '/');
   return render(
@@ -111,20 +120,26 @@ describe('QualityControl', () => {
     expect(lineText()).toBe(t('home.quality.tier1'));
   });
 
-  it('a choice writes localStorage, moves html[data-tier] at once and checks the radio', () => {
+  it('a choice checks the radio at once, then after the next paint writes localStorage and moves html[data-tier]', async () => {
     mount();
     // The tier line is announced only after the reader reaches the control (focus), not at load.
     expect(document.getElementById(line())!.getAttribute('aria-live')).toBeNull();
     fireEvent.focus(radio(t('home.quality.tier2')));
     expect(document.getElementById(line())!.getAttribute('aria-live')).toBe('polite');
     fireEvent.click(radio(t('home.quality.tier2')));
+    // The click task only checks the radio: the relatch would delay its paint (INP).
+    expect(radio(t('home.quality.tier2'))).toHaveProperty('checked', true);
+    expect(radio(t('home.quality.auto'))).toHaveProperty('checked', false);
+    expect(localStorage.getItem('sefid-quality')).toBeNull();
+    expect(document.documentElement.dataset.tier).not.toBe('2');
+    await afterPaint();
     expect(localStorage.getItem('sefid-quality')).toBe('2');
     expect(document.documentElement.dataset.tier).toBe('2');
     expect(document.documentElement.dataset.tierReason).toBe('user-override');
     expect(radio(t('home.quality.tier2'))).toHaveProperty('checked', true);
     expect(lineText()).toBe(t('home.quality.tier2'));
 
-    fireEvent.click(radio(t('home.quality.auto')));
+    await choose(t('home.quality.auto'));
     expect(localStorage.getItem('sefid-quality')).toBeNull();
     expect(radio(t('home.quality.auto'))).toHaveProperty('checked', true);
   });
@@ -136,18 +151,18 @@ describe('QualityControl', () => {
     expect(lineText()).toBe(t('home.quality.tier3'));
   });
 
-  it('says why the effective tier differs: the site cap', () => {
+  it('says why the effective tier differs: the site cap', async () => {
     mount(1);
-    fireEvent.click(radio(t('home.quality.tier3')));
+    await choose(t('home.quality.tier3'));
     expect(radio(t('home.quality.tier3'))).toHaveProperty('checked', true);
     expect(document.documentElement.dataset.tier).toBe('1');
     expect(lineText()).toBe(`${t('home.quality.tier1')} · ${t('home.quality.siteCap')}`);
   });
 
-  it('says why the effective tier differs: reduced motion', () => {
+  it('says why the effective tier differs: reduced motion', async () => {
     installMatchMedia({ '(prefers-reduced-motion: reduce)': true, '(pointer: fine)': true });
     mount();
-    fireEvent.click(radio(t('home.quality.tier3')));
+    await choose(t('home.quality.tier3'));
     expect(document.documentElement.dataset.tier).toBe('0');
     expect(lineText()).toBe(`${t('home.quality.tier0')} · ${t('home.quality.reducedMotion')}`);
   });
