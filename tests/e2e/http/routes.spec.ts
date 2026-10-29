@@ -1,7 +1,7 @@
 // System and feed routes (deliverables 5 and 7; spec-platform 9.4-9.6, 11.1-11.3) on the running
 // artifact. Tests of routes Lane P is still building skip until their source file exists
 // (tests/helpers/pending.ts) and then run without an edit.
-import { expect, test, type APIRequestContext } from '@playwright/test';
+import { expect, test, type APIRequestContext, type APIResponse } from '@playwright/test';
 
 import { t } from '@/i18n/fa';
 import { ADMIN_ROUTE, PAGE_PATHS } from '@/lib/paths';
@@ -45,20 +45,36 @@ test.describe('GET and HEAD /api/health', () => {
   });
 });
 
+// Without a trusted proxy every e2e request shares one rate-limit bucket, and the beacons of pages
+// in other workers can spend its 60 events of the window. A 429 then says nothing about this
+// route: wait out the fixed window once and send again; any other status is returned as is.
+async function postEvent(
+  request: APIRequestContext,
+  options: Parameters<APIRequestContext['post']>[1],
+): Promise<APIResponse> {
+  const first = await request.post('/api/events', options);
+  if (first.status() !== 429) return first;
+  const waitSec = Number(first.headers()['retry-after'] ?? '60');
+  await new Promise((resolve) => setTimeout(resolve, (waitSec + 1) * 1000));
+  return request.post('/api/events', options);
+}
+
 test.describe('POST /api/events', () => {
+  // Room for one wait of up to 61 s in postEvent.
+  test.describe.configure({ timeout: 120_000 });
   test.beforeEach(() => requireRoutes('events'));
 
   test('T-RT3 a valid event answers 204 and sets no cookie (JSON and sendBeacon text)', async ({
     request,
   }) => {
-    const json = await request.post('/api/events', {
+    const json = await postEvent(request, {
       data: { event: 'call_click', location: 'header', pageType: 'home' },
     });
     expect(json.status()).toBe(204);
     expect(json.headers()['set-cookie']).toBeUndefined();
 
     // navigator.sendBeacon sends text/plain from the same origin.
-    const beacon = await request.post('/api/events', {
+    const beacon = await postEvent(request, {
       headers: { 'content-type': 'text/plain;charset=UTF-8', origin: APP_ORIGIN },
       data: JSON.stringify([{ event: 'theme_toggle' }, { event: 'whatsapp_click' }]),
     });
@@ -67,7 +83,7 @@ test.describe('POST /api/events', () => {
   });
 
   test('T-RT4 an unknown event name is dropped with 204', async ({ request }) => {
-    const response = await request.post('/api/events', { data: { event: 'evil' } });
+    const response = await postEvent(request, { data: { event: 'evil' } });
     expect(response.status()).toBe(204);
   });
 
