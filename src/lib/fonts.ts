@@ -1,5 +1,8 @@
 import localFont from 'next/font/local';
 
+// The metric-matched "Vazirmatn Fallback" faces (global CSS: every layout that loads the fonts).
+import './fonts.css';
+
 /**
  * The family name equals the exported constant, so `design/tokens.css`
  * (`"Vazirmatn", "Vazirmatn Fallback"`, `"Estedad"`) resolves without edits.
@@ -15,6 +18,9 @@ export const Vazirmatn = localFont({
   display: 'swap',
   variable: '--font-vazirmatn',
   fallback: ['system-ui', 'sans-serif'],
+  // fonts.css declares "Vazirmatn Fallback": next/font's would be Arial only, which has no
+  // Persian glyphs on Android or Linux, so the swap shifted the page there.
+  adjustFontFallback: false,
 });
 
 // Persian-only display face: no Latin letters, so no metric-adjusted fallback; the token

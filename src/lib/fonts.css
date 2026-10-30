@@ -1,0 +1,89 @@
+/*
+ * "Vazirmatn Fallback" (design/tokens.css --font-body): the system font that shows the text
+ * until Vazirmatn arrives (font-display: swap), with Vazirmatn's vertical metrics (ascent
+ * 1.0254 em, descent 0.5371 em, no line gap) and a size-adjust that matches the width of the home
+ * text, so the swap moves nothing. One face per system font and weight; Chromium uses the
+ * last face whose local() font exists, so the order is the priority. size-adjust is
+ * Vazirmatn's width over the font's on the home text (docs/qa/audit-performance.md); the
+ * overrides are Vazirmatn's metrics divided by it. Arial keeps the values next/font generated
+ * (Windows and macOS; its Persian widths were not measured).
+ */
+@font-face {
+  font-family: 'Vazirmatn Fallback';
+  src: local('Arial'), local('ArialMT');
+  font-weight: 400;
+  size-adjust: 101%;
+  ascent-override: 101.52%;
+  descent-override: 53.18%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Vazirmatn Fallback';
+  src: local('Arial Bold'), local('Arial-BoldMT');
+  font-weight: 700;
+  size-adjust: 101%;
+  ascent-override: 101.52%;
+  descent-override: 53.18%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Vazirmatn Fallback';
+  src: local('DejaVu Sans'), local('DejaVuSans');
+  font-weight: 400;
+  size-adjust: 92.8%;
+  ascent-override: 110.49%;
+  descent-override: 57.88%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Vazirmatn Fallback';
+  src: local('DejaVu Sans Bold'), local('DejaVuSans-Bold');
+  font-weight: 700;
+  size-adjust: 79.9%;
+  ascent-override: 128.33%;
+  descent-override: 67.22%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Vazirmatn Fallback';
+  src: local('Noto Naskh Arabic'), local('NotoNaskhArabic-Regular');
+  font-weight: 400;
+  size-adjust: 109%;
+  ascent-override: 94.07%;
+  descent-override: 49.28%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Vazirmatn Fallback';
+  src: local('Noto Naskh Arabic Bold'), local('NotoNaskhArabic-Bold');
+  font-weight: 700;
+  size-adjust: 107.4%;
+  ascent-override: 95.47%;
+  descent-override: 50.01%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Vazirmatn Fallback';
+  src: local('Noto Sans Arabic'), local('NotoSansArabic-Regular');
+  font-weight: 400;
+  size-adjust: 98.8%;
+  ascent-override: 103.78%;
+  descent-override: 54.36%;
+  line-gap-override: 0%;
+}
+
+@font-face {
+  font-family: 'Vazirmatn Fallback';
+  src: local('Noto Sans Arabic Bold'), local('NotoSansArabic-Bold');
+  font-weight: 700;
+  size-adjust: 91.7%;
+  ascent-override: 111.82%;
+  descent-override: 58.57%;
+  line-gap-override: 0%;
+}
