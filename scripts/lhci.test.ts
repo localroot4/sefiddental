@@ -180,7 +180,6 @@ describe('lighthouserc.cjs', () => {
       '/qa/floor',
       '/qa/not-found',
       encodeURI('/خدمات/ترمیم-دندان'),
-      encodeURI('/پزشکان/دکتر-نمونه-آزمایشی'),
       encodeURI('/هزینه-و-پرداخت'),
       encodeURI('/رزرو-نوبت'),
       encodeURI('/اورژانس'),
@@ -188,7 +187,7 @@ describe('lighthouserc.cjs', () => {
       '/?tier=1',
     ]);
     for (const url of ci.collect.url) expect(entries(url), url).toHaveLength(1);
-    const [floor, notFound, service, dentist, pricing, booking, emergency, tier0, tier1] =
+    const [floor, notFound, service, pricing, booking, emergency, tier0, tier1] =
       ci.collect.url.map((url) => entries(url)[0]!);
     // The floor is measured, never asserted; content TBT only warns in LHCI (tbtGate gates it).
     expect(floor!.assertions).toEqual({});
@@ -205,7 +204,6 @@ describe('lighthouserc.cjs', () => {
       expect(script).toEqual(['error', { maxNumericValue: (150 + 5 + 1) * 1024 }]);
     }
     expect(service!.assertions).toEqual(notFound!.assertions);
-    expect(dentist!.assertions).toEqual(notFound!.assertions);
     expect(pricing!.assertions).toEqual(notFound!.assertions);
     const { 'resource-summary:script:size': homeScript, ...tier0Rest } = tier0!.assertions;
     const { 'resource-summary:script:size': contentScript, ...contentRest } = notFound!.assertions;
@@ -223,6 +221,37 @@ describe('lighthouserc.cjs', () => {
       'resource-summary:script:size': ['error', { maxNumericValue: (170 + 65 + 1) * 1024 }],
       'cumulative-layout-shift': ['error', { maxNumericValue: 0.05, aggregationMethod: 'median' }],
     });
+  });
+  it('T-LH7 LHCI_FORM_FACTOR=desktop (Lighthouse desktop preset) writes its own report folders; mobile keeps the CPU multiplier', () => {
+    type Rc = {
+      ci: {
+        collect: { settings: Record<string, unknown> };
+        upload: { outputDir: string };
+      };
+    };
+    const require = createRequire(import.meta.url);
+    const load = (preset?: string) => {
+      const path = require.resolve('../lighthouserc.cjs');
+      delete require.cache[path];
+      const before = process.env.LHCI_FORM_FACTOR;
+      if (preset) process.env.LHCI_FORM_FACTOR = preset;
+      else delete process.env.LHCI_FORM_FACTOR;
+      try {
+        return (require(path) as Rc).ci;
+      } finally {
+        if (before === undefined) delete process.env.LHCI_FORM_FACTOR;
+        else process.env.LHCI_FORM_FACTOR = before;
+        delete require.cache[path];
+      }
+    };
+    const desktop = load('desktop');
+    expect(desktop.collect.settings.preset).toBe('desktop');
+    expect(desktop.collect.settings.throttling).toBeUndefined();
+    expect(desktop.upload.outputDir).toBe('.lighthouseci/reports/desktop-light');
+    const mobile = load();
+    expect(mobile.collect.settings.preset).toBeUndefined();
+    expect(mobile.collect.settings.throttling).toEqual({ cpuSlowdownMultiplier: 4 });
+    expect(mobile.upload.outputDir).toBe('.lighthouseci/reports/light');
   });
 });
 

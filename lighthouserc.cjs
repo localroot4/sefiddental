@@ -3,13 +3,19 @@
 //
 // Content budgets run on /qa/not-found (the 404 template rendered with HTTP 200, because
 // Lighthouse aborts on a 404 document, freeze decision 3; the route exists only while the server
-// runs with QA_ROUTES=1), the restoration service page, the e2e fixture's dentist profile and home
-// at tier 0 (phase 4 freeze F11). scripts/lhci.mjs runs this file twice: light, then
-// LHCI_THEME=dark. Reports stay on disk (.lighthouseci/reports/<theme>), never on a public link.
+// runs with QA_ROUTES=1), the restoration service page, pricing and home at tier 0 (phase 4
+// freeze F11). The dentist profile and the articles are not measured: none publishes at launch
+// (a published reviewer dentist is a prerequisite, docs/content/gaps.md 2 and 42); they join the
+// list with the first one. scripts/lhci.mjs runs this file twice: light, then LHCI_THEME=dark.
+// LHCI_FORM_FACTOR=desktop runs Lighthouse's desktop preset (its own throttling) over the same
+// list for the audit; CI runs the mobile preset only. Reports stay on disk
+// (.lighthouseci/reports/[desktop-]<theme>), never on a public link.
 const limits = require('./tests/budgets/limits.json');
 
 const KiB = 1024;
 const dark = process.env.LHCI_THEME === 'dark';
+// Not LHCI_PRESET: LHCI reads every LHCI_* variable as an option, and `assert --preset` exists.
+const desktop = process.env.LHCI_FORM_FACTOR === 'desktop';
 const port = Number(process.env.E2E_PORT ?? '3000');
 const origin = `http://localhost:${port}`;
 // scripts/lhci.mjs puts HTTPS and HTTP/2 in front of the server (scripts/tls-front.mjs), as
@@ -54,7 +60,6 @@ const common = {
 // Persian paths are requested percent-encoded; the patterns match that form (encodeURI output
 // holds no regex metacharacters). Every URL matches exactly one matrix entry (scripts/lhci.test.ts).
 const SERVICE = encodeURI('/خدمات/ترمیم-دندان');
-const DENTIST = encodeURI('/پزشکان/دکتر-نمونه-آزمایشی');
 const PRICING = encodeURI('/هزینه-و-پرداخت');
 const BOOKING = encodeURI('/رزرو-نوبت');
 const EMERGENCY = encodeURI('/اورژانس');
@@ -88,7 +93,6 @@ module.exports = {
         `${pageOrigin}/qa/floor`,
         `${pageOrigin}/qa/not-found`,
         `${pageOrigin}${SERVICE}`,
-        `${pageOrigin}${DENTIST}`,
         `${pageOrigin}${PRICING}`,
         `${pageOrigin}${BOOKING}`,
         `${pageOrigin}${EMERGENCY}`,
@@ -105,7 +109,11 @@ module.exports = {
       settings: {
         // scripts/lhci.mjs measures the host and picks Lighthouse's documented multiplier for a
         // mid-tier mobile target (4x on a fast desktop, 2x on a slower one); 4x is the default.
-        throttling: { cpuSlowdownMultiplier: Number(process.env.LHCI_CPU_MULTIPLIER ?? '4') },
+        ...(desktop
+          ? { preset: 'desktop' }
+          : {
+              throttling: { cpuSlowdownMultiplier: Number(process.env.LHCI_CPU_MULTIPLIER ?? '4') },
+            }),
         chromeFlags: [
           '--headless=new',
           '--no-sandbox',
@@ -121,7 +129,6 @@ module.exports = {
         { matchingUrlPattern: '/qa/floor', assertions: {} },
         { matchingUrlPattern: '/qa/not-found', assertions: contentAssertions },
         { matchingUrlPattern: SERVICE, assertions: contentAssertions },
-        { matchingUrlPattern: DENTIST, assertions: contentAssertions },
         { matchingUrlPattern: PRICING, assertions: contentAssertions },
         // Booking and emergency (freeze G19): the content gates with the booking-class script
         // limit; their 2.0 s LCP target (docs/brief.md section 7) is reported, not gated, on CI
@@ -172,7 +179,7 @@ module.exports = {
     },
     upload: {
       target: 'filesystem',
-      outputDir: `.lighthouseci/reports/${dark ? 'dark' : 'light'}`,
+      outputDir: `.lighthouseci/reports/${desktop ? 'desktop-' : ''}${dark ? 'dark' : 'light'}`,
     },
   },
 };
