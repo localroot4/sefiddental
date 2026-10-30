@@ -1207,4 +1207,14 @@ describe('server workflow and the public log', () => {
       deployment: false,
     });
   });
+
+  it('VPS33 the admin e-mail comes from a secret, never from a public input', () => {
+    const wf = workflow('server.yml');
+    expect(wf.on.workflow_dispatch.inputs.email).toBeUndefined();
+    const admin = wf.jobs.server!.steps.find((s) => s.name?.startsWith('Admin account'))!;
+    expect(admin.env!.ADMIN_EMAIL).toBe('${{ secrets.ADMIN_EMAIL }}');
+    expect(readFileSync(path.join(DIR, '../../.github/workflows/server.yml'), 'utf8')).not.toMatch(
+      /inputs\.email/,
+    );
+  });
 });

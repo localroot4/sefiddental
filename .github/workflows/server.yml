@@ -4,9 +4,9 @@
 # workflow", branch main, pick an action. A push to main that changes deploy/vps/ or this file
 # runs only `vps-smoke`, which provisions and checks a server on the runner itself. Every Friday
 # the schedule runs `offsite-backup` (docs/deploy.md 3.6).
-# Secrets: SERVER_SSH_KEY (deploy's private key) and ADMIN_PASSWORD (first-admin, reset-admin),
-# in the environment `server`, which only main may use (docs/deploy.md 3.2). The repository is
-# public, and so is this log. No step prints a secret: the step after the
+# Secrets: SERVER_SSH_KEY (deploy's private key), ADMIN_EMAIL and ADMIN_PASSWORD (first-admin,
+# reset-admin), in the environment `server`, which only main may use (docs/deploy.md 3.2). The
+# repository is public, and so is this log. No step prints a secret: the step after the
 # connection masks every secret of the server's app.env, values read from the server are
 # masked before any other use, and no step runs `set -x`. The key lives in an ssh-agent, never
 # in a file, and only after the build: third-party code that runs later (Payload, the seeder)
@@ -39,9 +39,6 @@ on:
           - restore-check
           - offsite-backup
           - smoke
-      email:
-        description: 'first-admin, reset-admin: e-mail of the admin account'
-        type: string
       command:
         description: 'run: one shell command, run as deploy on the server. deploy has sudo, so this is as powerful as the SSH key. The log is public. Never print a secret or patient data (no SELECT on bookings, no pg_dump to stdout): the command and its output go into the log.'
         type: string
@@ -519,7 +516,9 @@ jobs:
       - name: Admin account (scripts/first-admin.ts, scripts/reset-admin.ts)
         if: contains(fromJSON('["first-admin","reset-admin","smoke"]'), env.ACTION)
         env:
-          ADMIN_EMAIL: ${{ inputs.email }}
+          # A secret, so the log masks the address: a public admin e-mail lets anyone lock the
+          # account with five wrong passwords.
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
         run: |
           if [ "$ACTION" = smoke ]; then
@@ -528,7 +527,7 @@ jobs:
             echo "::add-mask::$ADMIN_PASSWORD"
           fi
           if [ -z "$ADMIN_EMAIL" ]; then
-            echo "::error::Give the admin's e-mail in the input \"email\"."
+            echo "::error::The secret ADMIN_EMAIL of the environment server is empty. Add the admin's e-mail there (docs/deploy.md 3.2)."
             exit 1
           fi
           if [ -z "$ADMIN_PASSWORD" ]; then
