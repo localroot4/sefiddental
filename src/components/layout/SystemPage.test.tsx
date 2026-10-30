@@ -31,6 +31,7 @@ const CONTACT: FooterData = {
   legal: { licenseNumber: null, technicalSupervisor: null },
   popular: [],
   guides: [],
+  hubs: { dentists: true, articles: true },
 };
 
 const notFound = async (contact: FooterData = CONTACT) => {

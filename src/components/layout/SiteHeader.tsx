@@ -25,7 +25,12 @@ import { telHref } from '@/lib/phone';
  */
 export function SiteHeader(props: { nav: NavTree; contact: FooterData }) {
   const phone = props.contact.phones.landline;
-  const links = [pageLink('dentists-hub'), pageLink('pricing'), pageLink('address')];
+  // The dentists hub is linked only once a dentist is published (JURY 4, decision 1a).
+  const links = [
+    ...(props.contact.hubs.dentists ? [pageLink('dentists-hub')] : []),
+    pageLink('pricing'),
+    pageLink('address'),
+  ];
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-line bg-surface-raised/88 backdrop-blur-[12px]">
@@ -39,7 +44,13 @@ export function SiteHeader(props: { nav: NavTree; contact: FooterData }) {
           </Link>
           <nav aria-label={t('nav.primary')} className="max-lg:hidden">
             <ul className="flex items-center gap-1">
-              <MegaMenu nav={props.nav} />
+              <MegaMenu
+                nav={props.nav}
+                hubs={{
+                  guides: props.contact.guides.length > 0,
+                  articles: props.contact.hubs.articles,
+                }}
+              />
               {links.map((link) => (
                 <li key={link.href}>
                   <NavLink href={link.href} className={NAV_ITEM}>

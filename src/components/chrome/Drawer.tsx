@@ -138,11 +138,17 @@ export function Drawer(props: { nav: NavTree; contact: FooterData }) {
             </li>
           ))}
         </ul>
-        <Rows links={[pageLink('dentists-hub'), pageLink('pricing')]} />
+        {/* A hub with nothing published is no menu item (JURY 4); it returns with its content. */}
         <Rows
           links={[
-            pageLink('guide-hub'),
-            pageLink('articles'),
+            ...(contact.hubs.dentists ? [pageLink('dentists-hub')] : []),
+            pageLink('pricing'),
+          ]}
+        />
+        <Rows
+          links={[
+            ...(contact.guides.length > 0 ? [pageLink('guide-hub')] : []),
+            ...(contact.hubs.articles ? [pageLink('articles')] : []),
             pageLink('about'),
             pageLink('address'),
           ]}

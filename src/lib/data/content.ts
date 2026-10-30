@@ -79,6 +79,12 @@ export async function getGuides(): Promise<Guide[]> {
     .map(withPublishedReviewer);
 }
 
+/** True once one article is published: the chrome links the articles hub only then (JURY 4). */
+export async function hasPublishedArticles(): Promise<boolean> {
+  const docs = await getPublished('articles', { limit: 1, select: { slug: true } });
+  return docs.length > 0;
+}
+
 /** One published guide by the `[slug]` route param, or null (hub slugs never match). */
 export async function getGuideBySlug(param: string): Promise<Guide | null> {
   const [page] = await getPublished('pages', {

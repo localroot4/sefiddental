@@ -7,7 +7,7 @@ import type { PageKey } from '@/lib/paths';
 
 import { getServiceTree, type NavLink } from './catalog';
 import { toClinicHours } from './clinicHours';
-import { getGuides } from './content';
+import { getDoctors, getGuides, hasPublishedArticles } from './content';
 import { getClinic } from './globals';
 
 const SOCIAL_URLS = {
@@ -56,6 +56,12 @@ export interface FooterData {
   popular: NavLink[];
   /** Published patient guides: a footer link renders only for a published target (C18). */
   guides: { key: PageKey; path: string }[];
+  /**
+   * The hubs with something published. The header and the drawer link a hub only then: at launch
+   * the dentists and articles hubs are empty (decision 1a), and an empty hub as a top-level link
+   * reads as «nothing here» (JURY 4). The guides hub follows `guides`.
+   */
+  hubs: { dentists: boolean; articles: boolean };
 }
 
 /** With the database down: the system pages' clinic facts (CLINIC_FALLBACK), nothing else. */
@@ -72,6 +78,7 @@ export const FOOTER_FALLBACK: FooterData = {
   legal: { licenseNumber: null, technicalSupervisor: null },
   popular: [],
   guides: [],
+  hubs: { dentists: false, articles: false },
 };
 
 /**
@@ -80,7 +87,13 @@ export const FOOTER_FALLBACK: FooterData = {
  */
 export async function getFooterData(): Promise<FooterData> {
   try {
-    const [clinic, tree, guides] = await Promise.all([getClinic(), getServiceTree(), getGuides()]);
+    const [clinic, tree, guides, doctors, articles] = await Promise.all([
+      getClinic(),
+      getServiceTree(),
+      getGuides(),
+      getDoctors(),
+      hasPublishedArticles(),
+    ]);
     const { phones, maps, legal } = clinic;
     return {
       name: clinic.nameFa,
@@ -105,6 +118,7 @@ export async function getFooterData(): Promise<FooterData> {
           .map(({ key, navLabel, path }) => ({ key, label: navLabel, path })),
       ),
       guides: guides.map(({ key, path }) => ({ key, path })),
+      hubs: { dentists: doctors.length > 0, articles },
     };
   } catch (err) {
     log.error({ msg: 'footer_data_unavailable', err });

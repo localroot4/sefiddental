@@ -48,12 +48,20 @@ function Column(props: {
  * are the categories with a page (money services first), then «سایر خدمات» with the standalone
  * services and «همهٔ خدمات», then the secondary row. Labels and order come from Payload.
  */
-export function MegaMenu(props: { nav: NavTree }) {
+export function MegaMenu(props: {
+  nav: NavTree;
+  /** The hubs with published content (JURY 4): an empty hub is no menu item. */
+  hubs: { guides: boolean; articles: boolean };
+}) {
   const others = [
     ...props.nav.others.map((item) => ({ href: item.path, label: item.label })),
     pageLink('services-hub'),
   ];
-  const row = [pageLink('guide-hub'), pageLink('articles'), pageLink('about')];
+  const row = [
+    ...(props.hubs.guides ? [pageLink('guide-hub')] : []),
+    ...(props.hubs.articles ? [pageLink('articles')] : []),
+    pageLink('about'),
+  ];
   const urgent = pageLink('emergency');
   return (
     <li className="group/mega">

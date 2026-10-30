@@ -124,6 +124,17 @@ describe('chrome readers: nav tree and footer (CC-7, F12, C18)', () => {
     ]);
     expect(footer.popular).toEqual([{ key: 'لمینت', label: 'لمینت', path: '/خدمات/لمینت' }]);
     expect(footer.guides).toEqual([]);
+    // No dentist or article published: the header and the drawer leave those hubs out (JURY 4).
+    expect(footer.hubs).toEqual({ dentists: false, articles: false });
+    reads.published.mockImplementation(async (collection) =>
+      collection === 'doctors'
+        ? [{ id: 1, services: [] }]
+        : collection === 'articles'
+          ? [{ slug: 'x' }]
+          : catalogue(collection),
+    );
+    expect((await getFooterData()).hubs).toEqual({ dentists: true, articles: true });
+    reads.published.mockImplementation(catalogue);
 
     reads.clinic.mockResolvedValue({
       ...CLINIC,
@@ -141,6 +152,7 @@ describe('chrome readers: nav tree and footer (CC-7, F12, C18)', () => {
       phones: { landline: CLINIC_FALLBACK.phoneE164 },
       hours: CLINIC_FALLBACK.hoursLine,
       whatsapp: null,
+      hubs: { dentists: false, articles: false },
     });
     expect(writes.filter((w) => w.includes('footer_data_unavailable'))).toHaveLength(1);
   });

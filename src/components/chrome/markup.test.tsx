@@ -53,6 +53,7 @@ const CONTACT: FooterData = {
   legal: { licenseNumber: null, technicalSupervisor: null },
   popular: [{ key: 'veneers', label: 'لمینت سرامیکی', path: '/خدمات/لمینت-سرامیکی' }],
   guides: [],
+  hubs: { dentists: true, articles: true },
 };
 
 const html = (node: React.ReactElement) => renderToStaticMarkup(node);
@@ -91,6 +92,32 @@ describe('chrome markup (nav spec 1, ia.md 3)', () => {
     expect(
       html(<SiteHeader nav={NAV} contact={{ ...CONTACT, whatsapp: '+989205451054' }} />),
     ).toContain('https://wa.me/989205451054?text=');
+  });
+
+  it('CM7 an empty hub is no header or drawer item: dentists, guides and articles return with content (JURY 4)', () => {
+    const links = (contact: FooterData) =>
+      [...html(<SiteHeader nav={NAV} contact={contact} />).matchAll(/href="([^"]+)"/g)].map((m) =>
+        decodeURI(m[1]!),
+      );
+    const hubs = ['/پزشکان', '/راهنمای-بیمار', '/مقالات'];
+    // The header bar and the drawer (both in SiteHeader's markup): none of the three while empty.
+    const empty = links({ ...CONTACT, guides: [], hubs: { dentists: false, articles: false } });
+    expect(hubs.filter((hub) => empty.includes(hub))).toEqual([]);
+    expect(empty).toContain('/هزینه-و-پرداخت');
+    const full = links({
+      ...CONTACT,
+      guides: [{ key: 'guide-first-visit', path: '/راهنمای-بیمار/اولین-مراجعه' }],
+      hubs: { dentists: true, articles: true },
+    });
+    // The dentists hub twice (bar and drawer), the guides and articles hubs in the drawer.
+    expect(full.filter((href) => href === '/پزشکان')).toHaveLength(2);
+    expect(full).toContain('/راهنمای-بیمار');
+    expect(full).toContain('/مقالات');
+    // The footer keeps its crawl path to every hub.
+    const footer = html(
+      <SiteFooter contact={{ ...CONTACT, hubs: { dentists: false, articles: false } }} />,
+    );
+    for (const hub of hubs) expect(footer).toContain(`href="${hub}"`);
   });
 
   it('CM2 sticky bar: two cells, three once WhatsApp is verified, with the generic prefill', () => {
