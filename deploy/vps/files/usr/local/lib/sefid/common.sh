@@ -7,6 +7,8 @@
 : "${SEFID_ROOT:=/srv/sefid}"
 : "${SEFID_ETC:=/etc/sefid}"
 : "${SEFID_BACKUPS:=/var/backups/sefid}"
+# The restore drill's folder: not under /tmp or /var/tmp, which the scratch app's PrivateTmp hides.
+: "${SEFID_SCRATCH:=/var/lib}"
 # Touched by sefid-cron.service after every successful tick (sefid-status --check).
 : "${SEFID_CRON_OK:=/run/sefid-cron.ok}"
 

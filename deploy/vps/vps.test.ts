@@ -310,7 +310,8 @@ function fakeServer() {
   const root = `${dir}/srv`;
   const etc = `${dir}/etc`;
   const bin = `${dir}/bin`;
-  for (const d of [`${root}/releases`, etc, bin]) mkdirSync(d, { recursive: true });
+  for (const d of [`${root}/releases`, etc, bin, `${dir}/scratch`])
+    mkdirSync(d, { recursive: true });
   writeFileSync(`${etc}/host.env`, 'SEFID_ORIGIN=http://127.0.0.1:3000\n');
   const stub = (name: string, body: string) => {
     writeFileSync(`${bin}/${name}`, `#!/usr/bin/env bash\n${body}\n`);
@@ -337,6 +338,7 @@ printf '{"status":"ok","version":"%s","maintenance":%s}\\n200' "$sha" "$m"`,
     SEFID_ROOT: root,
     SEFID_ETC: etc,
     SEFID_BACKUPS: `${dir}/backups`,
+    SEFID_SCRATCH: `${dir}/scratch`,
     SEFID_CRON_OK: `${dir}/cron.ok`,
     // No waiting: the stub answers at once, or never.
     SEFID_HEALTH_TIMEOUT: '0',
@@ -847,8 +849,11 @@ for a in "$@"; do case $a in EnvironmentFile=*scratch.env) cp "\${a#EnvironmentF
     );
     // The scratch media folder, the unpacked archive and the scratch env are gone.
     const media = /^MEDIA_DIR=(.*)\/media$/m.exec(scratch)![1]!;
-    // Never under /tmp or /var/tmp: the scratch app's PrivateTmp would hide its media folder.
-    expect(media).toMatch(/^\/var\/lib\/sefid-restore-check\./);
+    expect(media.startsWith(`${s.env.SEFID_SCRATCH}/sefid-restore-check.`)).toBe(true);
+    // On the server: never under /tmp or /var/tmp, which the scratch app's PrivateTmp hides.
+    expect(readFileSync(path.join(DIR, 'files/usr/local/lib/sefid/common.sh'), 'utf8')).toContain(
+      ': "${SEFID_SCRATCH:=/var/lib}"',
+    );
     expect(existsSync(media)).toBe(false);
   });
 
