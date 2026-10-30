@@ -5,16 +5,17 @@ import path from 'node:path';
 
 import config from '@payload-config';
 import { REST_GET } from '@payloadcms/next/routes';
-import type { Payload } from 'payload';
+import { createLocalReq, type Payload } from 'payload';
 import sharp from 'sharp';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { importRedirectsCsv } from '@/admin/redirects/importEndpoint';
 import { POST } from '@/app/(payload)/api/[...slug]/route';
 import { trashedFileIs404 } from '@/collections/Media';
 import { MEDIA_MESSAGES } from '@/hooks/media';
 import type { LimitedSharp } from '@/lib/media/limitedSharp';
 
-import { getTestPayload, refusal, staffUsers, uniqueSlug } from './helpers';
+import { getTestPayload, refusal, type StaffUser, staffUsers, uniqueSlug } from './helpers';
 
 vi.mock('next/cache', () => ({ revalidateTag: vi.fn(), unstable_cache: (fn: unknown) => fn }));
 
@@ -384,5 +385,181 @@ describe('media security fixes', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/jpeg');
     expect(await response.text()).toBe('');
+  });
+});
+
+// Phase 9 security audit (docs/qa/audit-security.md, section 5): upload and import abuse.
+describe('upload and import abuse (phase 9 SEC)', () => {
+  let admin: StaffUser;
+  let editor: StaffUser;
+  const html = Buffer.from('<html><body><script>alert(document.cookie)</script></body></html>');
+  const jpeg = () =>
+    sharp({
+      create: { width: 400, height: 400, channels: 3, background: { r: 9, g: 99, b: 199 } },
+    })
+      .jpeg()
+      .toBuffer();
+
+  beforeAll(async () => {
+    payload ??= await getTestPayload();
+    ({ admin, editor } = await staffUsers(payload));
+  });
+
+  it('SA1 a path or a foreign extension in the name never reaches the stored name', async () => {
+    const data = Buffer.concat([await jpeg(), randomBytes(16)]);
+    for (const name of ['../../../etc/passwd.jpg', '..\\..\\boot.jpg', 'page.html', 'logo.svg']) {
+      const doc = await payload.create({
+        collection: 'media',
+        data: { alt: 'نام فایل آزمون' },
+        file: file(data, name, 'image/jpeg'),
+        overrideAccess: false,
+        user: editor,
+      });
+      expect(doc.filename, name).toMatch(/^[^/\\]+-[0-9a-f]{10}(?:-\d+)?\.jpg$/);
+      expect(doc.mimeType, name).toBe('image/jpeg');
+    }
+  });
+
+  it('SA2 HTML sent as a video is refused; an image with HTML appended is stored re-encoded', async () => {
+    for (const [name, type] of [
+      ['clip.mp4', 'video/mp4'],
+      ['clip.webm', 'video/webm'],
+      ['clip.html', 'video/mp4'],
+    ] as const) {
+      await expect(
+        payload.create({
+          collection: 'media',
+          data: { alt: 'ویدیوی جعلی' },
+          file: file(html, name, type),
+          overrideAccess: false,
+          user: editor,
+        }),
+        name,
+      ).rejects.toMatchObject({ status: 400 });
+    }
+    const doc = await payload.create({
+      collection: 'media',
+      data: { alt: 'عکس چندریخت' },
+      file: file(Buffer.concat([await jpeg(), html]), 'poly.jpg', 'image/jpeg'),
+    });
+    const stored = await readFile(path.join(process.env.MEDIA_DIR as string, doc.filename!));
+    expect(stored.includes('<script')).toBe(false);
+    const response = await rest(
+      REST_GET(config),
+      new Request(`http://localhost/api/media/file/${encodeURIComponent(doc.filename!)}`),
+    );
+    expect(response.headers.get('content-type')).toBe('image/jpeg');
+  });
+
+  it('SA3 an image over 20 MB is refused with the Persian message', async () => {
+    const big = Buffer.concat([await jpeg(), Buffer.alloc(20 * 1024 * 1024)]);
+    await expect(
+      payload.create({
+        collection: 'media',
+        data: { alt: 'عکس بزرگ' },
+        file: file(big, 'big.jpg', 'image/jpeg'),
+      }),
+    ).rejects.toMatchObject({ message: MEDIA_MESSAGES.imageSize });
+  });
+
+  async function importCsv(
+    user: StaffUser,
+    body: string,
+    headers: Record<string, string> = {},
+    onRead = () => {},
+  ) {
+    const req = await createLocalReq(
+      {
+        user: user as never,
+        req: {
+          method: 'POST',
+          headers: new Headers({ 'content-type': 'application/json', ...headers }),
+          text: async () => {
+            onRead();
+            return body;
+          },
+        } as never,
+      },
+      payload,
+    );
+    const response = await importRedirectsCsv(req);
+    return {
+      status: response.status,
+      body: (await response.json()) as {
+        rows?: Array<{ line: number; outcome: string }>;
+        written?: number;
+        digest?: string;
+      },
+    };
+  }
+
+  it('SA4 the import refuses spreadsheet formulas and off-site targets, and writes none', async () => {
+    const csv = [
+      'from,to,status',
+      '=HYPERLINK("https://evil.example/x"),/,301',
+      "/sa4-a,=cmd|' /C calc'!A0,301",
+      '/sa4-b,@SUM(1+1),301',
+      '/sa4-c,+1,301',
+      '/sa4-d,https://evil.example/x,301',
+      '/sa4-f,javascript:alert(1),301',
+    ].join('\n');
+    const before = (await payload.count({ collection: 'redirects' })).totalDocs;
+    const dry = await importCsv(admin, JSON.stringify({ csv, origins: '' }));
+    expect(dry.status).toBe(200);
+    expect(dry.body.rows?.map((r) => r.outcome)).toEqual(Array(6).fill('refused'));
+    const applied = await importCsv(
+      admin,
+      JSON.stringify({ csv, origins: '', apply: true, digest: dry.body.digest }),
+    );
+    expect(applied.body.written).toBe(0);
+    expect((await payload.count({ collection: 'redirects' })).totalDocs).toBe(before);
+    // Only a TOTP-verified admin reaches the planner (R14 covers the messages).
+    expect((await importCsv(editor, JSON.stringify({ csv }))).status).toBe(403);
+  });
+
+  it('SA5 the import body limit counts bytes; a declared or streamed oversize body is never read whole', async () => {
+    // About 2.4 million Persian letters: under 4 MiB of UTF-16 units, over 4 MiB of UTF-8 bytes.
+    const csv = `/الف,/ب\n${'پ'.repeat(2_400_000)}`;
+    expect((await importCsv(admin, JSON.stringify({ csv }))).status).toBe(413);
+    let read = false;
+    const declared = await importCsv(
+      admin,
+      '{}',
+      { 'content-length': String(5 * 1024 * 1024) },
+      () => (read = true),
+    );
+    expect(declared.status).toBe(413);
+    expect(read).toBe(false);
+    // A chunked body (no Content-Length) is read only up to the limit, then refused.
+    let pulled = 0;
+    const chunk = new Uint8Array(1024 * 1024).fill(0x20);
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        pull(controller) {
+          pulled += 1;
+          if (pulled > 64) controller.close();
+          else controller.enqueue(chunk);
+        },
+      },
+      { highWaterMark: 0 },
+    );
+    const req = await createLocalReq(
+      {
+        user: admin as never,
+        req: {
+          method: 'POST',
+          headers: new Headers({ 'content-type': 'application/json' }),
+          body: stream,
+          text: async () => {
+            read = true;
+            return '';
+          },
+        } as never,
+      },
+      payload,
+    );
+    expect((await importRedirectsCsv(req)).status).toBe(413);
+    expect(read).toBe(false);
+    expect(pulled).toBeLessThanOrEqual(6);
   });
 });

@@ -7,6 +7,7 @@ import { hasRole } from '@/access/roles';
 import { redirectsText } from '@/i18n/fa-redirects';
 import type { getPublishedSlugs } from '@/lib/data/slugs';
 import { readEnv } from '@/lib/env';
+import { readTextCapped } from '@/lib/http/body';
 import { dynamicRoute } from '@/lib/http/proxyRules';
 import { log } from '@/lib/log/logger';
 import { isGuideKey, PAGE_KEYS, PAGE_PATHS } from '@/lib/paths';
@@ -91,8 +92,18 @@ export const importRedirectsCsv: PayloadHandler = async (req) => {
   if (!req.headers.get('content-type')?.startsWith('application/json')) {
     return fail(redirectsText('redirects.import.badRequest'), 400);
   }
-  const raw = (await req.text?.()) ?? '';
-  if (raw.length > MAX_BODY_MB * 1024 * 1024) {
+  // Bytes, not UTF-16 units (a Persian file is about two bytes a letter). An HTTP request is
+  // refused on its declared size, else read only up to the limit (a chunked body stops there);
+  // a Local API caller without a body stream passes text().
+  const max = MAX_BODY_MB * 1024 * 1024;
+  const declared = Number(req.headers.get('content-length') ?? 0);
+  const raw = req.body
+    ? await readTextCapped(req as unknown as Request, max)
+    : declared <= max
+      ? ((await req.text?.()) ?? '')
+      : null;
+  // The stream path stops at the limit itself; text() is measured once read.
+  if (raw === null || (!req.body && Buffer.byteLength(raw) > max)) {
     return fail(
       redirectsText('redirects.import.tooLarge', { max: formatNumberFa(MAX_BODY_MB) }),
       413,

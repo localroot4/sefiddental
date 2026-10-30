@@ -5,7 +5,8 @@
  */
 export async function readTextCapped(request: Request, maxBytes: number): Promise<string | null> {
   const declared = Number(request.headers.get('content-length') ?? '0');
-  if (Number.isFinite(declared) && declared > maxBytes) return null;
+  // A declared size that is not a number is refused like an oversized one.
+  if (!(declared <= maxBytes)) return null;
   if (request.body === null) return '';
   const reader = request.body.getReader();
   const chunks: Uint8Array[] = [];
