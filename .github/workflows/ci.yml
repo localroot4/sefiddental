@@ -207,3 +207,90 @@ jobs:
           retention-days: 14
           include-hidden-files: true
           if-no-files-found: ignore
+
+  # WebKit (Safari, iPhone) and Firefox on the two projects the specs gate most rows on. The
+  # matrix projects keep their names (E2E_ENGINE in playwright.config.ts); the CDP, GPU-flag,
+  # admin and request-level projects stay on Chromium in the app job. One job per engine beside
+  # the app job, so the run is no longer.
+  engines:
+    name: e2e on ${{ matrix.engine }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    # shortcut: engine failures are triaged for the wave 2 engine fixes; drop this once both
+    # engines are green, so an engine regression turns the run red.
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - engine: webkit
+            projects: --project=phone-light --project=desktop-light
+          - engine: firefox
+            projects: --project=desktop-light
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sefid_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      SITE_URL: http://localhost:3000
+      GIT_SHA: ${{ github.sha }}
+      ALLOW_INDEXING: 'false'
+      TRUST_PROXY_HEADERS: 'false'
+      QA_ROUTES: '1'
+      MEDIA_DIR: /tmp/sefid-media
+      DB_PUSH: 'false'
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/sefid_e2e
+      E2E_DATABASE_URL: postgres://postgres:postgres@localhost:5432/sefid_e2e
+      E2E_ENGINE: ${{ matrix.engine }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Generate per-run secrets
+        run: |
+          for name in PAYLOAD_SECRET FORM_TOKEN_SECRET CRON_SECRET IP_HASH_SECRET INTERNAL_API_TOKEN; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            echo "$name=$value" >> "$GITHUB_ENV"
+          done
+      - run: npm ci
+      - name: Migrate and seed the e2e database
+        run: |
+          npm run migrate
+          npm run seed | tee "$RUNNER_TEMP/seed.log"
+          grep -q 'seed: mode' "$RUNNER_TEMP/seed.log" || { echo "::error::The seeder printed no summary line."; exit 1; }
+          node scripts/payload.mjs run tests/fixtures/qa-seed.ts | tee "$RUNNER_TEMP/qa-fixture.log"
+          grep -q 'qa-fixture: dentist' "$RUNNER_TEMP/qa-fixture.log" || { echo "::error::The QA fixture printed no summary line."; exit 1; }
+      - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ github.workspace }}/.next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-${{ hashFiles('src/**/*.ts', 'src/**/*.tsx', 'src/**/*.css') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('package-lock.json') }}-
+      - run: npm run build
+      - name: Install ${{ matrix.engine }} for Playwright
+        run: npx playwright install --with-deps ${{ matrix.engine }}
+      - name: End-to-end tests in ${{ matrix.engine }}
+        run: npx playwright test ${{ matrix.projects }}
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: e2e-${{ matrix.engine }}
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 14
+          if-no-files-found: ignore

@@ -63,15 +63,45 @@ const base = {
   launchOptions: defaultLaunch(),
 } as const;
 
+// E2E_ENGINE=webkit or firefox moves the six matrix projects into that engine and keeps their
+// names, which the specs gate rows on; the other projects stay on Chromium (CDP, GPU flags). The
+// CI cross-engine job sets it. Firefox has no isMobile: run only its desktop projects.
+const ENGINE = process.env.E2E_ENGINE?.trim() || undefined;
+if (ENGINE !== undefined && ENGINE !== 'webkit' && ENGINE !== 'firefox') {
+  throw new Error(`E2E_ENGINE must be webkit or firefox, got "${ENGINE}".`);
+}
+
 // Six matrix projects: three viewports (00-master.md section 5), light and dark.
 const matrix = (['phone', 'tablet', 'desktop'] as const).flatMap((size) =>
-  (['light', 'dark'] as const).map((colorScheme) => ({
-    name: `${size}-${colorScheme}`,
-    testDir: './tests/e2e',
-    // Each of these files has its own project below.
-    testIgnore: [/[\\/]http[\\/]/, /admin\.spec\.ts/, /tier0\.spec\.ts/],
-    use: { ...devices['Desktop Chrome'], ...base, ...VIEWPORTS[size], colorScheme },
-  })),
+  (['light', 'dark'] as const).map((colorScheme) => {
+    const engine = ENGINE
+      ? devices[
+          ENGINE === 'firefox'
+            ? 'Desktop Firefox'
+            : size === 'desktop'
+              ? 'Desktop Safari'
+              : 'iPhone 15'
+        ]
+      : undefined;
+    return {
+      name: `${size}-${colorScheme}`,
+      testDir: './tests/e2e',
+      // Each of these files has its own project below.
+      testIgnore: [/[\\/]http[\\/]/, /admin\.spec\.ts/, /tier0\.spec\.ts/],
+      use: {
+        ...devices['Desktop Chrome'],
+        ...base,
+        ...VIEWPORTS[size],
+        colorScheme,
+        // The engine's own browser and user agent; the Chromium path from .env does not apply.
+        ...(engine && {
+          browserName: engine.defaultBrowserType,
+          userAgent: engine.userAgent,
+          launchOptions: {},
+        }),
+      },
+    };
+  }),
 );
 
 export default defineConfig({
