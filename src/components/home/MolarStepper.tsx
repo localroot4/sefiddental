@@ -1,12 +1,12 @@
-// The molar of scene 4 (phase 7 report D16): the tier-0 art of design/prototypes/0d-molar-turntable.html
-// as three pre-colored layers, plain, VIP and CIP, each its own sibling <svg> stacked in one grid
-// cell, so a crossfade is a composited opacity on an element and a scale a transform, never a
-// fill transition or a <g> opacity (a paint of one <svg>). The crown and the roots are drawn once
-// and reused; a layer's fill is the enamel of its level and the CIP layer adds the warm
-// cervical stroke and the stain lines. The crown is the prototype's left half mirrored about
-// x = 100: the prototype's own path is lopsided (its right half 48 units short), so the roots
-// and the CIP strokes, centred at 100, sat outside it. The roots start inside the crown and are
-// drawn under it, so they leave its underside instead of hanging below a gap.
+// The molar of scene 4 (phase 7 report D16) as three layers, plain, VIP and CIP, each its own
+// sibling <svg> stacked in one grid cell, so a crossfade is a composited opacity on an element and
+// a scale a transform, never a fill transition or a <g> opacity (a paint of one <svg>). The art is
+// a lower molar seen from the cheek: a crown wider than tall with three cusps, narrowing to the
+// neck, and two tapering roots about 1.3 times its height that part at the furcation. One brand
+// line and a fill from the theme tokens, so it follows light and dark (never solid white on the
+// navy page); the levels differ by the enamel tint, and the CIP layer adds the warm cervical shade
+// and the stain lines in the grooves. The crown and the roots are drawn once and reused; the roots
+// start inside the crown and are drawn under it.
 // Which layer shows follows the checked chip as the panels do (`data-choice`, and a `:has()` rule
 // only without JavaScript), so the stepper works without the engine and without a transition
 // (tier 0). The scene module adds `data-motion` to the slot at tiers 1 to 3 without a pin, which
@@ -14,15 +14,21 @@
 // writes opacity and transform inline and leaves the attribute off. The slot is decorative and
 // the world slot phase 8 replaces with the 3D molar at tiers 2 and 3.
 const CROWN =
-  'M100 18c-30 0-52 10-66 30s-16 48-10 76c3 14 6 22 10 26 5 5 12 6 20 2 8-4 12-14 14-40 6-12 14-16 32-16 18 0 26 4 32 16 2 26 6 36 14 40 8 4 15 3 20-2 4-4 7-12 10-26 6-28 4-56-10-76-14-20-36-30-66-30z';
+  'M52 118C40 106 28 90 28 72c0-20 12-32 26-32 10 0 17 6 24 11 7-8 14-15 22-15s15 7 22 15c7-5 14-11 24-11 14 0 26 12 26 32 0 18-12 34-24 46-18 8-78 8-96 0z';
 const ROOTS =
-  'M62 100v50c-4 30-6 50-4 62 2 10 8 14 14 10 7-5 10-22 12-54V90zM138 100v50c4 30 6 50 4 62-2 10-8 14-14 10-7-5-10-22-12-54V90z';
+  'M56 110c-4 40-8 86-2 112 3 10 14 11 17 1 7-27 15-57 29-71 14 14 22 44 29 71 3 10 14 9 17-1 6-26 2-72-2-112z';
 
-/** The enamel per level; the CIP layer also draws the characterization group. */
+/** The enamel per level (theme tokens: the light and dark values come from design/tokens.css). */
 export const MOLAR_LEVELS = [
-  { level: 'plain', fill: '#FFFFFF' },
-  { level: 'vip', fill: '#FBF8F2' },
-  { level: 'cip', fill: '#F6EEDF' },
+  { level: 'plain', fill: 'fill-surface-raised' },
+  {
+    level: 'vip',
+    fill: 'fill-[color-mix(in_srgb,var(--color-brand)_10%,var(--color-surface-raised))]',
+  },
+  {
+    level: 'cip',
+    fill: 'fill-[color-mix(in_srgb,var(--color-warm)_24%,var(--color-surface-raised))] dark:fill-[color-mix(in_srgb,var(--color-warm)_12%,var(--color-surface-raised))]',
+  },
 ] as const;
 
 // Which layer shows, by the position of the checked chip (the panels' PANEL rule: `data-choice`
@@ -55,24 +61,14 @@ export function MolarStepper(props: { className?: string }) {
               <path id="molar-roots" d={ROOTS} />
             </defs>
           ) : null}
-          <g fill={fill} strokeWidth="2" strokeLinejoin="round" className="stroke-line-strong">
+          <g strokeWidth="2.5" strokeLinejoin="round" className={`stroke-brand ${fill}`}>
             <use href="#molar-roots" />
             <use href="#molar-crown" />
           </g>
           {level === 'cip' ? (
-            <g fill="none" strokeLinecap="round">
-              <path
-                d="M58 70c10-14 22-20 42-20s32 6 42 20"
-                stroke="#C99A72"
-                strokeOpacity="0.35"
-                strokeWidth="10"
-              />
-              <path
-                d="M78 54c8 10 10 22 10 36M122 54c-8 10-10 22-10 36"
-                stroke="#8E6A45"
-                strokeOpacity="0.45"
-                strokeWidth="1.6"
-              />
+            <g data-stain="" fill="none" strokeLinecap="round" className="stroke-warm">
+              <path d="M56 113c20 8 68 8 88 0" strokeOpacity="0.45" strokeWidth="8" />
+              <path d="M78 51c2 9 6 15 12 18m32-18c-2 9-6 15-12 18" strokeWidth="2" />
             </g>
           ) : null}
         </svg>

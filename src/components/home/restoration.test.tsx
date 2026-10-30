@@ -150,11 +150,16 @@ describe('home scene 4 tier step (F24, CV9)', () => {
     const layers = [...(slot?.children ?? [])];
     expect(layers.map((el) => el.tagName)).toEqual(['svg', 'svg', 'svg']);
     expect(layers.map((el) => el.getAttribute('data-level'))).toEqual(['plain', 'vip', 'cip']);
-    // Each level is a different enamel; the CIP layer alone adds the characterization strokes.
-    const fills = layers.map((el) => el.querySelector('g[fill]')?.getAttribute('fill'));
-    expect(fills).toEqual(MOLAR_LEVELS.map((level) => level.fill));
-    expect(new Set(fills).size).toBe(3);
-    expect(layers.map((el) => el.querySelectorAll('path[stroke]').length)).toEqual([0, 0, 2]);
+    // Each level is a different enamel from the theme tokens (no fixed colour, so dark mode is
+    // never solid white); the CIP layer alone adds the characterization strokes.
+    const groups = layers.map((el) => el.querySelector('g')!.getAttribute('class')!);
+    MOLAR_LEVELS.forEach((level, i) => expect(groups[i]).toContain(level.fill));
+    expect(new Set(MOLAR_LEVELS.map((level) => level.fill)).size).toBe(3);
+    expect(
+      container.querySelector('[data-world-slot="molar"] [fill]:not([fill="none"])'),
+    ).toBeNull();
+    expect(container.querySelector('[data-world-slot="molar"] [stroke]')).toBeNull();
+    expect(layers.map((el) => el.querySelectorAll('[data-stain] path').length)).toEqual([0, 0, 2]);
     // The layer follows `data-choice`; a `:has()` rule exists only without JavaScript (D21).
     const classes = layers.map((el) => el.getAttribute('class')!.split(' '));
     expect(classes.flat().filter((c) => c.includes('has-') && !c.startsWith('noscript:'))).toEqual(
