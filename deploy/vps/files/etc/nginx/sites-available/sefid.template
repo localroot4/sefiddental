@@ -44,6 +44,8 @@ log_format sefid '$sefid_log_addr [$time_iso8601] "$request" $status $body_bytes
 # A rejected request is a warning, below the error level that Ubuntu's error log keeps: the
 # error log names the full client address. The access log still shows the 429.
 limit_req_log_level warn;
+# 2.11: every server below logs errors, which name the full client address, to
+# /var/log/nginx/sefid/error.log; /etc/logrotate.d/sefid-nginx keeps it 2 days, not Ubuntu's 14.
 
 # Unknown host names, and requests by IP address: close the connection without an answer.
 server {
@@ -55,6 +57,7 @@ server {
     server_name _;
     server_tokens off;
     access_log off;
+    error_log /var/log/nginx/sefid/error.log;
     include snippets/sefid-tls.conf;
     # No certificate: TLS for an unknown name ends in a handshake alert, so the default
     # certificate never tells a scanner which machine this is.
@@ -69,6 +72,7 @@ server {
     server_name @SERVER_NAMES@;
     server_tokens off;
     access_log /var/log/nginx/sefid.access.log sefid;
+    error_log /var/log/nginx/sefid/error.log;
     include snippets/sefid-headers.conf;
 
     location ^~ /.well-known/acme-challenge/ {
@@ -92,6 +96,7 @@ server {
     ssl_certificate /etc/sefid/tls/fullchain.pem;
     ssl_certificate_key /etc/sefid/tls/privkey.pem;
     access_log /var/log/nginx/sefid.access.log sefid;
+    error_log /var/log/nginx/sefid/error.log;
 
     # Items 1, 2 and 4: server level only. nginx copies add_header, proxy_hide_header and
     # proxy_set_header into a location only when that location sets none of its own.

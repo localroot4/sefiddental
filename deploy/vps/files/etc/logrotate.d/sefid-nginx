@@ -1,0 +1,14 @@
+# nginx's error log of the site (docs/deploy.md 2.11): it names full client addresses, so it is
+# rotated every day and the day before is the only old file kept (2 days at most).
+/var/log/nginx/sefid/*.log {
+	daily
+	rotate 1
+	missingok
+	notifempty
+	nocompress
+	create 0640 www-data adm
+	sharedscripts
+	postrotate
+		invoke-rc.d nginx rotate >/dev/null 2>&1
+	endscript
+}

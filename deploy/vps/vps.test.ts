@@ -239,6 +239,9 @@ describe('provision.sh helpers', { timeout: 30_000 }, () => {
     expect(
       modern.match(/^\s*access_log \/var\/log\/nginx\/sefid\.access\.log sefid;$/gm),
     ).toHaveLength(2);
+    // Every server logs errors (full client addresses) to the file kept 2 days (VPS20).
+    expect(modern.match(/^\s*server \{$/gm)).toHaveLength(3);
+    expect(modern.match(/^\s*error_log \/var\/log\/nginx\/sefid\/error\.log;$/gm)).toHaveLength(3);
 
     const legacy = site('1.24.0', 'no', '[::1]:3000');
     expect(legacy).not.toMatch(/^\s*http2 on;$/m);
@@ -280,6 +283,7 @@ describe('provision.sh helpers', { timeout: 30_000 }, () => {
       )
       .replaceAll('/var/log/nginx/', `${dir}/`)
       .replace(/listen (\[::\]:)?(80|443)\b/g, (_, v6 = '', port) => `listen ${v6}1${port}0`);
+    mkdirSync(`${dir}/sefid`);
     writeFileSync(`${dir}/site.conf`, rendered);
     writeFileSync(
       `${dir}/nginx.conf`,
@@ -580,5 +584,22 @@ describe('installed configuration', () => {
     ]) {
       expect(conf.split('\n')).toContain(line);
     }
+  });
+});
+
+describe('nginx error log', () => {
+  const read = (p: string) => readFileSync(path.join(DIR, p), 'utf8');
+
+  it('VPS20 the error log of every server is rotated daily and kept 2 days at most', () => {
+    // The error log of every server, rotated daily with one old file: 2 days at most.
+    const rotate = read('files/etc/logrotate.d/sefid-nginx');
+    expect(rotate).toMatch(/^\/var\/log\/nginx\/sefid\/\*\.log \{$/m);
+    for (const line of ['daily', 'rotate 1', 'create 0640 www-data adm']) {
+      expect(rotate).toMatch(new RegExp(`^\\t${line}$`, 'm'));
+    }
+    const provision = read('provision.sh');
+    expect(provision).toContain(
+      'put "$FILES/etc/logrotate.d/sefid-nginx" /etc/logrotate.d/sefid-nginx 0644',
+    );
   });
 });

@@ -317,6 +317,8 @@ setup_nginx() {
   rm -f "$rendered"
   put "$FILES/etc/letsencrypt/renewal-hooks/deploy/sefid-nginx-reload" \
     /etc/letsencrypt/renewal-hooks/deploy/sefid-nginx-reload 0755
+  install -d -m 0755 /var/log/nginx/sefid
+  put "$FILES/etc/logrotate.d/sefid-nginx" /etc/logrotate.d/sefid-nginx 0644
   ln -sfn ../sites-available/sefid /etc/nginx/sites-enabled/sefid
   # The packaged default site also claims default_server on port 80.
   rm -f /etc/nginx/sites-enabled/default
