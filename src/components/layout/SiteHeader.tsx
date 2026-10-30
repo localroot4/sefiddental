@@ -19,18 +19,13 @@ import { telHref } from '@/lib/phone';
 /**
  * The site header (nav spec 1.1, DESIGN.md 3.5): sticky, 64 px plus a hairline under 1024 px and
  * 72 px with it from 1024 px (the home hero's `100svh - 65px` depends on these numbers). Phones:
- * logo, call icon, menu button. From 1024 px: logo, the five items on one line, theme toggle, the
+ * logo, call icon, menu button. From 1024 px: logo, the four items on one line, theme toggle, the
  * call icon (the number from 1280 px), «رزرو نوبت». Every call control passes the closed-hours
  * sheet (`data-call-sheet`). The drawer dialog follows the header, outside the banner landmark.
  */
 export function SiteHeader(props: { nav: NavTree; contact: FooterData }) {
   const phone = props.contact.phones.landline;
-  const links = [
-    pageLink('dentists-hub'),
-    pageLink('cases'),
-    pageLink('pricing'),
-    pageLink('address'),
-  ];
+  const links = [pageLink('dentists-hub'), pageLink('pricing'), pageLink('address')];
   return (
     <>
       <header className="sticky top-0 z-30 border-b border-line bg-surface-raised/88 backdrop-blur-[12px]">

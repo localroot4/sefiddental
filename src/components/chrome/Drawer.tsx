@@ -138,7 +138,7 @@ export function Drawer(props: { nav: NavTree; contact: FooterData }) {
             </li>
           ))}
         </ul>
-        <Rows links={[pageLink('dentists-hub'), pageLink('cases'), pageLink('pricing')]} />
+        <Rows links={[pageLink('dentists-hub'), pageLink('pricing')]} />
         <Rows
           links={[
             pageLink('guide-hub'),

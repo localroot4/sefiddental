@@ -133,7 +133,6 @@ export function SiteFooter(props: { contact: FooterData; now?: Date }) {
           title={t('nav.footerClinic')}
           links={[
             pageLink('dentists-hub'),
-            pageLink('cases'),
             pageLink('pricing'),
             pageLink('about'),
             pageLink('address'),

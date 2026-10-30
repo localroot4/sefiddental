@@ -69,9 +69,12 @@ describe('chrome markup (nav spec 1, ia.md 3)', () => {
     expect(out).toContain('command="close" commandfor="site-drawer"');
     // showModal() focuses «بستن منو» natively, also before hydration (nav spec 1.4).
     expect(out).toMatch(/aria-label="بستن منو"[^>]*autofocus=""/);
-    for (const label of ['پزشکان', 'قبل و بعد', 'هزینه و پرداخت', 'آدرس و ساعات', 'سایر خدمات']) {
+    for (const label of ['پزشکان', 'هزینه و پرداخت', 'آدرس و ساعات', 'سایر خدمات']) {
       expect(out).toContain(`>${label}<`);
     }
+    // No cases page exists before launch: neither the bar nor the drawer links one.
+    expect(out).not.toContain('قبل و بعد');
+    expect(out).not.toContain('href="/قبل-و-بعد"');
     // Every booking CTA is a real link; the header's is routed and tracked.
     expect(out).toMatch(
       /<a data-booking-cta="" data-track="booking_open" data-location="header" href="\/رزرو-نوبت"/,
@@ -146,6 +149,7 @@ describe('chrome markup (nav spec 1, ia.md 3)', () => {
     expect(out).toContain('هر روز ۱۰ تا ۲۰، به‌جز تعطیلات رسمی.');
     expect(out).not.toContain('یادداشت ساعات');
     expect(out).not.toContain('اولین مراجعه');
+    expect(out).not.toContain('قبل و بعد');
     expect(out).not.toContain('شمارهٔ پروانه');
     expect(out).toContain('© ۱۴۰۵ کلینیک دندانپزشکی سفید');
     // The NAP phones dial directly: no closed-hours sheet around them. They share the icon

@@ -9,7 +9,6 @@ export interface ChromeLink {
 const LABELS = {
   'services-hub': 'nav.allServices',
   'dentists-hub': 'nav.dentists',
-  cases: 'nav.cases',
   pricing: 'nav.pricing',
   address: 'nav.address',
   'guide-hub': 'nav.guideHub',
