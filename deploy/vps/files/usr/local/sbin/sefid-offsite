@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+# The weekly off-site copy (docs/deploy.md 3.6): writes the newest nightly dump to stdout,
+# encrypted with age to RECIPIENT, for the workflow "Server" to keep as an artifact. Only
+# ciphertext leaves the server; the owner's private key never comes here.
+#
+#   sefid-offsite RECIPIENT > file.age    RECIPIENT: an age public key, age1...
+#
+# stderr gets one line "sefid-offsite: <dump name> <bytes> bytes sha256 <hex>" (of the plain
+# dump, to check it after decryption) and any error. Refuses a dump older than 26 h.
+set -Eeuo pipefail
+# shellcheck source=SCRIPTDIR/../lib/sefid/common.sh
+. "$(dirname "$(readlink -f "$0")")/../lib/sefid/common.sh"
+
+need_root "$@"
+recipient=${1-}
+# An X25519 recipient: "age1" and 58 bech32 characters.
+[[ $recipient =~ ^age1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58}$ ]] ||
+  die "give the age public key (age1... from age-keygen) as the only argument; got \"$recipient\""
+[ ! -t 1 ] || die "stdout is a terminal: redirect it to a file"
+command -v age >/dev/null || die "age is not installed: run the action provision"
+
+line=$(newest db 'sefid-*-nightly.dump')
+[ -n "$line" ] || die "no nightly dump in $SEFID_BACKUPS/db"
+dump=${line#* }
+hours=$((($(date +%s) - ${line%% *}) / 3600))
+[ "$hours" -lt 26 ] || die "the newest nightly dump is $hours h old (limit 26 h): $dump. Read the action status."
+pg_restore --list "$dump" >/dev/null || die "pg_restore cannot read $dump"
+echo "sefid-offsite: ${dump##*/} $(stat -c %s "$dump") bytes sha256 $(sha256sum "$dump" | cut -d ' ' -f 1)" >&2
+age --encrypt --recipient "$recipient" "$dump"

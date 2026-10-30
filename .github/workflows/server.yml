@@ -2,7 +2,8 @@
 # SERVER_HOST of deploy/vps/server.env. Nobody opens a shell on it. Every action runs on a GitHub
 # runner and reaches the server over SSH as `deploy` (passwordless sudo). Start it by hand: "Run
 # workflow", branch main, pick an action. A push to main that changes deploy/vps/ or this file
-# runs only `vps-smoke`, which provisions and checks a server on the runner itself.
+# runs only `vps-smoke`, which provisions and checks a server on the runner itself. Every Friday
+# the schedule runs `offsite-backup` (docs/deploy.md 3.6).
 # Secrets: SERVER_SSH_KEY (deploy's private key) and ADMIN_PASSWORD (first-admin, reset-admin).
 # Any workflow run in this repository can read them: whoever can push a workflow is an admin of
 # the server (docs/deploy.md 3.2). No step prints a secret: values read from the server are
@@ -35,6 +36,7 @@ on:
           - maintenance-off
           - run
           - restore-check
+          - offsite-backup
           - smoke
       email:
         description: 'first-admin, reset-admin: e-mail of the admin account'
@@ -51,6 +53,9 @@ on:
     paths:
       - deploy/vps/**
       - .github/workflows/server.yml
+  # offsite-backup: Friday 01:23 UTC (04:53 in Tehran), after the nightly backup of 23:30 UTC.
+  schedule:
+    - cron: '23 1 * * 5'
 
 permissions:
   contents: read
@@ -65,8 +70,8 @@ env:
   # Every Payload command here reaches the server's database and runs without NODE_ENV: unset,
   # DB_PUSH would push the dev schema into it (src/payload/db.ts) and block the next migrate.
   DB_PUSH: 'false'
-  # A push runs the smoke test only.
-  ACTION: ${{ github.event_name == 'push' && 'smoke' || inputs.action }}
+  # A push runs the smoke test only; the schedule runs the off-site copy only.
+  ACTION: ${{ github.event_name == 'push' && 'smoke' || github.event_name == 'schedule' && 'offsite-backup' || inputs.action }}
   # ssh lines of a connection that failed before the server ran anything: safe to try again.
   SSH_RETRY: '^ssh: connect to host .*: Connection timed out|Connection timed out during banner exchange|^kex_exchange_identification: |^Connection closed by [^ ]+ port [0-9]+$'
   # Waits up to 2 minutes for /api/health 200 on the server's loopback port 3000 (2.3) and
@@ -92,8 +97,8 @@ env:
 
 jobs:
   server:
-    name: ${{ inputs.action }}
-    if: github.event_name == 'workflow_dispatch' && inputs.action != 'smoke'
+    name: ${{ inputs.action || 'offsite-backup' }}
+    if: github.event_name != 'push' && inputs.action != 'smoke'
     runs-on: ubuntu-24.04
     # The first seed through the tunnel can take long (PAYLOAD_STALL_MS below).
     timeout-minutes: ${{ inputs.action == 'seed' && 120 || 60 }}
@@ -130,6 +135,19 @@ jobs:
             echo "$name=${!name-}" >> "$GITHUB_ENV"
           done
           echo "action $ACTION, commit $GITHUB_SHA, server $SSH_USER@$SERVER_HOST, site $SITE_URL, domains $DOMAINS, indexing ${ALLOW_INDEXING-}"
+
+      # The public key the dump is encrypted to. The repository is public, and so are its
+      # artifacts: without a valid recipient nothing leaves the server.
+      - name: Off-site recipient (repository variable BACKUP_AGE_RECIPIENT)
+        if: env.ACTION == 'offsite-backup'
+        env:
+          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: |
+          if [[ ! "$RECIPIENT" =~ ^age1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58}$ ]]; then
+            echo "::error::The repository variable BACKUP_AGE_RECIPIENT must hold the owner's age public key: age1 and 58 more characters (docs/deploy.md 3.6). Without it no dump leaves the server."
+            exit 1
+          fi
+          echo "recipient: $RECIPIENT"
 
       - name: CI passed for this commit (ci.yml)
         if: env.ACTION == 'deploy'
@@ -686,6 +704,65 @@ jobs:
           fi
           remote "$DETACHED restore-check /usr/local/sbin/sefid-restore-check"
 
+      # Not `remote`: it joins stderr into stdout, and stdout is the ciphertext here. The smoke
+      # test encrypts to a throwaway key on the runner and decrypts the copy again.
+      - name: Off-site copy (the newest nightly dump, age-encrypted on the server)
+        if: env.ACTION == 'offsite-backup' || env.ACTION == 'smoke'
+        env:
+          RECIPIENT: ${{ vars.BACKUP_AGE_RECIPIENT }}
+        run: |
+          out="$RUNNER_TEMP/offsite"
+          rm -rf "$out"
+          mkdir -m 700 "$out"
+          if [ "$ACTION" = smoke ]; then
+            age-keygen -o "$out/smoke.key" 2> /dev/null
+            RECIPIENT="$(age-keygen -y "$out/smoke.key")"
+            for bad in '' age1notakey "$RECIPIENT; id"; do
+              if sudo sefid-offsite "$bad" > /dev/null 2>&1; then
+                echo "::error::sefid-offsite accepted the recipient \"$bad\"."
+                exit 1
+              fi
+            done
+            fetch() { sudo sefid-offsite "$RECIPIENT"; }
+          else
+            fetch() { ssh -F "$SSH_CONFIG" server "sudo sefid-offsite $RECIPIENT"; }
+          fi
+          if ! fetch > "$out/dump.age" 2> "$out/offsite.log"; then
+            cat "$out/offsite.log"
+            echo "::error::sefid-offsite failed (its message above); nothing was kept."
+            exit 1
+          fi
+          cat "$out/offsite.log"
+          read -r _ name _ _ _ sha < <(grep '^sefid-offsite: ' "$out/offsite.log") || true
+          if [[ ! "$name" =~ ^sefid-[0-9]{8}T[0-9]{6}Z-nightly\.dump$ ]] || [[ ! "$sha" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "::error::sefid-offsite printed no line \"sefid-offsite: <dump> <bytes> bytes sha256 <hex>\"."
+            exit 1
+          fi
+          # Only age ciphertext to an X25519 key may be kept.
+          if [ "$(head -n 1 "$out/dump.age")" != age-encryption.org/v1 ] || ! head -n 2 "$out/dump.age" | tail -n 1 | grep -q '^-> X25519 '; then
+            echo "::error::The copy is not age ciphertext to an X25519 key; it is deleted and not kept."
+            rm -f "$out/dump.age"
+            exit 1
+          fi
+          mv "$out/dump.age" "$out/$name.age"
+          echo "$sha  $name" > "$out/$name.sha256"
+          echo "encrypted copy: $name.age, $(du -h "$out/$name.age" | cut -f1); plain sha256 $sha"
+          if [ "$ACTION" = smoke ]; then
+            got="$(age --decrypt --identity "$out/smoke.key" "$out/$name.age" | sha256sum | cut -d' ' -f1)"
+            [ "$got" = "$sha" ] || { echo "::error::The decrypted copy has sha256 $got, the dump $sha."; exit 1; }
+            echo "the copy decrypts to the dump"
+          fi
+
+      - name: Keep the encrypted copy for 14 days (artifact)
+        if: env.ACTION == 'offsite-backup'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: sefid-offsite-${{ github.run_id }}
+          path: ${{ runner.temp }}/offsite/sefid-*
+          retention-days: 14
+          compression-level: 0
+          if-no-files-found: error
+
       - name: Status (sefid-status, sefid-env)
         if: env.ACTION == 'status' || env.ACTION == 'smoke'
         run: |
@@ -705,7 +782,7 @@ jobs:
           # Closes the shared connection and the tunnel on it.
           if [ -n "${SSH_CONFIG-}" ]; then ssh -F "$SSH_CONFIG" -O exit server 2> /dev/null || true; fi
           if [ -n "${SSH_AGENT_PID-}" ]; then kill "$SSH_AGENT_PID" 2> /dev/null || true; fi
-          rm -rf "$RUNNER_TEMP/ssh"
+          rm -rf "$RUNNER_TEMP/ssh" "$RUNNER_TEMP/offsite"
 
   vps-smoke:
     name: Smoke test of deploy/vps on the runner

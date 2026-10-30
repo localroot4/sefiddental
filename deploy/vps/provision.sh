@@ -130,7 +130,7 @@ install_packages() {
     die "apt-get full-upgrade failed (dpkg --audit above). Repair it with the action run: \"sudo dpkg --configure -a\", or hold the failing package: \"sudo apt-mark hold <package>\". Then run provision again."
   fi
   local pkgs=(nginx ssl-cert certbot postgresql ufw unattended-upgrades needrestart curl
-    ca-certificates openssl python3 bind9-dnsutils)
+    ca-certificates openssl python3 bind9-dnsutils age)
   [ "$SMOKE" = 1 ] || pkgs+=(fail2ban python3-systemd)
   "${APT[@]}" install "${pkgs[@]}"
   python3 -I -c 'import tarfile; tarfile.data_filter' 2>/dev/null ||

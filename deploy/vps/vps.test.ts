@@ -2,9 +2,11 @@ import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import {
   chmodSync,
+  closeSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
+  openSync,
   readFileSync,
   readdirSync,
   readlinkSync,
@@ -55,6 +57,7 @@ const hasShellcheck = ok(shellcheck, ['--version']);
 const hasNginx = ok('nginx', ['-v']);
 // sefid-release checks tarballs with the tarfile data filter of Python 3.12.
 const hasPython312 = ok('python3', ['-c', 'import tarfile; tarfile.data_filter']);
+const hasAge = ok('age', ['--version']);
 
 describe('deploy/vps shell files', { timeout: 60_000 }, () => {
   it('VPS1 every shell file passes bash -n', () => {
@@ -898,5 +901,74 @@ for a in "$@"; do case $a in EnvironmentFile=*scratch.env) cp "\${a#EnvironmentF
     });
     expect(r.stderr).toBe('');
     expect(r.stdout).toContain(`==> dump: ${ok} (`);
+  });
+});
+
+describe('sefid-offsite', { timeout: 30_000 }, () => {
+  const server = () => {
+    const s = fakeServer();
+    mkdirSync(`${s.env.SEFID_BACKUPS}/db`, { recursive: true });
+    const dump = `${s.env.SEFID_BACKUPS}/db/sefid-20261030T233000Z-nightly.dump`;
+    writeFileSync(dump, 'PGDMP fake dump\n');
+    s.stub('pg_restore', 'exit 0');
+    /** Run with stdout in OUT, as the workflow does (never a terminal). */
+    const offsite = (recipient: string, out = `${s.dir}/copy.age`) => {
+      const fd = openSync(out, 'w');
+      const r = spawnSync(`${SBIN}/sefid-offsite`, [recipient], {
+        encoding: 'utf8',
+        env: { ...process.env, ...s.env },
+        stdio: ['ignore', fd, 'pipe'],
+      });
+      closeSync(fd);
+      return { status: r.status, stderr: r.stderr, out: readFileSync(out) };
+    };
+    return { ...s, dump, offsite };
+  };
+  const RECIPIENT = `age1${'q'.repeat(58)}`;
+
+  it('VPS25 refuses a missing or malformed recipient and a stale dump; writes nothing', () => {
+    const s = server();
+    for (const bad of ['', 'age1notakey', `${RECIPIENT}; id`, RECIPIENT.toUpperCase()]) {
+      const r = s.offsite(bad);
+      expect(r.status, bad).toBe(1);
+      expect(r.stderr).toContain('give the age public key (age1... from age-keygen)');
+      expect(r.out.length).toBe(0);
+    }
+    age(s.dump, 27 * HOUR);
+    const stale = s.offsite(RECIPIENT);
+    expect(stale.status).toBe(1);
+    expect(stale.stderr).toContain('the newest nightly dump is 27 h old (limit 26 h)');
+    expect(stale.out.length).toBe(0);
+  });
+
+  it.skipIf(!hasAge)('VPS26 writes only age ciphertext, which the private key decrypts', () => {
+    const s = server();
+    const key = `${s.dir}/owner.key`;
+    expect(run('age-keygen', ['-o', key]).status).toBe(0);
+    const recipient = run('age-keygen', ['-y', key]).stdout.trim();
+    const r = s.offsite(recipient);
+    expect(r.status).toBe(0);
+    const plain = readFileSync(s.dump);
+    const sha = createHash('sha256').update(plain).digest('hex');
+    expect(r.stderr).toBe(
+      `sefid-offsite: sefid-20261030T233000Z-nightly.dump ${plain.length} bytes sha256 ${sha}\n`,
+    );
+    expect(r.out.subarray(0, 22).toString()).toBe('age-encryption.org/v1\n');
+    expect(r.out.includes('PGDMP')).toBe(false);
+    const back = spawnSync('age', ['--decrypt', '--identity', key, `${s.dir}/copy.age`]);
+    expect(back.status).toBe(0);
+    expect(back.stdout.equals(plain)).toBe(true);
+  });
+});
+
+describe('off-site wiring', () => {
+  const read = (p: string) => readFileSync(path.join(DIR, p), 'utf8');
+
+  it('VPS27 provision installs age; the workflow refuses the recipients sefid-offsite refuses', () => {
+    const provision = read('provision.sh');
+    expect(provision).toMatch(/bind9-dnsutils age\)/);
+    const rule = 'age1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58}$';
+    expect(read('files/usr/local/sbin/sefid-offsite')).toContain(`^${rule}`);
+    expect(read('../../.github/workflows/server.yml')).toContain(`^${rule}`);
   });
 });

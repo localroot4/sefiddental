@@ -9,7 +9,8 @@
 # days. It refuses to start when the disk has less than twice the room this run needs, so a
 # backup never fills the disk PostgreSQL writes to. Nothing is deleted when a step fails. Every
 # run records its result in /var/backups/sefid/last-<label> ("<UTC time> ok <dump>" or
-# "<UTC time> failed exit <code>"), which sefid-status reads.
+# "<UTC time> failed exit <code>"), which sefid-status reads. The weekly off-site copy is
+# sefid-offsite (docs/deploy.md 3.6).
 set -Eeuo pipefail
 # shellcheck source=SCRIPTDIR/../lib/sefid/common.sh
 . "$(dirname "$(readlink -f "$0")")/../lib/sefid/common.sh"
