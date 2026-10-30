@@ -94,7 +94,9 @@ export function TierComparison(props: {
                       // not native: a native radio stays grey in dark; checked, a brand ring.
                       className="relative z-[1] size-[1.25rem] shrink-0 cursor-pointer appearance-none rounded-full border-[1.5px] border-line-strong bg-surface-raised checked:border-[6px] checked:border-brand"
                     />
-                    {tier.name}
+                    {/* In a span: Chromium leaves a bare text node that names the radio out of the
+                        heading's own name, so the heading read as empty in the headings list. */}
+                    <span>{tier.name}</span>
                   </label>
                 ) : (
                   tier.name

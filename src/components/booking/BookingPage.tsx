@@ -54,20 +54,21 @@ export async function BookingPageView(props: {
           tokens={props.tokens}
           restore={inputs.restore}
         />
-        {/* Not an <aside>: a complementary landmark inside main fails axe's top-level rule. */}
+        {/* Not an <aside>: a complementary landmark inside main fails axe's top-level rule. Its
+            headings are H2, siblings of the form's: as H3 they read as parts of the form. */}
         <div className="grid content-start gap-8 lg:pt-6">
           <section className="grid gap-2">
-            <h3 className="text-small font-semibold">{t('pages.address.address')}</h3>
+            <h2 className="text-small font-semibold">{t('pages.address.address')}</h2>
             <p className="text-body">{clinic.address.fullFa}</p>
             <DirectionsLinks maps={clinic.maps} location="page" className="-ms-3" />
           </section>
           <section className="grid gap-2">
-            <h3 className="text-small font-semibold">{t('pages.address.hours')}</h3>
+            <h2 className="text-small font-semibold">{t('pages.address.hours')}</h2>
             <HoursTable hours={hours} note={hoursTableNote(hours)} />
           </section>
           {insurers.length ? (
             <section className="grid gap-2">
-              <h3 className="text-small font-semibold">{t('home.trust.insurance')}</h3>
+              <h2 className="text-small font-semibold">{t('home.trust.insurance')}</h2>
               <ul className="flex flex-wrap gap-2">
                 {insurers.map((insurer) => (
                   <li
