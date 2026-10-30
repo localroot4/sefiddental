@@ -8,8 +8,10 @@
 // (scripts/check-bundle.mjs).
 // Writes results.json, bundle.json, bundle.md and README.md into the output folder; phase 7 steps
 // go to docs/qa/phase-07/steps/<nn>-<lane>/.
-//   node scripts/measure-home.mjs <out dir> [--only=bundle,lighthouse,frames,inp] [--tiers=0,1]
-//     [--sections=hero,trust] [--viewport=phone] [--pace=16]
+// The fonts lane loads the desktop home with every woff2 answered 1.5 s late and records the CLS
+// of the swap (5 runs per tier; gate 0.05 in every run, docs/qa/audit-performance.md).
+//   node scripts/measure-home.mjs <out dir> [--only=bundle,lighthouse,frames,inp,fonts]
+//     [--tiers=0,1] [--sections=hero,trust] [--viewport=phone] [--pace=16]
 //   --sections scrolls the frames lane from one viewport above the first listed section to the
 //   bottom of the last one (a pinned scene's room included) and reports those sections only
 //   (`footer` is the playground stage; an id not on the page is an error);
@@ -581,6 +583,28 @@ async function measureFrames(browser, origin, h, tier, rate) {
   }
 }
 
+/** The fonts lane: how late every woff2 is answered, the runs per tier and the CLS gate. */
+const FONT_SWAP = { delayMs: 1500, runs: 5, maxCls: 0.05 };
+
+/** CLS of a desktop home load whose fonts arrive late (the swap from "Vazirmatn Fallback"). */
+async function measureFontSwap(browser, origin, h, tier) {
+  const context = await (await browser()).newContext({ ...h.VIEWPORTS.desktop, ...CONTEXT });
+  try {
+    await context.route(/\.woff2(\?|$)/, async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, FONT_SWAP.delayMs));
+      await route.continue().catch(() => {}); // the context closed first
+    });
+    const page = await context.newPage();
+    await page.addInitScript(observeShiftsAndTasks);
+    await page.goto(`${origin}/?tier=${tier}`, { waitUntil: 'load' });
+    await page.evaluate(() => document.fonts.ready);
+    await page.waitForTimeout(1000);
+    return { tier, ...clsFrom(await page.evaluate(() => window.__shifts)) };
+  } finally {
+    await closeQuietly(context);
+  }
+}
+
 /** Event Timing entries of real interactions (16 ms is the API's lowest reporting threshold). */
 function observeEventTiming() {
   const w = window;
@@ -644,16 +668,19 @@ async function measureInp(browser, origin, h, viewport, tier, form) {
     const worst = (list) => list.reduce((w, e) => (w && w.duration >= e.duration ? w : e), null);
     const submit = worst(entries.filter((e) => e.start >= submitFrom));
     const typing = worst(entries.filter((e) => e.start >= typingFrom && e.start < submitFrom));
+    const phases = (e) =>
+      e && {
+        name: e.name,
+        inputDelayMs: round(e.processingStart - e.start),
+        processingMs: round(e.processingEnd - e.processingStart),
+        presentationMs: round(e.start + e.duration - e.processingEnd),
+      };
     return {
       success,
       submitMs: submit?.duration ?? null,
-      submitEvent: submit && {
-        name: submit.name,
-        inputDelayMs: round(submit.processingStart - submit.start),
-        processingMs: round(submit.processingEnd - submit.processingStart),
-        presentationMs: round(submit.start + submit.duration - submit.processingEnd),
-      },
+      submitEvent: phases(submit),
       typingWorstMs: typing?.duration ?? null,
+      typingEvent: phases(typing),
     };
   } finally {
     await closeQuietly(context);
@@ -887,6 +914,21 @@ function readme(results, bundleMd) {
       '',
     );
   }
+  if (results.fonts) {
+    lines.push(
+      `## Font swap (desktop 1440x900, every woff2 ${FONT_SWAP.delayMs} ms late, ${FONT_SWAP.runs} runs; gate cls at most ${FONT_SWAP.maxCls} in every run)`,
+      '',
+      'The first visit as is (the intro runs), `/?tier=N`, until `document.fonts.ready` plus 1 s, no input. cls is the largest session window (web-vitals rule); clsAll sums every shift.',
+      '',
+      '| Tier | cls (runs) | clsAll (runs) | Pass |',
+      '|---|---|---|---|',
+      ...results.fonts.map(
+        ({ tier, runs }) =>
+          `| ${tier} | ${runs.map((r) => r.cls).join(', ')} | ${runs.map((r) => r.clsAll).join(', ')} | ${runs.every((r) => r.cls <= FONT_SWAP.maxCls) ? 'yes' : 'no'} |`,
+      ),
+      '',
+    );
+  }
   if (results.bundle) {
     lines.push(
       `## Initial JS per page class (scripts/check-bundle.mjs, exit code ${results.bundle.exitCode})`,
@@ -958,7 +1000,7 @@ async function main() {
     console.error('measure-home: name the output folder, e.g. docs/qa/phase-07/baseline.');
     process.exit(2);
   }
-  const only = new Set((option(args, 'only') ?? 'bundle,lighthouse,frames,inp').split(','));
+  const only = new Set((option(args, 'only') ?? 'bundle,lighthouse,frames,inp,fonts').split(','));
   SECTIONS = parseSections(args);
   VIEWPORT = parseViewport(args);
   TIERS = parseTiers(args, VIEWPORT === 'phone' ? [0, 1, 2] : [0, 1]);
@@ -1036,7 +1078,7 @@ async function main() {
       results.lighthouse = await measureLighthouse(port);
       save();
     }
-    if (only.has('frames') || only.has('inp')) {
+    if (only.has('frames') || only.has('inp') || only.has('fonts')) {
       const ts = (file) => import(pathToFileURL(path.join(root, 'tests', 'helpers', file)).href);
       const h = {
         ...(await ts('cpu.ts')),
@@ -1111,6 +1153,20 @@ async function main() {
             results.taps.push({ row, tier, runs });
             console.log(`measure-home: ${label} done`);
           }
+        }
+        save();
+      }
+      if (only.has('fonts') && VIEWPORT === 'desktop') {
+        launchOptions = defaultLaunch();
+        results.fonts = [];
+        for (const tier of TIERS) {
+          const label = `fonts tier ${tier}`;
+          const runs = [];
+          for (let i = 0; i < FONT_SWAP.runs; i += 1) {
+            runs.push(await retried(label, () => measureFontSwap(getBrowser, origin, h, tier)));
+          }
+          results.fonts.push({ tier, runs });
+          console.log(`measure-home: ${label} done`);
         }
         save();
       }
