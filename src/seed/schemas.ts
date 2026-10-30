@@ -91,6 +91,7 @@ export const servicesYaml = z.object({
         intro: todo.optional(),
         faqs: faqs.optional(),
         seo_title: text.optional(),
+        seo_description: text.optional(),
       }),
     )
     .min(1),

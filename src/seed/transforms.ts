@@ -215,7 +215,10 @@ export function categoryData(category: Category) {
     summary: opt(category.summary),
     intro: opt(category.intro),
     faqs: faqsData(category.faqs),
-    seo: category.seo_title ? { title: fixText(category.seo_title) } : {},
+    seo: {
+      ...(category.seo_title ? { title: fixText(category.seo_title) } : {}),
+      ...(category.seo_description ? { description: fixText(category.seo_description) } : {}),
+    },
   };
 }
 
