@@ -169,8 +169,63 @@ sources each one rests on.
 
 ## 2. RTL inspection
 
-Wave 2, SEO-RTL lane.
+Date: 2026-10-30. The standalone build of `9948d21` with this lane's changes (`8ada965` adds only
+the client-side reload place, `src/experience/core/reloadPlace.ts`), Chromium 141.0.7390.37.
+
+### 2.1 Method
+
+- Screenshots: `QA_SCREENSHOTS=phase-09 npx playwright test screenshots --grep "T-SS .* screenshot"`
+  in the six matrix projects (390x844 at 3x with touch, 820x1180 at 2x with touch, 1440x900; light
+  and dark). On the QA database (`npm run db:e2e`): 25 templates, from the system pages to the
+  article. On the launch database (`npm run db:live`, `E2E_LIVE_SHAPE=1`): the dentist, guide and
+  article hubs in their empty state. Files: `docs/qa/phase-09/<template>-<width>-<theme>.jpg` (JPEG, at most 1000 px wide).
+  Home at `?tier=2` is stitched from viewport frames after a full scroll (phase 7 F4).
+- A scripted probe at the same three widths and both themes (session scratchpad, not committed):
+  every sitemap URL plus the empty hubs, the booking success page, page 2 of the articles list,
+  a tag page and a 404. Per page it reads `html[dir]`, horizontal overflow
+  (`scrollWidth - clientWidth`), any element past the viewport edge outside a clipping parent,
+  Persian text set `text-align: left` or in an LTR box, text whose color equals its background,
+  and page errors. 34 URLs on `db:live` (204 runs) and 55 on the QA database (330 runs).
+- Source: physical direction utilities (`ml-`, `pr-`, `left-`, `text-left`, `rounded-l-`,
+  `border-r-` and the CSS properties) in `src/components`, `src/app` and `src/experience`; the
+  directional icons.
+
+### 2.2 Results
+
+| Check | Result |
+|---|---|
+| `html[dir]` | `rtl` on all 534 runs |
+| Horizontal overflow, elements past the viewport edge | 0 |
+| Persian text left-aligned | 0 |
+| Persian text in an LTR box | 0. The only LTR boxes are the phone numbers and the «۰/۵۰۰» counter of the note field: LTR islands by design, digits in Persian. |
+| Page errors | 0 |
+| Physical direction utilities and CSS properties | 0: margins, paddings, insets, borders, radii and alignment are logical (`ms-`, `pe-`, `start-`, `text-start`). |
+| Directional icons | `caret-back`, `caret-forward` and `arrow-forward` are listed in `MIRRORED_ICONS` and flip under `rtl:` (`src/components/ui/Icon.tsx`); breadcrumbs, pagination, related links and cards point the reading way. Up and down carets do not flip. |
+| Screenshots, all templates | Headings, body text, lists, breadcrumbs, FAQ chevrons, form labels, hints and errors, buttons, the header, the drawer trigger, the footer columns and the booking cards start at the right edge. Latin source titles (`Veneers`, `Dental treatments`) sit as LTR islands after their Persian numbers. Numbers, dates and prices are Persian digits. The tier chips (معمولی, VIP, CIP) read right to left. |
+
+### 2.3 Defects
+
+None in the RTL layout. Two capture notes, not page defects:
+
+- In a full-page capture of a phone or tablet template the fixed bottom bar («رزرو نوبت», «تماس»)
+  appears once at the first viewport's bottom edge, over the content beneath it. A reader sees
+  it pinned to the bottom of the screen. `captureTemplate` hides it only when it is hidden.
+- The service cards on home scroll sideways at 390 and 820 by design (scroll snap); the next card
+  shows at the start edge as the cue.
 
 ## 3. Dark mode audit
 
-Wave 2, SEO-RTL lane.
+Same screenshots and probe, `prefers-color-scheme: dark` (the site follows the system unless the
+reader chose a theme).
+
+| Check | Result |
+|---|---|
+| Body background | `rgb(7, 26, 43)` in every dark run, `rgb(247, 248, 247)` in every light run: no page stays light |
+| Text the same color as its background | 0 |
+| Brand marks | The logo, the header mark and the footer mark switch to their light-on-dark versions |
+| Cards, inputs, chips, FAQ rows, breadcrumbs, the sticky bar | Surfaces step up from the page background; borders and focus rings stay visible |
+| Photos and placeholders | The house placeholder (`MediaPlaceholder`) and the restoration tooth drawing invert to their dark tones; no white box around an image |
+| Contrast | Measured by the A11Y lane with axe (`docs/qa/audit-accessibility.md`) |
+
+Known and deferred (plan section 8): the dark booking band reads brown (phase 7 V3, a design
+pass), and the workflow contrast (F6, when gap 48 turns the scene on). No new dark defect.
