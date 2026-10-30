@@ -314,6 +314,54 @@ test('T-RS8 arrow keys and then a fast Tab out of the pin keep every focused ele
   expect(settled.inView, JSON.stringify(settled)).toBe(true);
 });
 
+/** The scroll position and the checked chip have not changed for 500 ms. */
+const calm = (page: Page) =>
+  page.waitForFunction(
+    () => {
+      const w = window as unknown as { __calm?: { key: string; since: number } };
+      const chips = [...document.querySelectorAll<HTMLInputElement>('input[name="home-tier"]')];
+      const key = `${Math.round(window.scrollY)} ${chips.map((c) => Number(c.checked)).join('')}`;
+      const now = performance.now();
+      if (w.__calm?.key !== key) w.__calm = { key, since: now };
+      return now - w.__calm.since >= 500;
+    },
+    null,
+    { polling: 50 },
+  );
+
+test('T-RS9 the chips are one Tab stop at tiers 0, 1 and 2, whatever the scroll checks while one has the focus (F5)', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  for (const tier of [0, 1, 2]) {
+    await page.goto(`/?tier=${tier}`);
+    await page.waitForLoadState('load');
+    if (tier > 0) {
+      await page.waitForFunction(
+        () => performance.getEntriesByName('sefid:engine-init').length > 0,
+      );
+    }
+    // From «همهٔ خدمات», the stop before the scene: Tab walks into the chips and out again.
+    await page.locator('[data-scene="services"] a').last().focus();
+    await calm(page);
+    const stops: string[] = [];
+    for (let i = 0; i < 4; i += 1) {
+      await page.keyboard.press('Tab');
+      // The focus scroll and the scrub it moves settle before the next Tab (the close probe found
+      // the second stop, standard then VIP, at a calm pace).
+      await calm(page);
+      stops.push(
+        await page.evaluate(() => {
+          const el = document.activeElement as HTMLInputElement | null;
+          return el?.name === 'home-tier' ? `radio ${el.value}` : (el?.tagName ?? 'none');
+        }),
+      );
+    }
+    const radios = stops.filter((stop) => stop.startsWith('radio'));
+    expect(radios, `tier ${tier}: ${stops.join(' → ')}`).toHaveLength(1);
+  }
+});
+
 /** The scrub lag on a coarse pointer (0.32 s) and the settle window, with margin (home-phone). */
 const SCRUB_WAIT_MS = 700;
 

@@ -13,12 +13,13 @@
  * checks that step's radio programmatically with a script `change` (untrusted: no `tier_select`;
  * choices.ts moves the group's `data-choice`, D21; one write per step, never per frame: a panel
  * switch restyles, D12), so the CSS panel and its CTA follow the scroll. Leaving the pin upwards
- * clears the check (F24 stands outside the pin). A user choice (tap, arrow keys: a trusted
- * `change`, which HomeBookingPrefill reports as `tier_select`) scrolls to the middle of that step's
- * third, so scroll and choice never disagree; the chips stay in view because the section is pinned.
- * A chip checked before the engine (a tap before its chunk, a relatch from tier 1) keeps its layer
- * until the scroll enters the pin; a chip the reader chose survives the engine, a chip the scroll
- * checked does not.
+ * clears the check (F24 stands outside the pin). While the keyboard focus is on a chip the scroll
+ * checks none (F5: one Tab stop). A user choice (tap, arrow keys: a trusted `change`, which
+ * HomeBookingPrefill reports as `tier_select`) scrolls to the middle of that step's third, so
+ * scroll and choice never disagree; the chips stay in view because the section is pinned. A chip
+ * checked before the engine (a tap before its chunk, a relatch from tier 1) keeps its layer until
+ * the scroll enters the pin; a chip the reader chose survives the engine, a chip the scroll checked
+ * does not.
  */
 import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -143,6 +144,12 @@ const scene: DomScene = {
         base(0);
         timeline.render(timeline.time(), true, true);
       }
+      // F5: a radio the scroll checked while the keyboard focus sits on another one of the group
+      // is a second Tab stop; that chip stays until the focus leaves the group or chooses. A
+      // tap's focus is not focus-visible: the chip keeps following the scroll after it.
+      const focused = document.activeElement;
+      const keyboard = focused instanceof HTMLInputElement && focused.matches(':focus-visible');
+      if (keyboard && radios.includes(focused)) return;
       const step = stepAt(self.progress, steps);
       if (lockHolds(state.pending, step, self.direction, performance.now())) return;
       state.pending = null;

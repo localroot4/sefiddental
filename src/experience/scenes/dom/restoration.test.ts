@@ -163,6 +163,39 @@ describe('scene 4 restoration helpers', () => {
     now.mockRestore();
   });
 
+  it('RS-S10 F5: while the keyboard focus is on a chip the scroll checks none, so the group stays one Tab stop; a tap focus does not hold it', () => {
+    document.body.innerHTML = `<div data-scene="restoration"><section>
+      ${['plain', 'vip', 'cip'].map((l) => `<svg data-level="${l}"></svg>`).join('')}
+      ${[0, 1, 2].map((i) => `<input type="radio" name="home-tier" value="t${i}">`).join('')}
+    </section><div data-pin-room=""></div></div>`;
+    const el = document.querySelector<HTMLElement>('[data-scene]')!;
+    const radios = Array.from(el.querySelectorAll('input'));
+    const ctx = {
+      el,
+      conditions: { reduce: false, fine: true, wide: true },
+      engine: { scrollTo: vi.fn() },
+    } as unknown as Parameters<NonNullable<DomScene['pin']>>[0] & Parameters<DomScene['setup']>[0];
+    g.create.mockClear();
+    scene.pin!(ctx);
+    const cleanup = scene.setup(ctx) as () => void;
+    const trigger = g.create.mock.calls[0]![0] as { onUpdate(self: object): void };
+    // A Tab onto the first chip (none checked), then its focus scroll moves into VIP's third.
+    const visible = vi.spyOn(radios[0]!, 'matches').mockReturnValue(true);
+    radios[0]!.focus();
+    trigger.onUpdate({ isActive: true, progress: 0.5, direction: 1 });
+    expect(radios.map((r) => r.checked)).toEqual([false, false, false]);
+    // The focus left the group: the scroll owns the chip again.
+    radios[0]!.blur();
+    trigger.onUpdate({ isActive: true, progress: 0.5, direction: 1 });
+    expect(radios.map((r) => r.checked)).toEqual([false, true, false]);
+    // A tap's focus (not focus-visible) holds nothing.
+    visible.mockReturnValue(false);
+    radios[0]!.focus();
+    trigger.onUpdate({ isActive: true, progress: 0.9, direction: 1 });
+    expect(radios.map((r) => r.checked)).toEqual([false, false, true]);
+    cleanup();
+  });
+
   it('RS-S8 a keyboard choice scrolls at once, so a fast Tab after it keeps the focus in view', () => {
     document.body.innerHTML = `<div data-scene="restoration"><section>
       ${['plain', 'vip', 'cip'].map((l) => `<svg data-level="${l}"></svg>`).join('')}
