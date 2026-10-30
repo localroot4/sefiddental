@@ -86,7 +86,7 @@ export function RestorationSection(props: {
             </fieldset>
             <div
               data-tier-panel=""
-              className={`grid justify-items-start group-data-choice/tiers:hidden noscript:group-has-[input:checked]/tiers:hidden ${STACKED} lg:[[data-pins]_&]:group-data-choice/tiers:grid lg:[[data-pins]_&]:group-data-choice/tiers:invisible`}
+              className={`grid content-start justify-items-start group-data-choice/tiers:hidden noscript:group-has-[input:checked]/tiers:hidden ${STACKED} lg:[[data-pins]_&]:group-data-choice/tiers:grid lg:[[data-pins]_&]:group-data-choice/tiers:invisible`}
             >
               {book(null)}
             </div>

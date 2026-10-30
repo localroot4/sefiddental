@@ -486,6 +486,33 @@ test('T-RS7 ?tier=2 at 1024x768: the pinned stage fits the viewport (molar stack
   }
 });
 
+test('T-RS11 ?tier=2 at 1440x900 and 1024x768: the «رزرو نوبت» keeps its own height before a choice and in every step (the stacked panels never stretch it)', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  for (const [width, height] of [
+    [1440, 900],
+    [1024, 768],
+  ] as const) {
+    await page.setViewportSize({ width, height });
+    await page.goto('/?tier=2');
+    await page.evaluate(() => document.fonts.ready);
+    const range = await pinRange(page);
+    await expect(page.locator('html[data-pins]')).toHaveCount(1);
+    const cta = scene(page).getByRole('link', { name: BOOK, exact: true });
+    // Before a choice (above the pin), then each step's third.
+    for (const [y, key] of [
+      [range.start - 200, null],
+      ...STEPS.map((k, step) => [stepY(range, step), k] as const),
+    ] as const) {
+      await scrollTo(page, y);
+      await expect.poll(() => checkedKey(page)).toBe(key);
+      const box = await cta.boundingBox();
+      expect(box?.height, `${width}x${height} ${key ?? 'no choice'}`).toBeLessThan(60);
+    }
+  }
+});
+
 test("T-RS10 ?tier=2: Tab after the chosen chip lands on that step's visible «رزرو نوبت» (the stacked panels hide the rest from the keyboard)", async ({
   page,
 }, testInfo) => {

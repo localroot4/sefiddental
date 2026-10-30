@@ -120,6 +120,11 @@ describe('home scene 4 tier step (F24, CV9)', () => {
           `lg:[[data-pins]_&]:group-data-[choice=${i + 1}]/tiers:visible`,
         ]),
       );
+    // The no-choice panel shares that cell with the taller tier cards: its rows start at the
+    // top, so its CTA keeps its own height (the e2e T-RS11 measures it).
+    expect(group.querySelector('[data-tier-panel=""]')!.className.split(' ')).toContain(
+      'content-start',
+    );
     expect(group.hasAttribute('data-choice')).toBe(false);
     fireEvent.click(group.querySelector('input[value="cip"]')!);
     expect(group.getAttribute('data-choice')).toBe('3');
