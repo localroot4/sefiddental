@@ -5,10 +5,14 @@
 // dashboard screenshots are in admin.spec.ts (they need the shared admin session). Phase 7: home
 // at ?tier=0 and ?tier=2 with reduced motion off and on, the intro at its 50% stage, and a
 // recording of a full scroll at ?tier=2 (desktop and phone) for the hand-off, written to
-// docs/qa/phase-NN/final/recordings/ with QA_SCREENSHOTS.
+// docs/qa/phase-NN/final/recordings/ with QA_SCREENSHOTS. Phase 9: home at ?tier=2 is stitched
+// from viewport frames (phase 7 F4), the article templates join, and with E2E_LIVE_SHAPE=1 (the
+// `npm run db:live` database) the empty hubs a visitor sees at launch replace the fixture set.
+import { mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import sharp from 'sharp';
 
 import { t } from '@/i18n/fa';
 
@@ -23,7 +27,7 @@ import { scrollThrough } from '../helpers/frames';
 import { skipIntro } from '../helpers/intro';
 import { captureTemplate, qaScreenshotDir } from '../helpers/screens';
 import { MAINTENANCE_ORIGIN } from '../helpers/servers';
-import { projectTheme } from '../helpers/theme';
+import { projectTheme, type Theme } from '../helpers/theme';
 
 const TEMPLATES = [
   { name: '404', url: '/qa-screenshot-missing-page' },
@@ -34,7 +38,8 @@ const TEMPLATES = [
   { name: '503', url: `${MAINTENANCE_ORIGIN}/` },
   // Home: the static page, the full experience, and reduced motion over each (tier 0 either way).
   // The tier 2 shot follows a scroll down and up: the reveals fire once near the viewport, so a
-  // capture from the top alone would show every section below the fold before its reveal.
+  // capture from the top alone would show every section below the fold before its reveal. It is
+  // stitched from viewport frames (captureStitched).
   { name: 'home-tier0', url: '/?tier=0' },
   { name: 'home-tier2', url: '/?tier=2', scroll: true },
   { name: 'home-tier0-reduced', url: '/?tier=0', reducedMotion: true },
@@ -54,7 +59,68 @@ const TEMPLATES = [
   // Phase 5: the pricing page shows the QA-FIN financing option of the e2e fixture.
   { name: 'pricing', url: encodeURI('/هزینه-و-پرداخت') },
   { name: 'privacy', url: encodeURI('/حریم-خصوصی') },
+  // Phase 6 article templates on the QA fixture (tests/fixtures/qa-seed.ts).
+  { name: 'articles-hub', url: encodeURI('/مقالات') },
+  { name: 'article', url: encodeURI('/مقالات/نمونه-آزمایشی-مقاله-کامل') },
 ] as const;
+
+// The launch shape (decision 1a): no dentist, guide or article is published, so these hubs show
+// their empty states.
+const LIVE_SHAPE = process.env.E2E_LIVE_SHAPE === '1';
+const EMPTY_HUBS = [
+  { name: 'dentists-hub-empty', url: encodeURI('/پزشکان') },
+  { name: 'guide-hub-empty', url: encodeURI('/راهنمای-بیمار') },
+  { name: 'articles-hub-empty', url: encodeURI('/مقالات') },
+] as const;
+
+/**
+ * A page as a reader scrolls it (phase 7 F4): a full-page capture resizes the viewport to the
+ * page height, which re-creates the engine and hides the reveals below the fold again. Viewport
+ * frames one viewport apart are stitched instead, in CSS pixels; the header and the sticky bar
+ * show in the first frame only. A scrubbed overlay can change at a frame seam.
+ */
+async function captureStitched(page: Page, testInfo: TestInfo, template: string, theme: Theme) {
+  await page.evaluate(() => document.fonts.ready);
+  const { vh, max } = await page.evaluate(() => ({
+    vh: innerHeight,
+    max: document.documentElement.scrollHeight - innerHeight,
+  }));
+  const frames: Array<{ top: number; left: number; input: Buffer }> = [];
+  for (let y = 0; ; y += vh) {
+    const at = Math.min(y, max);
+    await page.evaluate((to) => window.scrollTo(0, to), at);
+    await page.waitForTimeout(700);
+    const top = await page.evaluate(() => Math.round(scrollY));
+    if (frames.length === 1) {
+      await page.evaluate(() => {
+        for (const el of document.querySelectorAll<HTMLElement>('header, [data-sticky-bar]')) {
+          el.style.visibility = 'hidden';
+        }
+      });
+    }
+    frames.push({
+      top,
+      left: 0,
+      input: await page.screenshot({ scale: 'css', animations: 'disabled' }),
+    });
+    if (at >= max) break;
+  }
+  const width = page.viewportSize()?.width ?? 0;
+  const file = `${template}-${width}-${theme}.png`;
+  // The first frame goes on last, so the header it carries is not covered by the next frame.
+  const body = await sharp({
+    create: { width, height: frames.at(-1)!.top + vh, channels: 3, background: '#ffffff' },
+  })
+    .composite(frames.reverse())
+    .png({ compressionLevel: 9, adaptiveFiltering: true, effort: 10 })
+    .toBuffer();
+  const dir = qaScreenshotDir();
+  if (dir) {
+    await mkdir(dir, { recursive: true });
+    await sharp(body).toFile(path.join(dir, file));
+  }
+  await testInfo.attach(file, { body, contentType: 'image/png' });
+}
 
 test.beforeEach(({ page }) => skipIntro(page));
 
@@ -64,11 +130,13 @@ function only(testInfo: TestInfo, ...projects: string[]): void {
   test.skip(!projects.includes(testInfo.project.name), `runs in ${projects.join(', ')}`);
 }
 
-for (const template of TEMPLATES) {
-  test(`T-SS ${template.name} screenshot`, async ({ page }, testInfo) => {
+for (const template of LIVE_SHAPE ? EMPTY_HUBS : TEMPLATES) {
+  test(`T-SS ${template.name} screenshot`, async ({ page, browserName }, testInfo) => {
     if ('reducedMotion' in template) await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.goto(template.url);
     if ('scroll' in template) {
+      // The phone and tablet pass scrolls by touch through a CDP session (scrollThrough).
+      test.skip(browserName !== 'chromium', 'needs a CDP session (touch drive), Chromium only');
       // A full down-and-up pass by touch takes over 30 s on a loaded host: triple the timeout
       // and let each pass fail inside it.
       test.slow();
@@ -81,6 +149,7 @@ for (const template of TEMPLATES) {
       expect(await scrollThrough(page, 1, scroll)).toBe(true);
       expect(await scrollThrough(page, -1, scroll)).toBe(true);
       await page.waitForTimeout(1000);
+      return captureStitched(page, testInfo, template.name, projectTheme(testInfo));
     }
     await captureTemplate(page, testInfo, template.name, projectTheme(testInfo));
   });
@@ -118,8 +187,13 @@ test('T-SS intro at its 50% stage', async ({ page }, testInfo) => {
   });
 });
 
-test('T-SS recording: the intro and a full scroll at ?tier=2', async ({ browser }, testInfo) => {
+test('T-SS recording: the intro and a full scroll at ?tier=2', async ({
+  browser,
+  browserName,
+}, testInfo) => {
   only(testInfo, 'desktop-light', 'phone-light');
+  // The phone pass scrolls by touch through a CDP session (scrollThrough).
+  test.skip(browserName !== 'chromium', 'needs a CDP session (touch drive), Chromium only');
   test.setTimeout(120_000);
   const phone = size(testInfo) === 'phone';
   const file = `home-tier2-${phone ? 390 : 1440}.webm`;
