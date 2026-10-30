@@ -178,9 +178,9 @@ This section holds on every path: Liara, ArvanCloud, a VPS or C1.
 - One long-running process. Target: 1 GB RAM (see `NODE_OPTIONS`).
 - A writable `/tmp`: uploads stream to temporary files (up to 64 MiB per
   request).
-- PostgreSQL. CI tests on PostgreSQL 16; the Liara proposal is 17. SQLite is
-  for tests and local work only: two releases overlap during a zero-downtime
-  switch.
+- PostgreSQL. CI tests on PostgreSQL 18, the server's major; the Liara
+  proposal is 17. SQLite is for tests and local work only: two releases
+  overlap during a zero-downtime switch.
 - Outbound connections at run time: the database, S3 (when set) and SMTP (when
   set); `api.telegram.org` only when the Telegram notifier is switched on and
   `TELEGRAM_BOT_TOKEN` is set (usually filtered from servers in Iran), and the
@@ -778,8 +778,10 @@ rm -f "$file"
   a failed dump.
 - `pg_restore --list` proves the file is a readable archive. It does not prove
   the data restores: run a test restore once a month (section 6, steps 3 to 7,
-  into a scratch database).
-- A failed job must alert the admin. Deliverable 9 wires the alert.
+  into a scratch database). On the VPS the action `restore-check` runs it (3.6).
+- A failed job must alert the admin. On the VPS the workflow "Watch" opens an
+  issue when the newest nightly dump is older than 26 h or the last run failed
+  (3.6).
 - On a shared machine, put the password in `~/.pgpass` instead of the URL: a
   URL argument shows in the process list.
 
@@ -798,9 +800,13 @@ rm -f "$file"
 - On the VPS (section 3), nginx also writes `/var/log/nginx/sefid.access.log`.
   It keeps the client address without its last part (IPv4 /24, IPv6 /48), so
   a form request never stays tied to a whole IP address: the privacy page
-  promises that. nginx's error log keeps the full client address of a request
-  that failed at the app (the app down or restarting). Ubuntu's logrotate
-  keeps both 14 days (open item 3.9).
+  promises that. Ubuntu's logrotate keeps it 14 days.
+- nginx's error log names the full client address of a request that failed at
+  the app (the app down or restarting). Every server of the site writes it to
+  `/var/log/nginx/sefid/error.log`. `/etc/logrotate.d/sefid-nginx` rotates it
+  every day and keeps one old file, so a line lives 2 days at most. Ubuntu's
+  `/var/log/nginx/error.log` keeps only what happens outside these servers,
+  such as nginx's own start.
 
 ### 2.12 Maintenance mode
 
@@ -1033,6 +1039,8 @@ Input `action`:
 | `rollback` | `sefid-release rollback` in a systemd unit: back to the previous release, with the same health check (section 5). |
 | `maintenance-on`, `maintenance-off` | `sefid-maintenance on` or `off` (2.12) in a systemd unit. It restarts the app and waits until `/api/health` shows the mode. |
 | `run` | Runs the input `command` as `deploy` on the server, for diagnosis. `deploy` has sudo, so this input is as powerful as the SSH key. The command and everything it prints go into the run log, which every collaborator can read for 90 days. Never put a secret in the command, and never print `/etc/sefid/app.env`, `/etc/sefid/cron-auth.header` or a key: `sudo sefid-env` lists the names. |
+| `restore-check` | `sefid-restore-check` in a systemd unit: the restore drill of 3.6 on the scratch database `sefid_restore_check` only. It never touches `sefid`. |
+| `offsite-backup` | Also every Friday at 01:23 UTC by schedule. Stops unless the repository variable `BACKUP_AGE_RECIPIENT` holds an age public key. `sefid-offsite` encrypts the newest nightly dump with age on the server; the run keeps the ciphertext and its `.sha256` as an artifact for 14 days (3.6). |
 | `smoke` | The `vps-smoke` job (3.8). |
 
 Rules:
@@ -1068,20 +1076,28 @@ Rules:
 | `/srv/sefid/current`, `/srv/sefid/previous` | Links to the running release and the one before |
 | `/var/lib/sefid/media` (sefid 0750) | `MEDIA_DIR`, uploads (2.9) |
 | `/var/backups/sefid/{db,media}` (root 0700) | Backups (3.6) |
+| `/var/backups/sefid/last-<label>` | The result of the last backup run of that label: `<UTC time> ok <dump>` or `<UTC time> failed exit <code>` |
+| `/run/sefid-cron.ok` | Touched by root after every successful tick; `sefid-status --check` reads its age |
 | `sefid.service` | User `sefid`, `localhost:3000`, sandboxed; `systemd-analyze security` in the provision report |
 | `sefid-cron.timer` | The tick of 2.8 every minute, on the loopback origin |
 | `sefid-backup.timer` | 23:30 UTC every night |
-| nginx | TLS 1.2 and 1.3, HTTP/2, every rule of 2.5. Unknown host names get no answer: 444 on port 80, a TLS alert without a certificate on 443. Port 80 serves `/.well-known/acme-challenge/` and redirects the rest to https. Access log with shortened client addresses (2.11). |
+| `sefid-restore-check-app` | Transient unit of the restore drill: the current release on port 3009 against `sefid_restore_check` (3.6) |
+| nginx | TLS 1.2 and 1.3, HTTP/2, every rule of 2.5. Unknown host names get no answer: 444 on port 80, a TLS alert without a certificate on 443. Port 80 serves `/.well-known/acme-challenge/` and redirects the rest to https. Access log with shortened client addresses; error log in `/var/log/nginx/sefid/error.log`, kept 2 days (2.11). |
 | PostgreSQL | Loopback only, scram-sha-256, role and database `sefid` |
 | Firewall and SSH | ufw allows 22 (rate-limited), 80 and 443. fail2ban watches sshd. SSH: key only, user `deploy` only, no root login, forwarding only to `127.0.0.1:5432`. |
 | OS | Security updates every night at 22:30 to 22:45 UTC (02:00 in Tehran), with the service restarts they need; a reboot at 23:45 UTC when one is required. UTC clock (chrony, with plain NTP beside Ubuntu's NTS sources). 2 GB swap, journald capped at 1 GB. |
 
-### 3.6 Backups
+### 3.6 Backups, restore drill and alerts
+
+On the server:
 
 - Every night at 23:30 UTC, `sefid-backup` writes
   `/var/backups/sefid/db/sefid-<stamp>-nightly.dump` (`pg_dump` custom format,
   read back with `pg_restore --list`) and a tar of the media folder. It keeps
   14 days.
+- Every run writes its result to `/var/backups/sefid/last-<label>`:
+  `<UTC time> ok <dump>` or `<UTC time> failed exit <code>`. `status` prints
+  it under "last backup".
 - Every `deploy` takes a `pre-deploy` backup of the database before the
   migrations. It skips the media folder: a release does not change media.
 - The action `backup` takes one now.
@@ -1096,10 +1112,103 @@ Rules:
   backup. With a few GB of media the backup takes a minute or two. If it
   grows past 10 minutes, move `Automatic-Reboot-Time` in
   `deploy/vps/files/etc/apt/apt.conf.d/53sefid-auto-reboot`.
-- Not built yet: the off-site copy. The backups sit on the server's own
-  disk, so losing the VM loses them too. Until a bucket exists, ask the
-  provider for daily VM snapshots (section 4). A failed backup alerts nobody
-  yet: run `status` every week and read "last backup".
+
+Off the server (owner decision 2b, until a bucket exists):
+
+- The provider's daily VM snapshot. It is the first way back after a lost
+  VM, media included. The client turns it on in the provider's panel
+  (section 4, item 12).
+- The weekly off-site copy: every Friday at 01:23 UTC the workflow "Server"
+  runs the action `offsite-backup`. It also runs by hand.
+  - `sefid-offsite` on the server encrypts the newest nightly dump with
+    [age](https://age-encryption.org) to the owner's public key. Only that
+    ciphertext leaves the server; the owner's private key never reaches the
+    server or GitHub.
+  - The run keeps `sefid-<stamp>-nightly.dump.age` and its `.sha256` (of the
+    plain dump) as the artifact `sefid-offsite-<run id>` for 14 days.
+  - The repository is public, so any signed-in GitHub user can download the
+    artifact. The encryption is the only protection: the run refuses to start
+    without a valid public key in the repository variable
+    `BACKUP_AGE_RECIPIENT`, and it refuses a nightly dump older than 26 h.
+    Before it keeps the file, it checks that the file is age ciphertext.
+  - The dump holds patients' phone numbers; encrypted, they leave Iran.
+  - The media folder is not part of it. The VM snapshot covers media.
+
+The owner's key pair, once, on the owner's computer:
+
+1. Install age: `brew install age` (macOS), `winget install --id
+   FiloSottile.age` (Windows) or `sudo apt install age` (Ubuntu).
+2. Create the key pair:
+
+   ```sh
+   age-keygen -o sefid-backup-key.txt
+   ```
+
+   It prints `Public key: age1...`. The file holds the private key
+   (`AGE-SECRET-KEY-1...`).
+3. Keep the file in two places only you control: your password manager (as
+   a file or secure note) and a USB stick kept at home. Never put it on
+   GitHub, on the server, in a chat or in an e-mail. Without it no copy can
+   be read again; with it anyone can read every copy.
+4. In GitHub: Settings, Secrets and variables, Actions, tab "Variables",
+   "New repository variable". Name `BACKUP_AGE_RECIPIENT`, value the
+   `age1...` line. The public key is not secret.
+5. Run the action `offsite-backup` once, then decrypt the copy (6.3,
+   steps 3 and 4) to prove the key works.
+
+A new key pair: repeat steps 2 to 5. Copies made before stay readable only
+with the old private key; keep it until those artifacts expire (14 days).
+
+Restore drill: the action `restore-check` runs `sefid-restore-check` on the
+server, on the scratch database `sefid_restore_check` only. It never writes to
+the database `sefid`.
+
+1. It restores the newest dump as 6.1 step 6 does, and compares the row count
+   of every table with the rows in the dump.
+2. It starts the current release against the scratch database on port 3009,
+   with an empty media folder, until `/api/health` answers 200.
+3. It unpacks the newest media archive into a temporary folder and compares
+   the file count with the archive's list.
+4. It drops the scratch database and removes the temporary folders, also
+   after a failure.
+
+It needs about twice the database and the media archive in free space, and
+checks that first. Run it once a month and record it in 6.1.
+
+Alerts: the workflow "Watch" (`.github/workflows/watch.yml`, checks in
+`deploy/vps/watch-check.sh`) runs every hour at minute 17.
+
+- From GitHub, so also from outside Iran: `GET <SITE_URL>/api/health`. The
+  site follows `PHASE` in `server.env`.
+- Over SSH: `sudo sefid-status --check`. It prints one line per failure and
+  exits 1:
+  - the newest nightly dump is older than 26 h, or the last nightly run
+    failed;
+  - no successful cron tick in 5 minutes (`sefid-cron.service` touches
+    `/run/sefid-cron.ok` after each one);
+  - less than 15 % free on a file system of `/`, `/var/lib/sefid`,
+    `/var/lib/postgresql` or `/var/backups/sefid`;
+  - the certificate expires within 14 days;
+  - `/api/health` on loopback does not answer 200.
+- A failed check is checked again after 2 minutes, so a restart during a
+  deploy raises no alarm.
+- What still fails opens one issue labelled `incident`. A later run with
+  other failures comments on it; the same failures add nothing. Digits do not
+  count, so "27 h old", then "28 h old" is the same failure. Only the issue
+  body and the comments of `github-actions` count as earlier reports: a
+  comment by anyone else cannot silence one. The first run in which every
+  check passes comments and closes it.
+- A server whose `sefid-status` has no `--check` yet (before `provision`)
+  fails with "printed no ok line".
+- GitHub mails new issues and comments to everyone who watches the
+  repository: the owner sets "Watch" to "All activity" (or "Custom", Issues).
+- The issues are public: the lines name checks and numbers, never a secret.
+- The run stays green when it could report: the issue is the alert.
+- The input `force_failure` of a manual run adds one failure that names the
+  run id in letters, to test the issue flow: the first forced run opens the
+  issue, the second comments on it.
+- GitHub turns off a schedule after 60 days without a commit in a public
+  repository and mails the owner. Turn it on again under Actions, "Watch".
 
 ### 3.7 From preview to live
 
@@ -1161,7 +1270,14 @@ steps as the server job, on the runner itself:
    once, and no `x-middleware-*` header; a `//` path and a Persian route carry
    the same headers. An unknown host name gets no TLS handshake. The cron
    timer runs a successful tick, and `/api/cron/tick` answers 401 without the
-   bearer. `sefid-backup` writes a dump that `pg_restore --list` reads.
+   bearer. `sefid-backup nightly` writes a dump that `pg_restore --list`
+   reads and records `<time> ok <dump>` in `last-nightly`.
+   `sefid-status --check` passes; a "disk" line is tolerated, because the
+   runner's disk can be fuller than 85 %. The restore drill fails once with
+   a restored row deleted on purpose (`SEFID_RESTORE_CHECK_TAMPER=1`) and
+   leaves no scratch database, then passes. `sefid-offsite` refuses three bad
+   recipients, encrypts to a throwaway key on the runner, and the copy
+   decrypts to the dump's sha256.
    Maintenance mode answers 503, then 200. A second release, then a
    `rollback` in a systemd unit whose client is killed while it runs: the
    unit still returns to the first release and records the second as
@@ -1170,8 +1286,8 @@ steps as the server job, on the runner itself:
 
 The runner is Ubuntu 24.04, the server 26.04. The smoke test cannot cover:
 
-- the PostgreSQL major (26.04 ships 18; CI and the int suite test 16), nginx
-  and OpenSSH versions, sshd socket activation, ufw, fail2ban and the real
+- the PostgreSQL major: the runner installs 16, the server runs 18 (the int
+  suite and e2e of CI run on 18); nginx and OpenSSH versions, sshd socket activation, ufw, fail2ban and the real
   network;
 - sudo-rs, which 26.04 uses as `sudo`;
 - the Rust coreutils (uutils), which 26.04 uses instead of GNU coreutils.
@@ -1190,8 +1306,9 @@ packages: a red or slow `vps-smoke` can come from there (3.9).
 
 ### 3.9 Known limits and open items
 
-- Not run yet: the workflow and `provision.sh` have not run on any machine.
-  The first push runs `vps-smoke`.
+- Not run yet: the actions `restore-check` and `offsite-backup` and the
+  workflow "Watch" have not run on the server. `vps-smoke` runs the first two
+  on the runner.
 - One server, no staging. The preview phase serves as staging until the
   switch.
 - The release folder is read-only for the app. The data cache stays in
@@ -1202,16 +1319,15 @@ packages: a red or slow `vps-smoke` can come from there (3.9).
   provision keeps lines of `/etc/sefid/app.env` it does not manage, so the
   `SMTP_*` lines of 2.3 can go there, but no action writes a secret into that
   file without showing it in the run log yet.
-- nginx's error log keeps full client addresses for 14 days (2.11), while the
-  privacy page says a form never keeps the IP address. Decide with the
-  client: add one sentence to the privacy page, or keep the error log
-  shorter.
+- nginx's error log keeps full client addresses for up to 2 days (2.11), while
+  the privacy page says a form never keeps the IP address. The privacy
+  sentence stays with gap 54.
 - Open items: who pastes the SSH key (3.2, open decision); GitHub
   environment protection (3.2, "Who controls the server"); the off-site
-  backup copy (3.6); media backups that copy only changed files (for
-  example `rsync --link-dest` snapshots) instead of 14 full archives; alerts
-  for a failed backup, a failed cron tick or a down site; SMTP (above); one
-  run of the int suite against PostgreSQL 18; whether `SEFID_SMOKE=1` should
+  copy of the media folder (the VM snapshot covers it until a bucket exists,
+  3.6); media backups that copy only changed files (for
+  example `rsync --link-dest` snapshots) instead of 14 full archives; SMTP
+  (above); whether `SEFID_SMOKE=1` should
   skip `apt-get full-upgrade` on the runner (it changes the list of what the
   switch skips); a deploy that starts on its own after CI is green; a staging
   environment.
@@ -1266,6 +1382,7 @@ Choose by what broke. On the VPS every step is an action of the workflow
 | Code of the new release | `rollback` (below). |
 | An environment value | Non-secret values: revert the change in `deploy/vps/server.env` on main, then run `provision`. The secrets live only in `/etc/sefid/app.env` on the server, and provision keeps them. Other hosts: restore the old value in the platform and restart. |
 | Data (wrong edits, a bad migration that lost data) | Restore runbook (section 6). |
+| The whole VM | The provider's snapshot, else the off-site copy (6.3). |
 
 Back to the previous release on the VPS:
 
@@ -1318,7 +1435,15 @@ the way back.
 
 ### 6.1 On the VPS
 
-Not run yet. Every step is an action of the workflow "Server" (3.4). For
+Not run yet on live data. The action `restore-check` (3.6) runs steps 3 to 7
+on the scratch database `sefid_restore_check` and starts the app on it; record
+each run here.
+
+| Date (UTC) | Dump | Tables, rows | Media files | Result |
+|---|---|---|---|---|
+| not run yet; it needs the owner's OK | | | | |
+
+Every step is an action of the workflow "Server" (3.4). For
 `run`, the line after "run:" goes into the input `command`. `<stamp>` is the
 UTC date of the restore, for example `20261101`.
 
@@ -1480,7 +1605,58 @@ Media: a database restore does not restore media files. A file uploaded after
 the dump stays in the bucket without a row. A file deleted after the dump has
 a row without a file, and its URL answers 404.
 
-## 7. Former path: shared cPanel host (kept for reference)
+### 6.3 From the off-site copy (the VM is lost)
+
+First choice: the provider restores the VM from its snapshot (3.6). Then send
+the studio the new host key (section 4, "if this happens"). The steps below
+are for a VM without a snapshot.
+
+1. A new server: bootstrap (3.2), `provision`, `cert`, `deploy` (3.3). The
+   database `sefid` is empty.
+2. On your computer, download the newest copy: Actions, workflow "Server",
+   the newest green `offsite-backup` run, artifact `sefid-offsite-<run id>`.
+   Or:
+
+   ```sh
+   gh run download <run id> --repo localroot4/sefiddental --name sefid-offsite-<run id>
+   ```
+
+3. Decrypt it with your private key:
+
+   ```sh
+   age --decrypt --identity sefid-backup-key.txt --output sefid-<stamp>-nightly.dump sefid-<stamp>-nightly.dump.age
+   ```
+
+4. Check it:
+
+   ```sh
+   sha256sum --check sefid-<stamp>-nightly.dump.sha256
+   ```
+
+   It prints `OK`. On macOS use `shasum -a 256 --check`.
+5. Let your own SSH key in for the copy. `run` with your public key (it is
+   not secret; the comment `restore` marks the line):
+
+   ```sh
+   echo 'ssh-ed25519 AAAA... restore' | sudo tee -a /home/deploy/.ssh/authorized_keys
+   ```
+
+6. Copy the dump, then take your key out again with `run`:
+
+   ```sh
+   scp sefid-<stamp>-nightly.dump deploy@<SERVER_HOST>:
+   ```
+
+   ```sh
+   sudo install -m 0600 /home/deploy/sefid-<stamp>-nightly.dump /var/backups/sefid/db/ && rm /home/deploy/sefid-<stamp>-nightly.dump && sudo sed -i '/ restore$/d' /home/deploy/.ssh/authorized_keys
+   ```
+
+7. Follow 6.1 from step 4 with that file.
+8. Delete the plain dump on your computer. It holds every patient's phone
+   number.
+9. Media: without a snapshot, uploads are lost. Upload them again from the
+   originals.
+
 
 Chosen on 2026-10-18 and replaced by the own VPS on 2026-10-26 (1.2). Nothing
 below is in use. The workflow "Package for cPanel", `scripts/package-cpanel.mjs`
