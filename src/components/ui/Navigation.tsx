@@ -33,7 +33,7 @@ export function Breadcrumbs(props: { items: Crumb[]; className?: string }) {
               {i < last && item.href ? (
                 <a
                   href={item.href}
-                  className="inline-flex min-h-target items-center text-ink-muted transition-colors hover:text-brand-strong"
+                  className="inline-flex min-h-target min-w-target items-center justify-center text-ink-muted transition-colors hover:text-brand-strong"
                 >
                   {item.label}
                 </a>

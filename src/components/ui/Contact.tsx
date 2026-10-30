@@ -83,7 +83,7 @@ export function DirectionsLinks(props: {
               data-track="directions_click"
               data-location={props.location ?? 'page'}
               data-provider={link.provider}
-              className="inline-flex min-h-target items-center rounded-pill px-3 text-small font-medium text-brand-strong transition-colors hover:bg-brand-soft"
+              className="inline-flex min-h-target min-w-target items-center justify-center rounded-pill px-3 text-small font-medium text-brand-strong transition-colors hover:bg-brand-soft"
             >
               {link.label}
             </a>
