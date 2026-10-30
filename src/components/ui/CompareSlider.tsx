@@ -26,6 +26,16 @@ export function CompareSlider(props: {
   const root = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState(50);
   const used = useRef(false);
+  const move = (next: number) => {
+    root.current?.style.setProperty('--pos', String(next));
+    setValue(next);
+    if (used.current) return;
+    used.current = true;
+    const serviceKey = root.current
+      ?.closest('[data-service-key]')
+      ?.getAttribute('data-service-key');
+    track('case_slider_use', { location: 'section', ...(serviceKey ? { serviceKey } : {}) });
+  };
   return (
     <div
       ref={root}
@@ -52,16 +62,15 @@ export function CompareSlider(props: {
         value={value}
         aria-label={props.labels.slider}
         aria-valuetext={`${toPersianDigits(String(value))} ${props.labels.percent}`}
-        onChange={(event) => {
-          const next = Number(event.currentTarget.value);
-          root.current?.style.setProperty('--pos', String(next));
-          setValue(next);
-          if (used.current) return;
-          used.current = true;
-          const serviceKey = root.current
-            ?.closest('[data-service-key]')
-            ?.getAttribute('data-service-key');
-          track('case_slider_use', { location: 'section', ...(serviceKey ? { serviceKey } : {}) });
+        onChange={(event) => move(Number(event.currentTarget.value))}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+          // WebKit steps a right-to-left range as a left-to-right one (ArrowRight raises the
+          // value and the divider goes left; CI run 95): the arrow moves the divider its way.
+          event.preventDefault();
+          const ltr = event.currentTarget.closest('[dir]')?.getAttribute('dir') === 'ltr';
+          const step = (event.key === 'ArrowRight') === ltr ? 1 : -1;
+          move(Math.min(100, Math.max(0, value + step)));
         }}
         className="absolute inset-0 z-10 m-0 size-full cursor-ew-resize opacity-0 focus-visible:outline-none"
       />

@@ -34,6 +34,25 @@ describe('compare slider (DESIGN.md 3.21)', () => {
     expect(range.getAttribute('aria-valuetext')).toBe('۷۳ درصد');
   });
 
+  it('CM2c the left and right arrows move the divider their way in every engine (WebKit steps an RTL range as LTR)', () => {
+    for (const [dir, right] of [
+      ['rtl', '49'],
+      ['ltr', '51'],
+    ] as const) {
+      const { unmount } = render(
+        <div dir={dir}>
+          <CompareSlider before={<i />} after={<b />} handle={<s />} labels={labels} />
+        </div>,
+      );
+      const range = screen.getByRole('slider');
+      fireEvent.keyDown(range, { key: 'ArrowRight' });
+      expect(range, dir).toHaveProperty('value', right);
+      fireEvent.keyDown(range, { key: 'ArrowLeft' });
+      expect(range, dir).toHaveProperty('value', '50');
+      unmount();
+    }
+  });
+
   it('CM2b the handle ring follows the range input before it (a sibling selector, no :has())', () => {
     const { container } = render(
       <CompareSlider before={<i />} after={<b />} handle={<s />} labels={labels} />,
