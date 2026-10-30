@@ -1,9 +1,10 @@
-import { randomInt } from 'node:crypto';
+import { randomBytes, randomInt } from 'node:crypto';
 
 import type { CollectionSlug, GlobalSlug, Payload, PayloadRequest } from 'payload';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { canRunJobs } from '@/access/jobs';
+import { POST } from '@/app/(payload)/api/[...slug]/route';
 import { readEnv } from '@/lib/env';
 
 import { allowed, getTestPayload, type StaffUser, staffUsers, unique } from './helpers';
@@ -383,5 +384,37 @@ describe('access matrix', () => {
     // A password-only admin session must not lift the TOTP code lock it is guessing against.
     expect(await unlock({ ...admin, _strategy: 'local-jwt', hasTotp: true })).toBe(false);
     expect(await unlock(admin)).toBe(true);
+  });
+
+  it('AC14 sign-in sets the session cookie but never answers the JWT (SEC-4)', async () => {
+    const email = `cookie-${unique()}@sefid.test`;
+    const password = randomBytes(18).toString('base64url');
+    await payload.create({
+      collection: 'users',
+      data: { email, password, name: 'آزمون کوکی', role: 'editor' },
+      context: { skipAudit: true },
+    });
+    const call = (handler: (r: Request, a: never) => Promise<Response>, request: Request) =>
+      handler(request, {
+        params: Promise.resolve({ slug: new URL(request.url).pathname.split('/').slice(2) }),
+      } as never);
+    const login = await call(
+      POST,
+      new Request('http://localhost/api/users/login', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      }),
+    );
+    expect(login.status).toBe(200);
+    const body = (await login.json()) as Record<string, unknown>;
+    expect(body.user).toMatchObject({ email });
+    expect(body).not.toHaveProperty('token');
+    const cookie = login.headers.getSetCookie().find((c) => c.startsWith('payload-token='));
+    expect(cookie).toMatch(/HttpOnly/i);
+    // The Local API answers the same way (the «me» endpoint reads the same switch).
+    const local = await payload.login({ collection: 'users', data: { email, password } });
+    expect(local.user).toMatchObject({ email });
+    expect(local.token).toBeUndefined();
   });
 });

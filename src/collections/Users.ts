@@ -33,6 +33,8 @@ export const Users: CollectionConfig = {
     lockTime: 15 * 60 * 1000,
     tokenExpiration: 8 * 60 * 60,
     useSessions: true,
+    // The session lives in the HttpOnly cookie only: no response body carries the JWT (SEC-4).
+    removeTokenFromResponses: true,
     cookies: { sameSite: 'Strict', secure: readEnv().nodeEnv === 'production' },
   },
   access: {
