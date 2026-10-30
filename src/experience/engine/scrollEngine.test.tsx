@@ -12,7 +12,7 @@ import type { LayoutLatch } from '../tier/latch';
 const scrub = vi.hoisted(() => ({
   on: false,
   later: null as null | (() => void),
-  /** The test's fresh ScrollTrigger (the mock factory outlives a module reset): trust pins. */
+  /** The test's fresh ScrollTrigger (the mock factory outlives a module reset): trust's pin scrubs. */
   pin: null as null | { create(vars: object): unknown },
 }));
 
@@ -23,7 +23,7 @@ vi.mock('../scenes/dom', async (importOriginal) => {
       ...actual.DOM_SCENES,
       trust: {
         pin: ({ el }: { el: HTMLElement }) => {
-          scrub.pin?.create({ trigger: el, pin: true, end: '+=500' });
+          scrub.pin?.create({ trigger: el, end: '+=500', scrub: true });
         },
         setup: ({ master, label }: { master: gsap.core.Timeline; label: string }) => {
           const add = () => {
@@ -85,7 +85,6 @@ async function engineFor(
   settings = {} as TierSettings,
   prepare = true,
   html = SCENES_HTML,
-  restore?: { id: 'trust'; progress: number; pin?: true },
 ) {
   // Fresh modules per test: ScrollTrigger's registration is per page.
   const { gsap } = await import('gsap');
@@ -105,7 +104,7 @@ async function engineFor(
   root.innerHTML = html;
   document.body.append(root);
   if (prepare) prepareScrollEngine(layout);
-  const engine = createScrollEngine({ root, layout, settings, scenes: SCENES, restore });
+  const engine = createScrollEngine({ root, layout, settings, scenes: SCENES });
   return { engine, register, ScrollTrigger, unscoped, root, gsap };
 }
 
@@ -239,99 +238,23 @@ describe('scroll engine: registration and the master (dom)', () => {
   });
 });
 
-describe('scroll engine: keep-place with pins (dom)', () => {
-  /** A wide pinned layout whose trust scene pins; the spy sees ScrollTrigger's full refreshes. */
-  async function pinnedEngine(restore?: { id: 'trust'; progress: number; pin?: true }) {
+describe('scroll engine: pins over the CSS geometry (dom)', () => {
+  it('SE12 a pinned layout runs the scene pins and neither refreshes nor scrolls at creation', async () => {
+    // The sticky stages and their rooms are CSS (html[data-pins]): no spacer arrives that a
+    // refresh in the creation task would have to place the reader against (F2, F3).
     media.wide = true;
     window.scrollTo = vi.fn();
     const { ScrollTrigger } = await import('gsap/ScrollTrigger');
     scrub.pin = ScrollTrigger;
     const refresh = vi.spyOn(ScrollTrigger, 'refresh');
-    const { engine } = await engineFor(TABLET, {} as TierSettings, true, SCENES_HTML, restore);
-    expect(ScrollTrigger.getAll().some((trigger) => trigger.pin)).toBe(true);
-    return { engine, refresh };
-  }
-
-  it('SE12 a place to keep runs the refresh the pins queue in the creation task', async () => {
-    // A reload the browser restored in the document without pins: a frame painted before the
-    // queued refresh would show the content the spacers pushed into view (clsAll 1, desktop t2).
-    const { engine, refresh } = await pinnedEngine({ id: 'trust', progress: 0.5 });
-    expect(refresh).toHaveBeenCalledTimes(1);
-    engine.destroy();
-  });
-
-  it('SE13 without a place to keep the pins refresh on the next frame, as before', async () => {
-    const { engine, refresh } = await pinnedEngine();
+    const { engine } = await engineFor(TABLET);
+    expect(
+      ScrollTrigger.getAll().filter((trigger) => trigger.trigger?.matches('[data-scene="trust"]')),
+    ).toHaveLength(1);
+    expect(ScrollTrigger.getAll().some((trigger) => trigger.pin)).toBe(false);
     expect(refresh).not.toHaveBeenCalled();
+    expect(window.scrollTo).not.toHaveBeenCalled();
     engine.destroy();
-  });
-
-  it('SE14 a pin place lands at that progress of the pin range, not at a share of the document', async () => {
-    // A reload inside a pin (kept at pagehide): the document without pins had no place for it.
-    const { engine } = await pinnedEngine({ id: 'trust', progress: 0.5, pin: true });
-    const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-    const pin = ScrollTrigger.getAll().find((trigger) => trigger.pin);
-    expect(pin?.end).toBeGreaterThan(pin?.start ?? 0);
-    const y = (pin?.start ?? 0) + 0.5 * ((pin?.end ?? 0) - (pin?.start ?? 0));
-    expect(y).toBeGreaterThan(0);
-    expect(window.scrollTo).toHaveBeenLastCalledWith(0, y);
-    engine.destroy();
-  });
-});
-
-describe('scroll engine: the pin place across a reload (dom)', () => {
-  async function pinPlaceApi(type: string) {
-    vi.spyOn(performance, 'getEntriesByType').mockReturnValue([
-      { type } as unknown as PerformanceEntry,
-    ]);
-    const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-    const api = await import('./scrollEngine');
-    return { ScrollTrigger, ...api };
-  }
-
-  it('SE15 pagehide keeps the active pin and its progress; outside a pin it clears the key', async () => {
-    const { ScrollTrigger, savePinPlace, PIN_PLACE_KEY } = await pinPlaceApi('reload');
-    document.body.innerHTML =
-      '<div data-scene="services"><div class="pin-spacer"><div></div></div></div>';
-    const stage = document.querySelector('.pin-spacer > div') as HTMLElement;
-    const getAll = vi.spyOn(ScrollTrigger, 'getAll');
-    getAll.mockReturnValue([
-      { pin: undefined, isActive: true, progress: 0.9 },
-      { pin: stage, isActive: true, progress: 0.4 },
-    ] as unknown as ScrollTrigger[]);
-    savePinPlace();
-    expect(JSON.parse(sessionStorage.getItem(PIN_PLACE_KEY) ?? 'null')).toEqual({
-      id: 'services',
-      progress: 0.4,
-    });
-    getAll.mockReturnValue([
-      { pin: stage, isActive: false, progress: 1 },
-    ] as unknown as ScrollTrigger[]);
-    savePinPlace();
-    expect(sessionStorage.getItem(PIN_PLACE_KEY)).toBeNull();
-  });
-
-  it('SE16 the kept place is read once, on a reload or a history visit only, and only when valid', async () => {
-    const { takePinPlace, PIN_PLACE_KEY } = await pinPlaceApi('reload');
-    sessionStorage.setItem(PIN_PLACE_KEY, JSON.stringify({ id: 'restoration', progress: 0.4 }));
-    expect(takePinPlace()).toEqual({ id: 'restoration', progress: 0.4, pin: true });
-    expect(takePinPlace()).toBeNull();
-    for (const raw of [
-      '{',
-      'null',
-      '{"id":"nope","progress":0.4}',
-      '{"id":"workflow","progress":2}',
-    ]) {
-      sessionStorage.setItem(PIN_PLACE_KEY, raw);
-      expect(takePinPlace()).toBeNull();
-      expect(sessionStorage.getItem(PIN_PLACE_KEY)).toBeNull();
-    }
-    vi.restoreAllMocks();
-    const navigate = await pinPlaceApi('navigate');
-    sessionStorage.setItem(PIN_PLACE_KEY, JSON.stringify({ id: 'workflow', progress: 0.4 }));
-    // A link or a typed address starts at its own place; the key goes all the same.
-    expect(navigate.takePinPlace()).toBeNull();
-    expect(sessionStorage.getItem(PIN_PLACE_KEY)).toBeNull();
   });
 });
 

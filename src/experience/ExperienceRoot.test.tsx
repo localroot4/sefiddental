@@ -7,7 +7,6 @@ import { useTier } from './tier/TierProvider';
 
 interface FakeEngine {
   layout: { latchedAtTier: number };
-  restore: unknown;
   scrollTo: ReturnType<typeof vi.fn>;
   activeScene: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
@@ -20,10 +19,9 @@ const mocks = vi.hoisted(() => ({
   placeScrollY: vi.fn(() => 1234),
   /** The place the browser restored before the first engine; none (the top) unless set. */
   placeNow: vi.fn((): { id: string; progress: number } | null => null),
-  /** The pin place a reload inside a pin kept at pagehide; none unless set. */
-  takePinPlace: vi.fn((): { id: string; progress: number; pin: true } | null => null),
-  savePinPlace: vi.fn(),
   monitorFrames: vi.fn((_opts: { tier: number }) => () => {}),
+  /** createScrollEngine throws (a broken engine build or browser). */
+  createThrows: false,
   canvasImports: 0,
   /** Renders of the canvas host: the factory count above sees only the file's first import. */
   canvasMounts: 0,
@@ -42,10 +40,10 @@ vi.mock('detect-gpu', () => ({
 
 // The engine chunk (gsap, Lenis) needs a layout engine; the root only wires it.
 vi.mock('./engine/scrollEngine', () => ({
-  createScrollEngine: (opts: { layout: { latchedAtTier: number }; restore?: unknown }) => {
+  createScrollEngine: (opts: { layout: { latchedAtTier: number } }) => {
+    if (mocks.createThrows) throw new Error('engine');
     const engine: FakeEngine = {
       layout: opts.layout,
-      restore: opts.restore,
       scrollTo: vi.fn(),
       activeScene: vi.fn(() => ({ id: 'services', progress: 0.5 })),
       destroy: vi.fn(),
@@ -69,8 +67,6 @@ vi.mock('./engine/scrollEngine', () => ({
   },
   placeScrollY: mocks.placeScrollY,
   placeNow: mocks.placeNow,
-  takePinPlace: mocks.takePinPlace,
-  savePinPlace: mocks.savePinPlace,
   monitorFrames: mocks.monitorFrames,
   prepareScrollEngine: () => {},
 }));
@@ -171,8 +167,8 @@ beforeEach(() => {
   mocks.engines.length = 0;
   mocks.placeScrollY.mockClear();
   mocks.placeNow.mockClear().mockReturnValue(null);
-  mocks.takePinPlace.mockClear().mockReturnValue(null);
-  mocks.savePinPlace.mockClear();
+  document.documentElement.removeAttribute('data-pins');
+  mocks.createThrows = false;
   mocks.monitorFrames.mockClear().mockImplementation(() => () => {});
   mocks.canvasMounts = 0;
   mocks.gpu.options = null;
@@ -180,8 +176,10 @@ beforeEach(() => {
   sessionStorage.clear();
 });
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  // The root's deferred unmount check (data-pins) runs before the next test sets its own.
+  await new Promise((resolve) => setTimeout(resolve, 0));
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -199,12 +197,14 @@ describe('ExperienceRoot (dom)', () => {
     expect(mocks.canvasImports).toBe(1);
   });
 
-  it('XR2 keep-place: a relatch records the place, restores it from the new bounds, never on unmount', async () => {
+  it('XR2 keep-place: a relatch that changes the pins reads the old place, moves data-pins and restores it at once, never on unmount', async () => {
+    const html = document.documentElement;
+    html.setAttribute('data-pins', ''); // the inline latch (pinsScript.ts)
     const view = home('/?tier=2');
     await waitFor(() => expect(mocks.engines).toHaveLength(1));
     const first = mocks.engines[0]!;
     expect(first.layout.latchedAtTier).toBe(2);
-    expect(first.restore).toBeUndefined();
+    expect(html.hasAttribute('data-pins')).toBe(true);
 
     // The probe's click asks for a tier-0 page override: a 'user' relatch, applied at once.
     await act(async () => view.getByTestId('tier').click());
@@ -212,12 +212,12 @@ describe('ExperienceRoot (dom)', () => {
     expect(first.destroy).toHaveBeenCalledTimes(1);
     const second = mocks.engines[1]!;
     expect(second.layout.latchedAtTier).toBe(0);
+    expect(html.hasAttribute('data-pins')).toBe(false);
     const root = document.querySelector('[data-experience-root]');
+    // Measured after the attribute went, restored before the new engine (three frames later).
     expect(mocks.placeScrollY).toHaveBeenCalledWith(root, { id: 'services', progress: 0.5 });
-    // Restored at once, before the new engine exists (three frames later), so nothing flickers,
-    // and handed to the new engine, which applies it again after the refresh its pins queue.
     expect(window.scrollTo).toHaveBeenCalledWith({ top: 1234, behavior: 'instant' });
-    expect(second.restore).toEqual({ id: 'services', progress: 0.5 });
+    expect(mocks.placeNow).not.toHaveBeenCalled();
 
     view.unmount();
     expect(second.destroy).toHaveBeenCalledTimes(1);
@@ -225,46 +225,57 @@ describe('ExperienceRoot (dom)', () => {
     expect(mocks.placeScrollY).toHaveBeenCalledTimes(1);
   });
 
-  it('XR8 a first engine keeps the place the browser restored (a reload at voices); a relatch does not read it again', async () => {
+  it('XR8 the inline latch already pinned: the first engine reads no place and scrolls nothing (a reload or an anchor lands in the pinned geometry)', async () => {
+    document.documentElement.setAttribute('data-pins', '');
     mocks.placeNow.mockReturnValue({ id: 'voices', progress: 0 });
+    home('/?tier=2');
+    await waitFor(() => expect(mocks.engines).toHaveLength(1));
+    expect(mocks.placeNow).not.toHaveBeenCalled();
+    expect(window.scrollTo).not.toHaveBeenCalled();
+  });
+
+  it('XR9 pins the inline latch did not write: the place the browser restored is read first, then data-pins, then the reader goes back at once', async () => {
+    const html = document.documentElement;
+    mocks.placeNow.mockImplementation(() => {
+      expect(html.hasAttribute('data-pins')).toBe(false);
+      return { id: 'voices', progress: 0 };
+    });
     const view = home('/?tier=2');
     await waitFor(() => expect(mocks.engines).toHaveLength(1));
     const root = document.querySelector('[data-experience-root]');
     expect(mocks.placeNow).toHaveBeenCalledWith(root);
-    // The reader is there already: no scroll before the engine, which applies it after its pins.
-    expect(mocks.engines[0]!.restore).toEqual({ id: 'voices', progress: 0 });
-    expect(window.scrollTo).not.toHaveBeenCalled();
-
-    await act(async () => view.getByTestId('tier').click());
-    await waitFor(() => expect(mocks.engines).toHaveLength(2));
-    expect(mocks.engines[1]!.restore).toEqual({ id: 'services', progress: 0.5 });
-    expect(mocks.placeNow).toHaveBeenCalledTimes(1);
-  });
-
-  it('XR9 a reload inside a pin: the first engine gets the pin place, read once; pagehide keeps the place while an engine lives', async () => {
-    mocks.takePinPlace.mockReturnValue({ id: 'services', progress: 0.4, pin: true });
-    const view = home('/?tier=2');
-    await waitFor(() => expect(mocks.engines).toHaveLength(1));
-    expect(mocks.engines[0]!.restore).toEqual({ id: 'services', progress: 0.4, pin: true });
-    expect(mocks.placeNow).not.toHaveBeenCalled();
-    window.dispatchEvent(new Event('pagehide'));
-    expect(mocks.savePinPlace).toHaveBeenCalledTimes(1);
-
-    await act(async () => view.getByTestId('tier').click());
-    await waitFor(() => expect(mocks.engines).toHaveLength(2));
-    expect(mocks.takePinPlace).toHaveBeenCalledTimes(1);
+    expect(html.hasAttribute('data-pins')).toBe(true);
+    expect(mocks.placeScrollY).toHaveBeenCalledWith(root, { id: 'voices', progress: 0 });
+    expect(window.scrollTo).toHaveBeenCalledWith({ top: 1234, behavior: 'instant' });
     view.unmount();
-    window.dispatchEvent(new Event('pagehide'));
-    expect(mocks.savePinPlace).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(html.hasAttribute('data-pins')).toBe(false));
   });
 
-  it('XR10 a first engine without pins reads the pin place away and keeps the restored place instead', async () => {
-    mocks.takePinPlace.mockReturnValue({ id: 'services', progress: 0.4, pin: true });
-    mocks.placeNow.mockReturnValue({ id: 'voices', progress: 0 });
-    home('/?tier=1');
-    await waitFor(() => expect(mocks.engines).toHaveLength(1));
-    expect(mocks.takePinPlace).toHaveBeenCalledTimes(1);
-    expect(mocks.engines[0]!.restore).toEqual({ id: 'voices', progress: 0 });
+  it('XR11 an engine that throws at creation leaves the page without pins (the tier-0 geometry)', async () => {
+    document.documentElement.setAttribute('data-pins', '');
+    mocks.createThrows = true;
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    home('/?tier=2');
+    await waitFor(() => expect(document.documentElement.hasAttribute('data-pins')).toBe(false));
+    expect(error).toHaveBeenCalledWith(
+      '[experience] scroll engine failed to start; tier 0.',
+      expect.any(Error),
+    );
+    expect(mocks.engines).toHaveLength(0);
+  });
+
+  it('XR10 a latch without pins removes an inline data-pins; the root names the site cap for the inline latch', async () => {
+    document.documentElement.setAttribute('data-pins', '');
+    window.history.replaceState(null, '', '/?tier=1');
+    render(
+      <ExperienceRoot siteCap={1}>
+        <Probe />
+      </ExperienceRoot>,
+    );
+    expect(document.querySelector('[data-experience-root]')?.getAttribute('data-site-cap')).toBe(
+      '1',
+    );
+    await waitFor(() => expect(document.documentElement.hasAttribute('data-pins')).toBe(false));
   });
 
   it('XR3 scene_view: once per registry scene when its top crosses the viewport middle', async () => {
@@ -330,7 +341,6 @@ describe('ExperienceRoot (dom)', () => {
     expect(mocks.engines[0]?.destroy).toHaveBeenCalledTimes(1);
     // No pin came or went, so the page did not move (D25).
     expect(window.scrollTo).not.toHaveBeenCalled();
-    expect(mocks.engines[1]?.restore).toBeUndefined();
   }, 10_000);
 
   it('XR7 a phone with the debug flag mounts no canvas: the DOM frame monitor runs and keeps running', async () => {

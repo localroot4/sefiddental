@@ -37,7 +37,7 @@ export function VoicesSection(props: { testimonials: HomeTestimonial[]; copy: Co
         data-lenis-prevent-horizontal=""
         aria-labelledby={props.copy ? 'home-voices-title' : undefined}
         tabIndex={0}
-        className="peer/voices grid max-lg:-mx-gutter max-lg:auto-cols-[min(84%,24rem)] max-lg:grid-flow-col max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-gutter max-lg:gap-4 max-lg:overflow-x-auto max-lg:px-gutter max-lg:pt-1 max-lg:pb-3 lg:grid-cols-3 lg:gap-8 lg:data-carousel:auto-cols-[min(84%,24rem)] lg:data-carousel:grid-flow-col lg:data-carousel:grid-cols-none lg:data-carousel:snap-x lg:data-carousel:snap-mandatory lg:data-carousel:gap-4 lg:data-carousel:overflow-x-auto lg:data-carousel:pt-1 lg:data-carousel:pb-3"
+        className="peer/voices grid max-lg:-mx-gutter max-lg:auto-cols-[min(84%,24rem)] max-lg:grid-flow-col max-lg:snap-x max-lg:snap-mandatory max-lg:scroll-px-gutter max-lg:gap-4 max-lg:overflow-x-auto max-lg:px-gutter pt-1 pb-3 lg:grid-cols-3 lg:gap-8 lg:data-carousel:auto-cols-[min(84%,24rem)] lg:data-carousel:grid-flow-col lg:data-carousel:grid-cols-none lg:data-carousel:snap-x lg:data-carousel:snap-mandatory lg:data-carousel:gap-4 lg:data-carousel:overflow-x-auto"
       >
         {items.map((voice) => {
           const poster = media(voice.poster);

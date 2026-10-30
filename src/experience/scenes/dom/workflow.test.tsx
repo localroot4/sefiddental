@@ -70,6 +70,7 @@ beforeEach(() => {
           ${[1, 2, 3, 4].map(() => '<li data-workflow-step=""><span data-workflow-warm=""></span></li>').join('')}
         </ol>
       </div>
+      <div data-pin-room=""></div>
     </div>`;
 });
 afterEach(() => {
@@ -89,7 +90,6 @@ describe('scene 5 workflow module (lanes WORKFLOW)', () => {
   it('WF-U1 without a pin from 1024 px (tier 1) setup reveals each step once on enter and leaves nothing behind', () => {
     const cleanup = scene.setup(ctx());
     expect(gsap.timeline).not.toHaveBeenCalled();
-    expect(stage().hasAttribute('data-diagonal')).toBe(false);
     expect(io?.targets.size).toBe(4);
     // Nothing hides before the observer's first delivery, which reports every step: a step
     // already on screen is marked `.in` in the same task that writes `data-reveal`.
@@ -114,23 +114,22 @@ describe('scene 5 workflow module (lanes WORKFLOW)', () => {
     expect(steps().some((step) => step.classList.contains('in'))).toBe(false);
   });
 
-  it('WF-U2 the pin marks the stage diagonal, pins it +200 vh under the header and scrubs the pan and the four focus beats', () => {
+  it('WF-U2 the pin scrubs the pan and the four focus beats over the room after the sticky stage, from its top under the header', () => {
     vi.stubGlobal(
       'getComputedStyle',
       vi.fn(() => ({ getPropertyValue: (name: string) => (name === '--nav-h' ? '72px' : '') })),
     );
     scene.pin!(ctx());
-    expect(stage().hasAttribute('data-diagonal')).toBe(true);
     expect(gsap.timeline).toHaveBeenCalledTimes(1);
     const trigger = timelineVars?.scrollTrigger as Record<string, unknown>;
-    expect(trigger).toMatchObject({
-      trigger: stage(),
-      pin: true,
-      end: '+=200%',
-      scrub: true,
-      invalidateOnRefresh: true,
-    });
-    expect((trigger.start as () => string)()).toBe('top 72px');
+    const room = document.querySelector<HTMLElement>('[data-pin-room]')!;
+    expect(trigger).toMatchObject({ trigger: room, scrub: true, invalidateOnRefresh: true });
+    expect(trigger.pin).toBeUndefined();
+    // The room never sticks: the stage's top under the header is the room's top less the stage.
+    Object.defineProperty(stage(), 'offsetHeight', { value: 828 });
+    Object.defineProperty(room, 'offsetHeight', { value: 1800 });
+    expect((trigger.start as () => string)()).toBe('top 900px');
+    expect((trigger.end as () => string)()).toBe('+=1800');
     // The pan: function values re-read on refresh, across the whole pin.
     const pan = calls.find((c) => c.target.hasAttribute('data-workflow-path'));
     expect(pan).toMatchObject({ method: 'to', at: 0, vars: { duration: 1 } });
@@ -166,7 +165,6 @@ describe('scene 5 workflow module (lanes WORKFLOW)', () => {
     expect(stage().hasAttribute('data-reveal')).toBe(false);
     expect(io).toBeNull();
     (cleanup as () => void)();
-    expect(stage().hasAttribute('data-diagonal')).toBe(false);
     // T-EN3: the pinned path, the steps and the overlays lose every inline style the pin left.
     const overlays = Array.from(document.querySelectorAll('[data-workflow-warm]'));
     expect(gsap.set).toHaveBeenCalledWith(

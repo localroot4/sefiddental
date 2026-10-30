@@ -16,11 +16,15 @@ import { HomeSection, type Copy } from './HomeSection';
 // exists only then (`noscript:`). Static classes per position: Tailwind cannot build a class from
 // a tier key.
 const PANEL = [
-  'group-data-[choice=1]/tiers:grid noscript:group-has-[label:nth-of-type(1)>input:checked]/tiers:grid',
-  'group-data-[choice=2]/tiers:grid noscript:group-has-[label:nth-of-type(2)>input:checked]/tiers:grid',
-  'group-data-[choice=3]/tiers:grid noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:grid',
-  'group-data-[choice=4]/tiers:grid noscript:group-has-[label:nth-of-type(4)>input:checked]/tiers:grid',
+  'group-data-[choice=1]/tiers:grid noscript:group-has-[label:nth-of-type(1)>input:checked]/tiers:grid lg:[[data-pins]_&]:group-data-[choice=1]/tiers:visible',
+  'group-data-[choice=2]/tiers:grid noscript:group-has-[label:nth-of-type(2)>input:checked]/tiers:grid lg:[[data-pins]_&]:group-data-[choice=2]/tiers:visible',
+  'group-data-[choice=3]/tiers:grid noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:grid lg:[[data-pins]_&]:group-data-[choice=3]/tiers:visible',
+  'group-data-[choice=4]/tiers:grid noscript:group-has-[label:nth-of-type(4)>input:checked]/tiers:grid lg:[[data-pins]_&]:group-data-[choice=4]/tiers:visible',
 ];
+// Pinned (html[data-pins] from 1024 px): every panel sits in one grid cell and the unchosen ones
+// are only invisible, so the sticky stage keeps one height whatever the scroll checks. A height
+// change there moved the reader by Chrome's scroll anchoring (70 px on a reload at VIP, F2).
+const STACKED = 'lg:[[data-pins]_&]:grid lg:[[data-pins]_&]:[grid-area:2/1]';
 
 /**
  * Scene 4 (family D): the molar stepper (D16) beside three steps, a line each, one «رزرو نوبت»
@@ -51,7 +55,14 @@ export function RestorationSection(props: {
     </ButtonLink>
   );
   return (
-    <HomeSection scene="restoration" section="restoration" family="D" copy={props.copy} split>
+    <HomeSection
+      scene="restoration"
+      section="restoration"
+      family="D"
+      copy={props.copy}
+      split
+      pin={1}
+    >
       <div data-choices="" className="group/tiers grid gap-6">
         {/* The molar beside the steps, except in the split's content column from 1024 to 1279 px,
             where the three chips would wrap beside it: there it stacks above them, smaller
@@ -75,7 +86,7 @@ export function RestorationSection(props: {
             </fieldset>
             <div
               data-tier-panel=""
-              className="grid justify-items-start group-data-choice/tiers:hidden noscript:group-has-[input:checked]/tiers:hidden"
+              className={`grid justify-items-start group-data-choice/tiers:hidden noscript:group-has-[input:checked]/tiers:hidden ${STACKED} lg:[[data-pins]_&]:group-data-choice/tiers:grid lg:[[data-pins]_&]:group-data-choice/tiers:invisible`}
             >
               {book(null)}
             </div>
@@ -85,6 +96,8 @@ export function RestorationSection(props: {
                 data-tier-panel={tier.key}
                 className={cx(
                   'hidden content-start justify-items-start gap-4 rounded-card border border-line bg-surface-raised p-6',
+                  STACKED,
+                  'lg:[[data-pins]_&]:invisible',
                   PANEL[i],
                 )}
               >

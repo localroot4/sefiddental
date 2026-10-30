@@ -1,5 +1,6 @@
 import { LOCKUP_MARK_PATH } from '@/components/brand/LockupParts';
 import { CLINIC_FALLBACK, t } from '@/i18n/fa';
+import { PINS_SCRIPT } from '@/experience/tier/pinsScript';
 import { INTRO_CSS, INTRO_SCRIPT } from '@/lib/intro/introScript';
 
 import { IntroRemover } from './IntroRemover';
@@ -94,7 +95,8 @@ export function IntroOverlay(props: { nonce: string | undefined }) {
  * median (gate 2500 on the best of 5), so the link names the script. Only Chromium honours the
  * link: in Safari and Firefox a parser yield can paint the hero markup from its `<section>` to
  * here uncovered (about 9 KB; T-IN11 caps it at 10 KB), so it ends with the first row. The script
- * stays in the DOM: it ran once.
+ * stays in the DOM: it ran once. The pins latch (pinsScript.ts) follows it in the same parse, long
+ * before the restored scroll or an anchor target exists, and outside the measured span.
  */
 export function IntroScript(props: { nonce: string | undefined }) {
   return (
@@ -105,6 +107,11 @@ export function IntroScript(props: { nonce: string | undefined }) {
         nonce={props.nonce}
         suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: INTRO_SCRIPT }}
+      />
+      <script
+        nonce={props.nonce}
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: PINS_SCRIPT }}
       />
     </>
   );

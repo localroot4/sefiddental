@@ -4,14 +4,13 @@
  * category's icon, so the catalogue reads as one journey instead of a grid.
  *
  * - From 1024 px where the layout pins (tiers 2 and 3): the section's CSS follows
- *   `html[data-pins]` (the latched layout on the root; `pin` writes it once itself until the root
- *   does, so the pin creation reads a settled layout when it can), which turns the bento into one
- *   horizontal track; `pin` pins the stage under the nav for +200 vh and slides the track by its
- *   overflow width (positive x: the worlds overflow to the left in RTL), scrubbed by the pin's own
- *   ScrollTrigger (D8). The MorphSVG chunk loads through `nearViewport` and morphs the mark's
- *   silhouette through the five icon outlines while each icon's ink outline crossfades in by
- *   opacity (the `d` write is this scene's D12 exception). A keyboard focus in the track scrolls
- *   the page to the pin position that shows the focused world.
+ *   `html[data-pins]` (the latch writes it before the first paint), which turns the bento into one
+ *   horizontal track and makes the stage sticky under the nav through its room (+200 vh, D7);
+ *   `pin` slides the track by its overflow width over that range (positive x: the worlds overflow
+ *   to the left in RTL), scrubbed by its own ScrollTrigger (D8). The MorphSVG chunk loads through
+ *   `nearViewport` and morphs the mark's silhouette through the five icon outlines while each
+ *   icon's ink outline crossfades in by opacity (the `d` write is this scene's D12 exception). A
+ *   keyboard focus in the track scrolls the page to the pin position that shows the focused world.
  * - From 1024 px without a pin (tier 1): the bento stays still. A line reveal cost 3 fps at 4x
  *   (56 against 59) and the section budget is 59, so the plan's tier-1 reveal is dropped.
  * - Under 1024 px (every tier, D6): the native snap row; a keyboard focus centres the focused
@@ -27,13 +26,10 @@ import { applyStyle } from '../../core/applyStyle';
 import type { DomScene, SceneContext } from '../types';
 
 import { phoneMotion } from './phone';
+import { pinRange } from './pinRoom';
 
-/** The pin distance in viewport heights (D7: +200 vh). */
-export const PIN_VH = 2;
 /** A card counts as the one in view from this share of it inside the row. */
 const IN_VIEW = 0.6;
-/** The root attribute the pinned CSS follows: the latched layout pins. */
-const PINS_ATTR = 'data-pins';
 
 /** How far the track slides: its overflow past the rail, never negative (RTL: a positive x). */
 export const trackDistance = (trackWidth: number, railWidth: number): number =>
@@ -85,54 +81,35 @@ function parts(el: HTMLElement): Parts | null {
   };
 }
 
-/** The `--nav-h` token in pixels, read when the pin starts and on every refresh. */
-const navHeight = (): number =>
-  parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 0;
-
-interface Pin {
-  tl: gsap.core.Timeline;
-  /** The scene wrote `html[data-pins]` itself (the root had not), so its cleanup removes it. */
-  ownsAttr: boolean;
-}
-
-/** The pin per scene element, from `pin` to `setup` of the same engine. */
-const pins = new WeakMap<HTMLElement, Pin>();
+/** The pin's timeline per scene element, from `pin` to `setup` of the same engine. */
+const pins = new WeakMap<HTMLElement, gsap.core.Timeline>();
 
 const scene: DomScene = {
   pin({ el, layout, conditions }) {
     const p = parts(el);
-    if (p === null) return;
+    const range = p && pinRange(p.stage);
+    if (p === null || range === null) return;
     const t0 = performance.now();
-    const html = document.documentElement;
-    const ownsAttr = !html.hasAttribute(PINS_ATTR);
-    if (ownsAttr) html.setAttribute(PINS_ATTR, '');
     const dist = (): number =>
       trackDistance(p.track.getBoundingClientRect().width, p.rail.clientWidth);
     const tl = gsap.timeline({
       defaults: { ease: 'none' },
       scrollTrigger: {
-        trigger: p.stage,
-        pin: p.stage,
-        pinSpacing: true,
-        start: () => `top ${navHeight()}px`,
-        end: () => `+=${window.innerHeight * PIN_VH}`,
+        ...range,
         // Lenis already smooths the wheel on fine pointers; a scrub lag on top would double it.
         scrub: layout.lenis && conditions.fine ? true : 0.6,
-        anticipatePin: 1,
-        invalidateOnRefresh: true,
       },
     });
     // Explicit ends, so a refresh mid-pin re-reads the distance and never the current x.
     tl.fromTo(p.track, { x: 0 }, { x: dist, duration: 1, immediateRender: false }, 0);
-    pins.set(el, { tl, ownsAttr });
+    pins.set(el, tl);
     performance.measure('sefid:services-pin', { start: t0 });
   },
 
   setup(ctx: SceneContext) {
     const p = parts(ctx.el);
     if (p === null) return;
-    const pin = pins.get(ctx.el) ?? null;
-    const tl = pin?.tl ?? null;
+    const tl = pins.get(ctx.el) ?? null;
     const cleanups: (() => void)[] = [];
     const n = p.worlds.length;
     const { wide, reduce } = ctx.conditions;
@@ -223,12 +200,9 @@ const scene: DomScene = {
 
     return () => {
       for (const cleanup of cleanups.reverse()) cleanup();
-      if (pin !== null) {
-        // The context revert leaves the scrubbed track at `translate(0px, 0px)` (each refresh
-        // re-recorded the inline transform as the original); the tier-0 page has none.
-        gsap.set(p.track, { clearProps: 'transform' });
-        if (pin.ownsAttr) document.documentElement.removeAttribute(PINS_ATTR);
-      }
+      // The context revert leaves the scrubbed track at `translate(0px, 0px)` (each refresh
+      // re-recorded the inline transform as the original); the tier-0 page has none.
+      if (tl !== null) gsap.set(p.track, { clearProps: 'transform' });
       pins.delete(ctx.el);
     };
   },

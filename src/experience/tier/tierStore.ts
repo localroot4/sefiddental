@@ -11,6 +11,7 @@
  */
 import {
   DEBUG_SESSION_KEY,
+  GPU_CACHE_KEY,
   isPhoneMode,
   isSoftwareRenderer,
   LIGHT_FLOOR_KEY,
@@ -26,6 +27,7 @@ import {
   type TierOverride,
   type TierReason,
   type TierSettings,
+  type GpuResult,
 } from '@/lib/qualityTier';
 
 import { debugActive, parseExperienceQuery } from '../core/query';
@@ -202,6 +204,34 @@ export function parseFloor(raw: string | null): FloorRecord | null {
   return null;
 }
 
+const GPU_TYPES: ReadonlySet<unknown> = new Set([
+  'SSR',
+  'WEBGL_UNSUPPORTED',
+  'BLOCKLISTED',
+  'FALLBACK',
+  'BENCHMARK',
+]);
+
+/**
+ * The cached detect-gpu answer (`sefid-gpu`) for the synchronous tier at hydration, by gpuCache's
+ * rules (version 5.0.70, a string renderer, a number tier, a known type, fps a number or null)
+ * without its zod parser, which stays out of the home initial JS. The renderer is checked by the
+ * probe after `load`. The inline pins latch (pinsScript.ts) applies the same rules; PS1 holds them
+ * equal.
+ */
+export function hydrationGpu(raw: string | null): { renderer: string; gpu: GpuResult } | null {
+  try {
+    const o = JSON.parse(raw ?? 'null') as Record<string, unknown> | null;
+    if (o === null || typeof o !== 'object' || Array.isArray(o)) return null;
+    const { v, renderer, tier, type, fps } = o;
+    if (v !== '5.0.70' || typeof renderer !== 'string' || typeof tier !== 'number') return null;
+    if (!GPU_TYPES.has(type) || (fps != null && typeof fps !== 'number')) return null;
+    return { renderer, gpu: { tier, type: type as GpuResult['type'] } };
+  } catch {
+    return null; // corrupt JSON: no cache
+  }
+}
+
 /** Weak-phone reasons that fix tier 0 before the probe (D23): no probe, no benchmark fetch. */
 const WEAK_PHONE: ReadonlySet<TierReason> = new Set(['device-memory', 'light-floor', 'device-cpu']);
 
@@ -247,14 +277,17 @@ export function createTierStore(env: TierEnv, opts: { siteCap: Tier | null }): T
   };
   let signals = readSignals();
 
+  // A returning visitor's benchmark, so the latch pins at hydration as the inline latch did
+  // before the first paint (F2); the probe checks the renderer after `load`.
+  const cached = hydrationGpu(env.local.get(GPU_CACHE_KEY));
+
   const inputs = (): TierInputs => ({
     reducedMotion: signals.reducedMotion,
-    // Before the probe: assume WebGL 2 without a benchmark (tier 1). The cached benchmark is read
-    // by the probe after `load`, where its zod parser loads lazily (15 KiB gzip kept off the home
-    // initial JS); the 'detection' relatch then moves the layout before the first pinned scene.
+    // Before the probe: assume WebGL 2 with the cached benchmark, or without one (tier 1); the
+    // 'detection' relatch then moves the layout before the first pinned scene.
     webgl2: probe ? probe.webgl2 : true,
-    renderer: probe ? probe.renderer : null,
-    gpu: probe ? probe.gpu : null,
+    renderer: probe ? probe.renderer : (cached?.renderer ?? null),
+    gpu: probe ? probe.gpu : (cached?.gpu ?? null),
     saveData: signals.saveData,
     deviceMemory: signals.deviceMemory,
     viewport: signals.viewport,

@@ -11,7 +11,7 @@
 //   node scripts/measure-home.mjs <out dir> [--only=bundle,lighthouse,frames,inp] [--tiers=0,1]
 //     [--sections=hero,trust] [--viewport=phone] [--pace=16]
 //   --sections scrolls the frames lane from one viewport above the first listed section to the
-//   bottom of the last one (a pinned scene's spacer included) and reports those sections only
+//   bottom of the last one (a pinned scene's room included) and reports those sections only
 //   (`footer` is the playground stage; an id not on the page is an error);
 //   --viewport=phone runs the frames lane at 390x844 with touch scrolling at 4x and 6x on the
 //   default GPU, CPU throttled from the navigation, tiers 0, 1 and 2 by default, and checks the
@@ -404,13 +404,10 @@ export function startSampler() {
         durationMs: performance.now() - started,
         scrollHeight: document.documentElement.scrollHeight,
         sections: sections.map(idOf),
-        // Scroll height per section (the pin spacer's when pinned): the perf spec expects a
+        // Scroll height per section (a pinned one holds its room): the perf spec expects a
         // full 1 s window only from a section at least one viewport tall.
         heights: Object.fromEntries(
-          sections.map((el) => [
-            idOf(el),
-            Math.round((el.closest('.pin-spacer') ?? el).getBoundingClientRect().height),
-          ]),
+          sections.map((el) => [idOf(el), Math.round(el.getBoundingClientRect().height)]),
         ),
       };
     },
@@ -419,10 +416,9 @@ export function startSampler() {
 
 /**
  * The scroll range of `--sections` in page pixels: one viewport above the first listed section
- * (its enter reveal is part of the scene) to the bottom of the last one, measured on the
- * ScrollTrigger pin spacer when the section is pinned (the spacer's padding is the pin
- * distance; the engine has built it by `settle`); null without the option. An id not on the
- * page is an error, not a silent gap in the report.
+ * (its enter reveal is part of the scene) to the bottom of the last one; a pinned section holds
+ * its room (the pin distance, CSS under `html[data-pins]`); null without the option. An id not on
+ * the page is an error, not a silent gap in the report.
  */
 async function sectionRange(page) {
   if (!SECTIONS) return null;
@@ -435,7 +431,7 @@ async function sectionRange(page) {
       );
       if (!el) continue;
       found.push(id);
-      rects.push((el.closest('.pin-spacer') ?? el).getBoundingClientRect());
+      rects.push(el.getBoundingClientRect());
     }
     const max = document.documentElement.scrollHeight - innerHeight;
     return {
@@ -784,7 +780,7 @@ function readme(results, bundleMd) {
     lines.push(
       `## Frame times and heap (${phone ? 'phone 390x844 touch' : 'desktop 1440x900'}, median of ${RUNS} runs field by field)`,
       '',
-      `Chromium launched as tests/helpers/launch.ts does: \`default\` (headless as is)${phone ? '' : ' and `swiftshader` (the software GPU profile of the perf project)'}; CDP CPU throttling${phone ? ' from the navigation on' : ''}, ${phone ? `one-finger swipes of 500 px (CDP touch events, ${results.pace ?? 80} px of finger travel per 50 ms, ${results.fling ? 'lifted at once: flings allowed' : 'held 100 ms before the lift: no fling'})` : `mouse wheel ${results.pace ?? 80} px every 50 ms`} from the top to the bottom of the page${results.sections ? ` (\`--sections\`: from one viewport above ${results.sections[0]} to the bottom of ${results.sections.at(-1)}, a pin spacer included)` : ''}. Frames are requestAnimationFrame deltas; long tasks come from a PerformanceObserver (over 50 ms). Heap is CDP Runtime.getHeapUsage: before the scroll after a forced GC, right after it, and after another GC.`,
+      `Chromium launched as tests/helpers/launch.ts does: \`default\` (headless as is)${phone ? '' : ' and `swiftshader` (the software GPU profile of the perf project)'}; CDP CPU throttling${phone ? ' from the navigation on' : ''}, ${phone ? `one-finger swipes of 500 px (CDP touch events, ${results.pace ?? 80} px of finger travel per 50 ms, ${results.fling ? 'lifted at once: flings allowed' : 'held 100 ms before the lift: no fling'})` : `mouse wheel ${results.pace ?? 80} px every 50 ms`} from the top to the bottom of the page${results.sections ? ` (\`--sections\`: from one viewport above ${results.sections[0]} to the bottom of ${results.sections.at(-1)}, a pin room included)` : ''}. Frames are requestAnimationFrame deltas; long tasks come from a PerformanceObserver (over 50 ms). Heap is CDP Runtime.getHeapUsage: before the scroll after a forced GC, right after it, and after another GC.`,
       '',
       '| GPU | Tier | CPU | Median fps (1 s windows) | Slowest window fps | p95 frame ms | Worst frame ms | Frames over 33 ms | Long tasks (over 100 ms) | Longest task ms | Heap MiB before / after / after GC | clsAll / cls | Engine initMs / longest task ms | Scroll s | Reached bottom |',
       '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|',

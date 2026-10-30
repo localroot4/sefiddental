@@ -27,6 +27,8 @@ import { TierProvider, useTier, useTierStore } from './tier/TierProvider';
 const MOUNT_IDLE_TIMEOUT_MS = 1500;
 /** Coarse pointers: the engine waits for the probe's answer at most this long after `load`. */
 const ENGINE_GATE_MS = 1500;
+/** The root attribute the pinned CSS follows (sticky stages and their rooms from 1024 px). */
+const PINS_ATTR = 'data-pins';
 
 type EngineModule = typeof import('./engine/scrollEngine');
 type CanvasModule = typeof import('./canvas/CanvasRoot');
@@ -43,13 +45,16 @@ export function ExperienceRoot(props: {
 }): React.JSX.Element {
   return (
     <TierProvider siteCap={props.siteCap}>
-      <ExperienceHost notice={props.notice}>{props.children}</ExperienceHost>
+      <ExperienceHost notice={props.notice} siteCap={props.siteCap}>
+        {props.children}
+      </ExperienceHost>
     </TierProvider>
   );
 }
 
 function ExperienceHost(props: {
   notice?: React.ReactNode;
+  siteCap: Tier | null;
   children: React.ReactNode;
 }): React.JSX.Element {
   const tier = useTier();
@@ -94,8 +99,11 @@ function ExperienceHost(props: {
         (mod) => {
           if (!cancelled) setEngineModule(mod);
         },
-        (error: unknown) =>
-          console.error('[experience] scroll engine failed to load; tier 0.', error),
+        (error: unknown) => {
+          // No engine will scrub the sticky stages: the page without pins is the complete one.
+          document.documentElement.removeAttribute(PINS_ATTR);
+          console.error('[experience] scroll engine failed to load; tier 0.', error);
+        },
       );
     }, 0);
     return () => {
@@ -105,13 +113,13 @@ function ExperienceHost(props: {
   }, [loaded, engineWanted, engineModule]);
 
   // One engine per latched layout; destroy() reverts everything it created (its matchMedia
-  // context) on relatch and unmount. Keep-place across a relatch whose pins changed (D25: only a
-  // pin that went away or arrived moves the content, so a phone relatch never scrolls): the
-  // reader's scene and progress are recorded before the old engine goes, restored at once in the
-  // document without pins, and again by the new engine after the refresh its pins queue, never on
-  // unmount. A first engine is handed the place the browser restored (a reload, a deep link),
-  // read in the document without pins, which its pins would otherwise move off screen.
-  const placeRef = useRef<{ place: ScenePlace<SceneId> | null; pinned: boolean } | null>(null);
+  // context) on relatch and unmount. The pinned geometry is `html[data-pins]` (sticky stages and
+  // their rooms in CSS): the inline latch writes it before the first paint (pinsScript.ts), so a
+  // reload or an anchor lands in it, and this effect keeps it equal to the latched layout. Where
+  // it changes (a relatch, a probe answer before the first engine) the reader's scene and
+  // progress are read in the document as it was (the old engine's, or the place the browser
+  // restored) and applied at once in the new one, never on unmount.
+  const placeRef = useRef<ScenePlace<SceneId> | null>(null);
   // Settings follow the tier at once; the engine reads them at creation only, so they are not a
   // dependency (a monitor cap must not rebuild the engine).
   const settingsRef = useRef(tier.settings);
@@ -120,19 +128,23 @@ function ExperienceHost(props: {
   }, [tier.settings]);
   useEffect(() => {
     const root = rootRef.current;
-    if (engineModule === null || !tier.hydrated || root === null) return;
+    if (!tier.hydrated || root === null) return;
+    const html = document.documentElement;
+    const pinned = tier.layout.pinnedScenes;
     const kept = placeRef.current;
     placeRef.current = null;
-    const place = kept !== null && kept.pinned !== tier.layout.pinnedScenes ? kept.place : null;
-    if (place !== null) {
-      const y = engineModule.placeScrollY(root, place);
+    if (engineModule === null) {
+      // No engine to keep a place yet: only a latch without pins may differ from the inline one
+      // (no WebGL 2 under a forced tier); pins that arrive wait for the engine and its place.
+      if (!pinned) html.removeAttribute(PINS_ATTR);
+      return;
+    }
+    if (html.hasAttribute(PINS_ATTR) !== pinned) {
+      const place = kept ?? engineModule.placeNow(root);
+      html.toggleAttribute(PINS_ATTR, pinned);
+      const y = place === null ? null : engineModule.placeScrollY(root, place);
       if (y !== null) window.scrollTo({ top: y, behavior: 'instant' });
     }
-    // A first engine with pins returns a reload inside a pin to the progress kept at `pagehide`:
-    // the document without pins has no place for it. Read at every first engine, so a place kept
-    // before a load without pins never outlives that load.
-    const taken = kept === null ? engineModule.takePinPlace() : null;
-    const pinPlace = tier.layout.pinnedScenes ? taken : null;
     // Three frames, three short tasks (report, risk table: the engine is created on idle after
     // `load`): this commit's attribute writes are recalculated by the next frame, ScrollTrigger
     // registers on the frame after it where the layout makes triggers (every tier from 1), and
@@ -144,14 +156,18 @@ function ExperienceHost(props: {
         engineModule.prepareScrollEngine(tier.layout);
         frame = requestAnimationFrame(() => {
           frame = 0;
-          created = engineModule.createScrollEngine({
-            root,
-            layout: tier.layout,
-            settings: settingsRef.current,
-            scenes: SCENES,
-            restore:
-              (kept === null ? (pinPlace ?? engineModule.placeNow(root)) : place) ?? undefined,
-          });
+          try {
+            created = engineModule.createScrollEngine({
+              root,
+              layout: tier.layout,
+              settings: settingsRef.current,
+              scenes: SCENES,
+            });
+          } catch (error) {
+            html.removeAttribute(PINS_ATTR);
+            console.error('[experience] scroll engine failed to start; tier 0.', error);
+            return;
+          }
           experience.set({ engine: created });
           tierStore?.setScrollProbe(created);
         });
@@ -159,16 +175,24 @@ function ExperienceHost(props: {
     });
     // The next engine replaces this one in the same effect pass, so the canvas never sees
     // `engine: null` (which would unmount it and lose the WebGL context).
-    window.addEventListener('pagehide', engineModule.savePinPlace);
     return () => {
-      window.removeEventListener('pagehide', engineModule.savePinPlace);
       if (frame !== 0) cancelAnimationFrame(frame);
       if (created === null) return;
-      placeRef.current = { place: created.activeScene(), pinned: tier.layout.pinnedScenes };
+      placeRef.current = created.activeScene();
       tierStore?.setScrollProbe(null);
       created.destroy();
     };
   }, [engineModule, tier.hydrated, tier.layout, experience, tierStore]);
+  // Away from home the attribute has nothing to pin. Only once the root has left the document: a
+  // development StrictMode remount keeps it and must not undo the inline latch.
+  useEffect(() => {
+    const root = rootRef.current;
+    return () => {
+      window.setTimeout(() => {
+        if (root?.isConnected !== true) document.documentElement.removeAttribute(PINS_ATTR);
+      }, 0);
+    };
+  }, []);
   const introDone = useIntroDone();
   const visible = useDocumentVisible();
   // No canvas while the tier is pending (spec EXP 3.5 rule 7).
@@ -262,7 +286,7 @@ function ExperienceHost(props: {
   }, []);
 
   return (
-    <div ref={rootRef} data-experience-root="">
+    <div ref={rootRef} data-experience-root="" data-site-cap={props.siteCap ?? undefined}>
       {props.notice}
       {props.children}
       {CanvasRoot && canvasMounted && engine !== null ? (

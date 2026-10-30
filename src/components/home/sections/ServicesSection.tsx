@@ -11,7 +11,7 @@ import type { CatalogCategory } from '@/lib/data/catalog';
 import { PAGE_PATHS } from '@/lib/paths';
 import { formatNumberFa } from '@/lib/persianText';
 
-import type { Copy } from './HomeSection';
+import { PIN_STAGE, PinRoom, type Copy } from './HomeSection';
 
 /** The ink outline that rests on the morphed silhouette: the accent's default glyph (Cards.tsx). */
 const OUTLINE_GLYPH: Record<Accent, IconName> = {
@@ -24,10 +24,10 @@ const OUTLINE_GLYPH: Record<Accent, IconName> = {
 
 // One markup for every layout (phase 7 report D6; spec scene 3). Under 1024 px at every tier the
 // track is a native snap row bleeding into the gutters; from 1024 px the bento (family C). The
-// pinned layout (tiers 2 and 3, `html[data-pins]` from the latch, ENGINE; the scene writes it
-// itself until the root does) turns the track into one horizontal row the pin slides, clipped by
-// the rail: twice the rail wide at least, so the worlds pass the reader (each world the only
-// flex item of its height, never stretched to the featured one).
+// pinned layout (tiers 2 and 3, `html[data-pins]` from the latch) turns the track into one
+// horizontal row the pin slides, clipped by the rail: twice the rail wide at least, so the worlds
+// pass the reader (each world the only flex item of its height, never stretched to the featured
+// one); the stage sticks under the nav through two viewport heights (D7: +200 vh).
 const TRACK =
   'flex items-start gap-3 overflow-x-auto snap-x snap-mandatory scroll-px-gutter px-gutter pt-1 pb-3 overscroll-x-contain lg:grid lg:grid-cols-3 lg:items-stretch lg:overflow-visible lg:px-0 lg:pt-0 lg:pb-0 lg:snap-none lg:[[data-pins]_&]:flex lg:[[data-pins]_&]:w-max lg:[[data-pins]_&]:items-start lg:[[data-pins]_&]:gap-4 lg:[[data-pins]_&]:overflow-visible';
 // The featured world's 4:3 media (the article's only div child) is capped by the viewport height, so
@@ -62,7 +62,10 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
   return (
     <div data-scene="services" data-home-section="services" data-family="C">
       <Section labelledBy={props.copy ? id : undefined}>
-        <div data-stage="" className="lg:[[data-pins]_&]:min-h-[calc(100svh-var(--nav-h))]">
+        <div
+          data-stage=""
+          className={`${PIN_STAGE} lg:[[data-pins]_&]:min-h-[calc(100svh-var(--nav-h))]`}
+        >
           {props.copy ? (
             <SectionHeader
               id={id}
@@ -127,6 +130,7 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
             </div>
           </div>
         </div>
+        <PinRoom vh={2} />
       </Section>
     </div>
   );

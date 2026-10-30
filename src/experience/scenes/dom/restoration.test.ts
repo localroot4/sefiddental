@@ -85,7 +85,7 @@ describe('scene 4 restoration helpers', () => {
     document.body.innerHTML = `<div data-scene="restoration"><section>
       ${['plain', 'vip', 'cip'].map((l) => `<svg data-level="${l}"></svg>`).join('')}
       ${[0, 1, 2].map((i) => `<input type="radio" name="home-tier" value="t${i}">`).join('')}
-    </section></div>`;
+    </section><div data-pin-room=""></div></div>`;
     const el = document.querySelector<HTMLElement>('[data-scene]')!;
     const radios = Array.from(el.querySelectorAll('input'));
     const layers = Array.from(el.querySelectorAll('[data-level]'));
@@ -132,7 +132,7 @@ describe('scene 4 restoration helpers', () => {
     document.body.innerHTML = `<div data-scene="restoration"><section>
       ${['plain', 'vip', 'cip'].map((l) => `<svg data-level="${l}"></svg>`).join('')}
       ${[0, 1, 2].map((i) => `<input type="radio" name="home-tier" value="t${i}">`).join('')}
-    </section></div>`;
+    </section><div data-pin-room=""></div></div>`;
     const el = document.querySelector<HTMLElement>('[data-scene]')!;
     const radios = Array.from(el.querySelectorAll('input'));
     const scrollTo = vi.fn();
@@ -167,7 +167,7 @@ describe('scene 4 restoration helpers', () => {
     document.body.innerHTML = `<div data-scene="restoration"><section>
       ${['plain', 'vip', 'cip'].map((l) => `<svg data-level="${l}"></svg>`).join('')}
       ${[0, 1, 2].map((i) => `<input type="radio" name="home-tier" value="t${i}">`).join('')}
-    </section></div>`;
+    </section><div data-pin-room=""></div></div>`;
     const el = document.querySelector<HTMLElement>('[data-scene]')!;
     const radios = Array.from(el.querySelectorAll('input'));
     const scrollTo = vi.fn();
@@ -190,7 +190,7 @@ describe('scene 4 restoration helpers', () => {
     document.body.innerHTML = `<div data-scene="restoration"><section>
       ${['plain', 'vip', 'cip'].map((l) => `<svg data-level="${l}"></svg>`).join('')}
       ${[0, 1, 2].map((i) => `<input type="radio" name="home-tier" value="t${i}">`).join('')}
-    </section></div>`;
+    </section><div data-pin-room=""></div></div>`;
     const el = document.querySelector<HTMLElement>('[data-scene]')!;
     const radios = Array.from(el.querySelectorAll('input'));
     const ctx = {
@@ -224,7 +224,7 @@ describe('scene 4 restoration helpers', () => {
         .map((i) => `<input type="radio" name="home-tier" value="t${i}">`)
         .join('')}</fieldset>
       ${['', 't0', 't1', 't2'].map((key) => `<div data-tier-panel="${key}"></div>`).join('')}
-    </section></div>`;
+    </section><div data-pin-room=""></div></div>`;
     const el = document.querySelector<HTMLElement>('[data-scene]')!;
     phone.motion.mockClear();
     phone.off.mockClear();

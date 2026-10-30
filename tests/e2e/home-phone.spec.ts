@@ -288,7 +288,7 @@ for (const [id, tier] of [
     await page.goto(`/?tier=${tier}`);
     await scrollSetReady(page, [IMG, TRACK, MARK]);
     await expectPhoneProfile(page);
-    await expect(page.locator('.pin-spacer')).toHaveCount(0);
+    await expect(page.locator('html[data-pins]')).toHaveCount(0);
     expect(await stillParts(page)).toEqual([]);
     const height = viewportHeight(page);
     const bar = await barPx(page);

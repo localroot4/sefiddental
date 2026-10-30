@@ -31,21 +31,19 @@ async function scrollTo(page: Page, y: number): Promise<void> {
 }
 
 /**
- * The pin's scroll range, from the spacer the pin left in the section's place; `distance` is the
- * room the spacer holds beyond the section, the pin's own length (D7: one viewport).
+ * The pin's scroll range once the engine scrubs it: the sticky section's top under the nav (the
+ * room's top less the section); `distance` is the room after the section, the pin's own length
+ * (D7: one viewport).
  */
 async function pinRange(page: Page): Promise<{ start: number; end: number; distance: number }> {
-  const spacer = scene(page).locator('.pin-spacer');
-  await expect(spacer).toHaveCount(1);
-  return spacer.evaluate((el) => {
+  await page.waitForFunction(() => performance.getEntriesByName('sefid:engine-init').length > 0);
+  const room = scene(page).locator(':scope > [data-pin-room]');
+  await expect(room).toBeVisible();
+  return room.evaluate((el) => {
     const navH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h'));
-    const start = el.getBoundingClientRect().top + window.scrollY - navH;
-    const section = el.querySelector('section')?.getBoundingClientRect().height ?? Number.NaN;
-    return {
-      start,
-      end: start + window.innerHeight,
-      distance: el.getBoundingClientRect().height - section,
-    };
+    const section = (el.previousElementSibling as HTMLElement).offsetHeight;
+    const start = el.getBoundingClientRect().top + window.scrollY - navH - section;
+    return { start, end: start + window.innerHeight, distance: el.getBoundingClientRect().height };
   });
 }
 
@@ -60,7 +58,7 @@ const checkedKey = (page: Page) =>
       null,
   );
 
-/** The one «رزرو نوبت» the CSS shows (the hidden panels are display: none). */
+/** The one «رزرو نوبت» shown (other panels: display none, or invisible when pinned). */
 async function visibleCtaHref(page: Page): Promise<string> {
   const cta = scene(page).getByRole('link', { name: BOOK, exact: true });
   await expect(cta).toHaveCount(1);
@@ -83,9 +81,8 @@ const layerState = (page: Page): Promise<LayerState> =>
       opacity: layers.map((el) => Number(getComputedStyle(el).opacity)),
       transform: layers.map((el) => parse(getComputedStyle(el).transform)),
       sectionTop:
-        document
-          .querySelector('[data-scene="restoration"] > .pin-spacer > section')
-          ?.getBoundingClientRect().top ?? Number.NaN,
+        document.querySelector('[data-scene="restoration"] > section')?.getBoundingClientRect()
+          .top ?? Number.NaN,
     };
   });
 
@@ -187,7 +184,9 @@ test('T-RS6 a chip checked before the engine keeps its layer until the scroll ta
   await page.goto('/?tier=2');
   await scene(page).getByRole('radio', { name: 'VIP' }).check();
   await scrollTo(page, 0);
-  await expect(page.locator('.pin-spacer')).toHaveCount(0);
+  expect(await page.evaluate(() => performance.getEntriesByName('sefid:engine-init').length)).toBe(
+    0,
+  );
   release();
   const range = await pinRange(page);
   await page.unroute(/\.js(\?|$)/);
@@ -204,7 +203,7 @@ test('T-RS6 a chip checked before the engine keeps its layer until the scroll ta
     .poll(() => page.evaluate(() => window.scrollY), { timeout: 5000 })
     .toBeGreaterThan(stepY(range, 2) - 2);
   await page.setViewportSize({ width: 900, height: 900 });
-  await expect(page.locator('.pin-spacer')).toHaveCount(0);
+  await expect(scene(page).locator(':scope > [data-pin-room]')).toBeHidden();
   await expect(page.locator('[data-world-slot="molar"][data-motion]')).toHaveCount(1);
   expect(await checkedKey(page)).toBe('cip');
 
@@ -214,7 +213,7 @@ test('T-RS6 a chip checked before the engine keeps its layer until the scroll ta
   await scrollTo(page, stepY(wide, 1));
   await expect.poll(() => checkedKey(page)).toBe('vip');
   await page.setViewportSize({ width: 900, height: 900 });
-  await expect(page.locator('.pin-spacer')).toHaveCount(0);
+  await expect(scene(page).locator(':scope > [data-pin-room]')).toBeHidden();
   await expect.poll(() => checkedKey(page)).toBeNull();
 });
 
@@ -347,7 +346,7 @@ test.describe('390 px touch', () => {
     await scrollTo(page, top - height * 1.5);
     // The scene ran (no pin on a phone): it switched the CSS crossfade on.
     await expect(page.locator('[data-world-slot="molar"][data-motion]')).toHaveCount(1);
-    await expect(page.locator('.pin-spacer')).toHaveCount(0);
+    await expect(scene(page).locator(':scope > [data-pin-room]')).toBeHidden();
 
     // Settle on the molar (reading line 60 %), Rise on the chip row and the shown panel (80 %),
     // one trigger each (phone spec 2.1): dim at the bar top, at rest at the reading line.
@@ -405,7 +404,7 @@ test('T-RS5 ?tier=1 at 1440: no pin; a choice crossfades the molar through CSS',
   only(testInfo, 'desktop-light');
   await page.goto('/?tier=1');
   await expect(page.locator('[data-world-slot="molar"][data-motion]')).toHaveCount(1);
-  await expect(page.locator('.pin-spacer')).toHaveCount(0);
+  await expect(scene(page).locator(':scope > [data-pin-room]')).toBeHidden();
   const cip = scene(page).locator('[data-level="cip"]');
   await expect(cip).toHaveCSS('opacity', '0');
   await scene(page).getByRole('radio', { name: 'CIP' }).check();
@@ -422,14 +421,35 @@ test('T-RS7 ?tier=2 at 1024x768: the pinned stage fits the viewport (molar stack
   await page.goto('/?tier=2');
   await page.evaluate(() => document.fonts.ready);
   const range = await pinRange(page);
+  // Every step: the stacked panels keep one stage height, so each fits under the nav.
+  for (const [step, key] of STEPS.entries()) {
+    await scrollTo(page, stepY(range, step));
+    await expect.poll(() => checkedKey(page)).toBe(key);
+    const slot = scene(page).locator('[data-world-slot="molar"]');
+    expect((await slot.boundingBox())?.width).toBeCloseTo(144, 0);
+    const chips = await scene(page).locator('fieldset label').all();
+    const tops = await Promise.all(chips.map(async (c) => (await c.boundingBox())?.y ?? -1));
+    expect(new Set(tops.map(Math.round)).size).toBe(1);
+    await expectInView(page, scene(page).getByRole('link', { name: BOOK, exact: true }));
+    // The compare link closes the section, and the sticky section ends inside the viewport.
+    await expectInView(page, scene(page).getByRole('link').last());
+    const stage = await scene(page).locator(':scope > section').boundingBox();
+    expect((stage?.y ?? 0) + (stage?.height ?? Infinity), key).toBeLessThanOrEqual(768);
+  }
+});
+
+test("T-RS10 ?tier=2: Tab after the chosen chip lands on that step's visible «رزرو نوبت» (the stacked panels hide the rest from the keyboard)", async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  await page.goto('/?tier=2');
+  const range = await pinRange(page);
   await scrollTo(page, stepY(range, 1));
   await expect.poll(() => checkedKey(page)).toBe('vip');
-  const slot = scene(page).locator('[data-world-slot="molar"]');
-  expect((await slot.boundingBox())?.width).toBeCloseTo(144, 0);
-  const chips = await scene(page).locator('fieldset label').all();
-  const tops = await Promise.all(chips.map(async (chip) => (await chip.boundingBox())?.y ?? -1));
-  expect(new Set(tops.map(Math.round)).size).toBe(1);
-  await expectInView(page, scene(page).getByRole('link', { name: BOOK, exact: true }));
-  // The compare link closes the section.
-  await expectInView(page, scene(page).getByRole('link').last());
+  await scene(page).getByRole('radio', { name: 'VIP' }).focus();
+  await page.keyboard.press('Tab');
+  const focused = page.locator(':focus');
+  await expect(focused).toHaveAttribute('href', /tier=vip/);
+  await expect(focused).toBeVisible();
+  await expectInView(page, focused);
 });

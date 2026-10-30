@@ -35,19 +35,25 @@ async function scrollTo(page: Page, y: number): Promise<void> {
   await frames(page);
 }
 
-/** The pin from the live spacer: its scroll start (under the header) and its distance. */
+/**
+ * The pin once the engine scrubs it: its scroll start (the sticky stage's top under the header,
+ * the room's top less the stage) and its distance (the room after the stage).
+ */
 const geometry = (page: Page) =>
   page.evaluate(() => {
     const stage = document.querySelector<HTMLElement>('[data-workflow-stage]');
     if (!stage) throw new Error('no [data-workflow-stage]');
-    const spacer = stage.closest<HTMLElement>('.pin-spacer');
+    const room = stage.nextElementSibling;
+    const engine = performance.getEntriesByName('sefid:engine-init').length > 0;
     const nav =
       parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 0;
-    const rect = spacer?.getBoundingClientRect();
+    const rect =
+      engine && room?.hasAttribute('data-pin-room') ? room.getBoundingClientRect() : null;
+    const live = rect !== null && rect.height > 0;
     return {
-      diagonal: stage.hasAttribute('data-diagonal'),
-      start: rect ? rect.top + window.scrollY - nav : null,
-      distance: rect ? rect.height - stage.getBoundingClientRect().height : null,
+      diagonal: document.documentElement.hasAttribute('data-pins'),
+      start: live ? rect.top + window.scrollY - nav - stage.offsetHeight : null,
+      distance: live ? rect.height : null,
       stageHeight: stage.getBoundingClientRect().height,
       nav,
       vh: window.innerHeight,
@@ -215,7 +221,8 @@ test('T-WF3 390 touch: a vertical timeline, no spacer; ?tier=1 scrubs a Rise on 
   const stage = page.locator('[data-workflow-stage]');
   const steps = page.locator('[data-workflow-step]');
   await expect(steps).toHaveCount(4);
-  await expect(page.locator('.pin-spacer')).toHaveCount(0);
+  await expect(page.locator('[data-pin-room]')).toHaveCount(3);
+  for (const room of await page.locator('[data-pin-room]').all()) await expect(room).toBeHidden();
   // The steps stay in one column (the vertical list, no absolute placement).
   const lefts = await steps.evaluateAll((els) =>
     els.map((el) => Math.round(el.getBoundingClientRect().left)),
@@ -229,7 +236,7 @@ test('T-WF3 390 touch: a vertical timeline, no spacer; ?tier=1 scrubs a Rise on 
   await scrollToY(page, (await docTop(page, '[data-workflow-stage]')) - height);
   await expect(page.locator('[data-workflow-line][data-scrub]')).toHaveCount(1);
   expect(await stage.getAttribute('data-reveal')).toBeNull();
-  expect(await stage.getAttribute('data-diagonal')).toBeNull();
+  expect(await page.evaluate(() => document.documentElement.hasAttribute('data-pins'))).toBe(false);
 
   const photos = '[data-workflow-step] > div:last-child, [data-workflow-step] img';
   const photosStill = () =>
@@ -285,7 +292,8 @@ test('T-WF3 390 touch: a vertical timeline, no spacer; ?tier=1 scrubs a Rise on 
   await page.goto('/?tier=0');
   await page.waitForLoadState('load');
   await expect(page.locator('html')).toHaveAttribute('data-tier', '0');
-  await expect(page.locator('.pin-spacer')).toHaveCount(0);
+  await expect(page.locator('[data-pin-room]')).toHaveCount(3);
+  for (const room of await page.locator('[data-pin-room]').all()) await expect(room).toBeHidden();
   await expect(page.locator('[data-scrub]')).toHaveCount(0);
   const rest = await page
     .locator('[data-workflow-step] h3, [data-workflow-step] h3 + p')

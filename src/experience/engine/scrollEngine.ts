@@ -25,7 +25,6 @@ import { coverRanges, isCovered } from '../core/gates';
 import { DOM_SCENES } from '../scenes/dom';
 import { isSceneId } from '../scenes/registry';
 import type { DomScene, SceneContext, SceneDefinition, SceneId } from '../scenes/types';
-import { keyValue } from '../tier/browserEnv';
 import { createFrameMonitor, type MonitorWindow } from '../tier/frameMonitor';
 import type { LayoutLatch } from '../tier/latch';
 
@@ -53,10 +52,7 @@ export interface ScrollEngine {
    * on the next refresh for a child added later); until then it stays paused.
    */
   readonly master: gsap.core.Timeline | null;
-  /**
-   * Main-thread milliseconds of `createScrollEngine` plus, when a scene pinned, the full refresh
-   * those pins queue for the next frame (spacer layout, the engine's re-measure and re-placing).
-   */
+  /** Main-thread milliseconds of `createScrollEngine`. */
   readonly initMs: number;
   /** 0..1 document scroll fraction. */
   progress(): number;
@@ -210,7 +206,7 @@ function measureBounds(root: HTMLElement): SceneBound<SceneId>[] {
 
 /**
  * The scrollY that keeps a reader at `place` in the current document (measured now, after the
- * previous engine reverted its pins); null when that scene is gone.
+ * pinned geometry changed); null when that scene is gone.
  */
 export function placeScrollY(root: HTMLElement, place: ScenePlace<SceneId>): number | null {
   return scrollYAt(place, measureBounds(root), maxScroll());
@@ -219,43 +215,6 @@ export function placeScrollY(root: HTMLElement, place: ScenePlace<SceneId>): num
 /** The reader's place in the current document, measured now; null above the first scene. */
 export function placeNow(root: HTMLElement): ScenePlace<SceneId> | null {
   return activeScene(scrollFraction(window.scrollY, maxScroll()), measureBounds(root));
-}
-
-/** A reader's place: in a scene's segment, or (`pin`) in the range of the scene's pin. */
-export type KeptPlace = ScenePlace<SceneId> & { pin?: true };
-
-/** sessionStorage: the pin the reader was inside when the page was left, and the progress. */
-export const PIN_PLACE_KEY = 'sefid-pin-place';
-const session = keyValue(() => window.sessionStorage);
-
-/**
- * At `pagehide`. A reload restores its scroll in the document without pins, where a pin range
- * has no height, so no place read there maps back into it (a reload at services 2010 landed at
- * 3410, at restoration 4381 at 7684).
- */
-export function savePinPlace(): void {
-  const pin = ScrollTrigger.getAll().find((trigger) => trigger.pin && trigger.isActive);
-  const id = pin?.pin?.closest('[data-scene]')?.getAttribute('data-scene');
-  if (pin && id) session.set(PIN_PLACE_KEY, JSON.stringify({ id, progress: pin.progress }));
-  else session.remove(PIN_PLACE_KEY);
-}
-
-/** The place `savePinPlace` kept, read once; only a reload or a history visit restores it. */
-export function takePinPlace(): KeptPlace | null {
-  const raw = session.get(PIN_PLACE_KEY);
-  session.remove(PIN_PLACE_KEY);
-  const nav = performance.getEntriesByType('navigation')[0] as
-    PerformanceNavigationTiming | undefined;
-  if (raw === null || (nav?.type !== 'reload' && nav?.type !== 'back_forward')) return null;
-  try {
-    const { id, progress } = JSON.parse(raw) as Record<string, unknown>;
-    if (typeof id === 'string' && isSceneId(id) && typeof progress === 'number') {
-      if (progress >= 0 && progress <= 1) return { id, progress, pin: true };
-    }
-  } catch {
-    // Not JSON (another writer, a manual edit): no place, the fallback applies.
-  }
-  return null;
 }
 
 /**
@@ -335,15 +294,9 @@ export function createScrollEngine(opts: {
   layout: LayoutLatch;
   settings: TierSettings;
   scenes: readonly SceneDefinition[];
-  /**
-   * Keep-place across a relatch, the place the browser restored for a first engine, or the pin
-   * place a reload kept at `pagehide`: applied again by the refresh the new pins queue, run in
-   * the creation task.
-   */
-  restore?: KeptPlace;
 }): ScrollEngine {
   const t0 = performance.now();
-  const { root, layout, settings, scenes, restore } = opts;
+  const { root, layout, settings, scenes } = opts;
   const known = new Set<string>(scenes.map((scene) => scene.id));
   const pinnedIds = new Set<string>(scenes.filter((s) => s.pinnedDesktop).map((s) => s.id));
   const firstPinned = scenes.find((s) => s.pinnedDesktop)?.id ?? null;
@@ -363,15 +316,7 @@ export function createScrollEngine(opts: {
   let present: PresentScene[] = [];
   let destroyed = false;
   let initMs = 0;
-  // Keep-place (report section 3): the root scrolls to `restore` before creation, in the document
-  // without pins; the spacers the new pins add move the content on the refresh those pins queue
-  // (ScrollTrigger 3.15 `_queueRefreshAll`), so the place is applied again from the bounds that
-  // refresh measures. That refresh also counts in `initMs`.
-  let pending: KeptPlace | null = null;
-  let pinRefresh = false;
-  let refreshStart = 0;
-
-  // Measured on every ScrollTrigger refresh (pins add spacers) and once at creation.
+  // Measured on every ScrollTrigger refresh and once at creation.
   let covers: { top: number; height: number }[] = [];
   let bounds: SceneBound<SceneId>[] = [];
 
@@ -387,20 +332,6 @@ export function createScrollEngine(opts: {
       return { top: rect.top + window.scrollY, height: Math.ceil(rect.height) };
     });
     bounds = measureBounds(root);
-  };
-
-  /**
-   * Native scroll, not Lenis: Lenis clamps to the limit its observer measured before the spacers.
-   * A pin place reads the pin's own range: a segment's share of the document moves with every
-   * height change after the measure (a restoration step switch moved it 14 px).
-   */
-  const apply = (place: KeptPlace): void => {
-    const el = place.pin ? root.querySelector(`[data-scene="${place.id}"]`) : null;
-    const pin = el && ScrollTrigger.getAll().find((t) => t.pin && el.contains(t.pin));
-    const y = pin
-      ? pin.start + place.progress * (pin.end - pin.start)
-      : scrollYAt(place, bounds, maxScroll());
-    if (y !== null) window.scrollTo(0, y);
   };
 
   const segmentOf = (id: SceneId): { start: number; end: number } => {
@@ -452,23 +383,15 @@ export function createScrollEngine(opts: {
   let scrollAtRefreshInit = 0;
   const onRefreshInit = (): void => {
     scrollAtRefreshInit = window.scrollY;
-    refreshStart = performance.now();
   };
 
-  /** Refresh: re-measure, then re-place labels, children and the pending reader place. */
+  /** Refresh: re-measure, then re-place labels and children; the reader stays. */
   const onRefresh = (): void => {
     adopt();
     measure();
     placeLabels();
     placeChildren();
-    if (pending !== null) apply(pending);
-    else if (window.scrollY !== scrollAtRefreshInit) window.scrollTo(0, scrollAtRefreshInit);
-    pending = null;
-    if (pinRefresh) {
-      pinRefresh = false;
-      initMs += performance.now() - refreshStart;
-      performance.measure('sefid:engine-first-refresh', { start: refreshStart });
-    }
+    if (window.scrollY !== scrollAtRefreshInit) window.scrollTo(0, scrollAtRefreshInit);
   };
 
   const progress = (): number => {
@@ -665,18 +588,14 @@ export function createScrollEngine(opts: {
     const cleanups: (() => void)[] = [];
     const base = { layout, settings, conditions, engine: api };
 
-    // Pins in document order before the master, so the master's end includes their spacing;
-    // their spacers land in the bounds on the full refresh every pin queues (ScrollTrigger),
-    // through `onRefresh`, so the creation task reads nothing after they wrote.
+    // Pins in document order before the master. Their geometry is the CSS of `html[data-pins]`
+    // (sticky stages and their rooms, written before the engine), so they scrub and insert no
+    // spacer: nothing moves the page here (phase 7 F2, F3).
     if (layout.pinnedScenes && wide) {
       context.ignore(registerScrollTrigger);
       for (const { id, el, scene } of present) {
         scene.pin?.({ id, el, ...base, nearViewport: nearViewport(el) });
       }
-    }
-    if (ScrollTrigger.getAll().some((trigger) => trigger.pin)) {
-      pending = restore ?? null;
-      pinRefresh = true;
     }
 
     // Without Lenis under 1024 px (a phone) the master stays paused until a scene adds a child
@@ -744,10 +663,6 @@ export function createScrollEngine(opts: {
     }
     placeChildren();
     context.ignore(triggerMaster);
-    // A place to keep: the refresh the pins queued runs now instead of on the next frame, which
-    // would paint the content their spacers pushed into view (clsAll 1 on a reload at desktop
-    // tier 2); a synchronous refresh makes the queued one a no-op.
-    if (pending !== null) ScrollTrigger.refresh();
 
     return () => {
       live = false;

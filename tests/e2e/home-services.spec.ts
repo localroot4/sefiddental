@@ -11,7 +11,8 @@ import { throttleCpu } from '../helpers/cpu';
 import { skipIntro } from '../helpers/intro';
 
 const SCENE = '[data-scene="services"]';
-const SPACER = `${SCENE} .pin-spacer`;
+/** The pin's room: the scroll distance after the sticky stage, display none without pins. */
+const ROOM = `${SCENE} [data-pin-room]`;
 const TRACK = `${SCENE} [data-track]`;
 /** The MorphSVG chunk: at most 10 KiB of plugin plus 2 KiB of paths (report, section 5). */
 const MORPH_LIMIT_KIB = 12;
@@ -34,16 +35,30 @@ async function scrollTo(page: Page, top: number): Promise<void> {
   await frames(page);
 }
 
-/** The pin's document range: the spacer's top under the nav, plus two viewport heights. */
+/**
+ * The pin's document range, once the engine's pin scrubs: the sticky stage's top under the nav
+ * (the room's top less the stage), through the room's two viewport heights.
+ */
 async function pinRange(page: Page): Promise<{ start: number; end: number }> {
-  await expect(page.locator(SPACER)).toHaveCount(1, { timeout: 15_000 });
-  return page.evaluate(() => {
-    const spacer = document.querySelector('[data-scene="services"] .pin-spacer');
-    if (!spacer) throw new Error('no pin spacer');
+  await page.waitForFunction(
+    () => performance.getEntriesByName('sefid:services-pin').length > 0,
+    null,
+    { timeout: 15_000 },
+  );
+  const { start, length, viewport } = await page.evaluate(() => {
+    const room = document.querySelector('[data-scene="services"] [data-pin-room]');
+    const stage = room?.previousElementSibling;
+    if (!room || !(stage instanceof HTMLElement)) throw new Error('no pin room');
     const navH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h'));
-    const start = Math.round(spacer.getBoundingClientRect().top + window.scrollY - navH);
-    return { start, end: start + window.innerHeight * 2 };
+    const { top, height } = room.getBoundingClientRect();
+    return {
+      start: Math.round(top + window.scrollY - navH - stage.offsetHeight),
+      length: Math.round(height),
+      viewport: window.innerHeight,
+    };
   });
+  expect(length, 'the room is two viewport heights (D7)').toBe(viewport * 2);
+  return { start, end: start + length };
 }
 
 /** The track's x translation and the edges of the rail and its worlds, in viewport pixels. */
@@ -331,7 +346,7 @@ test('T-SV4 on touch phones and tablets: no pin, a mandatory snap row, every car
   await page.goto('/?tier=2');
   await page.waitForLoadState('load');
   await page.waitForTimeout(2500);
-  await expect(page.locator(SPACER)).toHaveCount(0);
+  await expect(page.locator(ROOM)).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.hasAttribute('data-pins'))).toBe(false);
   const track = page.locator(TRACK);
   await expect(track).toHaveCSS('scroll-snap-type', 'x mandatory');

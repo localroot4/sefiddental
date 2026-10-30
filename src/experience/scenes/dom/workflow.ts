@@ -7,9 +7,9 @@
  * toward the result; at tier 1 and on phones each step arrives once as the reader reaches it,
  * so the list reads as beats, not as a wall of four cards.
  *
- * Pinned diagonal (tiers 2 and 3 from 1024 px, when the layout pins): `pin` marks the stage
- * `data-diagonal` (the section's CSS places the steps along the diagonal), pins it +200 vh and
- * scrubs one timeline on the pin trigger (D8): the path pans 0.9 x 1.2 stage sizes, so step i
+ * Pinned diagonal (tiers 2 and 3 from 1024 px, when the layout pins): `html[data-pins]` makes the
+ * section's CSS place the steps along the diagonal and the stage sticky for +200 vh (its room);
+ * `pin` scrubs one timeline over that range (D8): the path pans 0.9 x 1.2 stage sizes, so step i
  * sits at the centre at progress i/3. Transform and opacity only, no `will-change` (the pan and
  * the scales composite on their own). From 1024 px without a pin (tier 1) one
  * IntersectionObserver adds `.in` to a step the first time its top crosses 88% of the viewport,
@@ -30,6 +30,7 @@ import { gsap } from 'gsap';
 import type { DomScene } from '../types';
 
 import { phoneMotion, PHONE_MOTION } from './phone';
+import { pinRange } from './pinRoom';
 
 const STAGE = '[data-workflow-stage]';
 const PATH = '[data-workflow-path]';
@@ -45,10 +46,6 @@ const FOCUS = { in: 0.2, hold: 0.08, out: 0.12 };
 const WARM_MAX = 0.36;
 /** Phones: a photo warms while its top moves from 80 % to 40 % of the viewport. */
 const WARM_RANGE = { start: 'clamp(top 80%)', end: 'clamp(top 40%)' };
-
-/** The `--nav-h` token in pixels: the pinned stage sits under the sticky header. */
-const navHeight = (): number =>
-  parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 0;
 
 /** The phone scroll set of the vertical list; the returned cleanup drops its focus listeners. */
 function phoneSteps(el: HTMLElement, steps: HTMLElement[]): () => void {
@@ -77,26 +74,20 @@ function phoneSteps(el: HTMLElement, steps: HTMLElement[]): () => void {
   return off;
 }
 
+/** The stages `pin` scrubs, from `pin` to `setup` of the same engine. */
+const pinned = new WeakSet<HTMLElement>();
+
 const scene: DomScene = {
   pin({ el }) {
     const stage = el.querySelector<HTMLElement>(STAGE);
     const path = el.querySelector<HTMLElement>(PATH);
     const steps = Array.from(el.querySelectorAll<HTMLElement>(STEP));
-    if (!stage || !path || steps.length === 0) return;
-    stage.setAttribute('data-diagonal', '');
+    const range = stage && pinRange(stage);
+    if (!stage || !range || !path || steps.length === 0) return;
+    pinned.add(stage);
     const last = steps.length - 1;
     const tl = gsap.timeline({
-      scrollTrigger: {
-        trigger: stage,
-        pin: true,
-        start: () => `top ${navHeight()}px`,
-        end: '+=200%',
-        scrub: true,
-        invalidateOnRefresh: true,
-        anticipatePin: 1,
-        // A fixed pin made Chromium report a 0.777 layout shift of the stage at each pin edge.
-        pinType: 'transform',
-      },
+      scrollTrigger: { ...range, scrub: true },
       defaults: { ease: 'none' },
     });
     tl.to(
@@ -127,14 +118,14 @@ const scene: DomScene = {
     const stage = el.querySelector<HTMLElement>(STAGE);
     if (!stage) return;
     const steps = Array.from(el.querySelectorAll<HTMLElement>(STEP));
-    if (stage.hasAttribute('data-diagonal')) {
+    if (pinned.has(stage)) {
       const scrubbed = [
         el.querySelector(PATH),
         ...steps,
         ...steps.map((step) => step.querySelector(WARM)),
       ].filter((node) => node !== null);
       return () => {
-        stage.removeAttribute('data-diagonal');
+        pinned.delete(stage);
         // The context revert leaves the pinned path and steps at the transforms each refresh
         // re-recorded as their originals (with the diagonal's translate folded in, as services'
         // track); the tier-0 markup has no inline style (CSP), so all of it goes.

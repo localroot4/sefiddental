@@ -82,7 +82,7 @@ describe('home scene 4 tier step (F24, CV9)', () => {
     const group = container.querySelector('[data-choices]')!;
     expect(group.className.split(' ')).toContain('group/tiers');
     const panels = [...group.querySelectorAll('[data-tier-panel]')].map((el) =>
-      el.className.split(' ').filter((c) => c.includes('/tiers:')),
+      el.className.split(' ').filter((c) => c.includes('/tiers:') && !c.startsWith('lg:')),
     );
     expect(panels).toEqual([
       ['group-data-choice/tiers:hidden', 'noscript:group-has-[input:checked]/tiers:hidden'],
@@ -99,6 +99,27 @@ describe('home scene 4 tier step (F24, CV9)', () => {
         'noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:grid',
       ],
     ]);
+    // Pinned, the panels share one cell and the unchosen ones are only invisible: the sticky
+    // stage keeps its height whatever the scroll checks (F2).
+    const pinned = [...group.querySelectorAll('[data-tier-panel]')].map((el) =>
+      el.className.split(' ').filter((c) => c.startsWith('lg:[[data-pins]_&]:')),
+    );
+    expect(pinned[0]).toEqual([
+      'lg:[[data-pins]_&]:grid',
+      'lg:[[data-pins]_&]:[grid-area:2/1]',
+      'lg:[[data-pins]_&]:group-data-choice/tiers:grid',
+      'lg:[[data-pins]_&]:group-data-choice/tiers:invisible',
+    ]);
+    pinned
+      .slice(1)
+      .forEach((classes, i) =>
+        expect(classes).toEqual([
+          'lg:[[data-pins]_&]:grid',
+          'lg:[[data-pins]_&]:[grid-area:2/1]',
+          'lg:[[data-pins]_&]:invisible',
+          `lg:[[data-pins]_&]:group-data-[choice=${i + 1}]/tiers:visible`,
+        ]),
+      );
     expect(group.hasAttribute('data-choice')).toBe(false);
     fireEvent.click(group.querySelector('input[value="cip"]')!);
     expect(group.getAttribute('data-choice')).toBe('3');

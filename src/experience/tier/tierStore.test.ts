@@ -2,9 +2,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { GpuResult } from '@/lib/qualityTier';
 
-import { serializeGpuCache } from './gpuCache';
+import { parseGpuCache, serializeGpuCache } from './gpuCache';
 import type { ProbeResult } from './gpuProbe';
-import { createTierStore, RELATCH_POLL_MS, type TierEnv } from './tierStore';
+import { createTierStore, hydrationGpu, RELATCH_POLL_MS, type TierEnv } from './tierStore';
 
 // TS26 swaps in a registry where a scene declares `webgl.load` (phase 8); today none does.
 const registry = vi.hoisted(() => ({ sceneLoadsWebgl: false }));
@@ -183,10 +183,41 @@ describe('tier store: hydration (synchronous tier)', () => {
     expect(state().layout).toEqual({ pinnedScenes: false, lenis: true, latchedAtTier: 1 });
   });
 
-  it('TS2 hydration ignores sefid-gpu; the probe reads and validates it after load', () => {
+  it('TS2 hydration reads a valid sefid-gpu (a returning visitor pins before the probe); a corrupt or stale one reads as none', () => {
     const { state } = started({ local: { 'sefid-gpu': serializeGpuCache(RTX, benchmark3) } });
-    expect(state()).toMatchObject({ tier: 1, status: 'pending' });
-    expect(state().layout).toEqual({ pinnedScenes: false, lenis: true, latchedAtTier: 1 });
+    expect(state()).toMatchObject({ tier: 3, status: 'pending', reason: 'gpu-benchmark' });
+    expect(state().layout).toEqual({ pinnedScenes: true, lenis: true, latchedAtTier: 3 });
+    const software = started({
+      local: { 'sefid-gpu': serializeGpuCache(SWIFTSHADER, benchmark3) },
+    });
+    expect(software.state()).toMatchObject({ tier: 0, reason: 'software-renderer' });
+    for (const raw of ['{', '[]', serializeGpuCache(RTX, benchmark3).replace('5.0.70', '5.0.1')]) {
+      expect(started({ local: { 'sefid-gpu': raw } }).state()).toMatchObject({ tier: 1 });
+    }
+  });
+
+  it('TS2b hydrationGpu accepts exactly what gpuCache accepts', () => {
+    const raws = [
+      null,
+      '{',
+      'null',
+      '[1]',
+      '5',
+      serializeGpuCache(RTX, benchmark3),
+      serializeGpuCache(RTX, { tier: 1, type: 'FALLBACK' }),
+      JSON.stringify({ v: '5.0.70', renderer: RTX, tier: 2, type: 'BENCHMARK' }),
+      JSON.stringify({ v: '5.0.70', renderer: RTX, tier: 2, type: 'BENCHMARK', fps: '9' }),
+      JSON.stringify({ v: '5.0.70', renderer: RTX, tier: '2', type: 'BENCHMARK' }),
+      JSON.stringify({ v: '5.0.70', renderer: 7, tier: 2, type: 'BENCHMARK' }),
+      JSON.stringify({ v: '5.0.70', renderer: RTX, tier: 2, type: 'GPU' }),
+      JSON.stringify({ v: '5.0.71', renderer: RTX, tier: 2, type: 'BENCHMARK' }),
+    ];
+    for (const raw of raws) {
+      const zod = parseGpuCache(raw, null);
+      expect(hydrationGpu(raw), String(raw)).toEqual(
+        zod && { renderer: zod.renderer, gpu: { tier: zod.gpu.tier, type: zod.gpu.type } },
+      );
+    }
   });
 
   it('TS3 a corrupt sefid-quality reads as auto; a valid one is a fixed user override', () => {

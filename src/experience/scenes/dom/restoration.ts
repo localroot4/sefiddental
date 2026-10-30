@@ -8,16 +8,16 @@
  * in `--dur-4`; tier 0 and reduced motion run no scene and keep the instant switch. Under 1024 px
  * (phone spec scene 4) the molar slot also settles and the chip row and the shown panel rise as
  * they enter (phone.ts Settle and Rise, one trigger each); the scroll never checks a step there.
- * Tiers 2 and 3 from 1024 px: the section is pinned for one viewport; the pin's scrub timeline
- * crossfades the layers at the thirds, and crossing a third checks that step's radio
- * programmatically with a script `change` (untrusted: no `tier_select`; choices.ts moves the
- * group's `data-choice`, D21; one write per step, never per frame: the panel switch is a layout,
- * D12), so the CSS panel and its CTA follow the scroll. Leaving the pin upwards clears the check
- * (F24 stands outside the pin). A user choice (tap, arrow keys: a trusted `change`, which
- * HomeBookingPrefill reports as `tier_select`) scrolls to the middle of that step's third, so
- * scroll and choice never disagree; the chips stay in view because the section is pinned. A chip
- * checked before the engine (a tap before its chunk, a relatch from tier 1) keeps its layer until
- * the scroll enters the pin; a chip the reader chose survives the engine, a chip the scroll
+ * Tiers 2 and 3 from 1024 px: the section sticks for one viewport (`html[data-pins]` and its room);
+ * the scrub timeline over that range crossfades the layers at the thirds, and crossing a third
+ * checks that step's radio programmatically with a script `change` (untrusted: no `tier_select`;
+ * choices.ts moves the group's `data-choice`, D21; one write per step, never per frame: a panel
+ * switch restyles, D12), so the CSS panel and its CTA follow the scroll. Leaving the pin upwards
+ * clears the check (F24 stands outside the pin). A user choice (tap, arrow keys: a trusted
+ * `change`, which HomeBookingPrefill reports as `tier_select`) scrolls to the middle of that step's
+ * third, so scroll and choice never disagree; the chips stay in view because the section is pinned.
+ * A chip checked before the engine (a tap before its chunk, a relatch from tier 1) keeps its layer
+ * until the scroll enters the pin; a chip the reader chose survives the engine, a chip the scroll
  * checked does not.
  */
 import { gsap } from 'gsap';
@@ -26,6 +26,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import type { DomScene } from '../types';
 
 import { phoneMotion } from './phone';
+import { pinRange } from './pinRoom';
 
 const RADIOS = 'input[name="home-tier"]';
 const WIDE = '(min-width: 1024px)';
@@ -80,9 +81,6 @@ export function lockHolds(
   return lock !== null && now < lock.until && step !== lock.step && direction === lock.direction;
 }
 
-const navHeight = (): number =>
-  parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 0;
-
 interface Pinned {
   trigger: ScrollTrigger;
   radios: HTMLInputElement[];
@@ -105,7 +103,8 @@ const scene: DomScene = {
     const stage = el.querySelector<HTMLElement>(':scope > section');
     const [first, ...rest] = Array.from(el.querySelectorAll<SVGSVGElement>('[data-level]'));
     const radios = Array.from(el.querySelectorAll<HTMLInputElement>(RADIOS));
-    if (!stage || !first || rest.length === 0 || radios.length === 0) return;
+    const range = stage && pinRange(stage);
+    if (!range || !first || rest.length === 0 || radios.length === 0) return;
     const layers = [first, ...rest];
     const steps = Math.min(layers.length, radios.length);
     const checked = radios.findIndex((radio) => radio.checked);
@@ -156,12 +155,7 @@ const scene: DomScene = {
       if (pinned) pinned.pending = null;
     };
     const trigger = ScrollTrigger.create({
-      trigger: stage,
-      pin: stage,
-      start: () => `top ${navHeight()}px`,
-      end: () => `+=${window.innerHeight}`,
-      anticipatePin: 1,
-      invalidateOnRefresh: true,
+      ...range,
       scrub: conditions.fine ? true : 0.6,
       animation: timeline,
       onUpdate: follow,

@@ -44,7 +44,7 @@ const MARKUP = `
     <article><a href="/a">a</a></article><article><a href="/b">b</a></article>
   </div></div>
   <div data-progress="" aria-hidden="true" aria-valuenow="1"><div></div></div>
-</div></section></div>`;
+</div><div data-pin-room=""></div></section></div>`;
 
 function context(over: {
   wide?: boolean;
@@ -103,7 +103,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  document.documentElement.removeAttribute('data-pins');
+  for (const trigger of ScrollTrigger.getAll()) trigger.kill();
   document.body.innerHTML = '';
 });
 
@@ -216,11 +216,7 @@ describe('services scene setup', () => {
       return () => {};
     });
     const ctx = context({ wide: true, pinned: true, nearViewport });
-    const html = document.documentElement;
-    expect(html.hasAttribute('data-pins')).toBe(false);
     scene.pin?.(ctx);
-    // The root had no latch attribute: the scene wrote it, so its CSS pins the track.
-    expect(html.hasAttribute('data-pins')).toBe(true);
     const cleanup = scene.setup(ctx);
     expect(nearViewport).toHaveBeenCalledTimes(1);
     await vi.waitFor(() => expect(addMorphs).toHaveBeenCalledTimes(1));
@@ -248,16 +244,19 @@ describe('services scene setup', () => {
     if (typeof cleanup === 'function') cleanup();
     expect(restore).toHaveBeenCalledTimes(1);
     expect(track.style.transform).toBe('');
-    expect(html.hasAttribute('data-pins')).toBe(false);
   });
 
-  it("keeps the root's own html[data-pins] after the cleanup", () => {
-    document.documentElement.setAttribute('data-pins', '');
+  it("the pin scrubs over the room after the stage: no spacer, and html[data-pins] stays the root's", () => {
+    gsap.registerPlugin(ScrollTrigger);
     const ctx = context({ wide: true, pinned: true });
     scene.pin?.(ctx);
+    const [trigger] = ScrollTrigger.getAll();
+    expect(trigger?.trigger).toBe(ctx.el.querySelector('[data-pin-room]'));
+    expect(trigger?.pin).toBeUndefined();
+    expect(ctx.el.querySelector('.pin-spacer')).toBeNull();
+    expect(document.documentElement.hasAttribute('data-pins')).toBe(false);
     const cleanup = scene.setup(ctx);
     if (typeof cleanup === 'function') cleanup();
-    expect(document.documentElement.hasAttribute('data-pins')).toBe(true);
   });
 
   it('wide and pinned with reduced motion: no morph chunk', () => {

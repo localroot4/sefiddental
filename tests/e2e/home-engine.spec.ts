@@ -84,7 +84,7 @@ async function expectTierZeroPage(page: Page): Promise<void> {
   const snap = await snapshot(page);
   expect(snap.tickSubscribers).toBe(0);
   expect(snap.lenis).toBe(false);
-  await expect(page.locator('.pin-spacer')).toHaveCount(0);
+  await expect(page.locator('html[data-pins]')).toHaveCount(0);
   await expect(page.locator('[data-reveal]')).toHaveCount(0);
   await expect(page.locator('html.lenis')).toHaveCount(0);
   const leftovers = await page.evaluate(() => {
@@ -104,6 +104,9 @@ async function expectTierZeroPage(page: Page): Promise<void> {
   });
   expect(leftovers).toEqual([]);
 }
+
+/** clsAll of a reload or a deep link at desktop tier 2 (gate 0.05, target 0). */
+const CLS_TARGET = 0.001;
 
 function only(testInfo: TestInfo, ...projects: string[]): void {
   test.skip(!projects.includes(testInfo.project.name), `runs in ${projects.join(', ')}`);
@@ -172,7 +175,7 @@ test('T-EN2 a route change tears the engine down: a soft navigation away and bac
   await page.goBack();
   await page.waitForURL((url) => url.pathname === encodeURI('/خدمات'));
   await expect(page.locator('html.lenis')).toHaveCount(0);
-  await expect(page.locator('.pin-spacer')).toHaveCount(0);
+  await expect(page.locator('html[data-pins]')).toHaveCount(0);
   await expect(page.locator('[data-reveal]')).toHaveCount(0);
   await expect.poll(() => page.evaluate(() => '__sefid' in window)).toBe(false);
 
@@ -260,14 +263,30 @@ test('T-EN4b a «کیفیت» change from 1 to 3 (the pins arrive) keeps the rea
   expect(await sectionUnderMiddle(page)).toBe(before);
 });
 
-test('T-EN4c a reload at voices (tier 2, the pins arrive after the restored scroll) keeps the reader there with no layout shift', async ({
+/** The engine of this page load exists (every scene's pin and setup ran in its creation task). */
+const engineCreated = (page: Page) =>
+  page.waitForFunction(() => performance.getEntriesByName('sefid:engine-init').length > 0);
+
+/** From the next navigation on: every layout shift of the page, input or not (clsAll). */
+const recordShifts = (page: Page) =>
+  page.addInitScript(() => {
+    const w = window as unknown as { __shifts: number[] };
+    w.__shifts = [];
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries())
+        w.__shifts.push((entry as PerformanceEntry & { value: number }).value);
+    }).observe({ type: 'layout-shift', buffered: true });
+  });
+const shifts = (page: Page) =>
+  page.evaluate(() => (window as unknown as { __shifts: number[] }).__shifts);
+const clsAll = async (page: Page) => (await shifts(page)).reduce((sum, v) => sum + v, 0);
+
+test('T-EN4c a reload at voices (tier 2, after every pin) keeps the reader there with no layout shift', async ({
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
   await page.goto('/?tier=2');
-  await page.waitForFunction(
-    () => performance.getEntriesByName('sefid:engine-first-refresh').length > 0,
-  );
+  await engineCreated(page);
   // The voices top at the viewport top, where an in-page link or the engine's scrollTo puts it.
   const voicesTop = () =>
     page.evaluate(() => {
@@ -277,59 +296,44 @@ test('T-EN4c a reload at voices (tier 2, the pins arrive after the restored scro
     });
   await page.evaluate((top) => window.scrollBy({ top, behavior: 'instant' }), await voicesTop());
   await frames(page);
-  expect(await voicesTop()).toBe(0);
-  await page.addInitScript(() => {
-    const w = window as unknown as { __shifts: number[] };
-    w.__shifts = [];
-    new PerformanceObserver((list) => {
-      for (const entry of list.getEntries())
-        w.__shifts.push((entry as PerformanceEntry & { value: number }).value);
-    }).observe({ type: 'layout-shift', buffered: true });
-  });
+  expect(Math.abs(await voicesTop())).toBe(0); // Math.round of a fraction above can read -0
+  await recordShifts(page);
   await page.reload();
-  await page.waitForFunction(
-    () => performance.getEntriesByName('sefid:engine-first-refresh').length > 0,
-  );
+  await engineCreated(page);
   await frames(page);
   await frames(page);
-  // Chrome restores the scroll in the document without pins; the engine's pins then add their
-  // spacers above the reader, which must stay at voices in the frame that paints them.
-  expect(await page.evaluate(() => (window as unknown as { __shifts: number[] }).__shifts)).toEqual(
-    [],
-  );
+  // The inline latch pinned the document Chrome restores the scroll into: nothing moves after.
+  expect(await shifts(page)).toEqual([]);
   expect(Math.abs(await voicesTop())).toBeLessThanOrEqual(2);
 });
+
+/**
+ * A pin's document range: the sticky stage's top under the nav (the room's top less the stage)
+ * through its room (`PinRoom`, the stage's next sibling).
+ */
+const pinRange = (page: Page, scene: string) =>
+  page.evaluate((id) => {
+    const room = document.querySelector(`[data-scene="${id}"] [data-pin-room]`);
+    const stage = room?.previousElementSibling;
+    if (!room || !(stage instanceof HTMLElement)) throw new Error(`no pin in [data-scene="${id}"]`);
+    const navH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h'));
+    const { top, height } = room.getBoundingClientRect();
+    return { start: top + window.scrollY - navH - stage.offsetHeight, length: height };
+  }, scene);
 
 test('T-EN4d a reload inside each pin (tier 2) lands at the same progress of that pin', async ({
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
-  /** The pin's document range: the spacer's top under the nav, the spacer's padding long. */
-  const pinRange = (scene: string) =>
-    page.evaluate((id) => {
-      const spacer = document.querySelector(`[data-scene="${id}"] .pin-spacer`);
-      const stage = spacer?.firstElementChild;
-      if (!spacer || !stage) throw new Error(`no pin in [data-scene="${id}"]`);
-      const navH = parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue('--nav-h'),
-      );
-      const top = spacer.getBoundingClientRect().top + window.scrollY - navH;
-      const length = spacer.getBoundingClientRect().height - stage.getBoundingClientRect().height;
-      return { start: top, length };
-    }, scene);
   const pinPlace = async (scene: string) => {
-    const { start, length } = await pinRange(scene);
+    const { start, length } = await pinRange(page, scene);
     const y = await page.evaluate(() => window.scrollY);
     return { length, progress: (y - start) / length };
   };
-  const refreshed = () =>
-    page.waitForFunction(
-      () => performance.getEntriesByName('sefid:engine-first-refresh').length > 0,
-    );
   await page.goto('/?tier=2');
-  await refreshed();
+  await engineCreated(page);
   for (const scene of ['services', 'restoration', 'workflow']) {
-    const range = await pinRange(scene);
+    const range = await pinRange(page, scene);
     await page.evaluate(
       (top) => window.scrollTo({ top, behavior: 'instant' }),
       Math.round(range.start + 0.4 * range.length),
@@ -337,15 +341,167 @@ test('T-EN4d a reload inside each pin (tier 2) lands at the same progress of tha
     await frames(page);
     // A step switch in restoration moves the pins after it: the progress is read after the scroll.
     const before = await pinPlace(scene);
-    // Chrome restores the scroll in the document without pins, where the pin range has no height
-    // (services 2010 landed at 3410); the engine returns to the progress kept at pagehide.
     await page.reload();
-    await refreshed();
+    await engineCreated(page);
     await frames(page);
     await frames(page);
     const after = await pinPlace(scene);
     expect(Math.abs(after.progress - before.progress) * after.length, scene).toBeLessThanOrEqual(2);
   }
+});
+
+/** 0.4 of the way through a scene's own box past one viewport: inside its pin (1440x900). */
+const insideScene = (page: Page, scene: string) =>
+  page.evaluate((id) => {
+    const el = document.querySelector<HTMLElement>(`[data-scene="${id}"]`);
+    if (!el) throw new Error(`no [data-scene="${id}"]`);
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    return Math.round(top + 0.4 * (el.offsetHeight - window.innerHeight));
+  }, scene);
+
+test('T-EN4e a reload inside each pin (tier 2) paints the pinned frame from the first frame: no layout shift, the reader stays (F2)', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  await recordShifts(page);
+  for (const scene of ['services', 'restoration', 'workflow']) {
+    await page.goto('/?tier=2');
+    await engineCreated(page);
+    await page.evaluate(
+      (top) => window.scrollTo({ top, behavior: 'instant' }),
+      await insideScene(page, scene),
+    );
+    await frames(page);
+    const before = await page.evaluate(() => window.scrollY);
+    await page.reload();
+    await engineCreated(page);
+    await frames(page);
+    await frames(page);
+    // Before the fix the frames before the engine showed the document without pins: services
+    // 0.74, restoration and workflow 1.0.
+    expect(await clsAll(page), scene).toBeLessThanOrEqual(CLS_TARGET);
+    expect(
+      Math.abs((await page.evaluate(() => window.scrollY)) - before),
+      scene,
+    ).toBeLessThanOrEqual(8);
+  }
+});
+
+test('T-EN4f a deep link into or after a pin (tier 2) lands in the pinned geometry: no layout shift (F3)', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  await recordShifts(page);
+  for (const hash of ['home-restoration-title', 'home-workflow-title']) {
+    // A new document each time: a hash change alone would be a same-document navigation.
+    await page.goto('about:blank');
+    await page.goto(`/?tier=2#${hash}`);
+    await engineCreated(page);
+    await frames(page);
+    await frames(page);
+    // Before the fix: 1.0 for both.
+    expect(await clsAll(page), hash).toBeLessThanOrEqual(CLS_TARGET);
+    const top = await page.evaluate(
+      (id) => document.getElementById(id)?.getBoundingClientRect().top,
+      hash,
+    );
+    expect(top, hash).toBeGreaterThanOrEqual(0);
+    expect(top, hash).toBeLessThan(900);
+  }
+});
+
+const RTX = 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)';
+
+/**
+ * Auto mode on a capable desktop. Headless Chromium renders WebGL in software, which the probe
+ * reads as tier 0; here it reads a hardware renderer from a main-thread context (no
+ * OffscreenCanvas: no worker probe). With `cachedTier` a returning visitor's `sefid-gpu`.
+ */
+const hardwareGpu = (page: Page, cachedTier: number | null) =>
+  page.addInitScript(
+    ([renderer, tier]) => {
+      Object.defineProperty(window, 'OffscreenCanvas', { value: undefined, configurable: true });
+      const read = WebGL2RenderingContext.prototype.getParameter;
+      WebGL2RenderingContext.prototype.getParameter = function (this: WebGL2RenderingContext, p) {
+        // UNMASKED_RENDERER_WEBGL and RENDERER
+        return p === 0x9246 || p === 0x1f01 ? renderer : read.call(this, p);
+      };
+      if (tier === null) localStorage.removeItem('sefid-gpu');
+      else {
+        localStorage.setItem(
+          'sefid-gpu',
+          JSON.stringify({ v: '5.0.70', renderer, tier, type: 'BENCHMARK', fps: 120 }),
+        );
+      }
+    },
+    [RTX, cachedTier] as const,
+  );
+
+test('T-EN4g auto mode with a cached GPU answer (a returning visitor): a reload inside each pin shifts nothing and the reader stays (F2)', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  await hardwareGpu(page, 2);
+  await recordShifts(page);
+  for (const scene of ['services', 'restoration', 'workflow']) {
+    await page.goto('/');
+    await expect(page.locator('html')).toHaveAttribute('data-tier', '2');
+    await engineCreated(page);
+    await page.evaluate(
+      (top) => window.scrollTo({ top, behavior: 'instant' }),
+      await insideScene(page, scene),
+    );
+    await frames(page);
+    const before = await page.evaluate(() => window.scrollY);
+    await page.reload();
+    await engineCreated(page);
+    await frames(page);
+    await frames(page);
+    // The latch pinned from the first paint: the cache decided it before the probe.
+    await expect(page.locator('html[data-pins]')).toHaveCount(1);
+    expect(await clsAll(page), scene).toBeLessThanOrEqual(CLS_TARGET);
+    expect(
+      Math.abs((await page.evaluate(() => window.scrollY)) - before),
+      scene,
+    ).toBeLessThanOrEqual(8);
+  }
+});
+
+test('T-EN4h a first visit in auto mode whose probe answers before the engine chunk: the pins arrive under a deep link and the reader stays at voices', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  await hardwareGpu(page, null);
+  await recordShifts(page);
+  // Hold the engine chunk (the script that carries ScrollTrigger) until the probe has answered.
+  let release = (): void => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(/\.js(\?|$)/, async (route) => {
+    const response = await route.fetch();
+    const body = await response.text();
+    if (body.includes('ScrollTrigger')) await held;
+    await route.fulfill({ response, body });
+  });
+  await page.goto('/#home-voices-title');
+  const voicesTop = () =>
+    page.evaluate(() =>
+      Math.round(document.getElementById('home-voices-title')!.getBoundingClientRect().top),
+    );
+  const landed = await voicesTop();
+  // No pins before the probe: the first visit has no cached answer.
+  expect(await page.locator('html[data-pins]').count()).toBe(0);
+  await expect(page.locator('html')).toHaveAttribute('data-tier', /[23]/, { timeout: 15_000 });
+  release();
+  await engineCreated(page);
+  await frames(page);
+  await frames(page);
+  await page.unroute(/\.js(\?|$)/);
+  // The pins arrived with the engine; the place was read in the document without them.
+  await expect(page.locator('html[data-pins]')).toHaveCount(1);
+  expect(Math.abs((await voicesTop()) - landed)).toBeLessThanOrEqual(2);
+  expect(await clsAll(page)).toBeLessThanOrEqual(CLS_TARGET);
 });
 
 test.describe('375 px touch', () => {
@@ -363,7 +519,7 @@ test.describe('375 px touch', () => {
     expect(snap.lenis).toBe(false);
     await page.evaluate(() => window.scrollTo({ top: 600, behavior: 'instant' }));
     await frames(page);
-    await expect(page.locator('.pin-spacer')).toHaveCount(0);
+    await expect(page.locator('html[data-pins]')).toHaveCount(0);
     await expect(page.locator('html.lenis')).toHaveCount(0);
     // Phone spec scene 1: the layer never moves; its img may drift inside it (phone.ts Drift).
     await expect(page.locator('[data-scene="hero"] [data-hero-photo]')).toHaveCSS(
@@ -456,7 +612,7 @@ test.describe('tablet landscape touch', () => {
     await page.setViewportSize({ width: 820, height: 1180 });
     await expect.poll(async () => (await snapshot(page)).layout.pinnedScenes).toBe(false);
     await frames(page);
-    await expect(page.locator('.pin-spacer')).toHaveCount(0);
+    await expect(page.locator('html[data-pins]')).toHaveCount(0);
     await expect(page.locator('html.lenis')).toHaveCount(0);
     await expect.poll(async () => (await snapshot(page)).scene).toBe(before.scene);
     expect(await sectionUnderMiddle(page)).toBe(section);
