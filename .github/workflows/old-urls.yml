@@ -1,0 +1,45 @@
+# The old site's URL list for the 301 map (gap 11 degrade, docs/seo/plan.md section 7): reads the
+# old sitemap and its child sitemaps and writes old-urls.csv in the admin import format (from, to,
+# status; `to` empty for the admin to fill). Run by hand ("Run workflow") before launch, while the
+# old site still answers. GitHub runners are outside Iran, which reaches the old host when this
+# network cannot. No secrets, no write permission; plain GET reads only. `npm ci` because the
+# crawler shares the JSON-LD checks of tests/helpers/jsonld.ts, which import @playwright/test.
+name: Old URLs
+
+on:
+  workflow_dispatch:
+    inputs:
+      sitemap:
+        description: The old site's sitemap (index or urlset)
+        type: string
+        default: https://sefiddental.ir/sitemap.xml
+
+permissions:
+  contents: read
+
+jobs:
+  old-urls:
+    name: Old URLs from ${{ inputs.sitemap }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Read the old sitemap
+        env:
+          SITEMAP: ${{ inputs.sitemap }}
+        run: |
+          node scripts/crawl.mjs --old-sitemap "$SITEMAP" > old-urls.csv
+          echo "$(($(wc -l < old-urls.csv) - 1)) old URLs" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: old-urls
+          path: old-urls.csv
+          if-no-files-found: error
+          retention-days: 30
