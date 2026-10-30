@@ -460,6 +460,43 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     stop();
   });
 
+  it('CB12c WebKit: a tap whose touches are followed by a mouse pointerdown and a mouse click is still a tap', () => {
+    document.body.innerHTML = `
+      <a id="cta" href="/رزرو-نوبت" data-booking-cta>b</a>
+      <dialog data-booking-dialog><div data-booking-form="dialog"><form novalidate>
+        <h2 id="title">title</h2><input type="tel" id="phone">
+      </form></div></dialog>`;
+    const stop = setupBookingRoute(document);
+    const cta = document.getElementById('cta')!;
+    cta.dispatchEvent(new Event('touchstart', { bubbles: true }));
+    cta.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }));
+    cta.dispatchEvent(
+      new PointerEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        pointerType: 'mouse',
+      }),
+    );
+    expect(document.activeElement?.id).toBe('title');
+    document.querySelector('dialog')!.close();
+    // A mouse click with no touch before it is a press: the phone field.
+    stop();
+    const again = setupBookingRoute(document);
+    cta.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }));
+    cta.dispatchEvent(
+      new PointerEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        button: 0,
+        pointerType: 'mouse',
+      }),
+    );
+    expect(document.activeElement?.id).toBe('phone');
+    document.querySelector('dialog')!.close();
+    again();
+  });
+
   it('CB13 a CTA without a service leaves the form as the page set it', () => {
     document.body.innerHTML = `
       <a id="cta" href="/رزرو-نوبت"></a>

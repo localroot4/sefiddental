@@ -72,6 +72,8 @@ export function prefill(cta: HTMLAnchorElement, root: ParentNode): void {
 // page would shift the other way). Under 1024 px SiteShell already locks any modal.
 const LOCK = 'overflow-hidden';
 const GUTTER = '[scrollbar-gutter:stable]';
+/** A click this soon after a touch is that touch's tap. */
+const TAP_MS = 1000;
 
 /** The focusable part of a form root: its success region once it shows, else the form. */
 const live = (box: Element, selector: string) =>
@@ -96,12 +98,15 @@ export function setupBookingRoute(doc: Document, win: Window = window): () => vo
       if (!dialog.open) unlock();
     }
   };
-  // WebKit's click carries no touch pointerType (XB W8): the last input before the click tells a
-  // tap from a press. A key clears it, so Enter on a link after a tap still focuses the field.
-  let lastPointer = '';
-  const onPointer = (event: PointerEvent) => (lastPointer = event.pointerType);
-  const onTouch = () => (lastPointer = 'touch');
-  const onKey = () => (lastPointer = '');
+  // WebKit's click after a tap carries no touch pointerType, and its tap can follow the touches
+  // with a mouse pointerdown (XB W8, CI run 95): a touch shortly before the click tells a tap from
+  // a press. A key clears it, so Enter on a link after a tap still focuses the field.
+  let touchAt = -Infinity;
+  const onPointer = (event: PointerEvent) => {
+    if (event.pointerType === 'touch') touchAt = event.timeStamp;
+  };
+  const onTouch = (event: Event) => (touchAt = event.timeStamp);
+  const onKey = () => (touchAt = -Infinity);
   const onClick = (event: MouseEvent) => {
     if (event.defaultPrevented || !isPlainClick(event)) return;
     const cta =
@@ -132,8 +137,9 @@ export function setupBookingRoute(doc: Document, win: Window = window): () => vo
       openModal(route.dialog, cta);
     }
     // In its success state the form is inert: the success heading takes focus (5.4).
-    const type = 'pointerType' in event && event.pointerType ? event.pointerType : lastPointer;
-    const touch = type === 'touch';
+    const touch =
+      ('pointerType' in event && event.pointerType === 'touch') ||
+      event.timeStamp - touchAt < TAP_MS;
     const heading = live(box, 'h2, h3');
     const field = live(box, 'input[type="tel"]');
     const target = touch || !field ? heading : field;
