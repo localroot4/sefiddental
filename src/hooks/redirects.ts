@@ -5,7 +5,6 @@ import type {
   CollectionBeforeValidateHook,
   PayloadRequest,
 } from 'payload';
-import { ValidationError } from 'payload';
 
 import {
   ADMIN_ROUTE,
@@ -17,6 +16,7 @@ import {
 } from '@/lib/paths';
 
 import { ctx } from './context';
+import { invalid } from './errors';
 
 type Doc = Record<string, unknown> & { id: number | string };
 
@@ -225,10 +225,7 @@ export const flattenRedirect: CollectionBeforeChangeHook = async ({
   for (let hop = 0; hop < 10; hop += 1) {
     const path = targetPath(to);
     if (seen.has(path)) {
-      throw new ValidationError({
-        collection: collection.slug,
-        errors: [{ path: 'to', message: LOOP_MESSAGE }],
-      });
+      throw invalid(collection.slug, [{ path: 'to', message: LOOP_MESSAGE }], req.t);
     }
     const next = await req.payload.find({
       collection: 'redirects',

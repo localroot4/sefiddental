@@ -62,6 +62,19 @@ describe('booking status workflow (freeze G15)', () => {
     expect(create(form, null)).toBe(form);
   });
 
+  it('BK8b the refusal names its reason in the toast text, not the field path', () => {
+    const t = ((key: string) => `«${key}»`) as unknown as PayloadRequest['t'];
+    const refuse = () =>
+      bookingWorkflow({
+        data: { status: 'done' },
+        originalDoc: { status: 'contacted' },
+        operation: 'update',
+        req: { user: editor, t } as unknown as PayloadRequest,
+      } as unknown as Args);
+    expect(refuse).toThrow(/^«error:followingFieldsInvalid» .*یادداشت/);
+    expect(refuse).not.toThrow(/status/);
+  });
+
   it('BK8 closing needs a new note in the same save; an earlier note does not count', () => {
     for (const status of ['done', 'cancelled']) {
       expect(() => run({ status }, { status: 'contacted', adminNotes: [earlierNote] })).toThrow(

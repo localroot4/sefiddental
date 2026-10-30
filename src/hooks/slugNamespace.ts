@@ -1,5 +1,5 @@
 import type { CollectionBeforeValidateHook } from 'payload';
-import { ValidationError } from 'payload';
+import { invalid } from './errors';
 
 /**
  * H-NS (spec-data 6.3): services and categories share `/خدمات/{slug}`, so a slug is unique
@@ -19,10 +19,11 @@ export const sharedServiceSlug =
     });
     if (totalDocs > 0) {
       const owner = other === 'services' ? 'خدمت' : 'دسته';
-      throw new ValidationError({
-        collection: collection.slug,
-        errors: [{ path: 'slug', message: `این نشانی برای یک ${owner} دیگر استفاده شده است.` }],
-      });
+      throw invalid(
+        collection.slug,
+        [{ path: 'slug', message: `این نشانی برای یک ${owner} دیگر استفاده شده است.` }],
+        req.t,
+      );
     }
     return data;
   };

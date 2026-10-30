@@ -1,5 +1,5 @@
 import type { CollectionBeforeOperationHook, CollectionSlug, PayloadRequest, Where } from 'payload';
-import { ValidationError } from 'payload';
+import { invalid } from './errors';
 
 export const PASSWORD_MIN_LENGTH = 12;
 
@@ -100,10 +100,7 @@ export const enforcePasswordPolicy: CollectionBeforeOperationHook = async ({
     : await emailsFor(operation, passwordArgs, collection.slug, req, overrideAccess ?? false);
   const message = tooShort ?? emails.map((email) => passwordProblem(password, email)).find(Boolean);
   if (message) {
-    throw new ValidationError({
-      collection: collection.slug,
-      errors: [{ message, path: 'password' }],
-    });
+    throw invalid(collection.slug, [{ message, path: 'password' }], req.t);
   }
   return args;
 };

@@ -1,8 +1,8 @@
 import type { CollectionAfterChangeHook, CollectionBeforeChangeHook } from 'payload';
-import { ValidationError } from 'payload';
 
 import { BOOKING_STATUS_LABELS, type BookingStatus, PRIORITY_REMOVED } from '@/hooks/booking';
 import { adminText } from '@/i18n/fa-admin';
+import { invalid } from '@/hooks/errors';
 
 /** Moving into these ends the follow-up, so the handler writes what happened first. */
 const CLOSING_STATUSES: readonly BookingStatus[] = ['done', 'cancelled'];
@@ -40,15 +40,16 @@ export const bookingWorkflow: CollectionBeforeChangeHook = ({
     (row) => !earlierIds.has(row.id) && typeof row.text === 'string' && row.text.trim() !== '',
   );
   if (CLOSING_STATUSES.includes(to) && !wroteNote) {
-    throw new ValidationError({
-      collection: 'bookings',
-      errors: [
+    throw invalid(
+      'bookings',
+      [
         {
           path: 'status',
           message: adminText('admin.workflow.closeNote', { to: BOOKING_STATUS_LABELS[to] }),
         },
       ],
-    });
+      req.t,
+    );
   }
   const history = {
     text: adminText('admin.workflow.history', {

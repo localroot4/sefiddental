@@ -1,7 +1,8 @@
-import { type CollectionBeforeValidateHook, ValidationError } from 'payload';
+import type { CollectionBeforeValidateHook } from 'payload';
 
 import { hasRole } from '@/access/roles';
 import { lexicalRefs, lexicalText } from '@/fields/validators';
+import { invalid } from './errors';
 
 export const APPROVE_ADMIN_ONLY =
   'فقط مدیر می‌تواند مقاله را «تأییدشده» کند. مرحله را «منتظر بازبینی» بگذارید.';
@@ -41,10 +42,7 @@ export const reviewGate: CollectionBeforeValidateHook = ({ data, originalDoc, re
   const before = (originalDoc?.reviewState as string | undefined) ?? 'writing';
   const wanted = (data.reviewState as string | undefined) ?? before;
   if (wanted === 'approved' && before !== 'approved') {
-    throw new ValidationError(
-      { collection: 'articles', errors: [{ path: 'reviewState', message: APPROVE_ADMIN_ONLY }] },
-      req.t,
-    );
+    throw invalid('articles', [{ path: 'reviewState', message: APPROVE_ADMIN_ONLY }], req.t);
   }
   if (before === 'approved' && originalDoc) {
     const changed = reviewedContent({ ...originalDoc, ...data }) !== reviewedContent(originalDoc);

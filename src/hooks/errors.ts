@@ -1,4 +1,4 @@
-import type { AfterErrorHook } from 'payload';
+import { ValidationError, type AfterErrorHook } from 'payload';
 
 type Thrown = Error & { isPublic?: boolean; data?: Record<string, unknown> };
 
@@ -17,3 +17,21 @@ export const keepValidationDetails: AfterErrorHook = ({ error, result }) => {
     response: { errors: [{ name: thrown.name, data: thrown.data, message: thrown.message }] },
   };
 };
+
+type FieldError = { path: string; message: string };
+
+/**
+ * A ValidationError whose own message, the one the admin shows in its toast, reads in the admin's
+ * language: Payload's prefix through `t` (req.t) and each field's Persian message as its label.
+ * Without them the toast said «The following field is invalid: status».
+ */
+export function invalid(
+  collection: string,
+  errors: FieldError[],
+  t?: ConstructorParameters<typeof ValidationError>[1],
+): ValidationError {
+  return new ValidationError(
+    { collection, errors: errors.map((error) => ({ ...error, label: error.message })) },
+    t,
+  );
+}
