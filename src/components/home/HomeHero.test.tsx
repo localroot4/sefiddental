@@ -102,11 +102,30 @@ describe('home hero markup', () => {
     expect(html.indexOf('id="intro-script"')).toBeLessThan(html.indexOf('data-hero-photo'));
   });
 
-  it('HH6 the placeholder captions show on the client preview only (DEMO_CONTENT)', () => {
-    expect(render(true)).not.toContain('جای عکس');
+  it('HH6 the placeholder photo: no caption and no 4:5 band on phones unless on the preview; dimmed in dark mode; the img stays eager', () => {
+    const parse = (html: string) => new DOMParser().parseFromString(html, 'text/html');
+    const live = parse(render(true));
+    const band = live.querySelector('[data-hero-photo]')!;
+    expect(band.className.split(' ')).toContain('max-md:hidden');
+    // The LCP from 744 px: never lazy (T-HOME5).
+    expect(band.querySelector('img')!.hasAttribute('loading')).toBe(false);
+    expect(band.querySelector('img')!.getAttribute('class')).toContain('dark:opacity-20');
+    expect(live.body.textContent).not.toContain('جای عکس');
+
     preview(true);
-    expect(render(true).match(/جای عکس/g)).toHaveLength(2);
-    expect(render(false)).not.toContain('جای عکس');
+    const shown = parse(render(true));
+    expect(shown.querySelector('[data-hero-photo]')!.className).not.toContain('max-md:hidden');
+    expect(shown.body.textContent?.match(/جای عکس/g)).toHaveLength(2);
+
+    // A real photo is the same on the preview and the live site: the band, not dimmed.
+    for (const demo of [true, false]) {
+      preview(demo);
+      const real = parse(render(false));
+      const photo = real.querySelector('[data-hero-photo]')!;
+      expect(photo.className).not.toContain('max-md:hidden');
+      expect(photo.querySelector('img')!.getAttribute('class')).not.toContain('dark:');
+      expect(real.body.textContent).not.toContain('جای عکس');
+    }
   });
 });
 

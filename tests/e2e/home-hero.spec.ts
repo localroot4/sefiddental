@@ -224,4 +224,30 @@ test.describe('without the intro', () => {
     await expect(page.locator(`${HERO} img`).first()).toHaveAttribute('src', /placeholders\/hero-/);
     expect(await page.locator(`${HERO} svg use[href$="#mark"]`).count()).toBe(0);
   });
+
+  test('T-HR6 with the placeholder photo a phone gets no 4:5 band (the trust band follows the form) and no caption; from 744 px the raster is dimmed in dark mode', async ({
+    page,
+  }, testInfo) => {
+    only(testInfo, 'phone-light', 'phone-dark', 'desktop-light', 'desktop-dark');
+    await page.goto('/');
+    await page.waitForLoadState('load');
+    await expect(page.locator(HERO).getByText(/جای عکس/)).toHaveCount(0);
+    const img = page.locator(`${PHOTO} img`);
+    await expect(img).toHaveAttribute('src', /placeholders\/hero-/);
+    if (testInfo.project.name.startsWith('phone')) {
+      await expect(page.locator(PHOTO)).toBeHidden();
+      // The trust band sits right under the form's row: nothing empty between them.
+      const row = await page.locator('#hero-h1').evaluate((h1) => {
+        const r = h1.parentElement!.parentElement!.getBoundingClientRect();
+        return r.bottom + window.scrollY;
+      });
+      const band = await page
+        .locator(BAND)
+        .evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+      expect(Math.abs(band - row)).toBeLessThanOrEqual(1);
+      return;
+    }
+    await expect(page.locator(PHOTO)).toBeVisible();
+    await expect(img).toHaveCSS('opacity', testInfo.project.name === 'desktop-dark' ? '0.2' : '1');
+  });
 });

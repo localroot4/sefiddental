@@ -5,6 +5,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
+import { showHeroBand } from '../helpers/heroBand';
 import { skipIntro } from '../helpers/intro';
 
 const SECTIONS = [
@@ -175,6 +176,7 @@ test('T-HOME3 the 4:5 photo band starts below the first screen on phones', async
   page,
 }, testInfo) => {
   only(testInfo, 'phone-light');
+  await showHeroBand(page);
   for (const [width, height] of [
     [390, 844],
     [430, 932],
@@ -257,13 +259,8 @@ test('T-HOME6 the home HTML holds no token, timestamp or hours sentence', async 
   }
 });
 
-test('T-HOME7 no layout shift when the form session arrives', async ({
-  page,
-  browserName,
-}, testInfo) => {
+test('T-HOME7 no layout shift when the form session arrives', async ({ page }, testInfo) => {
   only(testInfo, 'phone-light', 'phone-dark', 'tablet-light', 'desktop-light', 'desktop-dark');
-  // WebKit and Firefox report no layout-shift entries: the check would pass without measuring.
-  test.skip(browserName !== 'chromium', 'layout-shift entries are Chromium only');
   await recordShifts(page);
   // Hold the session answer until the block is on screen, and answer «calls allowed», so the
   // hours-dependent phone line fills in view (outside clinic hours it would stay empty).

@@ -59,7 +59,9 @@ const SETTLE_STEP = [
  * hero paints over the world behind the page.
  *
  * While the photo is the placeholder (gap 36), its «جای عکس» captions show on the client preview
- * only (DEMO_CONTENT).
+ * only (DEMO_CONTENT); elsewhere a phone skips the 4:5 band (hidden; the img stays eager, as it
+ * is the LCP from 744 px) and the trust band follows the form. In dark mode the placeholder raster
+ * is dimmed over the sunken surface, so it never is the brightest thing on the page.
  */
 export function HomeHero(props: {
   title: string;
@@ -79,6 +81,8 @@ export function HomeHero(props: {
   const { image } = props;
   // The «جای عکس» captions tell the clinic which photo goes where: the preview only (DEMO_CONTENT).
   const captions = image.placeholder && photoCaptions();
+  // Elsewhere a phone skips the empty 4:5 band under the form (it showed only grain).
+  const band = !image.placeholder || captions;
   preload(image.preloadHref, {
     as: 'image',
     imageSrcSet: image.wide.avif,
@@ -140,7 +144,7 @@ export function HomeHero(props: {
         {props.intro}
         <div
           data-hero-photo=""
-          className="relative -z-10 col-start-1 row-start-2 aspect-[4/5] max-md:overflow-clip md:absolute md:inset-0 md:aspect-auto"
+          className={`relative -z-10 col-start-1 row-start-2 aspect-[4/5] max-md:overflow-clip md:absolute md:inset-0 md:aspect-auto ${band ? '' : 'max-md:hidden'}`}
         >
           <picture>
             <source media={WIDE} type="image/avif" srcSet={image.wide.avif} sizes="100vw" />
@@ -157,7 +161,7 @@ export function HomeHero(props: {
               alt={image.img.alt}
               width={image.img.width}
               height={image.img.height}
-              className="absolute inset-0 size-full object-cover max-md:[transform:scale(1.1)]"
+              className={`absolute inset-0 size-full object-cover max-md:[transform:scale(1.1)] ${image.placeholder ? 'dark:opacity-20' : ''}`}
             />
           </picture>
           {captions ? (
