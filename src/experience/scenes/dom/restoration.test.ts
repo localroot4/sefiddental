@@ -219,6 +219,41 @@ describe('scene 4 restoration helpers', () => {
     cleanup();
   });
 
+  it('RS-S8b WebKit: an arrow key whose chip is not focus-visible still scrolls at once and holds the chip; a tap after it scrolls smoothly', () => {
+    document.body.innerHTML = `<div data-scene="restoration"><section>
+      ${['plain', 'vip', 'cip'].map((l) => `<svg data-level="${l}"></svg>`).join('')}
+      ${[0, 1, 2].map((i) => `<input type="radio" name="home-tier" value="t${i}">`).join('')}
+    </section><div data-pin-room=""></div></div>`;
+    const el = document.querySelector<HTMLElement>('[data-scene]')!;
+    const radios = Array.from(el.querySelectorAll('input'));
+    const scrollTo = vi.fn();
+    const ctx = {
+      el,
+      conditions: { reduce: false, fine: true, wide: true },
+      engine: { scrollTo },
+    } as unknown as Parameters<NonNullable<DomScene['pin']>>[0] & Parameters<DomScene['setup']>[0];
+    g.create.mockClear();
+    scene.pin!(ctx);
+    const cleanup = scene.setup(ctx) as () => void;
+    const trigger = g.create.mock.calls[0]![0] as { onUpdate(self: object): void };
+    // jsdom matches no :focus-visible after a script focus, as WebKit after an arrow key.
+    radios[0]!.focus();
+    radios[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    radios[1]!.focus();
+    radios[1]!.click();
+    expect(scrollTo).toHaveBeenLastCalledWith(1450, { immediate: true });
+    // F5: once the choice's lock is over, the scroll checks no other chip while the key's focus
+    // sits on one.
+    const now = vi.spyOn(performance, 'now').mockReturnValue(performance.now() + LOCK_MS);
+    trigger.onUpdate({ isActive: true, progress: 0.9, direction: 1 });
+    expect(radios.map((r) => r.checked)).toEqual([false, true, false]);
+    now.mockRestore();
+    radios[2]!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    radios[2]!.click();
+    expect(scrollTo).toHaveBeenLastCalledWith(1750, { immediate: false });
+    cleanup();
+  });
+
   it('RS-S7 under 1024 px the pin moves no step: the scroll a resize reflow causes before the relatch keeps the chosen chip', () => {
     document.body.innerHTML = `<div data-scene="restoration"><section>
       ${['plain', 'vip', 'cip'].map((l) => `<svg data-level="${l}"></svg>`).join('')}

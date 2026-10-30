@@ -94,6 +94,11 @@ interface Pinned {
   seeded: boolean;
   /** A user choice on its way: the thirds passed until it arrives do not change the chip. */
   pending: Lock | null;
+  /**
+   * The last input inside the scene was a key: WebKit leaves a chip an arrow key checked without
+   * `:focus-visible` (CI run 95, T-RS8), so the focus test alone takes it for a tap.
+   */
+  keyed: boolean;
 }
 
 /** Set by `pin`, read by `setup` of the same engine (pins run first, in document order). */
@@ -148,7 +153,8 @@ const scene: DomScene = {
       // is a second Tab stop; that chip stays until the focus leaves the group or chooses. A
       // tap's focus is not focus-visible: the chip keeps following the scroll after it.
       const focused = document.activeElement;
-      const keyboard = focused instanceof HTMLInputElement && focused.matches(':focus-visible');
+      const keyboard =
+        focused instanceof HTMLInputElement && (state.keyed || focused.matches(':focus-visible'));
       if (keyboard && radios.includes(focused)) return;
       const step = stepAt(self.progress, steps);
       if (lockHolds(state.pending, step, self.direction, performance.now())) return;
@@ -185,6 +191,7 @@ const scene: DomScene = {
       chosen: checked !== -1,
       seeded: checked > 0,
       pending: null,
+      keyed: false,
     };
   },
 
@@ -218,10 +225,22 @@ const scene: DomScene = {
       };
       // A keyboard choice scrolls at once: an animated Lenis scroll still running at the next Tab
       // overwrote the browser's own focus scroll, which left the focus off screen.
-      engine.scrollTo(y, { immediate: state.radios[index]?.matches(':focus-visible') === true });
+      engine.scrollTo(y, {
+        immediate: state.keyed || state.radios[index]?.matches(':focus-visible') === true,
+      });
     };
+    const onKey = (): void => {
+      state.keyed = true;
+    };
+    const onPointer = (): void => {
+      state.keyed = false;
+    };
+    el.addEventListener('keydown', onKey, true);
+    el.addEventListener('pointerdown', onPointer, true);
     el.addEventListener('change', onChange);
     return () => {
+      el.removeEventListener('keydown', onKey, true);
+      el.removeEventListener('pointerdown', onPointer, true);
       el.removeEventListener('change', onChange);
       // No pin after this engine: F24 (no step preselected) stands again; a chosen chip stays.
       if (state.current !== -1 && !state.chosen) selectStep(state.radios, -1);
