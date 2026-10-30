@@ -479,14 +479,6 @@ export const jalaliUpdatedAt: DateField = {
   admin: { hidden: true, disableBulkEdit: true, components: { Cell: JALALI_CELL } },
 };
 
-/** H10: the admin's live preview opens the server-side draft route of the document. */
-export function livePreview(collection: string) {
-  return {
-    url: ({ data }: { data?: { id?: unknown } }) =>
-      `/api/preview?collection=${collection}&id=${encodeURIComponent(String(data?.id ?? ''))}`,
-  };
-}
-
 /** Booking chips (docs/conversion.md 5.1), shared by services and bookings. */
 export const BOOKING_GROUP_OPTIONS = [
   { label: 'معاینه', value: 'exam' },

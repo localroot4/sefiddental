@@ -6,7 +6,6 @@ import { hiddenForEditors } from '@/access/roles';
 import { specialtyRule } from '@/fields/validators';
 import {
   imageUpload,
-  livePreview,
   orderField,
   proseText,
   proseTextarea,
@@ -30,7 +29,6 @@ export const Doctors: CollectionConfig = {
     defaultColumns: ['name', 'specialty', 'councilNumber', '_status', 'order'],
     listSearchableFields: ['name', 'councilNumber', 'slug'],
     hidden: hiddenForEditors,
-    livePreview: livePreview('doctors'),
   },
   defaultSort: 'order',
   versions: { drafts: { schedulePublish: { timeFormat: 'HH:mm', timeIntervals: 15 } } },

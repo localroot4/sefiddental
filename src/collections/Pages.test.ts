@@ -15,12 +15,9 @@ describe('pages medical review (V-REVIEWER, V-SOURCES, EM-S1)', () => {
 });
 
 describe('live preview (H10)', () => {
-  it('PG-LP1 four collections open the server-side draft route of the document', () => {
+  it('PG-LP1 no collection opens a live preview tab until the preview route exists', () => {
     for (const config of [Articles, Pages, Services, Doctors]) {
-      const url = config.admin?.livePreview?.url;
-      expect(typeof url, config.slug).toBe('function');
-      const make = url as unknown as (args: { data: { id: number } }) => string;
-      expect(make({ data: { id: 42 } })).toBe(`/api/preview?collection=${config.slug}&id=42`);
+      expect(config.admin?.livePreview, config.slug).toBeUndefined();
     }
   });
 });

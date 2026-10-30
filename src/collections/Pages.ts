@@ -7,7 +7,6 @@ import { PAGE_BLOCKS } from '@/blocks';
 import {
   dayOnlyDate,
   imageUpload,
-  livePreview,
   proseText,
   proseTextarea,
   publishedDoctorField,
@@ -109,7 +108,6 @@ export const Pages: CollectionConfig = {
     defaultColumns: ['title', 'key', 'path', '_status', 'updatedAt'],
     // H7: editors read pages (the link drawer lists the guides) but never see them in the nav.
     hidden: hiddenForEditors,
-    livePreview: livePreview('pages'),
   },
   defaultSort: 'path',
   versions: {

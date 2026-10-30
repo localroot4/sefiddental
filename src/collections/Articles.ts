@@ -10,7 +10,6 @@ import {
   JALALI_CELL,
   JALALI_HINT,
   jalaliUpdatedAt,
-  livePreview,
   persianRichText,
   proseText,
   proseTextarea,
@@ -115,7 +114,6 @@ export const Articles: CollectionConfig = {
     listSearchableFields: ['title', 'slug', 'excerpt'],
     description:
       'مقاله‌های سلامت دهان و دندان. فهرست «پیش از انتشار» کنار هر مقاله شرط‌های انتشار را نشان می‌دهد؛ پس از نوشتن، مرحله را «منتظر بازبینی» بگذارید تا مدیر تأیید کند.',
-    livePreview: livePreview('articles'),
   },
   defaultSort: '-publishedAt',
   versions: {

@@ -1061,3 +1061,19 @@ test('T-AD34 the dashboard, the calendar and an article form at three widths, li
     }
   }
 });
+
+test('T-AD35 no live preview tab on a service, a page or an article until the preview route exists', async ({
+  page,
+}) => {
+  await adminAs(page, 'admin');
+  for (const slug of ['services', 'pages', 'articles']) {
+    await page.goto(`${ADMIN_ROUTE}/collections/${slug}`);
+    const first = page.locator(`tbody tr a[href*="/collections/${slug}/"]`).first();
+    await page.goto((await first.getAttribute('href')) ?? '');
+    await expect(page.locator('.doc-controls'), slug).toBeVisible();
+    // The toggler is a client control: absence counts only once the edit view has settled.
+    await page.waitForLoadState('networkidle');
+    await expect(page.locator('.live-preview-toggler'), slug).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^پیش‌نمایش( زنده)?$/ }), slug).toHaveCount(0);
+  }
+});
