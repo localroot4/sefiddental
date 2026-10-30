@@ -2,7 +2,8 @@
 # the bearer from /etc/sefid/cron-auth.header, which keeps the secret out of the process list.
 # Started every minute by sefid-cron.timer. 200 and the 503 of maintenance mode (2.12) succeed;
 # any other answer fails the unit with the code in the journal. "$$" and "%%" are systemd's
-# escapes for "$" and "%".
+# escapes for "$" and "%". After a successful tick, root ("+") touches /run/sefid-cron.ok, whose
+# age `sefid-status --check` reads.
 [Unit]
 Description=Sefid cron tick (/api/cron/tick)
 After=sefid.service
@@ -14,6 +15,7 @@ User=sefid
 Group=sefid
 EnvironmentFile=/etc/sefid/host.env
 ExecStart=/bin/sh -c 'code=$$(/usr/bin/curl -sS --max-time 55 -o /dev/null -w "%%{http_code}" -H @/etc/sefid/cron-auth.header "$$SEFID_ORIGIN/api/cron/tick") || exit 1; case $$code in 200 | 503) ;; *) echo "/api/cron/tick answered HTTP $$code"; exit 1 ;; esac'
+ExecStartPost=+/usr/bin/touch /run/sefid-cron.ok
 NoNewPrivileges=yes
 CapabilityBoundingSet=
 ProtectSystem=strict

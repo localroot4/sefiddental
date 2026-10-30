@@ -8,8 +8,10 @@ import {
   readFileSync,
   readdirSync,
   readlinkSync,
+  rmSync,
   statSync,
   symlinkSync,
+  utimesSync,
   writeFileSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -328,6 +330,8 @@ printf '{"status":"ok","version":"%s","maintenance":%s}\\n200' "$sha" "$m"`,
   const env = {
     SEFID_ROOT: root,
     SEFID_ETC: etc,
+    SEFID_BACKUPS: `${dir}/backups`,
+    SEFID_CRON_OK: `${dir}/cron.ok`,
     // No waiting: the stub answers at once, or never.
     SEFID_HEALTH_TIMEOUT: '0',
     PATH: `${bin}:${process.env.PATH}`,
@@ -381,7 +385,7 @@ with tarfile.open(spec["out"], "w:gz") as tar:
   const target = (link: string) =>
     existsSync(`${root}/${link}`) ? path.basename(readlinkSync(`${root}/${link}`)) : null;
   const calls = () => (existsSync(`${dir}/calls`) ? readFileSync(`${dir}/calls`, 'utf8') : '');
-  return { dir, root, etc, env, tarball, release, target, calls };
+  return { dir, root, etc, env, stub, tarball, release, target, calls };
 }
 
 describe.skipIf(!hasPython312)('sefid-release', { timeout: 60_000 }, () => {
@@ -600,6 +604,134 @@ describe('nginx error log', () => {
     const provision = read('provision.sh');
     expect(provision).toContain(
       'put "$FILES/etc/logrotate.d/sefid-nginx" /etc/logrotate.d/sefid-nginx 0644',
+    );
+  });
+});
+
+const HOUR = 3600;
+/** Set the modification time of FILE to SECONDS ago. */
+const age = (file: string, seconds: number) => {
+  const t = Date.now() / 1000 - seconds;
+  utimesSync(file, t, t);
+};
+/** A self-signed certificate valid for DAYS, as sefid-status reads it. */
+function certificate(dir: string, days: number) {
+  mkdirSync(`${dir}/tls`, { recursive: true });
+  const r = run('openssl', [
+    'req',
+    '-x509',
+    '-newkey',
+    'ec',
+    '-pkeyopt',
+    'ec_paramgen_curve:prime256v1',
+    '-nodes',
+    '-subj',
+    '/CN=test',
+    '-days',
+    String(days),
+    '-keyout',
+    `${dir}/tls/privkey.pem`,
+    '-out',
+    `${dir}/tls/fullchain.pem`,
+  ]);
+  expect(r.status).toBe(0);
+}
+
+describe('sefid-status --check', { timeout: 30_000 }, () => {
+  /** A healthy server: a fresh nightly dump, a fresh tick, room on disk, a 30-day certificate. */
+  const server = () => {
+    const s = fakeServer();
+    mkdirSync(`${s.root}/releases/r1`);
+    writeFileSync(`${s.root}/releases/r1/release.env`, 'GIT_SHA=abc123\n');
+    symlinkSync('releases/r1', `${s.root}/current`);
+    mkdirSync(`${s.env.SEFID_BACKUPS}/db`, { recursive: true });
+    const dump = `${s.env.SEFID_BACKUPS}/db/sefid-20261030T233000Z-nightly.dump`;
+    writeFileSync(dump, 'PGDMP');
+    age(dump, HOUR);
+    writeFileSync(s.env.SEFID_CRON_OK, '');
+    certificate(s.etc, 30);
+    // size avail mount; the same file system twice is checked once.
+    s.stub(
+      'df',
+      'echo "Size Avail Mounted"; for _ in 1 2; do echo "1000 ${FAKE_AVAIL:-500} /"; done',
+    );
+    const check = (env: Record<string, string> = {}) => {
+      const r = run(`${SBIN}/sefid-status`, ['--check'], { ...s.env, ...env });
+      return { status: r.status, lines: r.stdout.trim().split('\n'), stderr: r.stderr };
+    };
+    return { ...s, dump, check };
+  };
+
+  it('VPS21 passes on a healthy server and names each failure on one line', () => {
+    const s = server();
+    expect(s.check()).toEqual({
+      status: 0,
+      lines: ['ok: backup, cron, disk, certificate and health'],
+      stderr: '',
+    });
+
+    // A stale nightly dump; a newer pre-deploy dump does not count.
+    age(s.dump, 27 * HOUR);
+    writeFileSync(`${s.env.SEFID_BACKUPS}/db/sefid-20261031T080000Z-pre-deploy.dump`, 'PGDMP');
+    expect(s.check()).toMatchObject({
+      status: 1,
+      lines: [`FAIL backup: the newest nightly dump is 27 h old (limit 26 h): ${s.dump}`],
+    });
+    age(s.dump, HOUR);
+    // The last nightly run failed.
+    writeFileSync(`${s.env.SEFID_BACKUPS}/last-nightly`, '2026-10-30T23:30:05Z failed exit 1\n');
+    expect(s.check().lines).toEqual([
+      'FAIL backup: the last nightly run failed: 2026-10-30T23:30:05Z failed exit 1 (sudo journalctl -u sefid-backup.service)',
+    ]);
+    writeFileSync(`${s.env.SEFID_BACKUPS}/last-nightly`, `2026-10-30T23:30:05Z ok ${s.dump}\n`);
+    expect(s.check().status).toBe(0);
+
+    // A full disk: 10 % free, reported once for the file system.
+    expect(s.check({ FAKE_AVAIL: '100' })).toMatchObject({
+      status: 1,
+      lines: ['FAIL disk: / has 10 % free (limit 15 %)'],
+    });
+    expect(s.check({ FAKE_AVAIL: '150' }).status).toBe(0);
+
+    // A missing tick, then one 10 minutes old.
+    rmSync(s.env.SEFID_CRON_OK);
+    expect(s.check()).toMatchObject({
+      status: 1,
+      lines: [
+        'FAIL cron: no successful tick since the server started (sudo journalctl -u sefid-cron.service)',
+      ],
+    });
+    writeFileSync(s.env.SEFID_CRON_OK, '');
+    age(s.env.SEFID_CRON_OK, 600);
+    expect(s.check().lines).toEqual([
+      'FAIL cron: the last successful tick was 10 min ago (limit 5 min; sudo journalctl -u sefid-cron.service)',
+    ]);
+    age(s.env.SEFID_CRON_OK, 60);
+
+    // A certificate that expires tomorrow, and /api/health down: two lines, exit 1.
+    certificate(s.etc, 1);
+    s.stub('curl', 'echo "curl: (7) Failed to connect"; printf "\\n000"; exit 7');
+    const both = s.check();
+    expect(both.status).toBe(1);
+    expect(both.lines).toHaveLength(2);
+    expect(both.lines[0]).toMatch(/^FAIL certificate: expires within 14 days \(notAfter=/);
+    expect(both.lines[1]).toBe('FAIL health: /api/health on loopback answered HTTP 000');
+
+    // No nightly dump at all.
+    rmSync(`${s.env.SEFID_BACKUPS}/db`, { recursive: true });
+    expect(s.check().lines[0]).toBe(`FAIL backup: no nightly dump in ${s.env.SEFID_BACKUPS}/db`);
+  });
+});
+
+describe('cron tick marker', () => {
+  const read = (p: string) => readFileSync(path.join(DIR, p), 'utf8');
+
+  it('VPS22 sefid-cron.service touches the file that sefid-status --check reads', () => {
+    expect(read('files/etc/systemd/system/sefid-cron.service').split('\n')).toContain(
+      'ExecStartPost=+/usr/bin/touch /run/sefid-cron.ok',
+    );
+    expect(read('files/usr/local/lib/sefid/common.sh')).toContain(
+      ': "${SEFID_CRON_OK:=/run/sefid-cron.ok}"',
     );
   });
 });

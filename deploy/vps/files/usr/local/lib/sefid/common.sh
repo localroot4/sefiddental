@@ -6,6 +6,9 @@
 # Overridable only so that vps.test.ts can run the scripts in a temporary folder.
 : "${SEFID_ROOT:=/srv/sefid}"
 : "${SEFID_ETC:=/etc/sefid}"
+: "${SEFID_BACKUPS:=/var/backups/sefid}"
+# Touched by sefid-cron.service after every successful tick (sefid-status --check).
+: "${SEFID_CRON_OK:=/run/sefid-cron.ok}"
 
 # set -e stops a script without a word: name the failing line and command (provision.sh adds
 # more). Under set -E a failure inside $(...) prints this line twice.
@@ -84,4 +87,11 @@ link_tls() {
   install -d -m 0750 "$SEFID_ETC/tls"
   ln -sfn "$crt" "$SEFID_ETC/tls/fullchain.pem"
   ln -sfn "$key" "$SEFID_ETC/tls/privkey.pem"
+}
+
+# newest KIND PATTERN: "<epoch> <path>" of the newest finished file under $SEFID_BACKUPS/KIND
+# whose name matches PATTERN; empty when there is none.
+newest() {
+  find "$SEFID_BACKUPS/$1" -maxdepth 1 -type f -name "$2" -printf '%T@ %p\n' 2>/dev/null |
+    sort -n | tail -n 1 | sed 's/^\([0-9]*\)[.0-9]* /\1 /'
 }

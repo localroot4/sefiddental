@@ -7,13 +7,14 @@
 # with pg_restore --list) and, except for pre-deploy (a release never changes media),
 # /var/backups/sefid/media/media-<UTC stamp>-<label>.tar.gz, then deletes files older than 14
 # days. It refuses to start when the disk has less than twice the room this run needs, so a
-# backup never fills the disk PostgreSQL writes to. Nothing is deleted when a step fails. An
-# off-site copy is not built yet: the files stay on this disk only.
+# backup never fills the disk PostgreSQL writes to. Nothing is deleted when a step fails. Every
+# run records its result in /var/backups/sefid/last-<label> ("<UTC time> ok <dump>" or
+# "<UTC time> failed exit <code>"), which sefid-status reads.
 set -Eeuo pipefail
 # shellcheck source=SCRIPTDIR/../lib/sefid/common.sh
 . "$(dirname "$(readlink -f "$0")")/../lib/sefid/common.sh"
 
-DIR=/var/backups/sefid
+DIR=$SEFID_BACKUPS
 MEDIA=/var/lib/sefid/media
 label=${1:-nightly}
 [[ $label =~ ^[a-z0-9-]{1,32}$ ]] || die "the label must be 1 to 32 characters of a-z, 0-9 and -"
@@ -30,6 +31,12 @@ db=$DIR/db/sefid-$stamp-$label.dump
 media=$DIR/media/media-$stamp-$label.tar.gz
 with_media=1
 if [ "$label" = pre-deploy ]; then with_media=0; fi
+record() {
+  local rc=$? r
+  if [ "$rc" = 0 ]; then r="ok $db"; else r="failed exit $rc"; fi
+  printf '%s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$r" >"$DIR/last-$label"
+}
+trap record EXIT
 
 # Room: twice the newest dump, plus twice the media folder when it is archived.
 need=$(find "$DIR/db" -maxdepth 1 -type f -name 'sefid-*.dump' -printf '%T@ %s\n' | sort -n | tail -n 1 | cut -d ' ' -f 2)

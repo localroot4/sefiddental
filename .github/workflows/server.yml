@@ -594,12 +594,23 @@ jobs:
           code="$(curl -s -o /dev/null --max-time 20 -w '%{http_code}' http://localhost:3000/api/cron/tick)"
           [ "$code" = 401 ] || fail "/api/cron/tick answered $code without the bearer, expected 401."
 
-          # Backup: a dump that pg_restore reads (2.10).
-          sudo sefid-backup smoke
+          # Backup: a dump that pg_restore reads (2.10), and its recorded result. The label is
+          # nightly, as the timer's: the checks, the restore drill and the off-site copy below
+          # read the newest nightly dump.
+          sudo sefid-backup nightly
           dump="$(sudo find /var/backups/sefid/db -type f -name '*.dump' -printf '%T@ %p\n' | sort -n | tail -n 1 | cut -d' ' -f2)"
           [ -n "$dump" ] || fail "sefid-backup wrote no .dump file under /var/backups/sefid/db."
           sudo pg_restore --list "$dump" > /dev/null || fail "pg_restore cannot read $dump."
           echo "backup readable: $dump"
+          result="$(sudo cat /var/backups/sefid/last-nightly)"
+          [[ "$result" == *" ok $dump" ]] || fail "/var/backups/sefid/last-nightly is \"$result\", expected \"<time> ok $dump\"."
+
+          # The checks the watch workflow alerts on. The runner's disk can be fuller than the
+          # server's limit of 85 %: only that line does not fail the smoke test.
+          checks="$(sudo sefid-status --check)" || true
+          echo "$checks"
+          others="$(grep '^FAIL' <<< "$checks" | grep -v '^FAIL disk:' || true)"
+          [ -z "$others" ] || fail "sefid-status --check failed (lines above)."
 
           # Maintenance: 503 through nginx while on, 200 after off (2.12).
           sudo sefid-maintenance on
