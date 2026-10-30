@@ -84,6 +84,9 @@ test('T-DLG1 keyboard: Enter opens it on the phone field, Tab stays inside, Esc 
   await expect(page.locator('html')).toContainClass('overflow-hidden');
   await expectNoA11yViolations(page);
 
+  // XB F4 (one Firefox run): Esc left the dialog open. The focus must still be inside for the
+  // dialog to see the key; this tells a lost focus from an ignored Esc next time.
+  expect(await insideDialog(page), 'the focus before Esc').toBe(true);
   await page.keyboard.press('Escape');
   await expect(dialog(page)).toBeHidden();
   await expect(cta).toBeFocused();
@@ -228,6 +231,7 @@ test('T-DLG6 one form instance: reopening keeps one dialog form and unique ids',
 test('T-DLG7 at 390, 820 and 1440 px the page behind stays put; the dialog open, error and done', async ({
   page,
   context,
+  browserName,
 }, testInfo) => {
   await isolateClient(context);
   const theme = projectTheme(testInfo);
@@ -238,11 +242,15 @@ test('T-DLG7 at 390, 820 and 1440 px the page behind stays put; the dialog open,
   const html = page.locator('html');
   await expect(html).toContainClass('overflow-hidden');
   // A wheel over the backdrop, or over the sheet that fills a phone: the page never moves (X7).
-  const scrollY = await page.evaluate(() => window.scrollY);
-  await page.mouse.move(5, 5);
-  await page.mouse.wheel(0, 800);
-  await page.waitForTimeout(300);
-  expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+  // Mobile WebKit has no wheel (XB W9), and a script scroll moves even a locked page: the lock
+  // is checked there by its class above, the wheel in Chromium and desktop WebKit.
+  if (browserName !== 'webkit' || !testInfo.project.use.isMobile) {
+    const scrollY = await page.evaluate(() => window.scrollY);
+    await page.mouse.move(5, 5);
+    await page.mouse.wheel(0, 800);
+    await page.waitForTimeout(300);
+    expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
+  }
   await captureTemplate(page, testInfo, 'dialog-open', theme, { fullPage: false });
 
   // An empty submit: the inline error inside the dialog (qa-budgets 4.2 dialog-error).

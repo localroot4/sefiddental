@@ -413,6 +413,25 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     stop();
   });
 
+  it('CB12b WebKit: a click without pointerType after a touchstart is a tap; after a key it is a press', () => {
+    document.body.innerHTML = `
+      <a id="cta" href="/رزرو-نوبت" data-booking-cta>b</a>
+      <dialog data-booking-dialog><div data-booking-form="dialog"><form novalidate>
+        <h2 id="title">title</h2><input type="tel" id="phone">
+      </form></div></dialog>`;
+    const stop = setupBookingRoute(document);
+    const cta = document.getElementById('cta')!;
+    cta.dispatchEvent(new Event('touchstart', { bubbles: true }));
+    click(cta);
+    expect(document.activeElement?.id).toBe('title');
+    document.querySelector('dialog')!.close();
+    cta.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    click(cta);
+    expect(document.activeElement?.id).toBe('phone');
+    document.querySelector('dialog')!.close();
+    stop();
+  });
+
   it('CB13 a CTA without a service leaves the form as the page set it', () => {
     document.body.innerHTML = `
       <a id="cta" href="/رزرو-نوبت"></a>

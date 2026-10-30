@@ -96,6 +96,12 @@ export function setupBookingRoute(doc: Document, win: Window = window): () => vo
       if (!dialog.open) unlock();
     }
   };
+  // WebKit's click carries no touch pointerType (XB W8): the last input before the click tells a
+  // tap from a press. A key clears it, so Enter on a link after a tap still focuses the field.
+  let lastPointer = '';
+  const onPointer = (event: PointerEvent) => (lastPointer = event.pointerType);
+  const onTouch = () => (lastPointer = 'touch');
+  const onKey = () => (lastPointer = '');
   const onClick = (event: MouseEvent) => {
     if (event.defaultPrevented || !isPlainClick(event)) return;
     const cta =
@@ -126,17 +132,24 @@ export function setupBookingRoute(doc: Document, win: Window = window): () => vo
       openModal(route.dialog, cta);
     }
     // In its success state the form is inert: the success heading takes focus (5.4).
-    const touch = 'pointerType' in event && event.pointerType === 'touch';
+    const type = 'pointerType' in event && event.pointerType ? event.pointerType : lastPointer;
+    const touch = type === 'touch';
     const heading = live(box, 'h2, h3');
     const field = live(box, 'input[type="tel"]');
     const target = touch || !field ? heading : field;
     if (target === heading && heading && !heading.hasAttribute('tabindex')) heading.tabIndex = -1;
     target?.focus({ preventScroll: route.kind === 'block' });
   };
+  doc.addEventListener('pointerdown', onPointer, true);
+  doc.addEventListener('touchstart', onTouch, { capture: true, passive: true });
+  doc.addEventListener('keydown', onKey, true);
   doc.addEventListener('click', onClick);
   // `close` does not bubble: a capture listener on the document still sees it.
   doc.addEventListener('close', onClose, true);
   return () => {
+    doc.removeEventListener('pointerdown', onPointer, true);
+    doc.removeEventListener('touchstart', onTouch, true);
+    doc.removeEventListener('keydown', onKey, true);
     doc.removeEventListener('click', onClick);
     doc.removeEventListener('close', onClose, true);
     // A client navigation removes an open dialog, and a removed dialog fires no `close`.
