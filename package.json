@@ -37,6 +37,7 @@
     "seed": "DB_PUSH=${DB_PUSH:-false} node scripts/payload.mjs run src/seed/index.ts",
     "reset-admin": "node scripts/payload.mjs run scripts/reset-admin.ts",
     "first-admin": "node scripts/payload.mjs run scripts/first-admin.ts",
+    "db:live": "rm -f .data/e2e-live.db .data/e2e-live.db-wal .data/e2e-live.db-shm && mkdir -p .data && DATABASE_URL=file:./.data/e2e-live.db DB_PUSH=false node scripts/payload.mjs migrate && DATABASE_URL=file:./.data/e2e-live.db DB_PUSH=false node scripts/payload.mjs run src/seed/index.ts | tee .data/live-seed.log && (grep -q 'seed: mode' .data/live-seed.log || (echo 'db:live: the seeder printed no summary line, so .data/e2e-live.db is not seeded; read .data/live-seed.log' >&2 && exit 1))",
     "db:e2e": "rm -f .data/e2e.db .data/e2e.db-wal .data/e2e.db-shm && mkdir -p .data && DATABASE_URL=file:./.data/e2e.db DB_PUSH=false node scripts/payload.mjs migrate && DATABASE_URL=file:./.data/e2e.db DB_PUSH=false node scripts/payload.mjs run src/seed/index.ts | tee .data/seed.log && (grep -q 'seed: mode' .data/seed.log || (echo 'db:e2e: the seeder printed no summary line, so .data/e2e.db is not seeded; read .data/seed.log' >&2 && exit 1)) && DATABASE_URL=file:./.data/e2e.db DB_PUSH=false node scripts/payload.mjs run tests/fixtures/qa-seed.ts | tee .data/qa-fixture.log && (grep -q 'qa-fixture: dentist' .data/qa-fixture.log || (echo 'db:e2e: the QA fixture printed no summary line; read .data/qa-fixture.log' >&2 && exit 1))"
   },
   "dependencies": {
