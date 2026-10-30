@@ -72,9 +72,21 @@ export function setupDialogs(doc: Document): () => void {
     const back = opener.get(dialog);
     opener.delete(dialog);
     if (!back?.isConnected) return;
-    // The menu button hides from 1024 px, where a widening viewport closes the drawer.
-    if (back.checkVisibility?.() ?? true) back.focus();
-    else doc.querySelector<HTMLElement>('header a[href="/"]')?.focus();
+    // The menu button hides from 1024 px, where a widening viewport closes the drawer; a sticky
+    // bar that stays inert (a booking block in view) cannot take focus either.
+    const focusBack = () => {
+      if ((back.checkVisibility?.() ?? true) && !back.closest('[inert]')) back.focus();
+      else doc.querySelector<HTMLElement>('header a[href="/"]')?.focus();
+    };
+    // A dialog closed from its phone field leaves the sticky bar inert: the field still has the
+    // focus at `close`, and the bar wakes a task after the field's focusout (stickyBar.ts). The
+    // blur queues that wake first, then the bar's «رزرو نوبت» opener takes the focus; before,
+    // it fell to the body.
+    if (back.closest('[inert]')) {
+      const active = doc.activeElement;
+      if (active instanceof HTMLElement && dialog.contains(active)) active.blur();
+      (doc.defaultView ?? window).setTimeout(focusBack);
+    } else focusBack();
   };
   const onKey = (event: KeyboardEvent) => {
     if (event.key !== 'Tab' || !(event.target instanceof Element)) return;

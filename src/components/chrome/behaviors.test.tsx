@@ -432,6 +432,34 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     stop();
   });
 
+  it('CB22 a dialog closed from a text field returns focus to its sticky-bar opener once the bar wakes', async () => {
+    document.body.innerHTML = `
+      <header><a href="/">home</a></header>
+      <nav id="bar"><button id="open" command="show-modal" commandfor="d">o</button></nav>
+      <dialog id="d"><input id="phone"></dialog>`;
+    const stop = setupDialogs(document);
+    const bar = document.getElementById('bar')!;
+    // stickyBar.ts: the bar is inert while a text field has focus and wakes a task after its
+    // focusout.
+    const wake = () => setTimeout(() => bar.removeAttribute('inert'));
+    document.addEventListener('focusout', wake);
+    click(document.getElementById('open')!);
+    document.getElementById('phone')!.focus();
+    bar.setAttribute('inert', '');
+    // As in a browser, the field still has the focus when `close` fires.
+    document.querySelector('dialog')!.close();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(document.activeElement?.id).toBe('open');
+    document.removeEventListener('focusout', wake);
+    // A bar that stays inert (a booking block in view): the header home link takes it.
+    click(document.getElementById('open')!);
+    bar.setAttribute('inert', '');
+    document.querySelector('dialog')!.close();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(document.activeElement?.getAttribute('href')).toBe('/');
+    stop();
+  });
+
   it('CB13 a CTA without a service leaves the form as the page set it', () => {
     document.body.innerHTML = `
       <a id="cta" href="/رزرو-نوبت"></a>
