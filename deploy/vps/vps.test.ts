@@ -970,6 +970,14 @@ describe('sefid-offsite', { timeout: 30_000 }, () => {
 describe('off-site wiring', () => {
   const read = (p: string) => readFileSync(path.join(DIR, p), 'utf8');
 
+  it('VPS34 pg_hba lets role sefid reach the drill database and no other besides sefid', () => {
+    const rules = read('files/etc/postgresql/pg_hba.conf')
+      .split('\n')
+      .filter((line) => line.startsWith('host'))
+      .map((line) => line.split(/\s+/).slice(1, 3).join(' '));
+    expect(rules).toEqual(['sefid sefid', 'sefid_restore_check sefid']);
+  });
+
   it('VPS27 provision installs age; the workflow refuses the recipients sefid-offsite refuses', () => {
     const provision = read('provision.sh');
     expect(provision).toMatch(/bind9-dnsutils age\)/);
