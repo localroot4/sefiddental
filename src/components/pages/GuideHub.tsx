@@ -33,7 +33,12 @@ export async function GuideHub({ page }: { page: Page }) {
         breadcrumbs={<Breadcrumbs items={crumbs} />}
         title={page.title}
         summary={page.lead ?? undefined}
-        media={<HeroMedia media={page.heroMedia} caption={t('pages.photo.guideHub')} />}
+        // Text-only while no guide is published (jury #9), as the articles hub.
+        media={
+          items.length ? (
+            <HeroMedia media={page.heroMedia} caption={t('pages.photo.guideHub')} />
+          ) : undefined
+        }
       />
       <Band id="guides" family="C" title={t('pages.guides.list')} tone="sunken">
         <GuideList guides={items} />

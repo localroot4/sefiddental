@@ -42,7 +42,13 @@ export async function DentistsHub({ page }: { page: Page }) {
         // The lead introduces the dentists by name and council number; until one is published
         // it would promise what the empty state or the demo cards below cannot show.
         summary={published.length ? (page.lead ?? undefined) : undefined}
-        media={<HeroMedia media={page.heroMedia} caption={t('pages.photo.dentistsHub')} />}
+        // Text-only while the hub is empty (jury #9): a photo slot above the empty state reads as
+        // an unfinished page.
+        media={
+          doctors.length ? (
+            <HeroMedia media={page.heroMedia} caption={t('pages.photo.dentistsHub')} />
+          ) : undefined
+        }
       />
       <Alternating
         sections={[
