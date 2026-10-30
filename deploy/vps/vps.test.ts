@@ -937,6 +937,8 @@ describe('sefid-offsite', { timeout: 30_000 }, () => {
       expect(r.stderr).toContain('give the age public key (age1... from age-keygen)');
       expect(r.out.length).toBe(0);
     }
+    // The age check comes first: a host without age (the CI runner) needs a stand-in to reach it.
+    if (!hasAge) s.stub('age', 'exit 0');
     age(s.dump, 27 * HOUR);
     const stale = s.offsite(RECIPIENT);
     expect(stale.status).toBe(1);
