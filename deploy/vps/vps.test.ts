@@ -20,6 +20,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+import { parse } from 'yaml';
 
 // The server scripts of deploy/vps, run without a server: systemctl, journalctl and curl are
 // stubs, and SEFID_ROOT / SEFID_ETC point at a temporary folder.
@@ -1122,5 +1123,75 @@ esac`,
       'FAIL ssh: the secret SERVER_SSH_KEY is empty or not a private key without a passphrase\n' +
         'FAIL forced: the input force_failure (run BCJA)\n',
     );
+  });
+});
+
+describe('server workflow and the public log', () => {
+  const workflow = (file: string) =>
+    parse(readFileSync(path.join(DIR, '../../.github/workflows', file), 'utf8')) as {
+      on: { workflow_dispatch: { inputs: Record<string, { description: string }> } };
+      jobs: Record<
+        string,
+        {
+          environment?: { name: string; deployment: string | boolean };
+          steps: { name?: string; if?: string; run?: string; env?: Record<string, string> }[];
+        }
+      >;
+    };
+
+  it('VPS31 a mask step right after the connection hides every app secret before any output', () => {
+    const wf = workflow('server.yml');
+    const steps = wf.jobs.server!.steps;
+    const at = (name: string) => steps.findIndex((s) => s.name?.startsWith(name));
+    const mask = at("Mask the server's secrets");
+    expect(mask).toBe(at('Connection to the server') + 1);
+    expect(steps[mask]!.if).toBeUndefined();
+    // Every later step that reaches the server comes after it; none before it but the connection.
+    steps.forEach((s, i) => {
+      if (/\bremote\b|ssh -F/.test(s.run ?? '') && i !== mask) {
+        expect(i === mask - 1 || i > mask, s.name).toBe(true);
+      }
+    });
+    expect(wf.on.workflow_dispatch.inputs.command!.description).toContain(
+      'The log is public. Never print a secret or patient data',
+    );
+
+    // The step itself, with `remote` running its command on a sample app.env.
+    const dir = tmp();
+    mkdirSync(`${dir}/bin`);
+    writeFileSync(
+      `${dir}/app.env`,
+      [
+        'SITE_URL=https://new.sefiddental.ir',
+        'PAYLOAD_SECRET=payload-secret-value',
+        'DATABASE_URL=postgres://sefid:db-password-hex@127.0.0.1:5432/sefid',
+        'CRON_SECRET="quoted-cron-secret"',
+        'SMTP_PASS=',
+        'MEDIA_DIR=/var/lib/sefid/media',
+      ].join('\n'),
+    );
+    writeFileSync(
+      `${dir}/bin/remote`,
+      `#!/usr/bin/env bash\ncmd=\${1//\\/etc\\/sefid\\/app.env/${dir}/app.env}\neval "\${cmd//sudo /}"\n`,
+    );
+    chmodSync(`${dir}/bin/remote`, 0o755);
+    const r = run('bash', ['-eo', 'pipefail', '-c', steps[mask]!.run!], {
+      PATH: `${dir}/bin:${process.env.PATH}`,
+    });
+    expect(r.stderr).toBe('');
+    expect(r.stdout.split('\n').filter(Boolean)).toEqual([
+      '::add-mask::payload-secret-value',
+      '::add-mask::postgres://sefid:db-password-hex@127.0.0.1:5432/sefid',
+      '::add-mask::db-password-hex',
+      '::add-mask::quoted-cron-secret',
+      'masked 3 values of /etc/sefid/app.env',
+    ]);
+    // No app.env yet: nothing to mask, and the step passes.
+    rmSync(`${dir}/app.env`);
+    const none = run('bash', ['-eo', 'pipefail', '-c', steps[mask]!.run!], {
+      PATH: `${dir}/bin:${process.env.PATH}`,
+    });
+    expect(none.status).toBe(0);
+    expect(none.stdout).toBe('masked 0 values of /etc/sefid/app.env\n');
   });
 });

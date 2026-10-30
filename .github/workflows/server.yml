@@ -6,7 +6,8 @@
 # the schedule runs `offsite-backup` (docs/deploy.md 3.6).
 # Secrets: SERVER_SSH_KEY (deploy's private key) and ADMIN_PASSWORD (first-admin, reset-admin).
 # Any workflow run in this repository can read them: whoever can push a workflow is an admin of
-# the server (docs/deploy.md 3.2). No step prints a secret: values read from the server are
+# the server (docs/deploy.md 3.2). The repository is public, and so is this log. No step prints a secret: the step after the
+# connection masks every secret of the server's app.env, values read from the server are
 # masked before any other use, and no step runs `set -x`. The key lives in an ssh-agent, never
 # in a file, and only after the build: third-party code that runs later (Payload, the seeder)
 # can use the connection during the job but cannot copy the key. Actions are pinned to commit
@@ -42,7 +43,7 @@ on:
         description: 'first-admin, reset-admin: e-mail of the admin account'
         type: string
       command:
-        description: 'run: one shell command, run as deploy on the server. deploy has sudo, so this is as powerful as the SSH key. The command and its output go into the log.'
+        description: 'run: one shell command, run as deploy on the server. deploy has sudo, so this is as powerful as the SSH key. The log is public. Never print a secret or patient data (no SELECT on bookings, no pg_dump to stdout): the command and its output go into the log.'
         type: string
       allow_red_ci:
         description: 'deploy, preview only: deploy although CI is red, when the newest CI run on main failed only in Lighthouse and no app file changed since'
@@ -336,6 +337,25 @@ jobs:
           chmod 755 "$bin/remote"
           # shellcheck disable=SC2016 # expands on the server
           SSH_CONFIG="$dir/config" "$bin/remote" 'echo "connected: $(hostname), $(. /etc/os-release && echo "$PRETTY_NAME"), user $(id -un)"'
+
+      # The repository is public, so this log is too: mask every secret of the app before any
+      # step prints server output. Masks hold for the rest of this job only.
+      - name: Mask the server's secrets (the log is public)
+        run: |
+          names='PAYLOAD_SECRET|CRON_SECRET|INTERNAL_API_TOKEN|IP_HASH_SECRET|FORM_TOKEN_SECRET|FORM_TOKEN_SECRET_PREVIOUS|DATABASE_URL|SMTP_PASS|S3_ACCESS_KEY_ID|S3_SECRET_ACCESS_KEY|TELEGRAM_BOT_TOKEN|FARAPAYAMAK_PASSWORD'
+          # Before the first provision there is no app.env: nothing to mask.
+          lines="$(remote "sudo grep -E '^($names)=' /etc/sefid/app.env 2> /dev/null || true")"
+          count=0
+          while IFS= read -r line; do
+            value="${line#*=}"
+            value="${value#\"}"; value="${value%\"}"; value="${value#\'}"; value="${value%\'}"
+            [ -n "$value" ] || continue
+            echo "::add-mask::$value"
+            count=$((count + 1))
+            # The database password alone, as a URL part.
+            if [[ "$value" =~ ^postgres(ql)?://[^:@/]+:([^@/]+)@ ]]; then echo "::add-mask::${BASH_REMATCH[2]}"; fi
+          done <<< "$lines"
+          echo "masked $count values of /etc/sefid/app.env"
 
       - name: Certificate (sefid-cert; it checks DNS before it asks Let's Encrypt)
         if: env.ACTION == 'cert'
