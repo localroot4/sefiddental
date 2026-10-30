@@ -59,6 +59,23 @@ describe('reloadPlace', () => {
     expect(scrollTo).not.toHaveBeenCalled();
   });
 
+  it('RP4 a reload the browser restored short of the kept place goes on to it; one past it stays', () => {
+    for (const [landed, called] of [
+      [120, true],
+      [2433, false],
+    ] as const) {
+      scrollY = 2033;
+      keepPlace(hide());
+      scrollY = landed;
+      navigation('reload');
+      restorePlace();
+      if (called) expect(scrollTo).toHaveBeenCalledWith({ top: 2033, behavior: 'instant' });
+      else expect(scrollTo).not.toHaveBeenCalled();
+      scrollTo.mockClear();
+      vi.mocked(performance.getEntriesByType).mockRestore();
+    }
+  });
+
   it('RP3 a page kept in the back/forward cache writes nothing', () => {
     scrollY = 500;
     keepPlace(hide(true));

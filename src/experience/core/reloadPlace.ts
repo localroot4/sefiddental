@@ -3,8 +3,10 @@ import { keyValue } from '../tier/browserEnv';
 /**
  * The reader's place across a reload or a history visit of the home page, for a browser that
  * restores no scroll there: WebKit lands at the top on a reload (CI run 87, T-EN4c to T-EN4g,
- * 2010 to 10356 px off) where Chromium restores. Kept at `pagehide`, applied once at mount and
- * only when the browser left the page at the top, so a browser that restores keeps its own.
+ * 2010 to 10356 px off) where Chromium restores, or stops short of the place (CI run 95, T-EN4d,
+ * e and g: 2281 to 2371 px above restoration, likely clamped to the document parsed so far). Kept at
+ * `pagehide`, applied once at mount and only when the browser left the reader above the kept
+ * place, so a browser that restores keeps its own.
  * The pinned geometry is in the server HTML and the inline latch (pinsScript.ts), so the kept
  * offset lands in the same place.
  */
@@ -23,7 +25,7 @@ export function keepPlace(event: PageTransitionEvent): void {
 export function restorePlace(): void {
   const raw = session.get(RELOAD_PLACE_KEY);
   session.remove(RELOAD_PLACE_KEY);
-  if (raw === null || window.scrollY !== 0 || location.hash !== '') return;
+  if (raw === null || location.hash !== '') return;
   const nav = performance.getEntriesByType('navigation')[0] as
     PerformanceNavigationTiming | undefined;
   if (nav === undefined || (nav.type !== 'reload' && nav.type !== 'back_forward')) return;
@@ -31,7 +33,7 @@ export function restorePlace(): void {
   if (here(new URL(nav.name)) !== here(location)) return;
   try {
     const { at, y } = JSON.parse(raw) as Record<string, unknown>;
-    if (at === here(location) && typeof y === 'number' && y > 0) {
+    if (at === here(location) && typeof y === 'number' && y > window.scrollY + 1) {
       window.scrollTo({ top: y, behavior: 'instant' });
     }
   } catch {
