@@ -16,6 +16,7 @@ import { track } from '@/lib/track/track';
 
 import { onIdle, useDocumentLoaded, useDocumentVisible, useIntroDone } from './core/browserSignals';
 import { canMount } from './core/gates';
+import { keepPlace, restorePlace } from './core/reloadPlace';
 import { createFrameRuntime, createStore, useStore, type ExperienceState } from './core/store';
 import type { ScrollEngine } from './engine/scrollEngine';
 import type { ScenePlace } from './engine/timelineMath';
@@ -65,6 +66,13 @@ function ExperienceHost(props: {
   const engine = useStore(experience, (state) => state.engine);
 
   const loaded = useDocumentLoaded();
+
+  // Before any engine reads the place (reloadPlace.ts): a reload in WebKit starts at the top.
+  useEffect(() => {
+    restorePlace();
+    window.addEventListener('pagehide', keepPlace);
+    return () => window.removeEventListener('pagehide', keepPlace);
+  }, []);
 
   // The engine gate (D23): on a coarse pointer the engine waits for the tier decision, the probe's
   // answer or `load` + 1500 ms (the deadline reads the CPU signal a last time and aborts the
