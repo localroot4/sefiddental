@@ -26,7 +26,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
       description: metaDescription(page.lead),
       seo: pageSeoFrom({ ...page.seo, image: page.seo?.image ?? page.heroMedia }),
       kind: 'articles',
-      articleCount: list.totalDocs,
+      listCount: list.totalDocs,
       page: parsePageParam(raw),
     },
     seo,

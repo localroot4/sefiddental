@@ -1,6 +1,6 @@
 import { getPublished } from '@/lib/data/published';
 import { readEnv } from '@/lib/env';
-import { buildPath, type PathCollection } from '@/lib/paths';
+import { buildPath, isGuideKey, type PathCollection } from '@/lib/paths';
 import { pageRobots } from '@/lib/seo/robots';
 import { absoluteUrl } from '@/lib/seo/url';
 import { type SitemapEntry, SITEMAP_HEADERS, sitemapIndexXml, urlsetXml } from '@/lib/seo/xml';
@@ -24,13 +24,13 @@ interface Indexable {
 }
 
 /**
- * One entry when the document has a public path and its robots rule allows indexing. Article
- * lists pass their published article count; `lastmod` defaults to the document's `updatedAt`.
+ * One entry when the document has a public path and its robots rule allows indexing. Lists pass
+ * their published document count; `lastmod` defaults to the document's `updatedAt`.
  */
 function entry(
   collection: PathCollection,
   doc: Indexable,
-  list: { articleCount?: number; lastmod?: string | null } = {},
+  list: { listCount?: number; lastmod?: string | null } = {},
 ): SitemapEntry[] {
   const path = buildPath(collection, doc);
   if (path === null) return [];
@@ -38,7 +38,7 @@ function entry(
     path,
     allowIndexing: true,
     noindex: doc.seo?.noindex,
-    articleCount: list.articleCount,
+    listCount: list.listCount,
   });
   return robots.index ? [{ loc: absoluteUrl(path), lastmod: list.lastmod ?? doc.updatedAt }] : [];
 }
@@ -55,12 +55,24 @@ const idOf = (value: number | { id: number } | null | undefined) =>
 
 const LOADERS: Record<SitemapName, () => Promise<SitemapEntry[]>> = {
   async pages() {
-    const [pages, articles] = await Promise.all([
+    const [pages, articles, doctors] = await Promise.all([
       getPublished('pages', { sort: 'path' }),
       getPublished('articles', { limit: 1 }),
+      getPublished('doctors', { limit: 1 }),
     ]);
-    // The articles hub is noindex while empty (C25); the count matters to that page only.
-    return pages.flatMap((doc) => entry('pages', doc, { articleCount: articles.length }));
+    // The list hubs are noindex while empty (C25); each count matters to its hub only.
+    const counts: Record<string, number> = {
+      articles: articles.length,
+      'dentists-hub': doctors.length,
+      'guide-hub': pages.filter((doc) => isGuideKey(doc.key)).length,
+    };
+    return (
+      pages
+        // shortcut: the cases page is seeded but has no route before launch; drop this filter
+        // when the cases template ships.
+        .filter((doc) => doc.key !== 'cases')
+        .flatMap((doc) => entry('pages', doc, { listCount: counts[doc.key ?? ''] }))
+    );
   },
   async services() {
     const [categories, services] = await Promise.all([
@@ -101,7 +113,7 @@ const LOADERS: Record<SitemapName, () => Promise<SitemapEntry[]>> = {
       ...categories.flatMap((doc) => {
         const list = perCategory.get(doc.id);
         return entry('article-categories', doc, {
-          articleCount: list?.count ?? 0,
+          listCount: list?.count ?? 0,
           lastmod: list?.lastmod,
         });
       }),

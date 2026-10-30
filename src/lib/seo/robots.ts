@@ -13,6 +13,8 @@ export type SearchParamsInput =
   URLSearchParams | Record<string, string | readonly string[] | undefined> | undefined;
 
 const ARTICLES = '/مقالات';
+/** Hubs that list published documents: noindex while they list none (C25). */
+const LIST_HUBS = new Set([ARTICLES, '/پزشکان', '/راهنمای-بیمار']);
 const ARTICLE_CATEGORY = /^\/مقالات\/دسته\/[^/]+$/;
 const ARTICLE_TAG = /^\/مقالات\/برچسب\/[^/]+$/;
 const BOOKING_SUCCESS = '/رزرو-نوبت/ثبت-شد';
@@ -63,24 +65,24 @@ export interface PageRobots {
 }
 
 /**
- * Meta robots of a page. Staging (ALLOW_INDEXING=false) is noindex, nofollow everywhere. Article
- * lists count their published articles (`articleCount`, unknown counts as 0): the hub is noindex
- * while empty (C25), a category below 5 (H4); a tag is always noindex.
+ * Meta robots of a page. Staging (ALLOW_INDEXING=false) is noindex, nofollow everywhere. Lists
+ * count their published documents (`listCount`, unknown counts as 0): the articles, dentists and
+ * guides hubs are noindex while empty (C25), an article category below 5 (H4); a tag always is.
  */
 export function pageRobots(input: {
   path: string;
   allowIndexing: boolean;
   noindex?: boolean | null;
-  articleCount?: number;
+  listCount?: number;
 }): PageRobots {
   if (!input.allowIndexing) return { index: false, follow: false };
   const { path } = input;
-  const count = input.articleCount ?? 0;
+  const count = input.listCount ?? 0;
   if (
     input.noindex ||
     path === BOOKING_SUCCESS ||
     ARTICLE_TAG.test(path) ||
-    (path === ARTICLES && count < 1) ||
+    (LIST_HUBS.has(path) && count < 1) ||
     (ARTICLE_CATEGORY.test(path) && count < CATEGORY_INDEX_MIN_ARTICLES)
   ) {
     return { index: false, follow: true };

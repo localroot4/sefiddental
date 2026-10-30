@@ -30,9 +30,10 @@ export async function getPage(key: PageKey): Promise<Page> {
 /**
  * Metadata of a hub or single page: the title topic and seo group from Payload, the hero photo as
  * the share image when the page has no seo image, the lead as the description only when it fits
- * the 120 to 160 characters of a meta description (templates 1.4).
+ * the 120 to 160 characters of a meta description (templates 1.4). A hub passes how many
+ * published documents it lists (`listCount`, robots.ts).
  */
-export async function pageMetadata(key: PageKey): Promise<Metadata> {
+export async function pageMetadata(key: PageKey, listCount?: number): Promise<Metadata> {
   const [page, { seo }] = await Promise.all([getPage(key), getSiteInputs()]);
   return buildMetadata(
     {
@@ -41,6 +42,7 @@ export async function pageMetadata(key: PageKey): Promise<Metadata> {
       description: metaDescription(page.lead),
       seo: pageSeoFrom({ ...page.seo, image: page.seo?.image ?? page.heroMedia }),
       kind: 'page',
+      listCount,
     },
     seo,
   );

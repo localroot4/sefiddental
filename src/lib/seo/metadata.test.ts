@@ -170,7 +170,7 @@ describe('article lists and share cards (phase 6: H3, H4, H14, C16, C25)', () =>
       path: '/مقالات/دسته/پیشگیری',
       title: 'پیشگیری',
       kind: 'articleCategory' as const,
-      articleCount: 5,
+      listCount: 5,
     };
     const first = buildMetadata(base, SEO);
     expect(first.title).toEqual({ absolute: 'پیشگیری | مقالات کلینیک دندانپزشکی سفید' });
@@ -184,7 +184,7 @@ describe('article lists and share cards (phase 6: H3, H4, H14, C16, C25)', () =>
     expect(second.twitter).toMatchObject({ title });
     expect(second.alternates?.canonical).toBe(`${enc(base.path)}?page=2`);
 
-    expect(buildMetadata({ ...base, articleCount: 4 }, SEO).robots).toEqual({
+    expect(buildMetadata({ ...base, listCount: 4 }, SEO).robots).toEqual({
       index: false,
       follow: true,
     });
@@ -198,7 +198,7 @@ describe('article lists and share cards (phase 6: H3, H4, H14, C16, C25)', () =>
         title: 'مقالات سلامت دهان و دندان',
         kind: 'articles',
         page: 3,
-        articleCount: 30,
+        listCount: 30,
       },
       SEO,
     );
@@ -212,14 +212,14 @@ describe('article lists and share cards (phase 6: H3, H4, H14, C16, C25)', () =>
     });
     expect(hub.robots).toEqual({ index: true, follow: true });
     const empty = buildMetadata(
-      { path: '/مقالات', title: 'مقالات', kind: 'articles', articleCount: 0 },
+      { path: '/مقالات', title: 'مقالات', kind: 'articles', listCount: 0 },
       SEO,
     );
     expect(empty.robots).toEqual({ index: false, follow: true });
     expect(empty.title).toBe('مقالات');
 
     const tag = buildMetadata(
-      { path: '/مقالات/برچسب/ایمپلنت', title: 'ایمپلنت', kind: 'tag', page: 2, articleCount: 40 },
+      { path: '/مقالات/برچسب/ایمپلنت', title: 'ایمپلنت', kind: 'tag', page: 2, listCount: 40 },
       SEO,
     );
     expect(tag.title).toEqual({

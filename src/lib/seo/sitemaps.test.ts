@@ -27,6 +27,10 @@ function seed(): void {
       { key: 'home', updatedAt: at(1) },
       { key: 'services-hub', slug: 'خدمات', updatedAt: at(2) },
       { key: 'articles', updatedAt: at(5) },
+      { key: 'dentists-hub', updatedAt: at(5) },
+      { key: 'guide-hub', updatedAt: at(5) },
+      { key: 'guide-first-visit', slug: 'اولین-مراجعه', updatedAt: at(5) },
+      { key: 'cases', updatedAt: at(5) },
       { key: 'booking-success', slug: 'ثبت-شد', updatedAt: at(3) },
       { key: 'privacy', slug: 'حریم-خصوصی', updatedAt: at(4), seo: { noindex: true } },
     ],
@@ -83,7 +87,14 @@ describe('sitemaps (spec 9.4)', () => {
   it('SM2 pages: indexable published pages only, absolute percent-encoded URLs, lastmod', async () => {
     const { sitemapResponse } = await import('./sitemaps');
     const xml = await (await sitemapResponse('pages')).text();
-    expect(locs(xml)).toEqual([`${SITE}/`, enc('/خدمات'), enc('/مقالات')]);
+    expect(locs(xml)).toEqual([
+      `${SITE}/`,
+      enc('/خدمات'),
+      enc('/مقالات'),
+      enc('/پزشکان'),
+      enc('/راهنمای-بیمار'),
+      enc('/راهنمای-بیمار/اولین-مراجعه'),
+    ]);
     expect(xml).toContain(`<loc>${enc('/خدمات')}</loc><lastmod>${at(2)}</lastmod>`);
     expect(xml).toContain('%D8%AE%D8%AF%D9%85%D8%A7%D8%AA');
   });
@@ -123,7 +134,17 @@ describe('sitemaps (spec 9.4)', () => {
     const { sitemapResponse } = await import('./sitemaps');
     mocks.rows.articles = [];
     const xml = await (await sitemapResponse('pages')).text();
-    expect(locs(xml)).toEqual([`${SITE}/`, enc('/خدمات')]);
+    expect(locs(xml)).not.toContain(enc('/مقالات'));
+    expect(locs(xml)).toContain(enc('/پزشکان'));
+  });
+
+  it('SM9 the dentists and guides hubs leave pages.xml while they list nothing; no cases page before its route', async () => {
+    const { sitemapResponse } = await import('./sitemaps');
+    mocks.rows.doctors = [];
+    mocks.rows.pages = mocks.rows.pages!.filter((doc) => doc.key !== 'guide-first-visit');
+    const xml = await (await sitemapResponse('pages')).text();
+    expect(locs(xml)).toEqual([`${SITE}/`, enc('/خدمات'), enc('/مقالات')]);
+    expect(xml).not.toContain(enc('/قبل-و-بعد'));
   });
 
   it('SM5 ALLOW_INDEXING=false: every child is an empty urlset and nothing is read', async () => {

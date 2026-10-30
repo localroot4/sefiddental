@@ -32,7 +32,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       description: metaDescription(tag.description),
       seo: pageSeoFrom(tag.seo),
       kind: 'tag',
-      articleCount: list.totalDocs,
+      listCount: list.totalDocs,
       page: parsePageParam(raw),
     },
     seo,

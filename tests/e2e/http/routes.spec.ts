@@ -385,7 +385,8 @@ test('T-RT15b the sitemaps list every published document once and nothing else (
     for (const path of await hubLinks('/خدمات')) expect(count(services!, path), path).toBe(1);
     for (const path of await hubLinks('/پزشکان')) expect(count(doctors!, path), path).toBe(1);
     for (const path of await hubLinks('/راهنمای-بیمار')) expect(count(pages!, path), path).toBe(1);
-    expect(count(pages!, '/قبل-و-بعد'), '/قبل-و-بعد').toBe(1);
+    // No cases route before launch: the published cases page stays out of the sitemap.
+    expect(count(pages!, '/قبل-و-بعد'), '/قبل-و-بعد').toBe(0);
 
     const published = await publishedArticles(request);
     expect(published.length, 'the QA fixture publishes articles').toBeGreaterThan(0);

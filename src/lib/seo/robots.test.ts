@@ -96,17 +96,17 @@ describe('pageRobots (spec 9.3, ia.md)', () => {
 
   it('RB2 route table', async () => {
     const { pageRobots } = await load();
-    const r = (path: string, extra: { noindex?: boolean; articleCount?: number } = {}) =>
+    const r = (path: string, extra: { noindex?: boolean; listCount?: number } = {}) =>
       pageRobots({ path, allowIndexing: true, ...extra });
     expect(r('/')).toEqual({ index: true, follow: true });
     expect(r('/رزرو-نوبت')).toEqual({ index: true, follow: true });
     expect(r('/رزرو-نوبت/ثبت-شد')).toEqual({ index: false, follow: true });
     expect(r('/مقالات/برچسب/ایمپلنت')).toEqual({ index: false, follow: true });
-    expect(r('/مقالات/دسته/پیشگیری', { articleCount: 4 })).toEqual({
+    expect(r('/مقالات/دسته/پیشگیری', { listCount: 4 })).toEqual({
       index: false,
       follow: true,
     });
-    expect(r('/مقالات/دسته/پیشگیری', { articleCount: 5 })).toEqual({
+    expect(r('/مقالات/دسته/پیشگیری', { listCount: 5 })).toEqual({
       index: true,
       follow: true,
     });
@@ -115,8 +115,8 @@ describe('pageRobots (spec 9.3, ia.md)', () => {
 
   it('RB3 article lists by published count: the hub from 1 (C25), a category from 5 (H4)', async () => {
     const { pageRobots } = await load();
-    const r = (path: string, articleCount?: number) =>
-      pageRobots({ path, allowIndexing: true, articleCount });
+    const r = (path: string, listCount?: number) =>
+      pageRobots({ path, allowIndexing: true, listCount });
     const noindex = { index: false, follow: true };
     const index = { index: true, follow: true };
     expect(r('/مقالات', 0)).toEqual(noindex);
@@ -126,6 +126,12 @@ describe('pageRobots (spec 9.3, ia.md)', () => {
     expect(r('/مقالات/دسته/پیشگیری', 4)).toEqual(noindex);
     expect(r('/مقالات/دسته/پیشگیری', 5)).toEqual(index);
     expect(r('/مقالات/برچسب/ایمپلنت', 40)).toEqual(noindex);
+    // The dentists and guides hubs list published documents too: noindex while empty.
+    for (const hub of ['/پزشکان', '/راهنمای-بیمار']) {
+      expect(r(hub), hub).toEqual(noindex);
+      expect(r(hub, 0), hub).toEqual(noindex);
+      expect(r(hub, 1), hub).toEqual(index);
+    }
     // An article itself is not a list: no count, indexable.
     expect(r('/مقالات/مراقبت-بعد-از-کشیدن-دندان')).toEqual(index);
   });

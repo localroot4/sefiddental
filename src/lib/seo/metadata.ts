@@ -59,8 +59,8 @@ export interface PageSeoInput {
   image?: OgImage | null;
   publishedAt?: string | null;
   modifiedAt?: string | null;
-  /** Article lists: published articles listed (the hub is noindex at 0, a category below 5). */
-  articleCount?: number;
+  /** Lists: published documents listed (a hub is noindex at 0, an article category below 5). */
+  listCount?: number;
   /** Article lists: the page from parsePageParam; 2 and up add «صفحهٔ N» and `?page=N`. */
   page?: number | null;
   /** Share card when the page has no image; by default the card of the path (ogCardFor). */
@@ -188,7 +188,7 @@ export function buildMetadata(input: PageSeoInput, seo: SeoDefaults): Metadata {
         path: input.path,
         allowIndexing: env.allowIndexing,
         noindex: input.seo?.noindex,
-        articleCount: input.articleCount,
+        listCount: input.listCount,
       });
   // The page the title names is the page the canonical keeps.
   const params = page ? { page: String(page) } : input.searchParams;
