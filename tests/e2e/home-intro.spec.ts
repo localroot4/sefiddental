@@ -253,6 +253,27 @@ test('T-IN2 a second navigation in the same session plays nothing', async ({ pag
   await expect(page.locator('#intro')).toHaveCount(0);
 });
 
+/**
+ * Clicks the skip button while the intro plays. On a loaded host the click's own checks can take
+ * longer than the 1300 ms intro (mobile WebKit at 3x in CI run 95: the button was gone when the
+ * click landed, twice): a round the intro ended by itself is played again, at most twice.
+ */
+async function clickSkip(page: Page): Promise<void> {
+  for (let round = 1; ; round += 1) {
+    const clicked = await page
+      .getByRole('button', { name: SKIP })
+      .click({ timeout: 3000 })
+      .then(
+        () => true,
+        () => false,
+      );
+    if (clicked) return;
+    expect(round, 'rounds the intro ended before the skip click landed').toBeLessThan(3);
+    await page.evaluate(() => sessionStorage.removeItem('sefid-intro'));
+    await openPlaying(page);
+  }
+}
+
 test('T-IN3 a tap, Tab, Esc or the skip button ends it within 100 ms; focus never lands on the phone field', async ({
   page,
 }, testInfo) => {
@@ -270,7 +291,7 @@ test('T-IN3 a tap, Tab, Esc or the skip button ends it within 100 ms; focus neve
     ],
     ['Tab', () => page.keyboard.press('Tab')],
     ['Escape', () => page.keyboard.press('Escape')],
-    ['the skip button', () => page.getByRole('button', { name: SKIP }).click()],
+    ['the skip button', () => clickSkip(page)],
   ];
   for (const [label, act] of methods) {
     // The button is visible from the first frame: its round starts at once, so the click never

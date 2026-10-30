@@ -531,8 +531,12 @@ test('T-BF9 390 touch: «پخش دوباره» keeps its box at every tier (D24)
       const r = el.getBoundingClientRect();
       return [top, Math.round(r.left), Math.round(r.width), Math.round(r.height)];
     });
+  // Both boxes are read in one state, scrolled to the stage with the fonts in: the tier 1 read
+  // came 21 px lower once (WebKit phone, CI run 95), read scrolled against one read at the top.
   await page.goto('/?tier=0');
   await page.waitForLoadState('load');
+  await scrollToStage(page);
+  await page.evaluate(() => document.fonts.ready);
   await expect(page.locator(REPLAY)).toHaveAttribute('inert', '');
   await expect(page.locator(REPLAY)).toBeHidden();
   const atZero = await box();
@@ -540,6 +544,7 @@ test('T-BF9 390 touch: «پخش دوباره» keeps its box at every tier (D24)
   await page.goto('/?tier=1');
   await page.waitForLoadState('load');
   await scrollToStage(page);
+  await page.evaluate(() => document.fonts.ready);
   await expect(page.locator(REPLAY)).toBeVisible({ timeout: 15_000 });
   await expect(page.locator(REPLAY)).not.toHaveAttribute('inert');
   expect(await box()).toEqual(atZero);

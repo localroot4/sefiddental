@@ -201,10 +201,33 @@ const docTop = (page: Page, selector: string) =>
     return y;
   });
 
-/** Scrolls to `y` and waits out the scrub lag. */
+/**
+ * Scrolls to `y`, waits out the scrub lag, then until the scrubbed styles hold still: on a slow
+ * host the scrub arrives later (mobile WebKit at 3x in CI run 95: opacity 0.92 after 700 ms).
+ */
 async function scrollToY(page: Page, y: number): Promise<void> {
   await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), Math.round(y));
   await page.waitForTimeout(SCRUB_WAIT_MS);
+  const styles = () =>
+    page
+      .locator(
+        '[data-workflow-step] h3, [data-workflow-step] h3 + p, [data-workflow-line], [data-workflow-warm]',
+      )
+      .evaluateAll((els) =>
+        els.map((el) => `${getComputedStyle(el).opacity} ${getComputedStyle(el).transform}`).join(),
+      );
+  let last = await styles();
+  await expect
+    .poll(
+      async () => {
+        const now = await styles();
+        const still = now === last;
+        last = now;
+        return still;
+      },
+      { intervals: [250], timeout: 10_000 },
+    )
+    .toBe(true);
 }
 
 /** Computed opacity, scaleY and whether the computed transform is the identity. */

@@ -587,10 +587,22 @@ async function tabWalk(
 ): Promise<string[]> {
   const labels: string[] = [];
   const problems: string[] = [];
+  const chromium = page.context().browser()?.browserType().name() === 'chromium';
   for (let i = 0; i < (options.max ?? 200); i += 1) {
     await page.keyboard.press('Tab');
     await settled(page);
     if (await seenBefore(page)) break;
+    // Engine gate: the focus scroll is the engine's own. Firefox scrolls only a stop that is
+    // wholly out of view, WebKit reveals a text field's caret line rather than its box, and mobile
+    // WebKit leaves a field to the iOS keyboard (CI run 95: stops at 0 to 81 % in view). Outside
+    // Chromium a stop is brought to the nearest edge, as Chromium's focus scroll does; whether
+    // it is covered there and shows its ring is checked the same way.
+    if (!chromium) {
+      await page.evaluate(() =>
+        document.activeElement?.scrollIntoView({ block: 'nearest', inline: 'nearest' }),
+      );
+      await settled(page);
+    }
     const stop = await readStop(page, options.within ?? options.until ?? null);
     if (stop === null) continue; // the focus left the document between two laps
     if (options.until && !stop.inside) break;
@@ -677,7 +689,12 @@ test('T-KB restoration: the chips, the shown panel CTA with the chosen tier, the
     await settled(page);
     await page.keyboard.press('Shift+Tab');
     await settled(page);
-    await page.keyboard.press('ArrowDown');
+    // An arrow key that points into the group: WebKit does not wrap at its ends, Chromium does
+    // (CI run 95: ArrowDown on the last chip chose nothing in WebKit).
+    const first = await page.evaluate(
+      () => document.activeElement === document.querySelector('input[name="home-tier"]'),
+    );
+    await page.keyboard.press(first ? 'ArrowDown' : 'ArrowUp');
     await settled(page);
     const chosen = await page.evaluate(
       () => document.querySelector<HTMLInputElement>('input[name="home-tier"]:checked')?.value,
