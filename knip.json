@@ -17,6 +17,6 @@
     "*.{ts,mts,cjs,mjs}",
     "deploy/**/*.{cjs,ts}"
   ],
-  "ignoreBinaries": ["openssl"],
+  "ignoreBinaries": ["age", "openssl"],
   "ignoreExportsUsedInFile": true
 }
