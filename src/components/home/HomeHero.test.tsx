@@ -2,12 +2,23 @@ import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { HomeHero } from './HomeHero';
 
 // The booking island's data readers need Payload; the order tests need only its place.
 vi.mock('@/components/booking/BookingForm', () => ({ BookingForm: () => <form /> }));
+// The placeholder captions show on the client preview only (DEMO_CONTENT).
+const env = vi.hoisted(() => ({ demoContent: false }));
+vi.mock('@/lib/env', () => ({ readEnv: () => ({ demoContent: env.demoContent }) }));
+function preview(on: boolean): void {
+  env.demoContent = on;
+  vi.stubEnv('DEMO_CONTENT', on ? '1' : '');
+}
+afterEach(() => {
+  preview(false);
+  vi.unstubAllEnvs();
+});
 
 const set = { avif: 'a.avif 800w', other: 'a.webp 800w', otherType: 'image/webp' };
 
@@ -87,8 +98,15 @@ describe('home hero markup', () => {
     expect(doc.getElementById('intro-script')?.previousElementSibling).toBe(row);
     expect(row?.querySelector('#hero-sub')).not.toBeNull();
     expect(row?.querySelector('form')).not.toBeNull();
-    expect(row?.lastElementChild?.tagName).toBe('P'); // the placeholder caption
+    expect(row?.lastElementChild?.tagName).toBe('FORM');
     expect(html.indexOf('id="intro-script"')).toBeLessThan(html.indexOf('data-hero-photo'));
+  });
+
+  it('HH6 the placeholder captions show on the client preview only (DEMO_CONTENT)', () => {
+    expect(render(true)).not.toContain('جای عکس');
+    preview(true);
+    expect(render(true).match(/جای عکس/g)).toHaveLength(2);
+    expect(render(false)).not.toContain('جای عکس');
   });
 });
 

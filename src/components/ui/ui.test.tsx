@@ -4,7 +4,7 @@ import path from 'node:path';
 import { render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { Media } from '@/payload-types';
 
@@ -30,8 +30,20 @@ import { Picture } from './Picture';
 import { TestimonialCard } from './Testimonial';
 import { TierComparison } from './Tiers';
 
-// mediaPath reads the environment; the media origin is not under test here.
-vi.mock('@/lib/env', () => ({ readEnv: () => ({ mediaPublicOrigin: undefined }) }));
+// mediaPath reads the environment; the media origin is not under test here. MediaPlaceholder
+// reads DEMO_CONTENT (the client preview).
+const env = vi.hoisted(() => ({ demoContent: false }));
+vi.mock('@/lib/env', () => ({
+  readEnv: () => ({ mediaPublicOrigin: undefined, demoContent: env.demoContent }),
+}));
+function preview(on: boolean): void {
+  env.demoContent = on;
+  vi.stubEnv('DEMO_CONTENT', on ? '1' : '');
+}
+afterEach(() => {
+  preview(false);
+  vi.unstubAllEnvs();
+});
 
 const media = (sizes: Media['sizes'], extra: Partial<Media> = {}): Media => ({
   id: 1,
@@ -186,14 +198,27 @@ describe('ui components: content, media, cards', () => {
     ).toBe('');
   });
 
-  it('UM4 placeholders name the missing photo with the «جای عکس:» prefix in the exact ratio', () => {
-    render(<MediaPlaceholder variant="standalone" ratio="4:5" caption="پرترهٔ پزشک" />);
+  it('UM4 on the client preview (DEMO_CONTENT) placeholders name the missing photo with the «جای عکس:» prefix in the exact ratio; elsewhere no caption reaches the page', () => {
+    preview(true);
+    const { unmount } = render(
+      <MediaPlaceholder variant="standalone" ratio="4:5" caption="پرترهٔ پزشک" />,
+    );
     const text = screen.getByText('پرترهٔ پزشک', { exact: false });
     expect(text.textContent).toBe('جای عکس: پرترهٔ پزشک');
     expect(text.parentElement!.className).toContain('aspect-[4/5]');
+    unmount();
+    preview(false);
+    const { container } = render(
+      <MediaPlaceholder variant="standalone" ratio="4:5" caption="پرترهٔ پزشک" />,
+    );
+    const panel = container.firstElementChild!;
+    expect(panel.textContent).toBe('');
+    expect(panel.getAttribute('data-photo-slot')).toBe('پرترهٔ پزشک');
+    expect(panel.className).toContain('aspect-[4/5]');
   });
 
-  it('UM5 every placeholder variant is a brand panel: the mark relief, then the caption row, no outline', () => {
+  it('UM5 every placeholder variant is a brand panel: the mark relief, then the caption row (preview), no outline', () => {
+    preview(true);
     for (const variant of ['fill', 'card', 'standalone'] as const) {
       const { container, unmount } = render(
         <MediaPlaceholder variant={variant} caption="پرترهٔ پزشک" />,

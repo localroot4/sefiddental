@@ -74,14 +74,14 @@ describe('home scene 5 workflow section (D2, lanes WORKFLOW)', () => {
     ]);
   });
 
-  it('WS3 an unpopulated photo (an id) gets the labeled placeholder; a fifth item is dropped', () => {
+  it('WS3 an unpopulated photo (an id) gets the placeholder for its step; a fifth item is dropped', () => {
     const html = renderToStaticMarkup(
       <WorkflowSection
         items={[{ ...items[0]!, photo: 7 }, ...items.slice(1), { ...items[3]!, title: 'پنجم' }]}
       />,
     );
-    expect(html).toContain('جای عکس');
-    expect(html).toContain('گام 1');
+    // The caption shows on the client preview only (DEMO_CONTENT, ui.test UM4); the slot keeps it.
+    expect(html).toContain('data-photo-slot="گام 1"');
     expect(html.match(/data-workflow-step=""/g)).toHaveLength(4);
     expect(html).not.toContain('پنجم');
   });

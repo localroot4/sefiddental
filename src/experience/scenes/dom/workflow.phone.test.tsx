@@ -120,9 +120,10 @@ describe('scene 5 workflow under 1024 px (phone spec scene 5)', () => {
     )) {
       expect(still.getAttribute('style')).toBeNull();
     }
-    const captions = all('[data-workflow-step] > div:last-child p');
-    expect(captions).toHaveLength(2);
-    for (const caption of captions) expect(triggerOf(caption)).toBeUndefined();
+    // The two placeholders (their caption shows on the client preview only) are no Rise target.
+    const slots = all('[data-workflow-step] [data-photo-slot]');
+    expect(slots).toHaveLength(2);
+    for (const slot of slots) expect(triggerOf(slot)).toBeUndefined();
     // 8 rises, the fill and three warm overlays.
     expect(ScrollTrigger.getAll()).toHaveLength(12);
   });

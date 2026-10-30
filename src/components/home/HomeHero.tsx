@@ -4,6 +4,7 @@ import { BookingForm } from '@/components/booking/BookingForm';
 import { ButtonLink } from '@/components/ui/Button';
 import { FactsRow } from '@/components/ui/Content';
 import { Icon } from '@/components/ui/Icon';
+import { photoCaptions } from '@/components/ui/Media';
 import { t } from '@/i18n/fa';
 import { telHref } from '@/lib/phone';
 
@@ -56,6 +57,9 @@ const SETTLE_STEP = [
  * From 1024 px the sunken surface moves from the section to the inner wrapper (its own stacking
  * context, so it stays under the photo), and the band sits on the page surface: nothing of the
  * hero paints over the world behind the page.
+ *
+ * While the photo is the placeholder (gap 36), its «جای عکس» captions show on the client preview
+ * only (DEMO_CONTENT).
  */
 export function HomeHero(props: {
   title: string;
@@ -73,6 +77,8 @@ export function HomeHero(props: {
   intro?: React.ReactNode;
 }) {
   const { image } = props;
+  // The «جای عکس» captions tell the clinic which photo goes where: the preview only (DEMO_CONTENT).
+  const captions = image.placeholder && photoCaptions();
   preload(image.preloadHref, {
     as: 'image',
     imageSrcSet: image.wide.avif,
@@ -124,7 +130,7 @@ export function HomeHero(props: {
             instance="hero"
             className={`md:justify-self-end ${SETTLE} ${SETTLE_STEP[3]}`}
           />
-          {image.placeholder ? (
+          {captions ? (
             <p className={`hidden max-w-[34rem] md:col-span-2 md:block ${CAPTION}`}>
               <span className="font-semibold">{t('ui.placeholder.prefix')}</span>{' '}
               {t('home.hero.photoWide')}
@@ -154,7 +160,7 @@ export function HomeHero(props: {
               className="absolute inset-0 size-full object-cover max-md:[transform:scale(1.1)]"
             />
           </picture>
-          {image.placeholder ? (
+          {captions ? (
             <p className={`absolute inset-x-gutter top-4 max-w-[26rem] md:hidden ${CAPTION}`}>
               <span className="font-semibold">{t('ui.placeholder.prefix')}</span>{' '}
               {t('home.hero.photoTall')}

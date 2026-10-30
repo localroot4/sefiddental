@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { t } from '@/i18n/fa';
+import { readEnv } from '@/lib/env';
 
 import { cx } from './cx';
 import { PLACEHOLDER_SURFACE } from './Feedback';
@@ -40,11 +41,22 @@ export function MediaFrame(props: { ratio: Ratio; children: ReactNode; className
 }
 
 /**
+ * Whether the «جای عکس» captions show: on the client preview only (DEMO_CONTENT), where the clinic
+ * sees which photo goes where. Unset is off, so readEnv parses the flag only when it is set: a
+ * page or a test without the full environment never needs it.
+ */
+export function photoCaptions(): boolean {
+  return Boolean(process.env.DEMO_CONTENT) && readEnv().demoContent;
+}
+
+/**
  * A missing client photo (freeze F3): a calm brand panel (PLACEHOLDER_SURFACE) that names the
  * photo it waits for. The mark sits in it as a quiet relief, porcelain white in light and teal
  * glass in dark (decorative, non-text), and steps back (invisible, its row kept) when the panel is
- * under 10rem tall, where it would shrink to a stray icon; the caption «جای عکس: …» is a small
- * label in its own row at the bottom start, visible text in Persian digits. Nothing moves. The
+ * under 10rem tall, where it would shrink to a stray icon. The caption «جای عکس: …» tells the
+ * clinic which photo goes where, so it shows on the client preview only (DEMO_CONTENT): a small
+ * label in its own row at the bottom start, visible text in Persian digits. Elsewhere the panel
+ * is decorative and keeps the caption in `data-photo-slot` for QA. Nothing moves. The
  * panel is a size container, so its content never changes the ratio. `fill` and `card` fill a
  * positioned frame (MediaFrame, a card's media slot) that clips them to its radius; `standalone`
  * has its own ratio and radius. Every placement has a row in docs/content/gaps.md.
@@ -57,6 +69,7 @@ export function MediaPlaceholder(props: {
 }) {
   return (
     <div
+      data-photo-slot={props.caption}
       className={cx(
         '@container-size grid grid-cols-1 grid-rows-[minmax(0,1fr)_auto] gap-3 p-4 text-caption text-ink-muted',
         PLACEHOLDER_SURFACE,
@@ -71,10 +84,12 @@ export function MediaPlaceholder(props: {
         size="custom"
         className="aspect-[184/223] h-[min(56%,10rem)] w-auto max-w-full place-self-center text-surface-raised/75 dark:text-brand/15 [@container(height<10rem)]:invisible"
       />
-      <p className="max-w-[30ch]">
-        <span className="font-semibold text-brand-strong">{t('ui.placeholder.prefix')}</span>{' '}
-        {props.caption}
-      </p>
+      {photoCaptions() ? (
+        <p className="max-w-[30ch]">
+          <span className="font-semibold text-brand-strong">{t('ui.placeholder.prefix')}</span>{' '}
+          {props.caption}
+        </p>
+      ) : null}
     </div>
   );
 }
