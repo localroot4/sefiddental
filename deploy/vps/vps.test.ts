@@ -1194,4 +1194,17 @@ describe('server workflow and the public log', () => {
     expect(none.status).toBe(0);
     expect(none.stdout).toBe('masked 0 values of /etc/sefid/app.env\n');
   });
+
+  it('VPS32 the jobs with server secrets run in the environment server; vps-smoke does not', () => {
+    const server = workflow('server.yml').jobs;
+    expect(server.server!.environment).toEqual({
+      name: 'server',
+      deployment: "${{ inputs.action == 'deploy' }}",
+    });
+    expect(server['vps-smoke']!.environment).toBeUndefined();
+    expect(workflow('watch.yml').jobs.watch!.environment).toEqual({
+      name: 'server',
+      deployment: false,
+    });
+  });
 });

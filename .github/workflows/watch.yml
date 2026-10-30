@@ -34,6 +34,11 @@ jobs:
     name: Health, backup, cron, disk and certificate
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    # SERVER_SSH_KEY lives in this environment, which only main may use (docs/deploy.md 3.2).
+    # No deployment record: an hourly check is not a deployment.
+    environment:
+      name: server
+      deployment: false
     permissions:
       contents: read
       issues: write

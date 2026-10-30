@@ -4,9 +4,9 @@
 # workflow", branch main, pick an action. A push to main that changes deploy/vps/ or this file
 # runs only `vps-smoke`, which provisions and checks a server on the runner itself. Every Friday
 # the schedule runs `offsite-backup` (docs/deploy.md 3.6).
-# Secrets: SERVER_SSH_KEY (deploy's private key) and ADMIN_PASSWORD (first-admin, reset-admin).
-# Any workflow run in this repository can read them: whoever can push a workflow is an admin of
-# the server (docs/deploy.md 3.2). The repository is public, and so is this log. No step prints a secret: the step after the
+# Secrets: SERVER_SSH_KEY (deploy's private key) and ADMIN_PASSWORD (first-admin, reset-admin),
+# in the environment `server`, which only main may use (docs/deploy.md 3.2). The repository is
+# public, and so is this log. No step prints a secret: the step after the
 # connection masks every secret of the server's app.env, values read from the server are
 # masked before any other use, and no step runs `set -x`. The key lives in an ssh-agent, never
 # in a file, and only after the build: third-party code that runs later (Payload, the seeder)
@@ -101,6 +101,11 @@ jobs:
     name: ${{ inputs.action || 'offsite-backup' }}
     if: github.event_name != 'push' && inputs.action != 'smoke'
     runs-on: ubuntu-24.04
+    # The secrets live in this environment, whose branch rule admits main only (deploy.md 3.2).
+    # A deployment record only for deploy: the other actions would fill the history.
+    environment:
+      name: server
+      deployment: ${{ inputs.action == 'deploy' }}
     # The first seed through the tunnel can take long (PAYLOAD_STALL_MS below).
     timeout-minutes: ${{ inputs.action == 'seed' && 120 || 60 }}
     # actions: read for the CI check of deploy.
