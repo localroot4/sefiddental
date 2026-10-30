@@ -1,5 +1,10 @@
-import type { CollectionSlug, GlobalSlug, Payload } from 'payload';
+import { randomInt } from 'node:crypto';
+
+import type { CollectionSlug, GlobalSlug, Payload, PayloadRequest } from 'payload';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+
+import { canRunJobs } from '@/access/jobs';
+import { readEnv } from '@/lib/env';
 
 import { allowed, getTestPayload, type StaffUser, staffUsers, unique } from './helpers';
 
@@ -225,5 +230,158 @@ describe('access matrix', () => {
         await allowed(() => payload.delete({ collection: 'pages', id: page.id, ...asEditor })),
       ).toBe(false);
     }
+  });
+
+  // Phase 9 security audit (docs/qa/audit-security.md, section 3): the cells the rows above left out.
+  it('AC8 anonymous callers never create, change or delete anything', async () => {
+    const anyRow = { id: { exists: true } };
+    for (const collection of COLLECTIONS) {
+      // A media create without a file is refused for that first (400, UP-4); MS5 covers uploads.
+      if (collection !== 'media') {
+        expect(
+          await allowed(() =>
+            payload.create({ collection, data: {} as never, overrideAccess: false }),
+          ),
+          `create ${collection}`,
+        ).toBe(false);
+      }
+      expect(
+        await allowed(() =>
+          payload.update({ collection, where: anyRow, data: {}, overrideAccess: false }),
+        ),
+        `update ${collection}`,
+      ).toBe(false);
+      expect(
+        await allowed(() => payload.delete({ collection, where: anyRow, overrideAccess: false })),
+        `delete ${collection}`,
+      ).toBe(false);
+    }
+    for (const slug of GLOBALS) {
+      expect(
+        await allowed(() => payload.updateGlobal({ slug, data: {}, overrideAccess: false })),
+        slug,
+      ).toBe(false);
+    }
+  });
+
+  it('AC9 system stores: nobody writes through the API; only admins read the logs', async () => {
+    const STORES: Array<[CollectionSlug, boolean]> = [
+      ['events-daily', true],
+      ['sms-throttle', true],
+      ['audit-log', true],
+      ['payload-jobs', false],
+      ['payload-kv', false],
+      ['totp-attempts', false],
+    ];
+    for (const [collection, adminReads] of STORES) {
+      for (const user of [editor, admin]) {
+        expect(await allowed(read(collection, user)), `${collection} ${user.role}`).toBe(
+          user === admin && adminReads,
+        );
+        expect(
+          await allowed(() =>
+            payload.create({ collection, data: {} as never, overrideAccess: false, user }),
+          ),
+          `create ${collection} ${user.role}`,
+        ).toBe(false);
+        const as = { where: { id: { exists: true } }, overrideAccess: false, user } as const;
+        expect(
+          await allowed(() => payload.update({ collection, data: {}, ...as })),
+          `update ${collection} ${user.role}`,
+        ).toBe(false);
+        expect(
+          await allowed(() => payload.delete({ collection, ...as })),
+          `delete ${collection} ${user.role}`,
+        ).toBe(false);
+      }
+    }
+    for (const slug of GLOBALS) {
+      expect(
+        await allowed(() =>
+          payload.updateGlobal({ slug, data: {}, overrideAccess: false, user: editor }),
+        ),
+        slug,
+      ).toBe(false);
+    }
+  });
+
+  it('AC10 editors work bookings but never delete one or change its phone or kind', async () => {
+    const asEditor = { overrideAccess: false, user: editor } as const;
+    const phone = `0935${String(randomInt(10_000_000)).padStart(7, '0')}`;
+    const row = await payload.create({
+      collection: 'bookings',
+      data: { phone, kind: 'regular' } as never,
+    });
+    const changed = await payload.update({
+      collection: 'bookings',
+      id: row.id,
+      data: { phone: '09350000000', kind: 'emergency', status: 'contacted' } as never,
+      ...asEditor,
+    });
+    expect(changed).toMatchObject({ phone: row.phone, kind: 'regular', status: 'contacted' });
+    expect(
+      await allowed(() => payload.delete({ collection: 'bookings', id: row.id, ...asEditor })),
+    ).toBe(false);
+  });
+
+  it('AC11 accounts: editors never create one, read or delete another; admins never delete their own', async () => {
+    const asEditor = { overrideAccess: false, user: editor } as const;
+    expect(
+      await allowed(() =>
+        payload.create({
+          collection: 'users',
+          data: {
+            email: `x-${unique()}@sefid.test`,
+            password: `p-${unique()}-${unique()}`,
+            name: 'x',
+            role: 'editor',
+          },
+          ...asEditor,
+        }),
+      ),
+    ).toBe(false);
+    // A row outside a where-constraint answers 403 or 404; either way nothing is returned.
+    const hidden = (call: Promise<unknown>) =>
+      expect(call).rejects.toSatisfy((e: { status?: number }) => [403, 404].includes(e.status!));
+    await hidden(payload.findByID({ collection: 'users', id: admin.id, ...asEditor }));
+    await hidden(payload.delete({ collection: 'users', id: admin.id, ...asEditor }));
+    await hidden(
+      payload.delete({ collection: 'users', id: admin.id, overrideAccess: false, user: admin }),
+    );
+    expect(await payload.findByID({ collection: 'users', id: admin.id, depth: 0 })).toBeTruthy();
+  });
+
+  it('AC12 Payload job runs: the cron bearer or a TOTP-verified admin, nobody else', async () => {
+    const secret = readEnv().cronSecret;
+    const call = (user: object | null, authorization?: string) =>
+      canRunJobs({
+        req: {
+          user,
+          headers: new Headers(authorization ? { authorization } : {}),
+          payload,
+        } as unknown as PayloadRequest,
+      });
+    expect(await call(null)).toBe(false);
+    expect(await call(null, 'Bearer wrong')).toBe(false);
+    expect(await call(editor)).toBe(false);
+    expect(await call({ ...admin, _strategy: 'local-jwt', hasTotp: true })).toBe(false);
+    expect(await call(null, `Bearer ${secret}`)).toBe(true);
+    expect(await call(admin)).toBe(true);
+  });
+
+  it('AC13 only an admin lifts a sign-in or TOTP code lock', async () => {
+    const unlock = (user: object) =>
+      allowed(() =>
+        payload.unlock({
+          collection: 'users',
+          data: { email: editor.email },
+          overrideAccess: false,
+          user,
+        } as never),
+      );
+    expect(await unlock(editor)).toBe(false);
+    // A password-only admin session must not lift the TOTP code lock it is guessing against.
+    expect(await unlock({ ...admin, _strategy: 'local-jwt', hasTotp: true })).toBe(false);
+    expect(await unlock(admin)).toBe(true);
   });
 });
