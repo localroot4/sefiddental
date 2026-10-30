@@ -145,7 +145,21 @@ export async function Emergency(props: {
                   {formatPhoneFa(landline)}
                 </span>
               </div>
-            ) : null}
+            ) : (
+              // Closed (JURY 5): the emergency call is one large thumb target where the open
+              // state has the clinic's, above the safety box with its inline 115 link. Never in
+              // [data-call-sheet] and never tracked, like that link (EM-D4).
+              <ButtonLink
+                size="lg"
+                variant="danger"
+                href="tel:115"
+                iconStart={<Icon name="phone" size="sm" />}
+                data-section="call-115"
+                className="mt-2 w-full md:w-auto"
+              >
+                {t('emergency.call115')}
+              </ButtonLink>
+            )}
           </header>
 
           <SafetyBox id="em-safety" />

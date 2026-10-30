@@ -75,7 +75,7 @@ const sections = (page: Page) =>
 
 /** 7.1 order; the self-care slot shows only with reviewed content (the QA fixture may add it). */
 function expected(state: State, found: Array<string | null>): string[] {
-  const order = ['hero', ...(CALL_FIRST.includes(state) ? ['call'] : []), 'safety', 'form'];
+  const order = ['hero', CALL_FIRST.includes(state) ? 'call' : 'call-115', 'safety', 'form'];
   return [...order, ...(found.includes('self-care') ? ['self-care'] : []), 'address'];
 }
 
@@ -500,4 +500,36 @@ test('T-EM12 the emergency link is in the footer, never a primary nav item or in
     await expect(page.locator(`header nav > ul > li > ${to}`), path).toHaveCount(0);
     await expect(page.locator(`[data-sticky-bar] ${to}`), path).toHaveCount(0);
   }
+});
+
+test('T-EM13 while closed a full-width «تماس با اورژانس ۱۱۵» button is in the first screen', async ({
+  browser,
+}, testInfo) => {
+  only(testInfo, 'phone-light', 'phone-dark', 'desktop-light');
+  for (const state of ['before-open', 'closed', 'holiday'] as const) {
+    const context = await clientAt(browser, state, {
+      viewport: { width: 390, height: 844 },
+      isMobile: true,
+      hasTouch: true,
+    });
+    const page = await context.newPage();
+    await open(page);
+    const call = page.locator('[data-section="call-115"]');
+    await expect(call, state).toHaveText(t('emergency.call115'));
+    await expect(call, state).toHaveAttribute('href', 'tel:115');
+    const box = (await call.boundingBox())!;
+    const width = await page.locator('[data-section="hero"]').evaluate((el) => el.clientWidth);
+    expect(box.height, state).toBeGreaterThanOrEqual(44);
+    expect(box.width, state).toBeGreaterThanOrEqual(width - 1);
+    expect(box.y + box.height, state).toBeLessThanOrEqual(844);
+    // Like the safety box's link: no closed-hours sheet and no event can hold the call back.
+    expect(await call.evaluate((el) => el.closest('[data-call-sheet], [data-track]'))).toBeNull();
+    await context.close();
+  }
+  // Open: the clinic's call takes the slot, and no 115 button.
+  const context = await clientAt(browser, 'open');
+  const page = await context.newPage();
+  await open(page);
+  await expect(page.locator('[data-section="call-115"]')).toHaveCount(0);
+  await context.close();
 });

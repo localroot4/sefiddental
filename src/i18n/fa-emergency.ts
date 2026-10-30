@@ -15,6 +15,8 @@ export const EMERGENCY_MESSAGES = {
   // 7.2 safety box; «اورژانس ۱۱۵» is the tel:115 link inside the heading (EM-B2).
   'emergency.safety.before': 'اگر یکی از این‌ها را دارید، همین حالا با',
   'emergency.safety.link': 'اورژانس ۱۱۵',
+  // DRAFT: the closed-hours call button above the safety box (JURY 5).
+  'emergency.call115': 'تماس با اورژانس ۱۱۵',
   'emergency.safety.after': 'تماس بگیرید یا به اورژانس نزدیک‌ترین بیمارستان بروید:',
   'emergency.safety.face':
     'ورم صورت به چشم یا گردن رسیده، چشم باز نمی‌شود یا دید چشم ناگهان مشکل پیدا کرده است.',

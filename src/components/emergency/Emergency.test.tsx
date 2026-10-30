@@ -84,9 +84,12 @@ describe('/اورژانس page (conversion.md 7, emergency spec 4)', () => {
     );
   });
 
-  it('T-EM1 closed: safety box first, the closed lead, no call button, no form intro', async () => {
+  it('T-EM1 closed: the 115 call, then the safety box, the closed lead, no clinic call, no form intro', async () => {
     const doc = await render(CLOSED);
-    expect(sections(doc)).toEqual(['hero', 'safety', 'form', 'address']);
+    expect(sections(doc)).toEqual(['hero', 'call-115', 'safety', 'form', 'address']);
+    const call = doc.querySelector('[data-section="call-115"]')!;
+    expect(call.getAttribute('href')).toBe('tel:115');
+    expect(call.closest('[data-call-sheet], [data-track]')).toBeNull();
     expect(doc.querySelector('[data-section="hero"] p')?.textContent).toBe(
       t('emergency.lead.closed'),
     );
@@ -103,12 +106,14 @@ describe('/اورژانس page (conversion.md 7, emergency spec 4)', () => {
   it('T-EM5 tel:115 is untracked and outside every call sheet; every clinic tel: is inside one', async () => {
     for (const clock of [OPEN, CLOSED]) {
       const doc = await render(clock);
-      const ems = doc.querySelectorAll('a[href="tel:115"]');
-      expect(ems).toHaveLength(1);
+      const ems = [...doc.querySelectorAll('a[href="tel:115"]')];
+      // Closed: the 115 button above the safety box too (JURY 5).
+      expect(ems.map((a) => a.textContent)).toEqual(
+        clock === OPEN ? ['اورژانس ۱۱۵'] : [t('emergency.call115'), 'اورژانس ۱۱۵'],
+      );
       for (const a of ems) {
         expect(a.closest('[data-call-sheet]')).toBeNull();
         expect(a.hasAttribute('data-track')).toBe(false);
-        expect(a.textContent).toBe('اورژانس ۱۱۵');
       }
       for (const a of doc.querySelectorAll('a[href^="tel:+98"]')) {
         expect(a.closest('[data-call-sheet]')).not.toBeNull();
