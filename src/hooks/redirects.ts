@@ -157,13 +157,18 @@ export const fromRule = (
   return true;
 };
 
+/** Any origin works as the base: only whether the target leaves it matters. */
+const SAME_SITE = 'https://site.invalid';
+
 export const toRule = (
   value: unknown,
   { data }: { data: Record<string, unknown> },
 ): true | string => {
   if (data.statusCode === '410') return true;
   if (typeof value !== 'string' || value === '') return 'مقصد را وارد کنید (به‌جز انتقال ۴۱۰).';
-  if (!value.startsWith('/') || value.startsWith('//')) {
+  // A URL parser reads `//x`, `/\x` and `/<tab>/x` (tabs and newlines are dropped) as another
+  // host: the target must resolve on the site's own origin, as the proxy's destination() checks.
+  if (!value.startsWith('/') || new URL(value, SAME_SITE).origin !== SAME_SITE) {
     return 'مقصد باید نشانی‌ای در همین سایت باشد و با / شروع شود.';
   }
   // A public Location header must never name the admin path; the message does not name it either.

@@ -105,4 +105,29 @@ describe('H-REDIRVALID toRule', () => {
     expect(rule('/admin')).toBe(true);
     expect(rule(`${ADMIN_ROUTE}-x`)).toBe(true);
   });
+
+  it('RH8 a target a browser reads as another host is refused; site paths pass (SEC-5)', () => {
+    const rule = (to: string) => toRule(to, { data: { statusCode: '301' } });
+    const refused = 'مقصد باید نشانی‌ای در همین سایت باشد و با / شروع شود.';
+    for (const to of [
+      '//evil.example/x',
+      '/\\evil.example',
+      '/\\/evil.example',
+      '/\t/evil.example',
+      '/\n/evil.example',
+      '/\r\n/evil.example',
+      'https://evil.example/',
+      'javascript:alert(1)',
+    ]) {
+      expect(rule(to), JSON.stringify(to)).toBe(refused);
+    }
+    for (const to of [
+      '/خدمات',
+      '/خدمات/ترمیم-دندان#سطح-ترمیم',
+      '/a/b?x=1',
+      '/%2F%2Fevil.example',
+    ]) {
+      expect(rule(to), to).toBe(true);
+    }
+  });
 });
