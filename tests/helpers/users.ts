@@ -10,7 +10,9 @@ export const E2E_USERS_FILE = '.data/e2e-users.json';
 export const E2E_TOTP_FILE = '.data/e2e-totp.json';
 
 const account = z.object({ email: z.email(), password: z.string().min(12) });
-const accountsSchema = z.object({ admin: account, editor: account });
+// guide: an admin only tests/e2e/admin-guide.spec.ts signs in with, so its TOTP enrollment never
+// races admin.spec.ts for the other two.
+const accountsSchema = z.object({ admin: account, editor: account, guide: account });
 
 export type E2eAccount = z.infer<typeof account>;
 export type E2eAccounts = z.infer<typeof accountsSchema>;

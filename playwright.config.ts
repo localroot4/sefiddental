@@ -110,7 +110,7 @@ const matrix = (['phone', 'tablet', 'desktop'] as const).flatMap((size) =>
       name: `${size}-${colorScheme}`,
       testDir: './tests/e2e',
       // Each of these files has its own project below.
-      testIgnore: [/[\\/]http[\\/]/, /admin\.spec\.ts/, /tier0\.spec\.ts/],
+      testIgnore: [/[\\/]http[\\/]/, /admin(-guide)?\.spec\.ts/, /tier0\.spec\.ts/],
       use: {
         ...devices['Desktop Chrome'],
         ...base,
@@ -175,7 +175,7 @@ export default defineConfig({
     {
       name: 'admin',
       testDir: './tests/e2e',
-      testMatch: /admin\.spec\.ts/,
+      testMatch: /admin(-guide)?\.spec\.ts/,
       retries: 0,
       use: { ...devices['Desktop Chrome'], ...base, ...VIEWPORTS.desktop, colorScheme: 'light' },
     },

@@ -1,4 +1,4 @@
-// Creates the e2e accounts (one admin, one editor) with fresh random passwords, removes their
+// Creates the e2e accounts (two admins, one editor) with fresh random passwords, removes their
 // TOTP enrollment, and writes the passwords to .data/e2e-users.json (gitignored, mode 0600) for
 // the e2e specs. No seeder creates users (spec-data section 2), and the first-user page is
 // blocked unless ALLOW_FIRST_USER=true. Every e2e run starts with unenrolled accounts, so the
@@ -37,13 +37,16 @@ const payload = await getPayload({ config });
 const accounts: E2eAccounts = {
   admin: { email: 'e2e-admin@sefid.test', password: randomBytes(32).toString('base64url') },
   editor: { email: 'e2e-editor@sefid.test', password: randomBytes(32).toString('base64url') },
+  guide: { email: 'e2e-guide@sefid.test', password: randomBytes(32).toString('base64url') },
 };
-const names = { admin: 'مدیر آزمون', editor: 'ویراستار آزمون' } as const;
+const names = { admin: 'مدیر آزمون', editor: 'ویراستار آزمون', guide: 'مدیر راهنما' } as const;
+const roles = { admin: 'admin', editor: 'editor', guide: 'admin' } as const;
 const context = { skipAudit: true, skipRevalidate: true };
 
 // Admin first: the first account of an empty database is always an admin.
-for (const role of ['admin', 'editor'] as const) {
-  const { email, password } = accounts[role];
+for (const key of ['admin', 'editor', 'guide'] as const) {
+  const { email, password } = accounts[key];
+  const role = roles[key];
   const found = await payload.find({
     collection: 'users',
     where: { email: { equals: email } },
@@ -62,7 +65,7 @@ for (const role of ['admin', 'editor'] as const) {
   } else {
     await payload.create({
       collection: 'users',
-      data: { email, password, name: names[role], role },
+      data: { email, password, name: names[key], role },
       context,
     });
   }
@@ -74,6 +77,10 @@ writeFileSync(file, `${JSON.stringify(accounts, null, 2)}\n`, { mode: 0o600 });
 chmodSync(file, 0o600);
 // TOTP secrets of the previous run belong to enrollments removed above.
 rmSync(path.resolve(process.cwd(), E2E_TOTP_FILE), { force: true });
-payload.logger.info(`e2e accounts ready: ${accounts.admin.email}, ${accounts.editor.email}`);
+payload.logger.info(
+  `e2e accounts ready: ${Object.values(accounts)
+    .map((a) => a.email)
+    .join(', ')}`,
+);
 // Close the database pool, or `payload run` keeps the process alive on Postgres.
 await payload.destroy();
