@@ -1,0 +1,80 @@
+# Hourly watch of the clinic's server (docs/deploy.md 3.6). deploy/vps/watch-check.sh, from
+# GitHub, so also from outside Iran: GET <SITE_URL>/api/health, then `sudo sefid-status --check`
+# over SSH (backup age and result, cron tick, free disk, certificate, health on loopback). The
+# site follows PHASE in deploy/vps/server.env. A failure is checked again after 2 minutes, so a
+# restart during a deploy raises no alarm. What still fails goes to one open issue labelled "incident"
+# (deploy/vps/watch-incident.sh): GitHub mails it to whoever watches the repository, and the
+# issue closes itself on recovery. The run stays green when it could report: the issue is the
+# alert, and a red scheduled run would mail again every hour.
+name: Watch
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      force_failure:
+        description: Add one failure on purpose, to test the incident issue
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: Health, backup, cron, disk and certificate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Checks (public health, then sefid-status --check over SSH)
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          FORCE_FAILURE: ${{ inputs.force_failure }}
+        run: |
+          set -a
+          # shellcheck disable=SC1091
+          . deploy/vps/server.env
+          set +a
+          echo "SITE_URL=$SITE_URL" >> "$GITHUB_ENV"
+          # The key goes into an agent, never into a file (as in server.yml).
+          dir="$RUNNER_TEMP/ssh"
+          install -d -m 700 "$dir"
+          eval "$(ssh-agent -s -a "$dir/agent.sock")" > /dev/null
+          trap 'kill "$SSH_AGENT_PID" 2> /dev/null || true; rm -rf "$dir"' EXIT
+          KEY=0
+          if [ -n "$SERVER_SSH_KEY" ] && printf '%s\n' "$SERVER_SSH_KEY" | tr -d '\r' | SSH_ASKPASS_REQUIRE=never ssh-add -q - 2> /dev/null; then KEY=1; fi
+          export KEY
+          deploy/vps/watch-check.sh > "$RUNNER_TEMP/failures"
+          if [ -s "$RUNNER_TEMP/failures" ]; then
+            cat "$RUNNER_TEMP/failures"
+            echo "checking again in 2 minutes"
+            sleep 120
+            deploy/vps/watch-check.sh > "$RUNNER_TEMP/failures"
+          fi
+          if [ -s "$RUNNER_TEMP/failures" ]; then
+            while read -r line; do echo "::warning::$line"; done < "$RUNNER_TEMP/failures"
+          else
+            echo "every check passed for $SITE_URL"
+          fi
+
+      - name: Incident issue (open, comment or close)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: deploy/vps/watch-incident.sh "$RUNNER_TEMP/failures" "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" "$SITE_URL"

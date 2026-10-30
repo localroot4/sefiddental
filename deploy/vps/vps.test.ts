@@ -49,6 +49,8 @@ const ok = (cmd: string, args: string[]) => run(cmd, args).status === 0;
 const SHELL_FILES = [
   'provision.sh',
   'server.env',
+  'watch-check.sh',
+  'watch-incident.sh',
   'files/usr/local/lib/sefid/common.sh',
   ...readdirSync(SBIN).map((f) => `files/usr/local/sbin/${f}`),
 ];
@@ -970,5 +972,155 @@ describe('off-site wiring', () => {
     const rule = 'age1[qpzry9x8gf2tvdw0s3jn54khce6mua7l]{58}$';
     expect(read('files/usr/local/sbin/sefid-offsite')).toContain(`^${rule}`);
     expect(read('../../.github/workflows/server.yml')).toContain(`^${rule}`);
+  });
+});
+
+describe('watch-incident.sh', { timeout: 30_000 }, () => {
+  it('VPS28 one open issue per incident: open, comment on a change only, close on recovery', () => {
+    const dir = tmp();
+    mkdirSync(`${dir}/bin`);
+    // gh over a state folder: "open" holds the open issue number, issue.json its body and
+    // comments, on which "issue view" runs the script's --jq filter with jq.
+    writeFileSync(
+      `${dir}/bin/gh`,
+      `#!/usr/bin/env bash
+s="${dir}"
+body=; filter=; prev=; for a in "$@"; do [ "$prev" = --body ] && body=$a; [ "$prev" = --jq ] && filter=$a; prev=$a; done
+case "$1 $2" in
+  "issue list") cat "$s/open" 2>/dev/null || true ;;
+  "label create") echo "label $3" >> "$s/calls" ;;
+  "issue create") echo 7 > "$s/open"; jq -n --arg b "$body" '{body: $b, comments: []}' > "$s/issue.json"
+    echo "create" >> "$s/calls"; echo https://github.com/o/r/issues/7 ;;
+  "issue view") jq -r "$filter" "$s/issue.json" ;;
+  "issue comment") echo "comment $3" >> "$s/calls"
+    jq --arg b "$body" '.comments += [{author: {login: "github-actions"}, body: $b}]' "$s/issue.json" > "$s/new.json"
+    mv "$s/new.json" "$s/issue.json" ;;
+  "issue close") : > "$s/open"; echo "close $3" >> "$s/calls" ;;
+  *) echo "gh: unexpected $*" >&2; exit 1 ;;
+esac`,
+    );
+    chmodSync(`${dir}/bin/gh`, 0o755);
+    const watch = (failures: string) => {
+      writeFileSync(`${dir}/failures`, failures);
+      const r = run(
+        path.join(DIR, 'watch-incident.sh'),
+        [`${dir}/failures`, 'https://github.com/o/r/actions/runs/1', 'https://new.sefiddental.ir'],
+        { PATH: `${dir}/bin:${process.env.PATH}` },
+      );
+      expect(r.stderr).toBe('');
+      expect(r.status).toBe(0);
+      return r.stdout.trim();
+    };
+    const calls = () => (existsSync(`${dir}/calls`) ? readFileSync(`${dir}/calls`, 'utf8') : '');
+    const issue = () =>
+      JSON.parse(readFileSync(`${dir}/issue.json`, 'utf8')) as {
+        body: string;
+        comments: { author: { login: string }; body: string }[];
+      };
+    const SAME = 'incident #7: the same failures as its last report, no new comment';
+    const CHANGED = 'incident #7: commented the changed failures';
+
+    expect(watch('')).toBe('every check passed: no incident');
+    expect(calls()).toBe('');
+    // Two runs with force_failure: the run id in letters makes the second one a change.
+    expect(watch('FAIL forced: the input force_failure (run BC)\n')).toBe(
+      'opened https://github.com/o/r/issues/7',
+    );
+    expect(calls()).toBe('label incident\ncreate\n');
+    const { body } = issue();
+    expect(body).toContain(
+      'on https://new.sefiddental.ir:\n\n```\nFAIL forced: the input force_failure (run BC)\n```',
+    );
+    expect(body).toContain('Run: https://github.com/o/r/actions/runs/1');
+    expect(body).toMatch(/<!-- watch:[0-9a-f]{16} -->/);
+    expect(watch('FAIL forced: the input force_failure (run BC)\n')).toBe(SAME);
+    expect(watch('FAIL forced: the input force_failure (run BD)\n')).toBe(CHANGED);
+    // Numbers that grow every hour are the same failure: no comment each hour.
+    const stale = (h: number) =>
+      `FAIL backup: the newest nightly dump is ${h} h old (limit 26 h): /var/backups/sefid/db/x.dump\n`;
+    expect(watch(stale(27))).toBe(CHANGED);
+    expect(watch(stale(28))).toBe(SAME);
+    // A public comment by someone else that carries the marker of the next failures does not
+    // silence them.
+    const disk = 'FAIL disk: / has 9 % free (limit 15 %)\n';
+    const sig = createHash('sha256')
+      .update(disk.replace(/[0-9]+/g, 'N'))
+      .digest('hex')
+      .slice(0, 16);
+    const spoofed = issue();
+    spoofed.comments.push({ author: { login: 'mallory' }, body: `ok <!-- watch:${sig} -->` });
+    writeFileSync(`${dir}/issue.json`, JSON.stringify(spoofed));
+    expect(watch(disk)).toBe(CHANGED);
+    expect(issue().comments.at(-1)!.body).toContain(`<!-- watch:${sig} -->`);
+    expect(watch(disk)).toBe(SAME);
+    expect(calls()).toBe('label incident\ncreate\ncomment 7\ncomment 7\ncomment 7\n');
+    expect(watch('')).toBe('every check passed: closed incident #7');
+    expect(calls()).toMatch(/comment 7\nclose 7\n$/);
+    expect(watch('')).toBe('every check passed: no incident');
+  });
+});
+
+describe('watch-check.sh', { timeout: 30_000 }, () => {
+  it('VPS29 one line per failed check; an old server without --check is a failure', () => {
+    const dir = tmp();
+    mkdirSync(`${dir}/bin`);
+    const stub = (name: string, body: string) => {
+      writeFileSync(`${dir}/bin/${name}`, `#!/usr/bin/env bash\n${body}\n`);
+      chmodSync(`${dir}/bin/${name}`, 0o755);
+    };
+    stub(
+      'curl',
+      'if [ "$FAKE_PUBLIC" = down ]; then echo "curl: (28) timed out" >&2; printf 000; exit 28; fi; printf 200',
+    );
+    stub(
+      'ssh',
+      `echo "ssh $*" >> "${dir}/calls"
+case $FAKE_SSH in
+  ok) echo "ok: backup, cron, disk, certificate and health" ;;
+  old) echo "===== health ====="; echo "HTTP 200" ;;
+  fail) echo "FAIL cron: the last successful tick was 9 min ago"; echo "FAIL disk: / has 9 % free (limit 15 %)"; exit 1 ;;
+  sudo) echo "sudo: a password is required"; exit 1 ;;
+  *) echo "ssh: connect to host 2.144.23.111 port 22: Connection timed out"; exit 255 ;;
+esac`,
+    );
+    const check = (env: Record<string, string>) => {
+      const r = run(path.join(DIR, 'watch-check.sh'), [], {
+        PATH: `${dir}/bin:${process.env.PATH}`,
+        SITE_URL: 'https://new.sefiddental.ir',
+        SSH_USER: 'deploy',
+        SERVER_HOST: '2.144.23.111',
+        KEY: '1',
+        FORCE_FAILURE: 'false',
+        GITHUB_RUN_ID: '1290',
+        ...env,
+      });
+      expect(r.stderr).toBe('');
+      expect(r.status).toBe(0);
+      return r.stdout;
+    };
+    expect(check({ FAKE_SSH: 'ok' })).toBe('');
+    expect(readFileSync(`${dir}/calls`, 'utf8')).toContain(
+      '-o StrictHostKeyChecking=yes -o UserKnownHostsFile=known_hosts',
+    );
+    expect(readFileSync(`${dir}/calls`, 'utf8')).toMatch(
+      / deploy@2\.144\.23\.111 sudo sefid-status --check\n$/,
+    );
+    expect(check({ FAKE_SSH: 'old' })).toBe(
+      'FAIL server: sefid-status --check printed no ok line (run provision)\n',
+    );
+    expect(check({ FAKE_SSH: 'fail' })).toBe(
+      'FAIL cron: the last successful tick was 9 min ago\nFAIL disk: / has 9 % free (limit 15 %)\n',
+    );
+    expect(check({ FAKE_SSH: 'sudo' })).toBe(
+      'FAIL server: sefid-status --check exited 1: sudo: a password is required\n',
+    );
+    expect(check({ FAKE_SSH: 'none', FAKE_PUBLIC: 'down' })).toBe(
+      'FAIL public: https://new.sefiddental.ir/api/health answered HTTP 000 from GitHub curl: (28) timed out\n' +
+        'FAIL ssh: no connection to 2.144.23.111: ssh: connect to host 2.144.23.111 port 22: Connection timed out\n',
+    );
+    expect(check({ KEY: '0', FORCE_FAILURE: 'true' })).toBe(
+      'FAIL ssh: the secret SERVER_SSH_KEY is empty or not a private key without a passphrase\n' +
+        'FAIL forced: the input force_failure (run BCJA)\n',
+    );
   });
 });
