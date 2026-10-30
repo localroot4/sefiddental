@@ -852,6 +852,9 @@ test('T-AD26 a scheduled publish shows on its day in the calendar, for the edito
     .locator('.react-datepicker__time-list-item:not(.react-datepicker__time-list-item--disabled)')
     .first()
     .click();
+  // Close the calendar first, as a reader does: open, it can cover the save button.
+  await drawer.getByRole('heading', { level: 2 }).click();
+  await expect(page.locator('.react-datepicker-popper')).toHaveCount(0);
   await page.locator('#scheduled-publish-save').click();
   await expect(drawer.locator('.schedule-publish__upcoming tbody tr')).toHaveCount(1);
 
