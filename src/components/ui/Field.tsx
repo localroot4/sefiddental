@@ -158,6 +158,9 @@ export function Chip({
         className={cx(
           'inline-flex min-h-target items-center gap-1 rounded-pill border-[1.5px] border-line-strong bg-surface-raised px-4 text-small font-medium transition-colors',
           'group-hover/chip:border-brand peer-checked:border-brand peer-checked:bg-brand-soft peer-checked:text-brand-strong',
+          // Not colour alone (WCAG 1.4.1): an inset ring doubles the chosen chip's edge, inside
+          // the same box (a wider border would move the row: Chrome rounds 1.5 px down to 1).
+          'peer-checked:shadow-[inset_0_0_0_1.5px_var(--color-brand)]',
           'outline-offset-2 outline-focus peer-focus-visible:outline-2',
           className,
         )}
