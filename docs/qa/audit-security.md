@@ -7,8 +7,7 @@ the article approval access; the preview path is removed by lane SURFACE).
 Result: **no high or critical finding open.** Three medium findings stay open until other
 lanes and the owner act: SEC-1 and SEC-2 (the public `Server` workflow, lane OPS) and SEC-7
 (admin lock-out from a public e-mail, owner and OPS). No past run log leaked a secret
-(section 8). Of the four low findings, two are fixed here and two are handed to the integrator
-with a ready change (section 10). Severity follows impact on patient data, the admin and the
+(section 8). The four low findings are fixed (section 10). Severity follows impact on patient data, the admin and the
 live site.
 
 ## 0. Threat model
@@ -89,7 +88,7 @@ everywhere (TS1 to TS3). `r c u d` = read, create, update, delete; `t` = trash o
 | media | none (files public, trashed files 404) | r c u (live only) | r c u d | MS3, MS5, MS8 |
 | bookings | none | r c u; never d; phone and kind admin-only | r c u d | AC8, **AC10** |
 | redirects | none | none | r c u d; import endpoint | AC2, AC4, R14 |
-| users | none | own row r u; role admin-only; never unlock | r c u; d others, never self; unlock | AC2, AC6, **AC11**, **AC13** |
+| users | none | own row r u; role admin-only; never unlock | r c u; d others, never self; unlock | AC2, AC6, **AC11**, **AC13**, **AC14** (no JWT in answers) |
 | events-daily, sms-throttle, audit-log | none | none | r only | **AC9** |
 | payload-jobs, payload-kv, totp-attempts | none | none | none (server code only) | **AC9** |
 | payload-preferences, payload-locked-documents | none | own rows (Payload) | own rows | Payload defaults |
@@ -153,7 +152,7 @@ covers them. The notifier test action (1 / min) is covered by NT14. nginx adds
 | `sefid-flash` | `Secure; HttpOnly; SameSite=Lax`, 10 min, AES-256-GCM sealed |
 
 Payload writes `Secure=true; HttpOnly=true`; browsers read the attribute names and ignore the
-value (RFC 6265 5.2.5, 5.2.6). The login and `/api/users/me` bodies also carry the JWT: SEC-4.
+value (RFC 6265 5.2.5, 5.2.6). The login, `/api/users/me`, refresh and reset bodies carry no JWT since SEC-4 was fixed.
 
 ## 7. Dependencies
 
@@ -201,8 +200,8 @@ value (RFC 6265 5.2.5, 5.2.6). The login and `/api/users/me` bodies also carry t
 | SEC-1 | Medium | The `Server` workflow log is public. The `run` action prints the command and its output, and `logs` prints 300 app log lines; nothing masks `/etc/sefid/app.env`, so one `run` like `sudo cat /etc/sefid/app.env` would publish every server secret, and a `psql` query would publish patient data. No past log did (section 8). | Open, handed to OPS (`server.yml`, `p9/findings/sec.md`): `run` keeps its output out of the log (an `age`-encrypted artifact for the owner's key, as decision 2b), plus a mask of the secret values before every step that prints server output. A mask alone does not cover `base64` or patient data. |
 | SEC-2 | Medium | `SERVER_SSH_KEY` and `ADMIN_PASSWORD` are repository secrets: a workflow pushed on any branch reads them. Fork PRs cannot (checked), so this needs a collaborator account. | Handed to OPS and the owner: a GitHub Environment `server` limited to `main`, secrets moved there, `environment: server` on the job. |
 | SEC-3 | Low | The deployed preview had no scripted header check outside the server smoke test. | Fixed: workflow **Headers** and `scripts/check-headers.mjs` (T-CH1 to T-CH3). |
-| SEC-4 | Low | Login, `/api/users/me` and refresh answer the JWT in the JSON body, which a script on the admin origin could read despite `HttpOnly`. The strict script CSP makes such a script unlikely. | Handed to the integrator (`src/collections/Users.ts` has no wave 1 owner): `auth.removeTokenFromResponses: true`; nothing in the admin, `payload-totp` or the site reads the body token (checked). |
-| SEC-5 | Low | `toRule` accepts targets that a URL parser reads as another host: `/\host`, and `/` + tab + `/host` (the parser drops the tab). The proxy's `destination()` turns any off-site result into `/` (D1), so no visitor leaves the site, but the row is stored and the import shows it as «new». | Handed to the integrator (`src/hooks/redirects.ts`): refuse a `to` that `new URL(to, SITE_URL)` resolves to another origin, the same test as `destination()`. |
+| SEC-4 | Low | Login, `/api/users/me` and refresh answer the JWT in the JSON body, which a script on the admin origin could read despite `HttpOnly`. The strict script CSP makes such a script unlikely. | Fixed in `src/collections/Users.ts`: `auth.removeTokenFromResponses: true` (Payload 3.92 drops `token` from login, me, refresh and reset-password answers, REST and Local API). Nothing reads the body token: the admin's auth provider only keeps it in memory and no component uses it, `payload-totp` sets its cookie itself (checked in the package sources). AC14 (shown red once); the admin e2e project (sign-in, TOTP enrollment and verification) passes with cookies only. |
+| SEC-5 | Low | `toRule` accepts targets that a URL parser reads as another host: `/\host`, and `/` + tab + `/host` (the parser drops the tab). The proxy's `destination()` turns any off-site result into `/` (D1), so no visitor leaves the site, but the row is stored and the import shows it as «new». | Fixed in `src/hooks/redirects.ts`: `toRule` refuses a `to` that a URL parser resolves to another origin (`//x`, `/\x`, `/\/x`, `/` + tab, newline or CR + `/x`, absolute and `javascript:` URLs), the same test as `destination()`. The admin form and the CSV import share the rule. RH8 (shown red once). |
 | SEC-6 | Low | The CSV import read the whole body before its 4 MiB check and counted UTF-16 units, so a Persian file up to about 8 MiB passed, and a chunked body was read whole. Admin only. | Fixed in `src/admin/redirects/importEndpoint.ts` with the shared `readTextCapped` (declared size first, then a stream read that stops at the limit); SA5 covers the three cases. |
 | SEC-7 | Medium | Five wrong passwords or codes lock an account for 15 minutes, so anyone who knows an admin's e-mail can keep that account locked from rotating addresses. The only admin's e-mail is public in the `first-admin` run log of 2026-10-26, and `first-admin` and `reset-admin` print it again on every run. | Open, owner and OPS (`p9/findings/sec.md`): delete that run's log; sign in with an e-mail that is not published; take the admin e-mail from a secret instead of an input; a fail2ban jail on repeated 401s of `/api/users/login`. The lock itself stays: it is the brute-force defence. |
 | SEC-8 | Info | Without SMTP (gap 55) Payload logs «Email attempted… To: '<e-mail>'» for a password reset, so a staff e-mail can reach a public `logs` run. | Covered by the SEC-1 fix plus SMTP at launch. |
@@ -241,7 +240,7 @@ First pass, eight points, each resolved:
 | SEC-6 still read a chunked body whole, and a non-numeric `Content-Length` skipped the check | Fixed with `readTextCapped`; SA5 adds the chunked case (shown red once) |
 | The SEC-1 mask misses `base64`, new names and patient data | SEC-1 fix now keeps `run` output out of the log; the mask stays as a second layer |
 | The headers check passed when an expected cookie was missing | `scripts/check-headers.mjs` now names the cookies each route must set (T-CH3); the session cookie flags are asserted in e2e T-HD11 |
-| SEC-5's backslash rule misses `/`+tab+`/host` | The proposed fix compares the resolved origin, as `destination()` does |
+| SEC-5's backslash rule misses `/`+tab+`/host` | The fix compares the resolved origin, as `destination()` does (applied in a later round, RH8) |
 | `users.unlock` was not in the matrix | AC13 (shown red once) |
 | The result line hid the open medium findings | Rewritten |
 
