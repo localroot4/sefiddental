@@ -908,7 +908,7 @@ Visitors --- https ---> nginx :443 (TLS, headers, body caps) ---> localhost:3000
    pastes output 1 is an open decision (below).
 4. `ADMIN_PASSWORD`: the integrator makes a random temporary password with
    `openssl rand -base64 18` and stores it with
-   `gh secret set ADMIN_PASSWORD`. Users rules: at least 12 characters,
+   `gh secret set ADMIN_PASSWORD --env server`. Users rules: at least 12 characters,
    without the part of the e-mail before `@`. The integrator tells it to the
    client by phone, never in the e-mail or chat that carries the admin's
    e-mail. The client changes it at the first sign-in (3.3).
@@ -970,24 +970,42 @@ EOF
   runs `cat /etc/ssh/ssh_host_ed25519_key.pub` in the web console and sends
   the line; the integrator commits it in `deploy/vps/known_hosts`.
 
-Who controls the server: `SERVER_SSH_KEY` is root on the server, and every
-workflow run in this repository can read repository secrets, on any branch.
-Whoever can push to the repository can push a workflow that prints the key:
-every collaborator with write access is an admin of the server, and so is a
-stolen token with the `workflow` scope. The main-only check in the workflow
-guards against a mistake, not an attack. Close the gap when the plan allows
-it (GitHub Pro or Team for a private repository):
+Who controls the server: `SERVER_SSH_KEY` is root on the server. A repository
+secret reaches every workflow run in this repository, on any branch: whoever
+can push a workflow (a collaborator with write access, or a stolen token with
+the `workflow` scope) could print the key. The jobs that use the server's
+secrets therefore run in the environment `server`: the job `server` of
+`server.yml` (all actions, the weekly off-site copy included) and the job of
+`watch.yml`. `vps-smoke` uses no secret and no environment. Environments,
+their secrets and deployment branch rules are free for public repositories.
+The owner, once:
 
-1. Create the environment `production` (Settings, Environments) with the
-   deployment branch rule "main" only.
-2. Add `environment: production` to the job `server` of
-   `.github/workflows/server.yml`, not to `vps-smoke` (it uses no secret).
-3. Move `SERVER_SSH_KEY` and `ADMIN_PASSWORD` from the repository secrets to
-   the environment.
-4. Add a ruleset on main: a pull request is required, force pushes are
+1. Settings, Environments: open `server` (the first run of a workflow
+   creates it) or create it with "New environment".
+2. "Deployment branches and tags": "Selected branches and tags", add the
+   rule `main`.
+3. "Environment secrets": add `SERVER_SSH_KEY`, `ADMIN_EMAIL` (the admin's
+   sign-in e-mail) and, only while it is needed, `ADMIN_PASSWORD` (3.2
+   item 4).
+4. Settings, Secrets and variables, Actions: delete the repository secrets
+   `SERVER_SSH_KEY` and `ADMIN_PASSWORD`.
+5. Add a ruleset on main: a pull request is required, force pushes are
    blocked.
 
-Until then, keep the collaborators with write access to the minimum.
+Until steps 1 to 4 are done, the workflows keep working with the repository
+secrets: a run that names an environment which does not exist creates it
+without protection rules or secrets, and a job then reads the repository
+secrets; an environment secret wins only where one of the same name exists.
+GitHub Docs: "Managing environments for deployment" (an environment created
+by a workflow "will not have any protection rules or secrets configured")
+and "Secrets" reference ("the environment-level secret takes precedence").
+Only `deploy` records a deployment (`deployment: false` for every other
+action and for "Watch"); the branch rule holds either way.
+
+The log of every run is public. The step after the connection masks every
+secret of `/etc/sefid/app.env`, the database password as a URL part included,
+before any step prints server output. A mask cannot catch patient data or an
+encoded secret: the input `command` of `run` says so.
 
 ### 3.3 First release
 
@@ -1000,8 +1018,10 @@ action at a time, in this order:
    names.
 2. `deploy`. The log ends with the health JSON; `version` is the commit.
 3. `seed`. The log shows the line `seed: mode create-only ...`.
-4. `first-admin` with the input `email` set to the clinic's admin e-mail. The
-   log shows `first-admin: <email> created`.
+4. `first-admin` with the environment secret `ADMIN_EMAIL` set to the
+   clinic's admin e-mail. The log shows `first-admin: *** created`: the
+   address stays out of the public log, so nobody can lock the account with
+   wrong passwords on purpose.
 5. The client adds the A record `new.sefiddental.ir` to `2.144.23.111`
    (section 4). Wait for its TTL.
 6. `cert`. It stops with a clear message while the name does not resolve to
@@ -1010,9 +1030,10 @@ action at a time, in this order:
    with the temporary password, sets up the TOTP code, changes the password,
    and opens «وضعیت سیستم». Every row of «پیکربندی» must be green except
    «ارسال ایمیل»: it stays red while no SMTP server is set (3.9).
-8. The integrator deletes the secret: `gh secret delete ADMIN_PASSWORD`. It
-   held the admin's password, and `first-admin` runs once. `reset-admin`
-   (3.4) sets a new one when it is needed.
+8. The integrator deletes the secret:
+   `gh secret delete ADMIN_PASSWORD --env server`. It held the admin's
+   password, and `first-admin` runs once. `reset-admin` (3.4) sets a new one
+   when it is needed.
 
 Before step 6, nginx serves the snakeoil certificate. Test with
 `curl --resolve new.sefiddental.ir:443:2.144.23.111 -k`.
@@ -1032,8 +1053,8 @@ Input `action`:
 | `provision` | Copies `deploy/vps/` to the server and runs `provision.sh` as root in a systemd unit; its output shows when it ends. Safe to run any number of times. It never deletes data, keeps the secrets, and rewrites the other values of `/etc/sefid/app.env` from `server.env`. |
 | `cert` | `sefid-cert`: checks that every name of `DOMAINS` resolves to the server only (local and public resolvers, AAAA too), runs certbot in webroot mode, points nginx at the certificate and reloads it. The packaged `certbot.timer` renews; a deploy hook reloads nginx. |
 | `seed` | The seeder in `create-only` mode. Media files first, then rows: a pass on a scratch SQLite database writes every media file, the files go to `/var/lib/sefid/media`, then the pass on the server's database writes the rows. That pass writes into an empty folder, so its files keep the names of the first pass; the run fails if it wrote a file the first pass did not. A failed copy never leaves a row without its file. Restarts the app at the end, because the app caches reads in memory. Through the tunnel the first seed can take long: the job waits up to 30 minutes for output (`PAYLOAD_STALL_MS`) and runs up to 120 minutes. |
-| `first-admin` | `npm run first-admin` with `ADMIN_EMAIL` from the input `email` and `ADMIN_PASSWORD` from the secret. Creates an admin only when no account exists. Prints the e-mail and `created` or `skipped: users exist`, never the password. |
-| `reset-admin` | For a lost password, a lost TOTP phone or a locked account. `npm run reset-admin -- <email>` with the input `email`: the password becomes the value of the secret `ADMIN_PASSWORD`, the TOTP secret is removed and the sign-in lock lifted. Prints `reset-admin: <email> reset`, never the password. Before the run the integrator sets a new temporary `ADMIN_PASSWORD` and tells it to the admin by phone. The admin signs in, changes the password and sets up TOTP again; then the integrator deletes the secret. |
+| `first-admin` | `npm run first-admin` with the secrets `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Creates an admin only when no account exists. Prints `created` or `skipped: users exist`; the log masks the e-mail and never shows the password. |
+| `reset-admin` | For a lost password, a lost TOTP phone or a locked account. `npm run reset-admin -- <email>` with the secret `ADMIN_EMAIL`: the password becomes the value of the secret `ADMIN_PASSWORD`, the TOTP secret is removed and the sign-in lock lifted. Prints `reset-admin: *** reset` (the log masks the e-mail), never the password. Before the run the integrator sets a new temporary `ADMIN_PASSWORD` and tells it to the admin by phone. The admin signs in, changes the password and sets up TOTP again; then the integrator deletes the secret. |
 | `backup` | `sefid-backup manual` (3.6). |
 | `restart` | Restarts `sefid.service` and waits for `/api/health` 200. |
 | `rollback` | `sefid-release rollback` in a systemd unit: back to the previous release, with the same health check (section 5). |
@@ -1061,7 +1082,9 @@ Rules:
   cancelled or the connection drops, the unit still finishes, a switch back
   included. To read one later, run `run` with
   `sudo journalctl -u 'sefid-release-*' -n 200 --no-pager`.
-- No step prints a secret, and no step runs `set -x`.
+- No step prints a secret, and no step runs `set -x`. The log is public:
+  the step after the connection masks every secret of
+  `/etc/sefid/app.env` (3.2, "Who controls the server").
 
 ### 3.5 Server layout
 
@@ -1322,8 +1345,12 @@ packages: a red or slow `vps-smoke` can come from there (3.9).
 - nginx's error log keeps full client addresses for up to 2 days (2.11), while
   the privacy page says a form never keeps the IP address. The privacy
   sentence stays with gap 54.
-- Open items: who pastes the SSH key (3.2, open decision); GitHub
-  environment protection (3.2, "Who controls the server"); the off-site
+- Open items: who pastes the SSH key (3.2, open decision); the owner's
+  steps for the environment `server` (3.2, "Who controls the server"); a
+  fail2ban jail on failed admin sign-ins: the access log keeps only the
+  shortened client address (2.11), so a ban could hit a whole /24, which
+  behind Iran's mobile carrier NAT means many patients; the app's own sign-in
+  rate limit and the account lock stay the guard; the off-site
   copy of the media folder (the VM snapshot covers it until a bucket exists,
   3.6); media backups that copy only changed files (for
   example `rsync --link-dest` snapshots) instead of 14 full archives; SMTP
