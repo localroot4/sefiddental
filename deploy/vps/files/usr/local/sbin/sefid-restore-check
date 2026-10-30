@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+# Restore drill (docs/deploy.md 6.1). Touches the scratch database sefid_restore_check only,
+# never the database sefid.
+#
+#   sefid-restore-check [DUMP]    DUMP: a sefid-*.dump in /var/backups/sefid/db (default: the newest)
+#
+# 1. Restores DUMP into a new sefid_restore_check (as in 6.1 step 6) and compares the row count
+#    of every table with the rows the dump holds.
+# 2. Starts the current release against it on loopback port 3009, with an empty media folder,
+#    until /api/health answers 200 (the start also runs any newer migration, 2.7).
+# 3. Unpacks the newest media archive into a temporary folder and compares its file count with
+#    the archive's list.
+# The scratch database, the scratch app and the temporary folder are removed at the end, also
+# after a failure. SEFID_RESTORE_CHECK_TAMPER=1 deletes one restored row before the comparison:
+# the smoke test uses it to prove that the comparison fails.
+set -Eeuo pipefail
+# shellcheck source=SCRIPTDIR/../lib/sefid/common.sh
+. "$(dirname "$(readlink -f "$0")")/../lib/sefid/common.sh"
+
+DB=sefid_restore_check
+PORT=3009
+UNIT=sefid-restore-check-app
+need_root "$@"
+
+dump=${1:-$(newest db 'sefid-*.dump' | cut -d ' ' -f 2-)}
+[ -n "$dump" ] || die "no dump in $SEFID_BACKUPS/db: run the action backup first"
+# Only a dump of this server's backup folder; a relative path counts from where it was called.
+real=$(readlink -f -- "$dump") || true
+[[ -f $real && ${real%/*} == "$(readlink -f -- "$SEFID_BACKUPS")/db" && ${real##*/} == sefid-*.dump ]] ||
+  die "$dump is not a file sefid-*.dump in $SEFID_BACKUPS/db"
+dump=$real
+cd /
+pg() { runuser -u postgres -- "$@"; }
+
+# Room: twice the live database plus the media archive (photos barely compress). The server
+# has one disk, which holds both PostgreSQL and /var/tmp.
+media_line=$(newest media 'media-*.tar.gz')
+media=${media_line#* }
+need=$(pg psql -X -At -d postgres -c "SELECT pg_database_size('sefid')")
+if [ -n "$media_line" ]; then need=$((need + $(stat -c %s "$media"))); fi
+need=$((need * 2))
+free=$(df --output=avail -B1 /var/tmp | tail -n 1 | tr -d ' ')
+[ "$free" -ge "$need" ] ||
+  die "only $((free >> 20)) MiB free; the drill needs $((need >> 20)) MiB (twice the database and the media folder)"
+
+tmp=$(mktemp -d /var/tmp/sefid-restore-check.XXXXXX)
+chmod 0755 "$tmp"
+cleanup() {
+  systemctl stop "$UNIT" 2>/dev/null || true
+  pg dropdb --if-exists --force "$DB" || echo "ERROR: drop the scratch database by hand: sudo -u postgres dropdb --force $DB" >&2
+  rm -rf "$tmp"
+}
+trap cleanup EXIT
+# A run that was killed leaves its scratch database behind.
+pg dropdb --if-exists --force "$DB"
+
+say "dump: $dump ($(du -h "$dump" | cut -f 1))"
+# Rows per table in the dump: the lines of each COPY block (COPY text escapes newlines in values).
+# shortcut: a table name with a space breaks the fields; Payload creates none, quote-aware parsing then.
+pg_restore --data-only --file=- "$dump" |
+  awk '/^COPY / { t = $2; n = 0; inside = 1; next }
+       inside && /^\\\.$/ { print t, n; inside = 0; next }
+       inside { n++ }' | sort >"$tmp/expected"
+[ -s "$tmp/expected" ] || die "the dump holds no table data"
+
+pg createdb --owner=sefid "$DB"
+pg pg_restore --role=sefid --no-owner --no-privileges --exit-on-error --single-transaction \
+  --dbname="$DB" <"$dump"
+if [ "${SEFID_RESTORE_CHECK_TAMPER-}" = 1 ]; then
+  t=$(awk '$2 > 0 { print $1; exit }' "$tmp/expected")
+  pg psql -X -q -v ON_ERROR_STOP=1 -d "$DB" -c "DELETE FROM $t WHERE ctid IN (SELECT ctid FROM $t LIMIT 1)"
+  say "SEFID_RESTORE_CHECK_TAMPER=1: deleted one row of $t in $DB"
+fi
+# One query per table; a single quote in a name is doubled inside the literal.
+while read -r t _; do
+  printf "SELECT '%s', count(*) FROM %s;\n" "${t//\'/\'\'}" "$t"
+done <"$tmp/expected" | pg psql -X -At -F ' ' -v ON_ERROR_STOP=1 -d "$DB" | sort >"$tmp/restored"
+tables=$(wc -l <"$tmp/expected")
+if ! diff "$tmp/expected" "$tmp/restored" >"$tmp/diff"; then
+  sed -n 's/^< /in the dump: /p; s/^> /restored:    /p' "$tmp/diff" >&2
+  die "row counts differ between the dump and $DB (lines above)"
+fi
+say "row counts match for all $tables tables ($(awk '{ s += $2 } END { print s }' "$tmp/expected") rows)"
+
+# The current release against the scratch database. EnvironmentFile= lines later in the list
+# win, so the scratch file overrides app.env.
+url=$(env_get "$SEFID_ETC/app.env" DATABASE_URL)
+[[ $url == */sefid ]] || die "DATABASE_URL in $SEFID_ETC/app.env does not end in /sefid"
+origin=$(app_origin)
+origin=${origin%:*}:$PORT
+internal=$(env_get "$SEFID_ETC/app.env" INTERNAL_ORIGIN)
+install -d -m 0700 -o sefid -g sefid "$tmp/media"
+(
+  umask 077
+  printf 'DATABASE_URL=%s\nPORT=%s\nINTERNAL_ORIGIN=%s\nMEDIA_DIR=%s\nNODE_OPTIONS=%s\n' \
+    "${url%/sefid}/$DB" "$PORT" "${internal%:*}:$PORT" "$tmp/media" --max-old-space-size=384 >"$tmp/scratch.env"
+)
+systemd-run --quiet --collect --unit="$UNIT" -p User=sefid -p Group=sefid \
+  -p EnvironmentFile="$SEFID_ETC/app.env" -p EnvironmentFile="$SEFID_ROOT/current/release.env" \
+  -p EnvironmentFile="$tmp/scratch.env" -p WorkingDirectory="$SEFID_ROOT/current/app" \
+  -p MemoryMax=700M -p NoNewPrivileges=yes -p ProtectSystem=strict -p ReadWritePaths="$tmp/media" \
+  -p PrivateTmp=yes "$SEFID_ROOT/current/node/bin/node" "$SEFID_ROOT/current/app/server.js"
+code=
+for _ in $(seq "${SEFID_HEALTH_TIMEOUT:-120}"); do
+  out=$(curl -sS --max-time 5 -w '\n%{http_code}' "$origin/api/health" 2>&1) || true
+  code=${out##*$'\n'}
+  [ "$code" = 200 ] && break
+  sleep 1
+done
+if [ "$code" != 200 ]; then
+  journalctl -u "$UNIT" -n 40 --no-pager -o cat >&2 || true
+  die "the release did not answer /api/health 200 on $DB (HTTP ${code:-none}; its log above)"
+fi
+say "the current release runs on $DB: ${out%$'\n'*}"
+systemctl stop "$UNIT"
+
+if [ -z "$media_line" ]; then
+  say "media: no archive in $SEFID_BACKUPS/media"
+else
+  listed=$(tar -tvzf "$media" | grep -c '^-' || true)
+  install -d -m 0700 "$tmp/extract"
+  tar -xzf "$media" -C "$tmp/extract"
+  found=$(find "$tmp/extract" -type f | wc -l)
+  [ "$found" = "$listed" ] || die "media: $media lists $listed files, $found unpacked"
+  say "media: $media unpacked, $found files"
+fi
+say "restore drill passed; $DB and the unpacked copy are removed"

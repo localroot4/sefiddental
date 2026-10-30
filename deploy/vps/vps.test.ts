@@ -735,3 +735,168 @@ describe('cron tick marker', () => {
     );
   });
 });
+
+describe('sefid-restore-check', { timeout: 30_000 }, () => {
+  // pg_restore --data-only prints a COPY block per table, one line per row.
+  const COPY = [
+    'COPY public.a (id, note) FROM stdin;',
+    '1\tone',
+    '2\ttwo\\nlines',
+    '3\tthree',
+    '\\.',
+    '',
+    'COPY public.b (id) FROM stdin;',
+    '1',
+    '2',
+    '\\.',
+    '',
+    'COPY public.c (id) FROM stdin;',
+    '\\.',
+    '',
+  ].join('\n');
+
+  /** Stub PostgreSQL tools over a file of "table rows" lines that stands for the database. */
+  const server = () => {
+    const s = fakeServer();
+    const b = `${s.env.SEFID_BACKUPS}`;
+    mkdirSync(`${b}/db`, { recursive: true });
+    mkdirSync(`${b}/media`);
+    writeFileSync(`${b}/db/sefid-20261030T233000Z-nightly.dump`, 'PGDMP');
+    const files = `${s.dir}/files/media`;
+    mkdirSync(`${files}/sub`, { recursive: true });
+    writeFileSync(`${files}/one.jpg`, '1');
+    writeFileSync(`${files}/sub/two.jpg`, '2');
+    const media = `${b}/media/media-20261030T233000Z-nightly.tar.gz`;
+    expect(run('tar', ['-C', `${s.dir}/files`, '-czf', media, 'media']).status).toBe(0);
+    writeFileSync(`${s.dir}/copy.txt`, COPY);
+    writeFileSync(`${s.dir}/db.txt`, 'public.a 3\npublic.b 2\npublic.c 0\n');
+    writeFileSync(
+      `${s.etc}/app.env`,
+      'DATABASE_URL=postgres://sefid:abc@127.0.0.1:5432/sefid\nINTERNAL_ORIGIN=http://127.0.0.1:3000\n',
+    );
+    const log = `echo "\${0##*/} $*" >> "${s.dir}/calls"`;
+    s.stub('runuser', 'while [ "$1" != -- ]; do shift; done; shift; exec "$@"');
+    s.stub('createdb', log);
+    s.stub('dropdb', log);
+    s.stub(
+      'pg_restore',
+      `case " $* " in *' --data-only '*) cat "${s.dir}/copy.txt" ;; *) cat >/dev/null; ${log} ;; esac`,
+    );
+    s.stub(
+      'psql',
+      `case "$*" in
+  *pg_database_size*) echo 1000 ;;
+  *'DELETE FROM '*) ${log}
+    t=$(sed -n 's/.*DELETE FROM \\([^ ]*\\) .*/\\1/p' <<<"$*")
+    awk -v t="$t" '$1 == t { $2-- } { print }' "${s.dir}/db.txt" > "${s.dir}/db.new"
+    mv "${s.dir}/db.new" "${s.dir}/db.txt" ;;
+  *) while read -r line; do
+      t=$(sed -n 's/.* FROM \\(.*\\);$/\\1/p' <<<"$line")
+      awk -v t="$t" '$1 == t { print t, $2 }' "${s.dir}/db.txt"
+    done ;;
+esac`,
+    );
+    // Keeps a copy of the scratch environment, which the script removes at the end.
+    s.stub(
+      'systemd-run',
+      `${log}
+for a in "$@"; do case $a in EnvironmentFile=*scratch.env) cp "\${a#EnvironmentFile=}" "${s.dir}/scratch.env" ;; esac; done`,
+    );
+    s.stub(
+      'curl',
+      'if [ "$FAKE_HEALTH" = down ]; then printf "\\n000"; exit 7; fi; printf \'{"status":"ok"}\\n200\'',
+    );
+    // The test user cannot give files to the user sefid.
+    s.stub(
+      'install',
+      'a=(); while [ $# -gt 0 ]; do case $1 in -o | -g) shift 2 ;; *) a+=("$1"); shift ;; esac; done; exec /usr/bin/install "${a[@]}"',
+    );
+    const drill = (env: Record<string, string> = {}) =>
+      run(`${SBIN}/sefid-restore-check`, [], { ...s.env, SEFID_HEALTH_TIMEOUT: '1', ...env });
+    const lines = () => s.calls().trim().split('\n');
+    return { ...s, media, drill, lines };
+  };
+
+  it('VPS23 restores into the scratch database only, compares counts, starts the app, removes all', () => {
+    const s = server();
+    const r = s.drill();
+    expect(r.stderr).toBe('');
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain('==> row counts match for all 3 tables (5 rows)');
+    expect(r.stdout).toContain(
+      '==> the current release runs on sefid_restore_check: {"status":"ok"}',
+    );
+    expect(r.stdout).toContain(`==> media: ${s.media} unpacked, 2 files`);
+    const calls = s.lines();
+    expect(calls.filter((c) => /^(createdb|dropdb|pg_restore) /.test(c))).toEqual([
+      'dropdb --if-exists --force sefid_restore_check',
+      'createdb --owner=sefid sefid_restore_check',
+      'pg_restore --role=sefid --no-owner --no-privileges --exit-on-error --single-transaction --dbname=sefid_restore_check',
+      'dropdb --if-exists --force sefid_restore_check',
+    ]);
+    expect(calls).toContain('systemctl stop sefid-restore-check-app');
+    const scratch = readFileSync(`${s.dir}/scratch.env`, 'utf8');
+    expect(scratch).toContain(
+      'DATABASE_URL=postgres://sefid:abc@127.0.0.1:5432/sefid_restore_check\nPORT=3009\nINTERNAL_ORIGIN=http://127.0.0.1:3009\n',
+    );
+    // The scratch media folder, the unpacked archive and the scratch env are gone.
+    const media = /^MEDIA_DIR=(.*)\/media$/m.exec(scratch)![1]!;
+    expect(media).toMatch(/^\/var\/tmp\/sefid-restore-check\./);
+    expect(existsSync(media)).toBe(false);
+  });
+
+  it('VPS24 fails when a restored count differs, or the app does not answer, and still cleans up', () => {
+    const s = server();
+    const tampered = s.drill({ SEFID_RESTORE_CHECK_TAMPER: '1' });
+    expect(tampered.status).toBe(1);
+    expect(tampered.stderr).toContain('in the dump: public.a 3\nrestored:    public.a 2\n');
+    expect(tampered.stderr).toContain(
+      'ERROR: row counts differ between the dump and sefid_restore_check',
+    );
+    expect(s.lines().at(-1)).toBe('dropdb --if-exists --force sefid_restore_check');
+    expect(s.calls()).not.toContain('systemd-run');
+
+    const t = server();
+    const down = t.drill({ FAKE_HEALTH: 'down' });
+    expect(down.status).toBe(1);
+    expect(down.stderr).toContain(
+      'ERROR: the release did not answer /api/health 200 on sefid_restore_check (HTTP 000',
+    );
+    expect(t.lines().slice(-2)).toEqual([
+      'systemctl stop sefid-restore-check-app',
+      'dropdb --if-exists --force sefid_restore_check',
+    ]);
+    expect(
+      existsSync(
+        /^MEDIA_DIR=(.*)\/media$/m.exec(readFileSync(`${t.dir}/scratch.env`, 'utf8'))![1]!,
+      ),
+    ).toBe(false);
+  });
+
+  it('VPS30 refuses a dump outside the backup folder, also through a relative path', () => {
+    const s = server();
+    const ok = `${s.env.SEFID_BACKUPS}/db/sefid-20261030T233000Z-nightly.dump`;
+    writeFileSync(`${s.env.SEFID_BACKUPS}/media/sefid-x.dump`, 'PGDMP');
+    for (const bad of [
+      '/etc/passwd',
+      `${s.env.SEFID_BACKUPS}/media/sefid-x.dump`,
+      `${s.env.SEFID_BACKUPS}/db/../media/sefid-x.dump`,
+      path.relative(DIR, `${s.env.SEFID_BACKUPS}/media/sefid-x.dump`),
+      `${s.env.SEFID_BACKUPS}/db/missing.dump`,
+    ]) {
+      const r = run(`${SBIN}/sefid-restore-check`, [bad], s.env);
+      expect(r.status, bad).toBe(1);
+      expect(r.stderr).toContain(
+        `ERROR: ${bad} is not a file sefid-*.dump in ${s.env.SEFID_BACKUPS}/db`,
+      );
+    }
+    expect(s.calls()).not.toMatch(/createdb|pg_restore|dropdb/);
+    // The same dump through a relative path (from deploy/vps, where run() starts) is accepted.
+    const r = run(`${SBIN}/sefid-restore-check`, [path.relative(DIR, ok)], {
+      ...s.env,
+      SEFID_HEALTH_TIMEOUT: '1',
+    });
+    expect(r.stderr).toBe('');
+    expect(r.stdout).toContain(`==> dump: ${ok} (`);
+  });
+});
