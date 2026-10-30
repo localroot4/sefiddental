@@ -10,6 +10,7 @@ import { closeModals, setupDialogs } from './dialogs';
 import { setupDrawer } from './drawer';
 import { setupMegaMenu } from './megaMenu';
 import { setupSkipLink } from './skipLink';
+import { setupSnapFocus } from './snapFocus';
 import { setupStickyBar } from './stickyBar';
 
 /**
@@ -32,6 +33,7 @@ export function ChromeScripts(): null {
       setupBookingRoute(document),
       setupSkipLink(document),
       setupChoices(document),
+      setupSnapFocus(document),
     ];
     return () => {
       // A client navigation closes what the old page had open (the header logo is a next/link).

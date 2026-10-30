@@ -14,7 +14,7 @@
  * - From 1024 px without a pin (tier 1): the bento stays still. A line reveal cost 3 fps at 4x
  *   (56 against 59) and the section budget is 59, so the plan's tier-1 reveal is dropped.
  * - Under 1024 px (every tier, D6): the native snap row; a keyboard focus centres the focused
- *   world in the row; the bar under it follows the card in view through an IntersectionObserver
+ *   world in the row (chrome/snapFocus.ts); the bar under it follows the card in view through an IntersectionObserver
  *   (`scaleX` through `applyStyle`). The row's scroll container slides in the reading direction
  *   as it enters and the mark above it settles (phone spec scene 3, phone.ts Slide and Settle);
  *   the cards, their snap positions and the row's `scrollLeft` never move with the page scroll.
@@ -114,23 +114,21 @@ const scene: DomScene = {
     const n = p.worlds.length;
     const { wide, reduce } = ctx.conditions;
 
-    if (tl !== null || !wide) {
+    if (tl !== null) {
       // Rule B4: a link in an off-screen world scrolls nothing in a clipped rail: the page moves
-      // (pinned), or the row centres the world (the browser reveals the link's own box only and
-      // the mandatory snap then centres a neighbour). Keyboard focus only: a mousedown's focus
-      // must not move the world under the pointer before the click completes.
+      // to the pin position that shows the world. Keyboard focus only: a mousedown's focus must
+      // not move the world under the pointer before the click completes. The unpinned snap row
+      // is centred by the chrome (chrome/snapFocus.ts), at every tier.
       const onFocus = (event: FocusEvent): void => {
         const target = event.target;
         if (!(target instanceof HTMLElement) || !target.matches(':focus-visible')) return;
         const i = p.worlds.findIndex((world) => world.contains(target));
-        if (i < 0) return;
-        if (tl === null) p.worlds[i]?.scrollIntoView({ inline: 'center', block: 'nearest' });
+        if (i < 0 || !tl.scrollTrigger) return;
         // Immediate: an animated Lenis scroll still running at the next Tab overwrote the
         // browser's own focus scroll, which left a fast Tab into restoration off screen.
-        else if (tl.scrollTrigger)
-          ctx.engine.scrollTo(worldScrollY(tl.scrollTrigger.start, tl.scrollTrigger.end, i, n), {
-            immediate: true,
-          });
+        ctx.engine.scrollTo(worldScrollY(tl.scrollTrigger.start, tl.scrollTrigger.end, i, n), {
+          immediate: true,
+        });
       };
       p.track.addEventListener('focusin', onFocus);
       cleanups.push(() => p.track.removeEventListener('focusin', onFocus));

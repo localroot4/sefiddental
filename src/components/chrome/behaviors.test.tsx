@@ -6,6 +6,7 @@ import { setupClosedSheet } from './closedSheet';
 import { closeModals, setupDialogs } from './dialogs';
 import { getFormSession, renewFormSession } from './formSession';
 import { setupSkipLink } from './skipLink';
+import { setupSnapFocus } from './snapFocus';
 import { isTextField, setupStickyBar } from './stickyBar';
 
 // jsdom has no <dialog> methods, no IntersectionObserver and no layout: minimal stand-ins.
@@ -601,5 +602,40 @@ describe('chrome behaviors (nav spec 1.4-1.7, 4)', () => {
     const before = fetch.mock.calls.length;
     expect((await getFormSession())?.ts).toBe('v1.new.sig');
     expect(fetch.mock.calls.length).toBe(before);
+  });
+});
+
+describe('snap rows', () => {
+  it('CB21 a keyboard focus in a mandatory snap row centres its card; a tap focus or a row without overflow moves nothing', () => {
+    document.body.innerHTML = `
+      <div id="row" style="scroll-snap-type: x mandatory"><article id="card"><h3><a id="link" href="/x">x</a></h3></article></div>
+      <div id="flat" style="scroll-snap-type: x mandatory"><article id="still"><a id="other" href="/y">y</a></article></div>`;
+    const row = document.getElementById('row')!;
+    // jsdom has no layout: the first row overflows, the second does not.
+    Object.defineProperty(row, 'scrollWidth', { value: 900 });
+    Object.defineProperty(row, 'clientWidth', { value: 400 });
+    const scrolled: string[] = [];
+    // jsdom has no scrollIntoView at all.
+    Element.prototype.scrollIntoView = function record(
+      this: Element,
+      arg?: boolean | ScrollIntoViewOptions,
+    ) {
+      scrolled.push(`${this.id} ${JSON.stringify(arg)}`);
+    };
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollIntoView;
+    });
+    const keyboard = vi.spyOn(HTMLElement.prototype, 'matches').mockReturnValue(true);
+    onTestFinished(() => keyboard.mockRestore());
+    const stop = setupSnapFocus(document);
+    document.getElementById('link')!.focus();
+    expect(scrolled).toEqual(['card {"inline":"center","block":"nearest"}']);
+    document.getElementById('other')!.focus();
+    expect(scrolled).toHaveLength(1);
+    keyboard.mockReturnValue(false);
+    document.getElementById('link')!.blur();
+    document.getElementById('link')!.focus();
+    expect(scrolled).toHaveLength(1);
+    stop();
   });
 });

@@ -183,20 +183,13 @@ describe('services scene setup', () => {
     expect(bar.getAttribute('aria-valuenow')).toBe('1');
   });
 
-  it('under 1024 px: a keyboard focus centres its world in the row, a pointer focus does not', () => {
+  it('under 1024 px the scene leaves a keyboard focus to the chrome (chrome/snapFocus.ts, every tier)', () => {
     const ctx = context({ wide: false, pinned: false });
     const cleanup = scene.setup(ctx);
-    pointerFocus(link(ctx.el, '/a'));
-    expect(scrollIntoView).not.toHaveBeenCalled();
     keyboardFocus(link(ctx.el, '/b'));
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
-    expect(scrollIntoView).toHaveBeenCalledWith({ inline: 'center', block: 'nearest' });
-    expect(scrollIntoView.mock.contexts[0]).toBe(link(ctx.el, '/b').closest('article'));
+    expect(scrollIntoView).not.toHaveBeenCalled();
     expect(ctx.engine.scrollTo).not.toHaveBeenCalled();
-
     if (typeof cleanup === 'function') cleanup();
-    keyboardFocus(link(ctx.el, '/a'));
-    expect(scrollIntoView).toHaveBeenCalledTimes(1);
   });
 
   it('wide without a pin (tier 1): no morph, no bar, no focus handling', () => {
