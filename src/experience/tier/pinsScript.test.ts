@@ -129,7 +129,8 @@ describe('the inline pins latch (F2, F3)', () => {
                     if (expected) pinned += 1;
                   }
     expect(pinned).toBeGreaterThan(10);
-  });
+    // 6912 cases: about 2 s alone, past 5 s on a loaded host or under coverage.
+  }, 30_000);
 
   it('PS2 blocked storage reads as empty and never throws', () => {
     vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {
