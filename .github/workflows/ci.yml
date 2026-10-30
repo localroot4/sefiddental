@@ -73,7 +73,8 @@ jobs:
     timeout-minutes: 90
     services:
       postgres:
-        image: postgres:16
+        # The server's major (Ubuntu 26.04 ships 18, deploy.md 3.8): int and e2e test on it.
+        image: postgres:18
         env:
           POSTGRES_PASSWORD: postgres
           POSTGRES_DB: sefid_int

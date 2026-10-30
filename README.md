@@ -9,7 +9,7 @@ unknown path, and no public file (robots.txt, sitemaps, pages, scripts) names th
 ## Prerequisites
 
 - Node.js 22.23.4 or newer, or 24.22.1 or newer (`.nvmrc`: 22.23.4) and npm.
-- PostgreSQL 16, or a SQLite file for local work.
+- PostgreSQL 18 (CI tests on 18), or a SQLite file for local work.
 
 ## First setup
 
