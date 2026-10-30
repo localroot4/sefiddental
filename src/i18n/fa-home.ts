@@ -80,6 +80,9 @@ export const HOME_MESSAGES = {
   'home.services.photo': 'عکس ۴:۳ از نتیجهٔ یک درمان زیبایی، با رضایت کتبی بیمار',
   'home.restoration.legend': 'سطح ترمیم',
   'home.restoration.compare': 'مقایسهٔ کامل سه سطح ترمیم',
+  // The brief's tier facts in one line (services.yaml tier descriptions); no duration, no result.
+  'home.restoration.levels':
+    'معمولی: مواد متداول. VIP: مواد درجه‌یک، دقت بیشتر. CIP: VIP به‌علاوهٔ رنگ‌آمیزی جزئیات.',
   'home.cases.all': 'همهٔ نمونه‌ها',
   'home.dentists.all': 'همهٔ پزشکان',
   'home.dentists.title': 'دکتر',

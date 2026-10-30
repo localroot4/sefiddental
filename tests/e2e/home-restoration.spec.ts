@@ -461,7 +461,7 @@ test('T-RS5 ?tier=1 at 1440: no pin; a choice crossfades the molar through CSS',
   expect(await visibleCtaHref(page)).toBe('/رزرو-نوبت?service=restoration&tier=cip');
 });
 
-test('T-RS7 ?tier=2 at 1024x768: the pinned stage fits the viewport (molar stacked at 9rem, chips on one row, CTA and compare link in view)', async ({
+test('T-RS7 ?tier=2 at 1024x768: the pinned stage fits the viewport (molar stacked at 8rem, chips on one row, CTA and compare link in view)', async ({
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
@@ -474,7 +474,7 @@ test('T-RS7 ?tier=2 at 1024x768: the pinned stage fits the viewport (molar stack
     await scrollTo(page, stepY(range, step));
     await expect.poll(() => checkedKey(page)).toBe(key);
     const slot = scene(page).locator('[data-world-slot="molar"]');
-    expect((await slot.boundingBox())?.width).toBeCloseTo(144, 0);
+    expect((await slot.boundingBox())?.width).toBeCloseTo(128, 0);
     const chips = await scene(page).locator('fieldset label').all();
     const tops = await Promise.all(chips.map(async (c) => (await c.boundingBox())?.y ?? -1));
     expect(new Set(tops.map(Math.round)).size).toBe(1);

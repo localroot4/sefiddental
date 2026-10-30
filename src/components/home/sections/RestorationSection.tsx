@@ -70,7 +70,7 @@ export function RestorationSection(props: {
         <div className="grid gap-6 md:grid-cols-[auto_minmax(0,1fr)] md:gap-8 lg:grid-cols-1 xl:grid-cols-[auto_minmax(0,1fr)]">
           <MolarStepper className="justify-self-center md:justify-self-start" />
           <div className="grid content-start gap-6">
-            <fieldset className="min-w-0">
+            <fieldset className="min-w-0" aria-describedby="home-tiers-note">
               <legend className="sr-only">{t('home.restoration.legend')}</legend>
               <div className="flex flex-wrap gap-2">
                 {tiers.map((tier) => (
@@ -83,6 +83,11 @@ export function RestorationSection(props: {
                   />
                 ))}
               </div>
+              {/* What the levels differ in, before a chip is chosen (the brief's tier facts). One
+                  caption line at 1024 px, so the pinned stage still fits a 768 px viewport. */}
+              <p id="home-tiers-note" className="mt-2 text-caption text-ink-muted">
+                {ltr(t('home.restoration.levels'))}
+              </p>
             </fieldset>
             <div
               data-tier-panel=""

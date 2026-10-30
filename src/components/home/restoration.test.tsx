@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { setupChoices } from '@/components/chrome/choices';
 import { RestorationTiers, TIER_INPUT } from '@/components/services/RestorationTiers';
+import { t } from '@/i18n/fa';
 import { track } from '@/lib/track/track';
 import type { Service, ServiceTier } from '@/payload-types';
 
@@ -137,6 +138,22 @@ describe('home scene 4 tier step (F24, CV9)', () => {
     expect(vip.hasAttribute('data-booking-cta')).toBe(true);
     expect(new URL(vip.href).searchParams.get('service')).toBe('restoration');
     expect(vip.getAttribute('data-tier')).toBe('vip');
+  });
+
+  it('RS7 one plain line under the chips names what the levels differ in; the chip group points to it', () => {
+    const { container } = render(
+      <RestorationSection tiers={TIERS} path={null} copy={{ heading: 'h', intro: null }} />,
+    );
+    const group = container.querySelector('fieldset')!;
+    const note = container.querySelector(`#${group.getAttribute('aria-describedby')}`)!;
+    expect(group.contains(note)).toBe(true);
+    expect(note.textContent).toBe(t('home.restoration.levels'));
+    // The Latin level names are LTR islands in the Persian line.
+    expect([...note.querySelectorAll('bdi[dir="ltr"]')].map((el) => el.textContent)).toEqual([
+      'VIP',
+      'CIP',
+      'VIP',
+    ]);
   });
 
   it('RS6 the molar is three pre-colored sibling layers in one decorative slot, no style attribute (D16, CSP)', () => {

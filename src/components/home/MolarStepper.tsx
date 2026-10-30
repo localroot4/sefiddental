@@ -46,7 +46,7 @@ export function MolarStepper(props: { className?: string }) {
     <div
       data-world-slot="molar"
       aria-hidden="true"
-      className={`grid w-[10rem] md:w-[12rem] lg:w-[9rem] xl:w-[12rem] ${props.className ?? ''}`}
+      className={`grid w-[10rem] md:w-[12rem] lg:w-[8rem] xl:w-[12rem] ${props.className ?? ''}`}
     >
       {MOLAR_LEVELS.map(({ level, fill }, i) => (
         <svg
