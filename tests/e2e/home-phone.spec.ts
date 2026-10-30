@@ -36,6 +36,13 @@ const STATUS = '#light-notice-text';
 /** Scrub lag (0.32 s on coarse pointers) plus the settle window, with margin. */
 const SCRUB_WAIT_MS = 700;
 
+// Engine gate: the test drives the page through a Chrome DevTools Protocol session (CPU
+// throttling, touch input or the event listener registry), which WebKit and Firefox lack.
+const CDP_ONLY = 'needs a CDP session, Chromium only';
+// Engine gate: WebKit and Firefox report no layout-shift entries, so clsAll would read 0
+// without measuring anything.
+const NO_LAYOUT_SHIFT = 'layout-shift entries are Chromium only';
+
 function only(testInfo: TestInfo, ...projects: string[]): void {
   test.skip(!projects.includes(testInfo.project.name), `runs in ${projects.join(', ')}`);
 }
@@ -326,8 +333,10 @@ for (const [id, tier] of [
 
 test('T-PH3 ?tier=0: no engine chunk; after a full touch scroll nothing has an inline transform or opacity, every section is visible, and every scene box is where ?tier=1 puts it (D24)', async ({
   page,
+  browserName,
 }, testInfo) => {
   phoneOnly(testInfo);
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   const sceneBoxes = () =>
     page.locator('[data-scene], [data-home-section]').evaluateAll((els) =>
       els.map((el) => {
@@ -378,8 +387,10 @@ test('T-PH3 ?tier=0: no engine chunk; after a full touch scroll nothing has an i
 for (const tier of [0, 1, 2] as const) {
   test(`T-PH4 ?tier=${tier}: clsAll is 0 for a load and a full touch scroll`, async ({
     page,
+    browserName,
   }, testInfo) => {
     phoneOnly(testInfo);
+    test.skip(browserName !== 'chromium', CDP_ONLY);
     await recordClsAll(page);
     await page.goto(`/?tier=${tier}`);
     if (tier === 0) await page.waitForLoadState('load');
@@ -392,8 +403,10 @@ for (const tier of [0, 1, 2] as const) {
 
 test('T-PH4 ?tier=1: clsAll is 0 for a reload with the scroll restored at the voices section', async ({
   page,
+  browserName,
 }, testInfo) => {
   phoneOnly(testInfo);
+  test.skip(browserName !== 'chromium', NO_LAYOUT_SHIFT);
   await page.goto('/?tier=1');
   await scrollSetReady(page);
   const voices = await docTop(page, '[data-scene="voices"]');
@@ -409,8 +422,10 @@ test('T-PH4 ?tier=1: clsAll is 0 for a reload with the scroll restored at the vo
 
 test('T-PH5 a step-down mid-swipe: the engine waits for 1000 ms without scroll, the page holds still, the targets settle, and the stepped notice opens', async ({
   page,
+  browserName,
 }, testInfo) => {
   phoneOnly(testInfo);
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   await recordClsAll(page);
   await page.goto('/?tier=1&monitor=1&debug=1');
   await hookReady(page);
@@ -469,8 +484,10 @@ test('T-PH6 a weak phone at load (2 GB, no ?tier): no engine, no benchmark; the 
   browser,
   baseURL,
   colorScheme,
+  browserName,
 }, testInfo) => {
   phoneOnly(testInfo);
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   test.setTimeout(120_000);
   await weakPhone(page);
   const seen = watchRequests(page);
@@ -628,8 +645,10 @@ for (const [name, size, fontScale] of [
     browser,
     baseURL,
     colorScheme,
+    browserName,
   }, testInfo) => {
     phoneOnly(testInfo);
+    test.skip(browserName !== 'chromium', CDP_ONLY);
     const context = await phoneContext(browser, { baseURL, colorScheme }, { viewport: size });
     await weakPhone(context);
     if (fontScale !== 1) {
@@ -682,6 +701,7 @@ test('T-PH7 never shown: reduced motion, Save-Data, ?tier=0, a fine pointer with
   browser,
   baseURL,
   colorScheme,
+  browserName,
 }, testInfo) => {
   phoneOnly(testInfo);
   test.setTimeout(120_000);
@@ -731,6 +751,8 @@ test('T-PH7 never shown: reduced motion, Save-Data, ?tier=0, a fine pointer with
       await context.close();
     });
   }
+  // The step launches its own Chromium with --disable-webgl2; the engine runs install none.
+  if (browserName !== 'chromium') return;
   await test.step('a phone without WebGL 2', async () => {
     const noWebgl2 = await chromium.launch(noWebgl2Launch());
     try {
@@ -752,8 +774,10 @@ test('T-PH7 never shown: reduced motion, Save-Data, ?tier=0, a fine pointer with
 
 test('T-PH8 the light floor: the second stepped-down page view in 14 days makes the third start light, with the loaded notice', async ({
   context,
+  browserName,
 }, testInfo) => {
   phoneOnly(testInfo);
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   test.setTimeout(120_000);
   await skipIntroIn(context);
   await weakPhone(context, 8);
@@ -795,8 +819,10 @@ test('T-PH8 the light floor: the second stepped-down page view in 14 days makes 
 
 test('T-PH9 a block that grows during a swipe refreshes the triggers only after the swipe (200 ms after touchEnd), and the page never jumps back', async ({
   page,
+  browserName,
 }, testInfo) => {
   phoneOnly(testInfo);
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   // ScrollTrigger measures with the window at 0 and scrolls back: every refresh calls scrollTo
   // with y 0 (a proxy for its `refresh` event, which is internal to the engine chunk).
   await page.addInitScript(() => {
@@ -875,8 +901,10 @@ test('T-PH10 a touch tablet at ?tier=1 runs the scroll set; the full-bleed hero 
 
 test('T-PH11 the services row on card 3 keeps its scrollLeft while the page swipes through the Slide range', async ({
   page,
+  browserName,
 }, testInfo) => {
   phoneOnly(testInfo);
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   await page.goto('/?tier=1');
   await scrollSetReady(page);
   const height = viewportHeight(page);
@@ -902,8 +930,10 @@ test('T-PH11 the services row on card 3 keeps its scrollLeft while the page swip
 
 test('T-PH12 the idle ticker: with the debug flag a phone runs the DOM monitor, which samples only while the page scrolls; its frame loop and the tick subscribers are 0 at rest', async ({
   page,
+  browserName,
 }, testInfo) => {
   phoneOnly(testInfo);
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   const canvas: string[] = [];
   page.on('response', async (response) => {
     if (response.request().resourceType() !== 'script') return;

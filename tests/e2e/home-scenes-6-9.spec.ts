@@ -19,6 +19,10 @@ type Hook = {
 
 const MAX_PARALLAX_PX = 8;
 
+// Engine gate: the test drives the page through a Chrome DevTools Protocol session (CPU
+// throttling, touch input or the event listener registry), which WebKit and Firefox lack.
+const CDP_ONLY = 'needs a CDP session, Chromium only';
+
 function only(testInfo: TestInfo, ...projects: string[]): void {
   test.skip(!projects.includes(testInfo.project.name), `runs in ${projects.join(', ')}`);
 }
@@ -44,8 +48,10 @@ async function scrollTo(page: Page, selector: string, offset = 0): Promise<void>
     ([sel, off]) => {
       const el = document.querySelector(sel as string);
       if (!el) throw new Error(`no ${sel}`);
+      // Up to the next whole pixel: WebKit drops the fraction, which left T-S9 1 px short of
+      // the journey's top (--warm 0.998889, CI run 85).
       window.scrollTo({
-        top: el.getBoundingClientRect().top + window.scrollY + (off as number),
+        top: Math.ceil(el.getBoundingClientRect().top + window.scrollY + (off as number)),
         behavior: 'instant',
       });
     },
@@ -134,8 +140,10 @@ test('T-S6 the compare clip-path changes only from input, never from scroll; the
 
 test('T-S7 touch: no pointermove listener on the dentist cards; fine pointer at 1440: the portrait moves at most 8 px and rests on leave', async ({
   page,
+  browserName,
 }, testInfo) => {
   only(testInfo, 'desktop-light', 'phone-light');
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   await page.goto('/?debug=1&tier=2');
   await engineReady(page);
   const card = '[data-scene="dentists"] [role="region"] > *';
@@ -443,8 +451,10 @@ for (const [name, rowSel] of [
 ] as const) {
   test(`T-PH11 the ${name} row on card 3 keeps its scrollLeft while the page swipes through its Slide range`, async ({
     page,
+    browserName,
   }, testInfo) => {
     only(testInfo, 'phone-light', 'phone-dark');
+    test.skip(browserName !== 'chromium', CDP_ONLY);
     await page.goto('/?tier=1');
     await page.waitForLoadState('load');
     const height = page.viewportSize()?.height ?? 844;

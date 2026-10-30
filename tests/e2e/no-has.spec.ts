@@ -40,10 +40,15 @@ const style = (page: Page, selector: string, property: string, pseudo?: string) 
     [selector, property, pseudo ?? null] as const,
   );
 
-/** A focus that matches :focus-visible, as a Tab would give. */
+/**
+ * A keyboard focus (:focus-visible): Shift+Tab off the element and Tab back, as a reader does. A
+ * script focus followed by a key press is not enough in WebKit and Firefox after a click (CI run
+ * 85, T-NH5 and T-NH7): their heuristics look at the input that moved the focus.
+ */
 async function keyboardFocus(page: Page, selector: string): Promise<void> {
   await page.locator(selector).first().focus();
-  await page.keyboard.press('Shift');
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
   await expect(page.locator(selector).first()).toBeFocused();
   expect(
     await page

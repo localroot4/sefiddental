@@ -172,10 +172,12 @@ type TraceEvent = {
 test('T-IN1 fresh context: a modal before first paint, ends by itself under 1400 ms, leaves after the end; no large paint while the frame opens', async ({
   page,
   browser,
+  browserName,
 }, testInfo) => {
   await recordIntro(page);
-  // The paint check reads a devtools trace (Chromium only; one project is enough).
-  const tracing = testInfo.project.name === 'desktop-light';
+  // The paint check reads a devtools trace (Chromium only; one project is enough). The other
+  // engines still check the modal, its timing and its exit.
+  const tracing = testInfo.project.name === 'desktop-light' && browserName === 'chromium';
   if (tracing) {
     await browser.startTracing(page, {
       categories: [

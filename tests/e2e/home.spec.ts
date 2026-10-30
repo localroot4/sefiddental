@@ -257,8 +257,13 @@ test('T-HOME6 the home HTML holds no token, timestamp or hours sentence', async 
   }
 });
 
-test('T-HOME7 no layout shift when the form session arrives', async ({ page }, testInfo) => {
+test('T-HOME7 no layout shift when the form session arrives', async ({
+  page,
+  browserName,
+}, testInfo) => {
   only(testInfo, 'phone-light', 'phone-dark', 'tablet-light', 'desktop-light', 'desktop-dark');
+  // WebKit and Firefox report no layout-shift entries: the check would pass without measuring.
+  test.skip(browserName !== 'chromium', 'layout-shift entries are Chromium only');
   await recordShifts(page);
   // Hold the session answer until the block is on screen, and answer «calls allowed», so the
   // hours-dependent phone line fills in view (outside clinic hours it would stay empty).

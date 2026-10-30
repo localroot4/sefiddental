@@ -37,6 +37,10 @@ const HOME_TOLERANCE_MS = 300;
 /** The thresholds hold on the measurement host only (D19); CI records the numbers. */
 const PERF_GATE = process.env.PERF_GATE === '1';
 
+// Engine gate: the test drives the page through a Chrome DevTools Protocol session (CPU
+// throttling, touch input or the event listener registry), which WebKit and Firefox lack.
+const CDP_ONLY = 'needs a CDP session, Chromium only';
+
 function only(testInfo: TestInfo, ...projects: string[]): void {
   test.skip(!projects.includes(testInfo.project.name), `runs in ${projects.join(', ')}`);
 }
@@ -245,8 +249,10 @@ test('T-BF1 the block card is at opacity 1 and untransformed within 50 ms of a f
 
 test('T-BF2 INP of the block submit at 4x CPU through the Event Timing API (gate 200 ms with PERF_GATE=1)', async ({
   page,
+  browserName,
 }, testInfo) => {
   only(testInfo, 'desktop-light', 'phone-light');
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   const phone = testInfo.project.name === 'phone-light';
   // The `{ ok: true }` answer of tests/e2e/home.spec.ts: the success state, no stored booking.
   await page.route(
@@ -359,8 +365,10 @@ test('T-BF3 the Draggable chunk loads only once the footer is within one viewpor
 
 test('T-BF4 drop on enter, mouse drag and throw inside the field, home 6 s after the last interaction', async ({
   page,
+  browserName,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   const errors = watchConsoleErrors(page);
   // No `?debug=1`: the overlay sits over the field's start corner, where the mark rests.
   await page.goto('/?tier=1');
@@ -435,8 +443,10 @@ test('T-BF4 drop on enter, mouse drag and throw inside the field, home 6 s after
 test.describe('390 px touch', () => {
   test('T-BF5 a touch drag moves a part; the parts rest on the inline-end half and a swipe on the inline-start half scrolls the page', async ({
     page,
+    browserName,
   }, testInfo) => {
     only(testInfo, 'phone-light');
+    test.skip(browserName !== 'chromium', CDP_ONLY);
     await page.goto('/?tier=1');
     await page.waitForLoadState('load');
     await scrollToStage(page);

@@ -18,6 +18,10 @@ const TRACK = `${SCENE} [data-track]`;
 const MORPH_LIMIT_KIB = 12;
 const LONG_TASK_MS = 100;
 
+// Engine gate: the test drives the page through a Chrome DevTools Protocol session (CPU
+// throttling, touch input or the event listener registry), which WebKit and Firefox lack.
+const CDP_ONLY = 'needs a CDP session, Chromium only';
+
 function only(testInfo: TestInfo, ...projects: string[]): void {
   test.skip(!projects.includes(testInfo.project.name), `runs in ${projects.join(', ')}`);
 }
@@ -193,8 +197,10 @@ test('T-SV7 at 1280x720 the pinned track is at least twice the rail and «همه
 
 test('T-SV3 the MorphSVG chunk loads only at ?tier=2 from 1024 px, after load, once per page view, within 12 KiB and without a long task before the first morph at 4x', async ({
   page,
+  browserName,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  test.skip(browserName !== 'chromium', CDP_ONLY);
   const morph = watchScripts(page, 'MorphSVG');
   const intoScene = () =>
     page.evaluate(() => {

@@ -95,9 +95,16 @@ export async function captureTemplate(
   const dir = qaScreenshotDir();
   // fullPage false for a dialog or a first screen: what the viewer sees, where they see it.
   // animations 'allow' for a mid-animation state the test has paused itself (the intro).
+  const fullPage = opts.fullPage ?? true;
+  // WebKit refuses a capture over 32767 px on a side: a tall page at 3x is taken at CSS scale.
+  const tooTall =
+    fullPage &&
+    page.context().browser()?.browserType().name() === 'webkit' &&
+    (await page.evaluate(() => document.documentElement.scrollHeight * devicePixelRatio > 32767));
   const body = await page.screenshot({
-    fullPage: opts.fullPage ?? true,
+    fullPage,
     animations: opts.animations ?? 'disabled',
+    scale: tooTall ? 'css' : 'device',
   });
   // Lossless recompression halves the committed files (a 390 px page is 1170 px wide at 3x).
   if (dir) {
