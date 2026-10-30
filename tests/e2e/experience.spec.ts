@@ -5,6 +5,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 import { skipIntro } from '../helpers/intro';
+import { needsWebgl2 } from '../helpers/webgl';
 
 /** The layer is portalled to body; mount timing comes from a MutationObserver set before load. */
 async function recordLayerMount(page: Page): Promise<void> {
@@ -111,6 +112,7 @@ test.beforeEach(({}, testInfo) => {
 test('T-EX1 P1 the canvas host mounts only after load, and three.js loads only after load', async ({
   page,
 }) => {
+  await needsWebgl2(page);
   await holdLoad(page);
   await recordLayerMount(page);
   const webgl = watchScripts(page);
@@ -201,6 +203,7 @@ test('T-EX2 ?tier=N fixes the tier; ?tier=0 never mounts a canvas or fetches thr
 test('T-EX3 P8 no overlay without ?debug=1; with it the overlay shows fps, tier, DPR, memory', async ({
   page,
 }) => {
+  await needsWebgl2(page);
   await page.goto('/');
   await page.waitForLoadState('load');
   await page.waitForTimeout(1000);

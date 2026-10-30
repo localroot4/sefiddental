@@ -8,6 +8,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 import { skipIntro } from '../helpers/intro';
+import { needsWebgl2 } from '../helpers/webgl';
 
 type Hook = { snapshot(): { labels: string[] } };
 
@@ -111,6 +112,7 @@ test('T-WF1 ?tier=2 at 1440: the stage pins +200 vh under the header and step i 
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?debug=1&tier=2');
   await engineReady(page);
   await expect.poll(async () => (await geometry(page)).start).not.toBeNull();
@@ -143,6 +145,7 @@ test('T-WF2 a fast back-scroll and a mid-pin resize leave the transforms within 
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?debug=1&tier=2');
   await engineReady(page);
   await expect.poll(async () => (await geometry(page)).start).not.toBeNull();
@@ -310,6 +313,7 @@ test('T-WF4 the scene is one section between restoration and compare, with its w
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?debug=1&tier=2');
   await engineReady(page);
   const scenes = await page

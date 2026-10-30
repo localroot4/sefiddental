@@ -9,6 +9,7 @@ import { t } from '@/i18n/fa';
 import { formsHydrated, recordBeacons } from '../helpers/booking';
 import { watchConsoleErrors } from '../helpers/console';
 import { skipIntro } from '../helpers/intro';
+import { needsWebgl2 } from '../helpers/webgl';
 
 interface Snapshot {
   tier: number;
@@ -118,6 +119,7 @@ test('T-EN1 one label per present scene in document order; progress is monotonic
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?debug=1&tier=2');
   await engineReady(page);
   const snap = await snapshot(page);
@@ -147,6 +149,7 @@ test('T-EN2 a route change tears the engine down: a soft navigation away and bac
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   // Every site link is a document load except the header's home link (next/link): the soft
   // route changes of this site are content page -> home, back and forward. The tier comes from
   // the saved «کیفیت» choice and the debug flag from the session, so `/` matches `/?tier=2`.
@@ -208,6 +211,7 @@ test('T-EN3 reduced motion toggled mid-scene gives the tier-0 page and keeps the
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?debug=1&tier=2');
   await engineReady(page);
   await scrollIntoScene(page, 'services');
@@ -221,6 +225,7 @@ test('T-EN4 a «کیفیت» change mid-scroll keeps the reader at the footer; 0
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   // A `?tier=` query outranks the saved «کیفیت» choice (qualityTier precedence), so the tier
   // comes from the saved choice here, as it does for a real reader.
   await page.addInitScript(() => localStorage.setItem('sefid-quality', '2'));
@@ -242,6 +247,7 @@ test('T-EN4b a «کیفیت» change from 1 to 3 (the pins arrive) keeps the rea
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.addInitScript(() => localStorage.setItem('sefid-quality', '1'));
   await page.goto('/?debug=1');
   await engineReady(page);
@@ -285,6 +291,7 @@ test('T-EN4c a reload at voices (tier 2, after every pin) keeps the reader there
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?tier=2');
   await engineCreated(page);
   // The voices top at the viewport top, where an in-page link or the engine's scrollTo puts it.
@@ -325,6 +332,7 @@ test('T-EN4d a reload inside each pin (tier 2) lands at the same progress of tha
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   const pinPlace = async (scene: string) => {
     const { start, length } = await pinRange(page, scene);
     const y = await page.evaluate(() => window.scrollY);
@@ -363,6 +371,7 @@ test('T-EN4e a reload inside each pin (tier 2) paints the pinned frame from the 
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await recordShifts(page);
   for (const scene of ['services', 'restoration', 'workflow']) {
     await page.goto('/?tier=2');
@@ -441,6 +450,7 @@ test('T-EN4g auto mode with a cached GPU answer (a returning visitor): a reload 
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await hardwareGpu(page, 2);
   await recordShifts(page);
   for (const scene of ['services', 'restoration', 'workflow']) {
@@ -471,6 +481,7 @@ test('T-EN4h a first visit in auto mode whose probe answers before the engine ch
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await hardwareGpu(page, null);
   await recordShifts(page);
   // Hold the engine chunk (the script that carries ScrollTrigger) until the probe has answered.
@@ -571,6 +582,7 @@ test('T-EN7 the header «رزرو نوبت» lands on the booking block through 
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?debug=1&tier=2');
   await engineReady(page);
   await formsHydrated(page);

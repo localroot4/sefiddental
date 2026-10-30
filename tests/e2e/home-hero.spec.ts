@@ -4,6 +4,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 import { skipIntro } from '../helpers/intro';
+import { needsWebgl2 } from '../helpers/webgl';
 
 const HERO = '[data-scene="hero"]';
 const PHOTO = `${HERO} [data-hero-photo]`;
@@ -106,6 +107,7 @@ test.describe('without the intro', () => {
     page,
   }, testInfo) => {
     only(testInfo, 'desktop-light');
+    await needsWebgl2(page);
     await page.goto('/?tier=2');
     await waitForEngine(page);
     const section = page.locator(HERO);

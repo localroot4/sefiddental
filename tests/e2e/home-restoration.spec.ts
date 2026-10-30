@@ -9,6 +9,7 @@ import { expect, test, type Locator, type Page, type TestInfo } from '@playwrigh
 
 import { recordBeacons } from '../helpers/booking';
 import { skipIntro } from '../helpers/intro';
+import { needsWebgl2 } from '../helpers/webgl';
 
 const BOOK = 'رزرو نوبت';
 const STEPS = ['standard', 'vip', 'cip'] as const;
@@ -120,6 +121,7 @@ test('T-RS1 ?tier=2 at 1440: the pin selects معمولی, VIP, CIP in order wit
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   const beacons = await recordBeacons(page);
   await page.goto('/?tier=2');
   await page.evaluate(() => document.fonts.ready);
@@ -170,6 +172,7 @@ test('T-RS6 a chip checked before the engine keeps its layer until the scroll ta
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   // Hold the engine chunk (the script that carries ScrollTrigger) until a chip is checked.
   let release = (): void => {};
   const held = new Promise<void>((resolve) => {
@@ -221,6 +224,7 @@ test('T-RS2 a chip click inside the pin sends tier_select once and scrolls to th
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   const beacons = await recordBeacons(page);
   await page.goto('/?tier=2');
   const range = await pinRange(page);
@@ -245,6 +249,7 @@ test('T-RS3 arrow keys move the step, scroll to it and keep the focused chip in 
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   const beacons = await recordBeacons(page);
   await page.goto('/?tier=2');
   const range = await pinRange(page);
@@ -285,6 +290,7 @@ test('T-RS8 arrow keys and then a fast Tab out of the pin keep every focused ele
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?tier=2');
   const range = await pinRange(page);
   await scrollTo(page, range.start + 10);
@@ -450,6 +456,7 @@ test('T-RS5 ?tier=1 at 1440: no pin; a choice crossfades the molar through CSS',
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?tier=1');
   await expect(page.locator('[data-world-slot="molar"][data-motion]')).toHaveCount(1);
   await expect(scene(page).locator(':scope > [data-pin-room]')).toBeHidden();
@@ -465,6 +472,7 @@ test('T-RS7 ?tier=2 at 1024x768: the pinned stage fits the viewport (molar stack
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.goto('/?tier=2');
   await page.evaluate(() => document.fonts.ready);
@@ -490,6 +498,7 @@ test('T-RS11 ?tier=2 at 1440x900 and 1024x768: the «رزرو نوبت» keeps i
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   for (const [width, height] of [
     [1440, 900],
     [1024, 768],
@@ -517,6 +526,7 @@ test("T-RS10 ?tier=2: Tab after the chosen chip lands on that step's visible «�
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?tier=2');
   const range = await pinRange(page);
   await scrollTo(page, stepY(range, 1));

@@ -11,6 +11,7 @@ import { expectNoA11yViolations } from '../helpers/axe';
 import { recordBeacons } from '../helpers/booking';
 import { scrollThrough } from '../helpers/frames';
 import { skipIntro } from '../helpers/intro';
+import { needsWebgl2 } from '../helpers/webgl';
 
 type Hook = {
   snapshot(): { labels: string[]; layout: { latchedAtTier: number } };
@@ -98,6 +99,7 @@ test('T-S6 the compare clip-path changes only from input, never from scroll; the
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light', 'phone-light');
+  await needsWebgl2(page);
   const beacons = await recordBeacons(page);
   await page.goto('/?debug=1&tier=2');
   await engineReady(page);
@@ -181,6 +183,7 @@ test('T-S8 the voices row: a snap row (under 1024 px at every tier, D24), 44 px 
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light', 'phone-light');
+  await needsWebgl2(page);
   const phone = testInfo.project.name === 'phone-light';
   const media: string[] = [];
   page.on('request', (request) => {
@@ -318,6 +321,7 @@ test("T-S9 the warm layer fills the viewport, --warm scrubs across the journey's
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?debug=1&tier=1');
   await engineReady(page);
   const layer = '[data-warm-layer]';
@@ -375,6 +379,7 @@ test('T-S11 a deep link at the dentists: the cards the reader already sees never
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   const card = '[data-scene="dentists"] [role="region"] > *';
   await page.addInitScript((sel) => {
     const samples: number[] = [];
@@ -405,6 +410,7 @@ test('T-S10 engine chunk size with scenes 6 to 9 inside (annotation for the repo
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   const sizes = new Map<string, number>();
   page.on('response', async (response) => {
     if (response.request().resourceType() !== 'script') return;

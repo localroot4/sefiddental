@@ -9,6 +9,7 @@ import { t } from '@/i18n/fa';
 
 import { throttleCpu } from '../helpers/cpu';
 import { skipIntro } from '../helpers/intro';
+import { needsWebgl2 } from '../helpers/webgl';
 
 const SCENE = '[data-scene="services"]';
 /** The pin's room: the scroll distance after the sticky stage, display none without pins. */
@@ -107,6 +108,7 @@ test('T-SV1 at ?tier=2 the stage pins: the first world at the start edge, the la
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?tier=2');
   const { start, end } = await pinRange(page);
   await scrollTo(page, start);
@@ -146,6 +148,7 @@ test('T-SV2 a resize from 1440 to 1280 at the midpoint leaves the track where a 
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?tier=2');
   const wide = await pinRange(page);
   await scrollTo(page, Math.round((wide.start + wide.end) / 2));
@@ -174,6 +177,7 @@ test('T-SV7 at 1280x720 the pinned track is at least twice the rail and «همه
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/?tier=2');
   const { start, end } = await pinRange(page);
@@ -397,6 +401,7 @@ test('T-SV5 keyboard in the pin: a Tab to the fourth world scrolls the page so t
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?tier=2');
   const { start, end } = await pinRange(page);
   await scrollTo(page, start);
@@ -458,6 +463,7 @@ test('T-SV6 a theme switch mid-pin leaves the track transform unchanged', async 
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?tier=2');
   const { start, end } = await pinRange(page);
   await scrollTo(page, Math.round((start + end) / 2));

@@ -13,6 +13,7 @@ import { watchConsoleErrors } from '../helpers/console';
 import { throttleCpu } from '../helpers/cpu';
 import { sampleFrames } from '../helpers/frames';
 import { skipIntro } from '../helpers/intro';
+import { needsWebgl2 } from '../helpers/webgl';
 
 interface Snapshot {
   tier: number;
@@ -212,6 +213,7 @@ test('T-BF1 the block card is at opacity 1 and untransformed within 50 ms of a f
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light', 'phone-light');
+  await needsWebgl2(page);
   await page.goto('/?tier=1');
   await formsHydrated(page);
   // One and a half screens above the card: near enough for a phone's deferred setup (phone spec
@@ -321,6 +323,7 @@ test('T-BF3 the Draggable chunk loads only once the footer is within one viewpor
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   // The plugin chunk alone names InertiaPlugin (the debug overlay chunk names Draggable).
   const scripts = watchScripts(page, 'InertiaPlugin');
   await page.goto('/?tier=1');
@@ -544,6 +547,7 @@ test('T-BF9 390 touch: «پخش دوباره» keeps its box at every tier (D24)
 
 test('T-BF6 «پخش دوباره» by keyboard replays the drop', async ({ page }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?debug=1&tier=1');
   await engineReady(page);
   await scrollToStage(page);
@@ -560,6 +564,7 @@ test('T-BF7 a relatch to tier 0 and a route change leave no Draggable and no tra
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   // The saved choice decides the tier (a `?tier=` query would outrank the control).
   await page.addInitScript(() => {
     localStorage.setItem('sefid-quality', '1');
@@ -609,6 +614,7 @@ test('T-BF8 the «کیفیت» radios move html[data-tier] at once, keep the foo
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?debug=1');
   await page.waitForLoadState('load');
   await scrollToStage(page);
