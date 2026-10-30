@@ -7,9 +7,10 @@
 import { expect, test, type APIResponse } from '@playwright/test';
 
 import { INTRO_SCRIPT, INTRO_SCRIPT_SHA256 } from '@/lib/intro/introScript';
-import { ADMIN_ROUTE } from '@/lib/paths';
+import { ADMIN_ROUTE, PAGE_PATHS } from '@/lib/paths';
 
 import { requireRoutes } from '../../helpers/pending';
+import { e2eAccounts } from '../../helpers/users';
 
 const STATIC_SET: Record<string, string> = {
   'x-content-type-options': 'nosniff',
@@ -228,4 +229,40 @@ test('T-HD10 the old /admin paths answer exactly like an unknown path: branded 4
     expect(heading(html), path).toBe(heading(unknownHtml));
     expect(html, path).not.toContain(ADMIN_ROUTE);
   }
+});
+
+// Phase 9 security audit (docs/qa/audit-security.md section 6): the session and form cookies.
+test('T-HD11 the session cookie is HttpOnly, Secure and SameSite=Strict; the form cookie Lax', async ({
+  request,
+}) => {
+  const attrs = (line: string | undefined) =>
+    (line ?? '')
+      .split(';')
+      .slice(1)
+      .map((a) => a.trim().toLowerCase().split('=')[0]);
+  const sameSite = (line: string | undefined) => /samesite=(\w+)/i.exec(line ?? '')?.[1];
+  const cookie = (response: APIResponse, name: string) =>
+    response
+      .headersArray()
+      .filter((h) => h.name.toLowerCase() === 'set-cookie')
+      .map((h) => h.value)
+      .find((v) => v.startsWith(`${name}=`));
+
+  const { editor } = e2eAccounts();
+  // Its own client key (TRUST_PROXY_HEADERS in the e2e server): the admin specs keep their
+  // share of the sign-in limit.
+  const login = await request.post('/api/users/login', {
+    headers: { 'x-forwarded-for': '2001:db8:5ec:9::1' },
+    data: { email: editor.email, password: editor.password },
+  });
+  expect(login.status()).toBe(200);
+  const session = cookie(login, 'payload-token');
+  expect(attrs(session)).toEqual(expect.arrayContaining(['httponly', 'secure', 'path']));
+  expect(sameSite(session)).toBe('Strict');
+
+  const booking = await request.get(PAGE_PATHS.booking);
+  const form = cookie(booking, '__Host-sefid-form');
+  expect(attrs(form)).toEqual(expect.arrayContaining(['httponly', 'secure', 'path']));
+  expect(form).toContain('Path=/');
+  expect(sameSite(form)?.toLowerCase()).toBe('lax');
 });

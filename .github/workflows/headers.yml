@@ -1,0 +1,36 @@
+# Security headers, CSP and cookie flags of the deployed site through nginx
+# (docs/qa/audit-security.md section 1; scripts/check-headers.mjs). Run by hand ("Run workflow")
+# after a deploy. GitHub runners are outside Iran, so this is also the outside-Iran check. No
+# secrets, no write permission, no npm install: the repository is public and the log is too.
+name: Headers
+
+on:
+  workflow_dispatch:
+    inputs:
+      origin:
+        description: Origin to check (the preview until the switch to live)
+        type: choice
+        default: https://new.sefiddental.ir
+        options:
+          - https://new.sefiddental.ir
+          - https://sefiddental.ir
+
+permissions:
+  contents: read
+
+jobs:
+  headers:
+    name: Headers of ${{ inputs.origin }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - name: Check headers, CSP and cookies
+        env:
+          ORIGIN: ${{ inputs.origin }}
+        run: node scripts/check-headers.mjs "$ORIGIN"
