@@ -33,17 +33,18 @@ cd /
 pg() { runuser -u postgres -- "$@"; }
 
 # Room: twice the live database plus the media archive (photos barely compress). The server
-# has one disk, which holds both PostgreSQL and /var/tmp.
+# has one disk, which holds both PostgreSQL and /var/lib.
 media_line=$(newest media 'media-*.tar.gz')
 media=${media_line#* }
 need=$(pg psql -X -At -d postgres -c "SELECT pg_database_size('sefid')")
 if [ -n "$media_line" ]; then need=$((need + $(stat -c %s "$media"))); fi
 need=$((need * 2))
-free=$(df --output=avail -B1 /var/tmp | tail -n 1 | tr -d ' ')
+free=$(df --output=avail -B1 /var/lib | tail -n 1 | tr -d ' ')
 [ "$free" -ge "$need" ] ||
   die "only $((free >> 20)) MiB free; the drill needs $((need >> 20)) MiB (twice the database and the media folder)"
 
-tmp=$(mktemp -d /var/tmp/sefid-restore-check.XXXXXX)
+# Not under /tmp or /var/tmp: the scratch app's PrivateTmp hides both, with its media folder.
+tmp=$(mktemp -d /var/lib/sefid-restore-check.XXXXXX)
 chmod 0755 "$tmp"
 cleanup() {
   systemctl stop "$UNIT" 2>/dev/null || true

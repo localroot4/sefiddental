@@ -847,7 +847,8 @@ for a in "$@"; do case $a in EnvironmentFile=*scratch.env) cp "\${a#EnvironmentF
     );
     // The scratch media folder, the unpacked archive and the scratch env are gone.
     const media = /^MEDIA_DIR=(.*)\/media$/m.exec(scratch)![1]!;
-    expect(media).toMatch(/^\/var\/tmp\/sefid-restore-check\./);
+    // Never under /tmp or /var/tmp: the scratch app's PrivateTmp would hide its media folder.
+    expect(media).toMatch(/^\/var\/lib\/sefid-restore-check\./);
     expect(existsSync(media)).toBe(false);
   });
 
