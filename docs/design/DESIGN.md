@@ -36,7 +36,7 @@ explicit theme is set. Components never use raw hex.
 | `--color-line` | `#D9E0E0` | `#1E3A52` | decorative hairlines |
 | `--color-line-strong` | `#7F909E` | `#5A7995` | input borders, icons (3:1) |
 | `--color-warm` | `#E8AF76` | `#E8AF76` | warm highlight, at most one element per viewport; label uses `--color-on-warm` `#0A243F` |
-| `--color-warm-soft` | `#FBF1E6` | `#2A2419` | warm stage behind the booking and first-visit scenes |
+| `--color-warm-soft` | `#FBF1E6` | `#1D2433` | warm stage behind the booking and first-visit scenes |
 | `--color-success` / `-fill` | `#2F7A3C` / `#77BA6B` | `#9BD28F` / `#77BA6B` | success text / fill (label `--color-on-fill` `#0A243F`) |
 | `--color-danger` / `-fill` | `#C81E2E` / `#DA2031` | `#FF8A8A` / `#DA2031` | error text / destructive fill (white label) |
 | `--color-warning` / `-fill` | `#A85012` / `#E07F38` | `#F0A05A` / `#E07F38` | warning text / fill, the emergency badge |
@@ -69,7 +69,7 @@ only.
 | --color-ink on --color-brand-soft | ink on soft chip | 14.25 OK | 10.77 OK | 4.5 |
 | --color-on-brand on --color-brand | label on primary button | 5.22 OK | 6.96 OK | 4.5 |
 | --color-on-warm on --color-warm | label on warm highlight | 8.10 OK | 8.10 OK | 4.5 |
-| --color-ink on --color-warm-soft | ink on warm soft | 14.08 OK | 13.47 OK | 4.5 |
+| --color-ink on --color-warm-soft | ink on warm soft | 14.08 OK | 13.60 OK | 4.5 |
 | --color-success on --color-surface | success text | 4.97 OK | 10.08 OK | 4.5 |
 | --color-danger on --color-surface | error text | 5.36 OK | 7.77 OK | 4.5 |
 | --color-warning on --color-surface | warning text | 5.16 OK | 8.29 OK | 4.5 |

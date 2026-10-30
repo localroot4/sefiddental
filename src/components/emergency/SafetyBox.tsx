@@ -11,7 +11,7 @@ const SIGNS = [
 
 /**
  * The warning tint of Alert (DESIGN.md 1.1: ink 12.65, icon 4.43). Dark mixes it into the warm
- * surface, as orange into navy turns grey: ink 9.45, icon 5.08, border 3.73.
+ * surface, as orange into navy turns grey: ink 9.72, icon 5.23, border 3.84.
  */
 export const WARNING_BOX =
   'rounded-card border border-warning-fill bg-[color-mix(in_srgb,var(--color-warning-fill)_22%,var(--color-surface-raised))] text-ink dark:bg-[color-mix(in_srgb,var(--color-warning-fill)_22%,var(--color-warm-soft))]';
