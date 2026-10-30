@@ -6,6 +6,7 @@ import { defineConfig, devices, type PlaywrightTestConfig } from '@playwright/te
 
 import { defaultLaunch, noWebgl2Launch, swiftShaderLaunch } from './tests/helpers/launch';
 import { VIEWPORTS } from './tests/helpers/screens';
+import { APP_ORIGIN, TLS_FRONT, TLS_FRONT_PORT } from './tests/helpers/servers';
 import { e2eDatabaseUrl } from './tests/setup/e2eGlobal';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
@@ -19,7 +20,7 @@ const CI = Boolean(process.env.CI);
 const PORT = Number(process.env.E2E_PORT ?? '3000');
 const MAINTENANCE_PORT = PORT + 1;
 const INDEXING_PORT = PORT + 2;
-const baseURL = `http://localhost:${PORT}`;
+const baseURL = APP_ORIGIN;
 
 // e2e always runs the artifact that deploys (`node .next/standalone/server.js` through
 // scripts/start-standalone.mjs) on a migrated database, never a pushed one (freeze 7.2):
@@ -56,6 +57,28 @@ function standaloneServer(port: number, name: string, extra?: Record<string, str
     timeout: 120_000,
   };
 }
+
+// The WebKit run goes through the TLS front (tests/helpers/servers.ts): a throwaway localhost
+// certificate, held in memory by the front only.
+const tlsFront: WebServer[] = TLS_FRONT
+  ? [
+      {
+        name: 'tls-front',
+        command: `node scripts/tls-front.mjs ${TLS_FRONT_PORT} ${PORT}`,
+        cwd: root,
+        url: `${APP_ORIGIN}/api/health`,
+        ignoreHTTPSErrors: true,
+        reuseExistingServer: false,
+        stdout: 'ignore',
+        stderr: 'pipe',
+        timeout: 120_000,
+      },
+    ]
+  : [];
+
+// Firefox headless on the CI runner offers no WebGL 2 unless forced: every page then latches
+// tier 0 (no-webgl2, decision D-Q3), whatever ?tier says, and no scene runs (CI run 85).
+const FIREFOX_WEBGL = { 'webgl.force-enabled': true, 'webgl.forbid-software': false };
 
 const base = {
   locale: 'fa-IR',
@@ -97,7 +120,7 @@ const matrix = (['phone', 'tablet', 'desktop'] as const).flatMap((size) =>
         ...(engine && {
           browserName: engine.defaultBrowserType,
           userAgent: engine.userAgent,
-          launchOptions: {},
+          launchOptions: ENGINE === 'firefox' ? { firefoxUserPrefs: FIREFOX_WEBGL } : {},
         }),
       },
     };
@@ -112,7 +135,7 @@ export default defineConfig({
   fullyParallel: true,
   workers: CI ? 2 : undefined,
   reporter: CI ? [['github'], ['html', { open: 'never' }]] : [['list']],
-  use: { baseURL, trace: 'on-first-retry' },
+  use: { baseURL, trace: 'on-first-retry', ...(TLS_FRONT && { ignoreHTTPSErrors: true }) },
   // Resets the e2e accounts after the servers start (tests/setup/e2eUsers.ts).
   globalSetup: './tests/setup/e2eGlobal.ts',
   webServer: [
@@ -128,7 +151,9 @@ export default defineConfig({
       FORM_SESSION_RATE_LIMIT: '100000',
       TRUST_PROXY_HEADERS: 'true',
       TRUSTED_PROXY_HOPS: '1',
+      SITE_URL: APP_ORIGIN,
     }),
+    ...tlsFront,
     // The maintenance suite (503 page) talks to a second server with the switch on.
     standaloneServer(MAINTENANCE_PORT, 'maintenance', { MAINTENANCE_MODE: 'on' }),
     // The same artifact with ALLOW_INDEXING=true: robots.txt and sitemaps switch at run time
