@@ -102,12 +102,15 @@ describe('audit log (spec-data 4.1, 6.5)', () => {
     const rows = await auditRows('bookings', booking.id);
     expect(rows.map((r) => r.docLabel)).toEqual([`#${booking.id}`, `#${booking.id}`]);
     expect(rows[1]).toMatchObject({ statusFrom: 'new', statusTo: 'contacted' });
-    const everything = JSON.stringify(
-      (await payload.find({ collection: 'audit-log', depth: 0, pagination: false })).docs,
-    );
-    for (const secret of ['9123456789', '۰۹۱۲', 'نام‌محرمانه', 'یادداشت‌محرمانه']) {
+    const { docs } = await payload.find({ collection: 'audit-log', depth: 0, pagination: false });
+    const everything = JSON.stringify(docs);
+    for (const secret of ['9123456789', '۹۱۲۳۴۵۶۷۸۹', 'نام‌محرمانه', 'یادداشت‌محرمانه']) {
       expect(everything).not.toContain(secret);
     }
+    // A four-digit fragment also turns up in other suites' random slugs (CI run 97: a redirect
+    // from /خدمات/ج-۹۲۰۹۱۲۱۸): it is looked for in the booking rows only.
+    const bookingRows = JSON.stringify(docs.filter((row) => row.entitySlug === 'bookings'));
+    expect(bookingRows).not.toContain('۰۹۱۲');
   });
 
   it('AD5 each status change keeps its own audit row, even inside the merge window', async () => {
