@@ -73,6 +73,12 @@ test('T-DLG1 keyboard: Enter opens it on the phone field, Tab stays inside, Esc 
     await page.keyboard.press('Shift+Tab');
     expect(await insideDialog(page), `Shift+Tab ${i + 1}`).toBe(true);
   }
+  // The walk ends on the phone field. In Firefox, PageDown in a text field can open its
+  // form-history list (phones the browser saw in earlier tests), and the next Esc closes that
+  // list, not the dialog (CI runs 85 and 100). The keys go to the close button instead.
+  await dialog(page)
+    .getByRole('button', { name: t('booking.close') })
+    .focus();
   // Scroll lock at every width (X7): the page behind stays where it was.
   const scrollY = await page.evaluate(() => window.scrollY);
   await page.mouse.move(20, 20);
