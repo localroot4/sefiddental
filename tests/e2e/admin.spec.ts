@@ -9,7 +9,7 @@
 // the sessions through their cookies.
 import { randomBytes } from 'node:crypto';
 
-import { expect, test, type BrowserContext, type Page } from '@playwright/test';
+import { expect, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
 import sharp from 'sharp';
 
 import { cond, listHref, tabHref } from '@/admin/bookings/tabs';
@@ -20,7 +20,7 @@ import { ADMIN_ROUTE, buildPath } from '@/lib/paths';
 import { persianSlug } from '@/lib/persianSlug';
 import { toPersianDigits } from '@/lib/persianText';
 
-import { signInToAdmin } from '../helpers/admin';
+import { setupSecret, signInToAdmin, totpCode } from '../helpers/admin';
 import { expectNoA11yViolations } from '../helpers/axe';
 import { isolateClient, pastTimeTrap, uniquePhone } from '../helpers/booking';
 import { requireRoutes } from '../helpers/pending';
@@ -1078,5 +1078,197 @@ test('T-AD35 no live preview tab on a service, a page or an article until the pr
     await page.waitForLoadState('networkidle');
     await expect(page.locator('.live-preview-toggler'), slug).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^پیش‌نمایش( زنده)?$/ }), slug).toHaveCount(0);
+  }
+});
+
+/**
+ * T-AD36 to T-AD40, the six-box code screens: an editor of its own (the code tester) walks setup,
+ * then verify, each test from a fresh client address, so its sign-in and code POSTs never count
+ * against this file's ten. Each test can run alone (`-g`): it creates or enrolls the tester when
+ * an earlier test has not.
+ */
+const coder: { email: string; password: string; id?: number; secret?: string; cookies?: Cookies } =
+  {
+    email: `coder-${Date.now()}@sefid.test`,
+    password: randomBytes(18).toString('base64url'),
+  };
+const EMPTY = ['', '', '', '', '', ''];
+const codeBoxes = (page: Page) => page.locator('form input[maxlength="1"]');
+const atDashboard = (url: URL) => url.pathname.replace(/\/$/, '') === ADMIN_ROUTE;
+
+/** A page in a new client with the tester's cookies; without its TOTP cookie when `verified` is false. */
+async function coderPage(browser: Browser, verified = true): Promise<Page> {
+  const context = await browser.newContext({ baseURL: APP_ORIGIN, locale: 'fa-IR' });
+  await isolateClient(context);
+  const cookies = coder.cookies ?? [];
+  await context.addCookies(verified ? cookies : cookies.filter((c) => !c.name.endsWith('-totp')));
+  return context.newPage();
+}
+
+/** The tester, created by the admin and signed in once: its session stops at the setup page. */
+async function coderSignedIn(browser: Browser, page: Page): Promise<void> {
+  if (coder.cookies) return;
+  await adminAs(page, 'admin');
+  const created = await rest(page, 'POST', '/api/users?depth=0', {
+    email: coder.email,
+    password: coder.password,
+    name: `ویراستار کد ${faToken()}`,
+    role: 'editor',
+  });
+  expect(created.status, JSON.stringify(created.body)).toBe(201);
+  coder.id = created.body.doc.id as number;
+  const visitor = await coderPage(browser);
+  await visitor.goto(`${ADMIN_ROUTE}/login`);
+  await visitor.locator('#field-email').fill(coder.email);
+  await visitor.locator('#field-password').fill(coder.password);
+  await visitor.locator('form button[type="submit"]').click();
+  await visitor.waitForURL(new RegExp(`${ADMIN_ROUTE}/setup-totp(\\?|$)`));
+  coder.cookies = await visitor.context().cookies();
+  await visitor.context().close();
+}
+
+async function expectBoxes(page: Page, values: string[]): Promise<void> {
+  await expect
+    .poll(() =>
+      codeBoxes(page).evaluateAll((boxes) => boxes.map((b) => (b as HTMLInputElement).value)),
+    )
+    .toEqual(values);
+}
+
+test('T-AD36 TOTP setup: a reload or a second tab shows the secret the user already scanned', async ({
+  browser,
+  page,
+}) => {
+  await coderSignedIn(browser, page);
+  const visitor = await coderPage(browser);
+  await visitor.goto(`${ADMIN_ROUTE}/setup-totp`);
+  const scanned = await setupSecret(visitor);
+  await visitor.reload();
+  expect(await setupSecret(visitor)).toBe(scanned);
+  await expectNoA11yViolations(visitor);
+  const tab = await visitor.context().newPage();
+  await tab.goto(`${ADMIN_ROUTE}/setup-totp`);
+  expect(await setupSecret(tab)).toBe(scanned);
+  await visitor.context().close();
+});
+
+test('T-AD37 TOTP setup: a wrong code empties the six boxes and focuses the first', async ({
+  browser,
+  page,
+}) => {
+  await coderSignedIn(browser, page);
+  const visitor = await coderPage(browser);
+  await visitor.goto(`${ADMIN_ROUTE}/setup-totp`);
+  const secret = await setupSecret(visitor);
+  await codeBoxes(visitor).first().click();
+  await visitor.keyboard.type(totpCode(secret, Date.now() + 3_600_000));
+  await expect(visitor.locator('.payload-toast-container li').first()).toContainText(
+    'کد نادرست است',
+  );
+  await expectBoxes(visitor, EMPTY);
+  await expect(codeBoxes(visitor).first()).toBeFocused();
+  await visitor.context().close();
+});
+
+test('T-AD37b TOTP setup: a secret the request names is ignored; the code must match the shown one', async ({
+  browser,
+  page,
+}) => {
+  await coderSignedIn(browser, page);
+  const visitor = await coderPage(browser);
+  await visitor.goto(`${ADMIN_ROUTE}/setup-totp`);
+  const chosen = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP';
+  const forged = await rest(visitor, 'POST', '/api/setup-totp', {
+    secret: chosen,
+    token: totpCode(chosen),
+  });
+  // Refused as a wrong code (the plugin's own message), not for a malformed request.
+  expect(forged.body).toMatchObject({
+    ok: false,
+    message: expect.stringContaining('کد نادرست است'),
+  });
+  await visitor.reload();
+  await expect(visitor).toHaveURL(new RegExp(`${ADMIN_ROUTE}/setup-totp(\\?|$)`));
+  await visitor.context().close();
+});
+
+test('T-AD38 TOTP setup: Backspace on an empty box deletes the digit before it; Escape and «پاک کردن» empty all six', async ({
+  browser,
+  page,
+}) => {
+  await coderSignedIn(browser, page);
+  const visitor = await coderPage(browser);
+  await visitor.goto(`${ADMIN_ROUTE}/setup-totp`);
+  const boxes = codeBoxes(visitor);
+  await boxes.first().click();
+  await visitor.keyboard.type('123');
+  await expect(boxes.nth(3)).toBeFocused();
+  await visitor.keyboard.press('Backspace');
+  await expectBoxes(visitor, ['1', '2', '', '', '', '']);
+  await expect(boxes.nth(2)).toBeFocused();
+  await visitor.keyboard.press('Escape');
+  await expectBoxes(visitor, EMPTY);
+  await expect(boxes.first()).toBeFocused();
+  await visitor.keyboard.type('45');
+  await visitor.getByRole('button', { name: 'پاک کردن' }).click();
+  await expectBoxes(visitor, EMPTY);
+  await expect(boxes.first()).toBeFocused();
+  await visitor.context().close();
+});
+
+/** Enrolls the tester: with Persian digits as a Persian keyboard types them. */
+async function enrollCoder(browser: Browser, digits: (code: string) => string): Promise<void> {
+  const visitor = await coderPage(browser);
+  await visitor.goto(`${ADMIN_ROUTE}/setup-totp`);
+  const secret = await setupSecret(visitor);
+  await codeBoxes(visitor).first().click();
+  await visitor.keyboard.type(digits(totpCode(secret)));
+  await visitor.waitForURL(atDashboard);
+  coder.secret = secret;
+  coder.cookies = await visitor.context().cookies();
+  await visitor.context().close();
+}
+
+test('T-AD39 TOTP setup: a code typed with Persian digits enrolls', async ({ browser, page }) => {
+  await coderSignedIn(browser, page);
+  await enrollCoder(browser, toPersianDigits);
+});
+
+test('T-AD40 TOTP verify: a pasted code, spaced or in Persian digits, fills the six boxes and submits', async ({
+  browser,
+  page,
+}) => {
+  await coderSignedIn(browser, page);
+  if (!coder.secret) await enrollCoder(browser, (code) => code);
+  const secret = coder.secret ?? '';
+  const shapes = {
+    '123 456': (code: string) => `${code.slice(0, 3)} ${code.slice(3)}`,
+    ' ۱۲۳۴۵۶ ': (code: string) => toPersianDigits(` ${code} `),
+  };
+  for (const [name, shape] of Object.entries(shapes)) {
+    const visitor = await coderPage(browser, false);
+    await visitor.goto(`${ADMIN_ROUTE}/verify-totp`);
+    await codeBoxes(visitor).nth(2).focus();
+    const code = totpCode(secret);
+    const sent = visitor.waitForRequest((r) => r.url().endsWith('/api/verify-totp'), {
+      timeout: 5_000,
+    });
+    await visitor.evaluate((text) => {
+      const data = new DataTransfer();
+      data.setData('text/plain', text);
+      const paste = new ClipboardEvent('paste', {
+        clipboardData: data,
+        bubbles: true,
+        cancelable: true,
+      });
+      document.activeElement?.dispatchEvent(paste);
+    }, shape(code));
+    expect((await sent).postDataJSON(), name).toMatchObject({ token: code });
+    await visitor.waitForURL(atDashboard);
+    await visitor.context().close();
+  }
+  if (coder.id !== undefined) {
+    await adminAs(page, 'admin');
+    expect((await rest(page, 'DELETE', `/api/users/${coder.id}`)).status).toBe(200);
   }
 });
