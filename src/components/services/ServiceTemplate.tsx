@@ -180,11 +180,7 @@ export async function ServiceTemplate({ service }: { service: Service }) {
             family="E"
             title={t('services.cases.heading')}
             tone={tone}
-            action={
-              <TextLink standalone href={PAGE_PATHS.cases} className="-ms-2">
-                {t('services.cases.all')}
-              </TextLink>
-            }
+            // No «همهٔ نمونه‌ها» link until the cases page ships (gap 6; plan 8): it would 404.
           >
             <div className="grid gap-8 md:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] md:items-center lg:gap-16">
               <figure className="grid gap-3" data-service-key={service.key}>

@@ -3,7 +3,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Picture } from '@/components/ui/Picture';
 import { TextLink } from '@/components/ui/TextLink';
 import { t } from '@/i18n/fa';
-import { buildPath, PAGE_PATHS } from '@/lib/paths';
+import { buildPath } from '@/lib/paths';
 import type { Case, Service } from '@/payload-types';
 
 import { HomeSection, media, type Copy } from './HomeSection';
@@ -11,10 +11,11 @@ import { HomeSection, media, type Copy } from './HomeSection';
 type HomeCase = Omit<Case, 'service' | 'doctor'> & { service: Service | null };
 
 /**
- * Scene 6 (family E): one compare slider and up to two thumbnails into the gallery. The figure's
- * wrapper is the `compare` world slot (phase 8 draws the displacement wipe there at tiers 2 and
- * 3 from 1024 px); it and the side text carry `data-enter`, the elements `compare.ts` reveals
- * once on enter at tiers 1 to 3. The slider itself moves from user input only (D12).
+ * Scene 6 (family E): one compare slider and up to two more thumbnails, not linked until the cases
+ * page ships (gap 6). The figure's wrapper is the `compare` world slot (phase 8 draws the
+ * displacement wipe there at tiers 2 and 3 from 1024 px); it and the side text carry `data-enter`,
+ * the elements `compare.ts` reveals once on enter at tiers 1 to 3. The slider itself moves from
+ * user input only (D12).
  */
 export function CasesSection(props: { cases: HomeCase[]; copy: Copy }) {
   const [featured, ...rest] = props.cases.flatMap((c) => {
@@ -29,11 +30,7 @@ export function CasesSection(props: { cases: HomeCase[]; copy: Copy }) {
       section="compare"
       family="E"
       copy={props.copy}
-      action={
-        <TextLink standalone href={PAGE_PATHS.cases} className="-ms-2">
-          {t('home.cases.all')}
-        </TextLink>
-      }
+      // No link to the gallery until the cases page ships (gap 6; plan 8): it would 404.
     >
       <div className="grid gap-8 md:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] md:items-center lg:gap-16">
         <div data-world-slot="compare" data-enter="">
@@ -89,10 +86,7 @@ export function CasesSection(props: { cases: HomeCase[]; copy: Copy }) {
             <ul className="mt-4 grid w-full max-w-[28rem] grid-cols-2 gap-3">
               {rest.map((c) => (
                 <li key={c.id}>
-                  <a
-                    href={PAGE_PATHS.cases}
-                    className="grid gap-2 rounded-card text-small font-medium text-brand-strong"
-                  >
+                  <div className="grid gap-2 text-small font-medium">
                     <span className="relative block aspect-square overflow-hidden rounded-media bg-surface-sunken">
                       <Picture
                         media={c.after}
@@ -101,7 +95,7 @@ export function CasesSection(props: { cases: HomeCase[]; copy: Copy }) {
                       />
                     </span>
                     {c.title}
-                  </a>
+                  </div>
                 </li>
               ))}
             </ul>

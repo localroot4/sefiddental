@@ -119,6 +119,9 @@ test('T-PG2 dentist profile: portrait split, council number LTR, filled sections
   await expect(call).toHaveAttribute('href', 'tel:+982155101054');
   await expect(call).toHaveAttribute('data-call-sheet', '');
   await expect(page.locator('[data-section="services"] a').first()).toHaveAttribute('href', /^\//);
+  // No link to the cases page while it has no route (gap 6, findings R2).
+  await expect(page.locator('[data-section="cases"] a[href="/قبل-و-بعد"]')).toHaveCount(0);
+  await expect(page.locator('[data-section="cases"] figure')).toHaveCount(1);
   // The booking block carries the profile's dentist.
   await expect(page.locator('[data-section="booking"] input[name="dentist"]')).toHaveValue(
     DENTIST.split('/')[2]!,

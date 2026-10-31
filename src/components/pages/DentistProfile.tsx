@@ -160,11 +160,7 @@ export async function DentistProfile({ doctor }: { doctor: Doctor }) {
                   id="cases"
                   family="E"
                   title={t('pages.dentist.cases')}
-                  action={
-                    <TextLink standalone href={PAGE_PATHS.cases} className="-ms-2">
-                      {t('pages.cases.all')}
-                    </TextLink>
-                  }
+                  // No «همهٔ نمونه‌ها» link until the cases page ships (gap 6; plan 8): it would 404.
                   tone={tone}
                 >
                   <ul className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">

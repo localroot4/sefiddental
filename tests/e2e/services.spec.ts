@@ -163,6 +163,8 @@ test('T-SV3 the restoration page renders every T-service section in order, the t
   // Seeded copy, plus the QA fixture's dentist, case and testimonial (freeze F9).
   expect(await sections(page)).toEqual(SERVICE_ORDER);
   await expect(page.locator('[data-section="cases"] input[type="range"]')).toHaveCount(1);
+  // No link to the cases page while it has no route (gap 6, findings R2).
+  await expect(page.locator('[data-section="cases"] a[href="/قبل-و-بعد"]')).toHaveCount(0);
 
   const tiers = page.locator(`[id="${TIERS_ANCHOR}"]`);
   await expect(tiers.locator('article')).toHaveCount(3);
