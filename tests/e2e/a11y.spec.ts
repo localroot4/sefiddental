@@ -253,6 +253,33 @@ test('T-A11Y restoration with a tier chosen', async ({ page }) => {
   await expectAccessible(page);
 });
 
+/**
+ * Waits until the scroll reveals hold still: their tweens write inline opacity and transform on
+ * GSAP's clock, which drops time when a frame runs long (lag smoothing). In CI run 100 mobile
+ * WebKit still showed the booking card's 600 ms rise faded 800 ms after the scroll, so axe read
+ * its submit button mid-fade. A reveal that never reaches rest in view still fails axe below.
+ */
+async function revealsAtRest(page: Page): Promise<void> {
+  const styles = () =>
+    page.evaluate(() =>
+      [...document.querySelectorAll<HTMLElement>('main [style]')]
+        .map((el) => el.style.cssText)
+        .join('|'),
+    );
+  let last: string | null = null;
+  await expect
+    .poll(
+      async () => {
+        const now = await styles();
+        const still = now === last;
+        last = now;
+        return still;
+      },
+      { intervals: [600], timeout: 15_000 },
+    )
+    .toBe(true);
+}
+
 for (const tier of HOME_SCAN_TIERS) {
   test(`T-A11Y home at ?tier=${tier}, at load and after a full scroll`, async ({ page }) => {
     await openHome(page, tier);
@@ -265,6 +292,7 @@ for (const tier of HOME_SCAN_TIERS) {
       await page.waitForTimeout(120);
     }
     await page.waitForTimeout(800);
+    await revealsAtRest(page);
     await expectAccessible(page, { offscreenReveals: tier > 0 });
   });
 }
