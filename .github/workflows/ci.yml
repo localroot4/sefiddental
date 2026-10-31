@@ -216,9 +216,6 @@ jobs:
     name: e2e on ${{ matrix.engine }}
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    # shortcut: engine failures are triaged for the wave 2 engine fixes; drop this once both
-    # engines are green, so an engine regression turns the run red.
-    continue-on-error: true
     strategy:
       fail-fast: false
       matrix:
