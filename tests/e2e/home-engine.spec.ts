@@ -400,6 +400,7 @@ test('T-EN4f a deep link into or after a pin (tier 2) lands in the pinned geomet
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await recordShifts(page);
   for (const hash of ['home-restoration-title', 'home-workflow-title']) {
     // A new document each time: a hash change alone would be a same-document navigation.

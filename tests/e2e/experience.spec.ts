@@ -139,6 +139,7 @@ test('T-EX1 P1 the canvas host mounts only after load, and three.js loads only a
 test('T-EX5 the scroll engine (GSAP, ScrollTrigger, Lenis) never loads at tier 0, at tier 1 only after load and within 64 KiB; the plugin chunks never before load', async ({
   page,
 }, testInfo) => {
+  await needsWebgl2(page);
   const atZero = [...PLUGIN_NEEDLES, 'ScrollTrigger'].map((needle) => watchScripts(page, needle));
   await page.goto('/?tier=0');
   await page.waitForLoadState('load');
@@ -181,6 +182,7 @@ test('T-EX5 the scroll engine (GSAP, ScrollTrigger, Lenis) never loads at tier 0
 test('T-EX2 ?tier=N fixes the tier; ?tier=0 never mounts a canvas or fetches three.js', async ({
   page,
 }) => {
+  await needsWebgl2(page);
   await page.goto('/?tier=1');
   const html = page.locator('html');
   await expect(html).toHaveAttribute('data-tier', '1');
