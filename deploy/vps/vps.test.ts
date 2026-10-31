@@ -1145,7 +1145,11 @@ esac`,
 describe('server workflow and the public log', () => {
   const workflow = (file: string) =>
     parse(readFileSync(path.join(DIR, '../../.github/workflows', file), 'utf8')) as {
-      on: { workflow_dispatch: { inputs: Record<string, { description: string }> } };
+      on: {
+        workflow_dispatch: {
+          inputs: Record<string, { description: string; type?: string; default?: unknown }>;
+        };
+      };
       jobs: Record<
         string,
         {
@@ -1222,6 +1226,60 @@ describe('server workflow and the public log', () => {
       name: 'server',
       deployment: false,
     });
+  });
+
+  it('VPS35 copy-sync: the tunnel as seed; a dry run unless apply, which backs up first and restarts, also after a failure', () => {
+    const wf = workflow('server.yml');
+    expect(wf.on.workflow_dispatch.inputs.apply).toMatchObject({ type: 'boolean', default: false });
+    const steps = wf.jobs.server!.steps;
+    // Node, npm ci and the database tunnel: every step seed needs, copy-sync needs too.
+    const forSeed = steps.filter((s) => s.if?.includes('"seed"'));
+    expect(forSeed.length).toBeGreaterThanOrEqual(3);
+    forSeed.forEach((s) => expect(s.if, s.name).toContain('"copy-sync"'));
+    const step = steps.find((s) => s.name?.startsWith('Copy sync'))!;
+
+    const dir = tmp();
+    mkdirSync(`${dir}/bin`);
+    // Stubs: each call is one line of calls.log; npm prints the summary line the step expects,
+    // with UPDATED fields to write, and fails after it when NPM_FAIL is set.
+    writeFileSync(
+      `${dir}/bin/remote`,
+      `#!/usr/bin/env bash\necho "remote $*" >> "${dir}/calls.log"\n`,
+    );
+    writeFileSync(
+      `${dir}/bin/npm`,
+      `#!/usr/bin/env bash\necho "npm $*" >> "${dir}/calls.log"\nm="dry run"; [ "\${@: -1}" = apply ] && m=applied\necho "copy-sync: $m; baseline x; documents 1; fields: updated \${UPDATED:-0}, unchanged 1, edited-by-hand 0, new-missing 0, reviewed 0, not-saved 0, updated-in-draft 0, not-copy 0"\n[ -z "$NPM_FAIL" ]\n`,
+    );
+    chmodSync(`${dir}/bin/remote`, 0o755);
+    chmodSync(`${dir}/bin/npm`, 0o755);
+    const calls = (env: Record<string, string>, status = 0) => {
+      rmSync(`${dir}/calls.log`, { force: true });
+      const r = run('bash', ['-eo', 'pipefail', '-c', step.run!], {
+        PATH: `${dir}/bin:${process.env.PATH}`,
+        RUNNER_TEMP: dir,
+        WAIT_HEALTH: 'true',
+        NPM_FAIL: '',
+        UPDATED: '0',
+        ...env,
+      });
+      expect(r.status, r.stdout + r.stderr).toBe(status);
+      return readFileSync(`${dir}/calls.log`, 'utf8').trim().split('\n');
+    };
+    expect(calls({ ACTION: 'copy-sync', APPLY: 'false' })).toEqual(['npm run seed -- copy-sync']);
+    expect(calls({ ACTION: 'copy-sync', APPLY: 'true' })).toEqual([
+      'remote sudo sefid-backup pre-deploy',
+      'npm run seed -- copy-sync apply',
+      'remote sudo systemctl restart sefid.service && true',
+    ]);
+    // A run that fails half way still restarts the app, and the step stays red.
+    expect(calls({ ACTION: 'copy-sync', APPLY: 'true', NPM_FAIL: '1' }, 1)).toEqual([
+      'remote sudo sefid-backup pre-deploy',
+      'npm run seed -- copy-sync apply',
+      'remote sudo systemctl restart sefid.service && true',
+    ]);
+    // The smoke test never applies, and fails when a fresh seed leaves anything to write.
+    expect(calls({ ACTION: 'smoke', APPLY: 'true' })).toEqual(['npm run seed -- copy-sync']);
+    calls({ ACTION: 'smoke', UPDATED: '1' }, 1);
   });
 
   it('VPS33 the admin e-mail comes from a secret, never from a public input', () => {

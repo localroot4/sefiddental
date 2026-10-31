@@ -28,6 +28,7 @@ on:
           - provision
           - cert
           - seed
+          - copy-sync
           - first-admin
           - reset-admin
           - backup
@@ -42,6 +43,10 @@ on:
       command:
         description: 'run: one shell command, run as deploy on the server. deploy has sudo, so this is as powerful as the SSH key. The log is public. Never print a secret or patient data (no SELECT on bookings, no pg_dump to stdout): the command and its output go into the log.'
         type: string
+      apply:
+        description: 'copy-sync only: write the changes (after a backup). Off: a dry run that writes nothing.'
+        type: boolean
+        default: false
       allow_red_ci:
         description: 'deploy, preview only: deploy although CI is red, when the newest CI run on main failed only in Lighthouse and no app file changed since'
         type: boolean
@@ -202,12 +207,12 @@ jobs:
           echo "::error::CI has not passed for $GITHUB_SHA (latest CI run: $latest). Wait until CI is green on main, then run deploy again."
           exit 1
 
-      - if: contains(fromJSON('["deploy","seed","first-admin","reset-admin","smoke"]'), env.ACTION)
+      - if: contains(fromJSON('["deploy","seed","copy-sync","first-admin","reset-admin","smoke"]'), env.ACTION)
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: npm
-      - if: contains(fromJSON('["deploy","seed","first-admin","reset-admin","smoke"]'), env.ACTION)
+      - if: contains(fromJSON('["deploy","seed","copy-sync","first-admin","reset-admin","smoke"]'), env.ACTION)
         run: npm ci
 
       - name: Build (as CI, docs/deploy.md 2.2)
@@ -412,7 +417,7 @@ jobs:
         run: remote 'sudo sefid-backup pre-deploy'
 
       - name: Database access (two values from /etc/sefid/app.env, SSH tunnel to Postgres)
-        if: contains(fromJSON('["deploy","seed","first-admin","reset-admin","smoke"]'), env.ACTION)
+        if: contains(fromJSON('["deploy","seed","copy-sync","first-admin","reset-admin","smoke"]'), env.ACTION)
         run: |
           lines="$(remote 'sudo grep -E "^(DATABASE_URL|PAYLOAD_SECRET)=" /etc/sefid/app.env || true')"
           value() { sed -n "s/^$1=//p" <<< "$lines" | sed -n 1p | sed -E "s/^\"(.*)\"\$/\\1/; s/^'(.*)'\$/\\1/"; }
@@ -512,6 +517,30 @@ jobs:
           fi
           # The app caches every read in memory; a restart shows the new rows.
           remote "sudo systemctl restart sefid.service && $WAIT_HEALTH"
+
+      # The three-way copy update (src/seed/copySync.ts): only fields that still hold the baseline
+      # copy are written, never a hand edit. The log is public: it prints natural keys, field
+      # names and counts, never a value. On the smoke runner, after a fresh seed, nothing is left.
+      - name: Copy sync (dry run unless the input apply is on)
+        if: env.ACTION == 'copy-sync' || env.ACTION == 'smoke'
+        env:
+          APPLY: ${{ inputs.apply }}
+        run: |
+          log="$RUNNER_TEMP/copy-sync.log"
+          if [ "$ACTION" = copy-sync ] && [ "$APPLY" = true ]; then
+            remote 'sudo sefid-backup pre-deploy'
+            # The app caches every read in memory: it restarts after the writes, also after a run
+            # that failed half way (some documents written). The step keeps its exit status.
+            trap 'remote "sudo systemctl restart sefid.service && $WAIT_HEALTH"' EXIT
+            npm run seed -- copy-sync apply | tee "$log"
+          else
+            npm run seed -- copy-sync | tee "$log"
+          fi
+          grep -q 'copy-sync: \(applied\|dry run\); ' "$log" || { echo "::error::copy-sync printed no summary line."; exit 1; }
+          if [ "$ACTION" = smoke ] && ! grep -q 'fields: updated 0, unchanged [0-9]*, edited-by-hand 0, new-missing 0, reviewed 0, not-saved 0, updated-in-draft 0, not-copy 0\($\|[^0-9]\)' "$log"; then
+            echo "::error::copy-sync found work on a freshly seeded database: the seed and the comparison disagree."
+            exit 1
+          fi
 
       - name: Admin account (scripts/first-admin.ts, scripts/reset-admin.ts)
         if: contains(fromJSON('["first-admin","reset-admin","smoke"]'), env.ACTION)
