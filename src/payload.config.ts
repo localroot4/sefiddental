@@ -170,6 +170,19 @@ export default buildConfig({
       ] as const) {
         if (views[key]) views[key] = { ...views[key], meta: { title } };
       }
+      // The plugin spreads its own Persian over the config's, so its setup line is replaced here.
+      const translations = config.i18n?.translations as
+        { fa?: { totpPlugin?: { setup?: object } } } | undefined;
+      const totp = translations?.fa?.totpPlugin;
+      if (translations?.fa && totp) {
+        translations.fa = {
+          ...translations.fa,
+          totpPlugin: {
+            ...totp,
+            setup: { ...totp.setup, description: adminText('admin.totp.app') },
+          },
+        };
+      }
       return config;
     },
   ],

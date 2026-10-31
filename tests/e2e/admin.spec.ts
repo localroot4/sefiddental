@@ -602,14 +602,14 @@ const faToken = () => toPersianDigits(`${Date.now()}`);
 
 /**
  * H34: the only Latin words an editor may read (as src/collections/adminCopy.test.ts), plus the
- * authenticator app the plugin names, its network-error toast and the live preview's
- * «Responsive» size, recorded as deviations in the phase report (C15).
+ * plugin's network-error toast and the live preview's «Responsive» size, recorded as deviations
+ * in the phase report (C15). The TOTP setup line names no app product (AG-F3).
  */
 const ALLOWED_LATIN = new Set([
   ...['ADA', 'AAPD', 'AAP', 'Cochrane', 'NHS', 'IADT'],
   ...['JPEG', 'JPG', 'PNG', 'HEIC', 'MP4', 'WebM', 'AVIF', 'WebP'],
   ...['VIP', 'CIP', 'NEEDS_CLIENT'],
-  ...['Google', 'Authenticator', 'Something', 'went', 'wrong', 'Responsive'],
+  ...['Something', 'went', 'wrong', 'Responsive'],
   // «کد QR» on the TOTP setup page: the code's own name, as on every phone.
   'QR',
 ]);

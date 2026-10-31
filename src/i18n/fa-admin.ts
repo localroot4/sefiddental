@@ -167,6 +167,9 @@ export const ADMIN_MESSAGES = {
   'admin.preview.desktop': 'دسکتاپ',
   'admin.totp.setup': 'راه‌اندازی ورود دومرحله‌ای',
   'admin.totp.verify': 'ورود دومرحله‌ای',
+  // payload-totp's setup line names one app product (findings AG-F3); the clinic picks the app (gap 62).
+  'admin.totp.app':
+    'برای ورود دومرحله‌ای یک برنامهٔ رمز یک‌بارمصرف روی گوشی لازم است. پس از نصب، کد QR زیر را با همان برنامه اسکن کنید.',
   // Notifier settings: validation, test action, status view
   'admin.notifier.needsSmtp':
     'برای ایمیل، تنظیمات SMTP روی سرور لازم است. از پشتیبانی فنی بخواهید آن را تنظیم کند.',
