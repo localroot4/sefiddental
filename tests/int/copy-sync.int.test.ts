@@ -59,8 +59,22 @@ let doctorId: number | string;
 describe('copy-sync: the copy changes since the baseline, never over a human edit', () => {
   beforeAll(async () => {
     payload = await getTestPayload();
+    // As when an earlier file seeded the current copy (the order of files is not fixed).
+    await runSeed(payload, { mode: 'create-only', root: ROOT });
     // Whatever earlier files left: every seeded document holds the baseline copy again.
     await runSeed(payload, { mode: 'sync', root: baseRoot });
+    // sync writes what the baseline sets and keeps the rest: a search description the baseline
+    // categories never had stays from the current seed, so it is cleared as on the old database.
+    const baseline = readYaml(ROOT, BASELINE.services, servicesYaml).data;
+    for (const category of baseline.categories.filter((c) => !c.seo_description)) {
+      const stored = await latest('service-categories', category.key);
+      await payload.update({
+        collection: 'service-categories',
+        id: stored.id as number,
+        data: { seo: { description: null } },
+        context: { skipRevalidate: true },
+      });
+    }
 
     // A hand edit of a field the new copy changes: surgery-replacement's FAQ answers.
     const surgery = await latest('service-categories', 'surgery-replacement');
