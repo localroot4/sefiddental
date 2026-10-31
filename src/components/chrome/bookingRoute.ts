@@ -102,9 +102,6 @@ export function setupBookingRoute(doc: Document, win: Window = window): () => vo
   // with a mouse pointerdown (XB W8, CI run 95): a touch shortly before the click tells a tap from
   // a press. A key clears it, so Enter on a link after a tap still focuses the field.
   let touchAt = -Infinity;
-  const onPointer = (event: PointerEvent) => {
-    if (event.pointerType === 'touch') touchAt = event.timeStamp;
-  };
   const onTouch = (event: Event) => (touchAt = event.timeStamp);
   const onKey = () => (touchAt = -Infinity);
   const onClick = (event: MouseEvent) => {
@@ -146,14 +143,12 @@ export function setupBookingRoute(doc: Document, win: Window = window): () => vo
     if (target === heading && heading && !heading.hasAttribute('tabindex')) heading.tabIndex = -1;
     target?.focus({ preventScroll: route.kind === 'block' });
   };
-  doc.addEventListener('pointerdown', onPointer, true);
   doc.addEventListener('touchstart', onTouch, { capture: true, passive: true });
   doc.addEventListener('keydown', onKey, true);
   doc.addEventListener('click', onClick);
   // `close` does not bubble: a capture listener on the document still sees it.
   doc.addEventListener('close', onClose, true);
   return () => {
-    doc.removeEventListener('pointerdown', onPointer, true);
     doc.removeEventListener('touchstart', onTouch, true);
     doc.removeEventListener('keydown', onKey, true);
     doc.removeEventListener('click', onClick);

@@ -64,12 +64,14 @@ export function CompareSlider(props: {
         aria-valuetext={`${toPersianDigits(String(value))} ${props.labels.percent}`}
         onChange={(event) => move(Number(event.currentTarget.value))}
         onKeyDown={(event) => {
-          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
           // WebKit steps a right-to-left range as a left-to-right one (ArrowRight raises the
           // value and the divider goes left; CI run 95): the arrow moves the divider its way.
+          let step = ({ ArrowLeft: 1, ArrowRight: -1 } as Record<string, number | undefined>)[
+            event.key
+          ];
+          if (!step) return;
           event.preventDefault();
-          const ltr = event.currentTarget.closest('[dir]')?.getAttribute('dir') === 'ltr';
-          const step = (event.key === 'ArrowRight') === ltr ? 1 : -1;
+          if (event.currentTarget.closest('[dir=ltr]')) step = -step;
           move(Math.min(100, Math.max(0, value + step)));
         }}
         className="absolute inset-0 z-10 m-0 size-full cursor-ew-resize opacity-0 focus-visible:outline-none"
