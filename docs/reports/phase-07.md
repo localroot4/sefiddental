@@ -423,7 +423,7 @@ gone (D27); the hero mask is gone (D29).
 | Heap after a full scroll and GC | +0.2 to +0.4 MiB | at most +0.5 MiB | T-PS (down and up): t2 +0.3, +0.3, +0.4; t1 +0.7, 0.0, 0.0. measure-home (down only): +0.5 to +0.8, a one-time cost of the first pass (lazy chunks), not a leak | partial |
 | Intro | none | at most 1400 ms, bar 400 ms, JS under 2048 B, CSS 3.5 KB, CLS 0 | 1250 to 1400 ms by design (the 1300 ms stage timer; T-IN1); JS 1929 B, CSS 3474 B (IS2); CLS 0 (step 2). The lockup SVG size was not read at the close | pass |
 | CSS / fonts | 14.1 / 90.1 KiB | at most +4 KiB of CSS; fonts unchanged | home 17.2 KiB (+3.1), content pages 16.7 KiB / 90.1 KiB | pass |
-| clsAll, load and full scroll | 0 | 0, gate 0.05 | desktop tier 2 1.554 at `ed9fa8b`, 0.0002 after `31fef4d`; reload at voices desktop tier 2 1.0, then 0 after `98b774a`; close probes: reload inside a pin and a deep link into a pin at desktop tier 2 give 1.0 (F2, F3) | **open at desktop tier 2** |
+| clsAll, load and full scroll | 0 | 0, gate 0.05 | desktop tier 2 1.554 at `ed9fa8b`, 0.0002 after `31fef4d`; reload at voices desktop tier 2 1.0, then 0 after `98b774a`; close probes: reload inside a pin and a deep link into a pin at desktop tier 2 give 1.0 (F2, F3) | open at the close; fixed in phase 9 with F2 and F3 (clsAll 0, T-EN4e to T-EN4g) |
 | Route change | 0 triggers | 0 triggers, Lenis, ticker, Draggable, observer, intro listener | T-EN3, green in CI | pass |
 | Reduced motion | tier 0 page | equals tier 0, toggled mid-scene | e2e; close screenshots `data-tier` 0 | pass |
 
@@ -490,7 +490,7 @@ broken layout at any width or theme.
 |---|---|---|---|---|
 | V1 | minor | services and restoration pins, 1440x900 | During the pin the stage fills the top 55 to 60 % of the viewport and leaves the rest empty (`*-services-mid.jpg`, `*-restoration-mid.jpg`). Phase 8's backdrop and molar slots are meant to fill it; until then a design check. | open |
 | V2 | minor | workflow pin, 1440 | Mid-pin, the step in focus has its text over the previous step's receding photo (`*-workflow-mid.jpg`; grey fixture photos). Check again with real photos (gap 48). | open |
-| V3 | note | booking band, dark | The warm-soft surface (`#2A2419`) reads brown next to the navy sections (`home-tier2-1440-dark-booking.jpg`). A token choice for the designer. | open |
+| V3 | note | booking band, dark | The warm-soft surface (`#2A2419`) reads brown next to the navy sections (`home-tier2-1440-dark-booking.jpg`). A token choice for the designer. | fixed in phase 9: dark `--color-warm-soft` is the navy-tinted `#1D2433` (`f133e9e`, A11Y; ink on it 13.60:1, `design/tools/contrast.py`) |
 | V4 | note | DEMO_CONTENT compare, 1440 | The two 1:1 demo panels and their line fill about a third of the section's width; the section reads sparse. Preview only. | open |
 
 The pattern behind F1 to F3: a pinned layout changes the document's

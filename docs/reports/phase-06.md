@@ -1,6 +1,7 @@
 # Phase 06 - Content and SEO Engine
 
-Date: 2026-10-18 to (open).
+Date: 2026-10-18 to 2026-10-30 (closed at the phase 9 gate). Commits `6ba2864` to `a7ef2aa`,
+then the phase 9 series up to the gate.
 
 ## Plan (written before building)
 
@@ -127,3 +128,50 @@ Deviations recorded at I1:
    - Without a session, a custom admin view (the calendar, the status view) shows the
      not-found view with a 200, because the admin layout streams before the view runs. No data
      is rendered; a signed-in editor gets a real 404.
+
+## Close (phase 9 gate, 2026-10-30)
+
+Phase 6 ended at I1. Its wave 1b, 2 and 3 ran later: the copy on 2026-10-26, the rest inside the
+phase 9 lanes. This section closes the phase; nothing below is new work.
+
+### Copy (wave 1b) and H25
+
+- The sourced copy landed on 2026-10-26: the eighteen services (`a7ef2aa`), the three patient
+  guides (`df13608`) and the six draft articles (`c2dd0d8`). Each source was opened before it
+  was cited.
+- **H25 is closed by `a7ef2aa`:** it turns the services sources gate on and unskips CT6 and
+  SD12. `38924d5` turns the C10 copy checks (SC8 to SC12) on. I1 deviation 1 is void.
+- I1 deviation 2 stands for the e2e database only: the QA fixture still publishes the guides
+  with a sample reviewer.
+
+### Wave 2 and 3 items
+
+| Item | Status | Where, or why moved |
+|---|---|---|
+| Dentist review of every text against its sources | done for what ships at launch: the 18 services, the five category pages, home, pricing, emergency, about, privacy (phase 9 COPY, `f85d133`, `19dbf99`, `docs/qa/audit-rtl-copy.md` 1) | the 3 guides and 6 articles: plan section 8, before they publish (gaps 2, 42; owner decision 1a) |
+| TEMPLATES step 2: rich-text block converters (callout, table, video) | moved | plan section 8: before the first article publishes; until then no article can publish (fact 2 of the phase 9 plan) |
+| TEMPLATES step 2: live preview route | removed for launch (phase 9 SURFACE: the tab and its config) | plan section 8, with its security review, when the converters land |
+| TEMPLATES step 2: the cases page `/قبل-و-بعد` | moved | plan section 8: the first consented pair (gap 6). The chrome (SURFACE) and, since the phase 9 gate, home, the service template and the dentist page link it no more; the sitemap leaves it out (`c39549b`) |
+| Security review of the preview path, the CSV import and the approval access | done (phase 9 SEC, `docs/qa/audit-security.md` 2, 3, 5; SEC-5 and SEC-6 fixed) | the preview path is gone, so its review moves with it |
+| Editorial guide `docs/content/editorial-guide.fa.md` | moved | plan section 8: when a reviewer dentist exists; no article can publish before |
+| Schedule-drawer «لغو انتشار» guard | moved | plan section 8; the admin guide warns (`docs/admin-guide.fa.md`, «زمان‌بندی انتشار») |
+| Accessibility | done (phase 9 A11Y, `docs/qa/audit-accessibility.md`) | |
+| Screenshots | done for the launch shape (phase 9, `docs/qa/phase-09/`) | the article and dentist templates are captured on the QA database only |
+| Lighthouse on a post | moved | plan section 8: the first published article or dentist; `scripts/lhci.mjs` dropped the dentist URL (`db30bff`) |
+| Admin guide with screenshots | done (phase 9 ADMIN-GUIDE, `docs/admin-guide.fa.md`, `docs/qa/admin-guide/`) | |
+
+### Freeze table
+
+| ID | Decision | Why |
+|---|---|---|
+| P6-1 | Article URLs as `docs/ia.md`; 12 items a list page; pages 2 and up self-canonical | one URL scheme for the engine and the crawl |
+| P6-2 | A category is indexable from 5 published articles; a tag never | thin pages stay out of the index |
+| P6-3 | Every article needs an approved review by a published dentist, a review date, sources and two live internal links (one service, one guide) before it publishes; only an admin approves | medical content (E-E-A-T); the receptionist cannot publish unreviewed text |
+| P6-4 | Guides and the emergency self-care blocks need a published reviewer dentist too; services carry their sources gate (H25) | the same rule for every medical text |
+| P6-5 | OG cards are rendered once per page type by a real browser and committed, never on the server | Persian shaping needs a real text engine |
+| P6-6 | The old-URL import is an admin upload with a dry run; rows that resolve off-site are refused (SEC-5) | the host had no shell; an import must never redirect a patient away |
+| P6-7 | Client facts are never invented: `# NEEDS_CLIENT` comments and gap rows | the copy rules; the gap registry tests (CG1, CG2) |
+| P6-8 | The save normalizer writes Persian digits in prose and pairs straight quotes (I1 deviation 4) | one written form on every page |
+| P6-9 | `schema-dts` 2.1.0 types the JSON-LD builders; the crawl checks what renders | compile-time and render-time checks of the same graph |
+| P6-10 | Live preview is not shipped at launch (was: drafts rendered on the server for TOTP-verified staff) | no route existed; a preview path is a draft leak risk without its review |
+| P6-11 | C15: the Payload, Lexical and sonner strings listed in I1 deviation 5 stay English; since the phase 9 gate the TOTP setup line names no app (AG-F3) | no translation key exists for them |
