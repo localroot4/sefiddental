@@ -50,6 +50,7 @@ import {
  * production). fill (H43, C8) creates what is missing and fills empty fields, never a filled one
  * and never on a document with a medical reviewer (C1).
  * dry-run writes nothing. Records are matched by natural keys, so a second run changes nothing.
+ * copy-sync (./copySync.ts, allowed in production) writes changed copy over untouched fields only.
  */
 
 export type SeedMode = 'create-only' | 'sync' | 'fill' | 'dry-run';
@@ -94,7 +95,7 @@ interface Upserted {
 }
 
 // The Local API is generic over generated types; the seeder builds data from yaml at run time.
-interface LooseApi {
+export interface LooseApi {
   find(args: Data): Promise<{ docs: Data[] }>;
   create(args: Data): Promise<Data>;
   update(args: Data): Promise<Data>;
@@ -109,7 +110,7 @@ const isEmpty = (value: unknown): boolean =>
   (Array.isArray(value) && value.length === 0);
 
 // A group recurses; an array or a Lexical value (`{ root }`) is one field.
-const isGroup = (value: unknown): value is Data =>
+export const isGroup = (value: unknown): value is Data =>
   value !== null && typeof value === 'object' && !Array.isArray(value) && !('root' in value);
 
 /** The seed values whose current value is empty, recursing into groups (create-only, fill). */
@@ -150,7 +151,7 @@ export function contains(stored: unknown, seed: unknown): boolean {
 }
 
 /** A Payload ValidationError as `path: message` pairs, for a report line. */
-const refusal = (err: ValidationError): string =>
+export const refusal = (err: ValidationError): string =>
   err.data.errors.map((e) => `${e.path}: ${e.message}`).join(' ');
 
 function deepMerge(base: Data, patch: Data): Data {
@@ -167,6 +168,19 @@ function deepMerge(base: Data, patch: Data): Data {
         : value;
   }
   return out;
+}
+
+/** Link targets by path of the stored services, pages, articles and doctors. */
+export async function storedLinkTargets(api: LooseApi): Promise<Map<string, LinkDoc>> {
+  const targets = new Map<string, LinkDoc>();
+  for (const relationTo of ['services', 'pages', 'articles', 'doctors'] as const) {
+    const stored = await api.find({ collection: relationTo, depth: 0, pagination: false });
+    for (const doc of stored.docs) {
+      const target = buildPath(relationTo, doc as PathDoc);
+      if (target) targets.set(normalizePath(target), { relationTo, value: doc.id as Id });
+    }
+  }
+  return targets;
 }
 
 export async function runSeed(
@@ -340,15 +354,11 @@ export async function runSeed(
   }
 
   // Link targets by path: the stored documents first, so a second run builds the same links.
-  const targets = new Map<string, LinkDoc>();
+  const targets = await storedLinkTargets(api);
   const register = (relationTo: LinkCollection, doc: PathDoc, id: Id) => {
     const target = buildPath(relationTo, doc);
     if (target) targets.set(normalizePath(target), { relationTo, value: id });
   };
-  for (const relationTo of ['services', 'pages', 'articles', 'doctors'] as const) {
-    const stored = await api.find({ collection: relationTo, depth: 0, pagination: false });
-    for (const doc of stored.docs) register(relationTo, doc as PathDoc, doc.id as Id);
-  }
   /** Builds yaml data with its links; `missed` when a link target does not exist yet. */
   const linked = <T>(build: (link: LinkResolver) => T): { data: T; missed: boolean } => {
     let missed = false;
