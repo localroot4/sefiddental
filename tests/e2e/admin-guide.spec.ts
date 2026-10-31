@@ -21,7 +21,7 @@ import { adminText } from '@/i18n/fa-admin';
 import { ADMIN_ROUTE } from '@/lib/paths';
 import { toPersianDigits } from '@/lib/persianText';
 
-import { signInToAdmin, totpCode } from '../helpers/admin';
+import { setupSecret, signInToAdmin, totpCode } from '../helpers/admin';
 import { isolateClient } from '../helpers/booking';
 import { APP_ORIGIN } from '../helpers/servers';
 import { e2eAccounts } from '../helpers/users';
@@ -163,8 +163,8 @@ test('T-AG1 section 1: the first sign-in sets up the code; later sign-ins ask fo
   await shot(page, 'sign-in', page.locator('form button[type="submit"]'));
   await page.locator('form button[type="submit"]').click();
   await page.waitForURL(new RegExp(`${ADMIN_ROUTE}/setup-totp(\\?|$)`));
-  reception.secret = await page.locator('input[name="secret"]').inputValue();
   await shot(page, 'totp-setup', page.locator('form input[maxlength="1"]').first());
+  reception.secret = await setupSecret(page);
   await page.locator('form input[maxlength="1"]').first().click();
   await page.keyboard.type(totpCode(reception.secret));
   await page.waitForURL((url) => url.pathname.replace(/\/$/, '') === ADMIN_ROUTE);

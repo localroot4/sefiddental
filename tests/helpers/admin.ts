@@ -47,7 +47,16 @@ function saveSecret(email: string, secret: string): void {
   chmodSync(file, 0o600);
 }
 
-/** Types the code into the first box of the plugin's six-box input; the form submits itself. */
+/** The plugin's Persian label of the setup page's manual-entry link (payload-totp i18n/fa.js). */
+const MANUAL_ENTRY = 'افزودن کد به صورت دستی';
+
+/** The secret the setup page shows for manual entry: the one its QR code holds. */
+export async function setupSecret(page: Page): Promise<string> {
+  await page.getByText(MANUAL_ENTRY, { exact: true }).click();
+  return (await page.locator('code').first().innerText()).replace(/\s/g, '');
+}
+
+/** Types the code into the first box of the six-box input; the form submits itself. */
 async function enterCode(page: Page, secret: string): Promise<void> {
   await page.locator('form input[maxlength="1"]').first().click();
   await page.keyboard.type(totpCode(secret));
@@ -70,7 +79,7 @@ export async function signInToAdmin(page: Page, account: E2eAccount): Promise<Ad
 
   let step: AdminSignIn;
   if (new URL(page.url()).pathname === `${ADMIN_ROUTE}/setup-totp`) {
-    const secret = await page.locator('input[name="secret"]').inputValue();
+    const secret = await setupSecret(page);
     saveSecret(account.email, secret);
     await enterCode(page, secret);
     step = 'enrolled';

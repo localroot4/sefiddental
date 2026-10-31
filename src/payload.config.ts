@@ -8,6 +8,7 @@ import { payloadTotp } from 'payload-totp';
 
 import { canRunJobs } from './access/jobs';
 import { withScheduleBlockMessages } from './admin/schedulePublish';
+import { withCodeFixes } from './admin/totp/server';
 import { collections } from './collections';
 import { richTextEditor } from './fields/richText';
 import { globals } from './globals';
@@ -160,16 +161,25 @@ export default buildConfig({
     // Must stay last: it wraps the access of every collection and global present when it runs.
     payloadTotp({ collection: 'users', forceSetup: true, totp: { issuer: 'Sefid Dental' } }),
     // H34: the plugin's views have no title, so the tab read «Payload» (views only, no access).
+    // Its setup and verify views are replaced by src/admin/totp (same routes and serverProps): a
+    // setup secret that survives a reload, and a code input for Persian digits. Its two code
+    // endpoints get the same digits and the secret the page showed (withCodeFixes).
     (config) => {
       const views = config.admin?.components?.views ?? {};
-      for (const [key, title] of [
-        ['SetupTOTP', adminText('admin.totp.setup')],
-        ['SetupTOTPBackslash', adminText('admin.totp.setup')],
-        ['VerifyTOTP', adminText('admin.totp.verify')],
-        ['VerifyTOTPBackslash', adminText('admin.totp.verify')],
+      const setup = '/admin/totp/views#TotpSetupView';
+      const verify = '/admin/totp/views#TotpVerifyView';
+      for (const [key, title, path] of [
+        ['SetupTOTP', adminText('admin.totp.setup'), setup],
+        ['SetupTOTPBackslash', adminText('admin.totp.setup'), setup],
+        ['VerifyTOTP', adminText('admin.totp.verify'), verify],
+        ['VerifyTOTPBackslash', adminText('admin.totp.verify'), verify],
       ] as const) {
-        if (views[key]) views[key] = { ...views[key], meta: { title } };
+        const view = views[key];
+        if (view && typeof view.Component === 'object') {
+          views[key] = { ...view, Component: { ...view.Component, path }, meta: { title } };
+        }
       }
+      config.endpoints = config.endpoints?.map(withCodeFixes);
       // The plugin spreads its own Persian over the config's, so its setup line is replaced here.
       const translations = config.i18n?.translations as
         { fa?: { totpPlugin?: { setup?: object } } } | undefined;

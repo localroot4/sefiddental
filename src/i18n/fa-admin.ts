@@ -167,6 +167,12 @@ export const ADMIN_MESSAGES = {
   'admin.preview.desktop': 'دسکتاپ',
   'admin.totp.setup': 'راه‌اندازی ورود دومرحله‌ای',
   'admin.totp.verify': 'ورود دومرحله‌ای',
+  'admin.totp.clear': 'پاک کردن',
+  'admin.totp.copy': 'کپی',
+  'admin.totp.copied': 'کپی شد',
+  'admin.totp.failed': 'کد فرستاده نشد. اتصال اینترنت را بررسی کنید و دوباره امتحان کنید.',
+  'admin.totp.qr': 'کد QR برای برنامهٔ رمز یک‌بارمصرف',
+  'admin.totp.digit': 'رقم {n} از {total}',
   // payload-totp's setup line names one app product (findings AG-F3); the clinic picks the app (gap 62).
   'admin.totp.app':
     'برای ورود دومرحله‌ای یک برنامهٔ رمز یک‌بارمصرف روی گوشی لازم است. پس از نصب، کد QR زیر را با همان برنامه اسکن کنید.',

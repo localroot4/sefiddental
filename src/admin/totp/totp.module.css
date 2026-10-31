@@ -1,0 +1,139 @@
+/*
+ * The TOTP setup and verify screens (operate mode): Payload's theme tokens only, so light and dark
+ * follow the admin; spacing in multiples of --base; each box a 44px touch target. The code row is
+ * LTR inside the RTL admin, as a code reads.
+ */
+
+.root :global(.template-minimal__wrap) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--base) * 1.25);
+  max-width: 34rem;
+  text-align: center;
+}
+
+.root h1,
+.root p {
+  margin: 0;
+}
+
+.root p {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.qr {
+  /* Dark modules on white in both themes: what every scanner reads best. */
+  border-radius: var(--style-radius-m);
+  max-width: 100%;
+  height: auto;
+}
+
+.manual summary {
+  cursor: pointer;
+  color: var(--theme-success-750);
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.secret {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--base) * 0.5);
+  padding: calc(var(--base) * 0.25) calc(var(--base) * 0.5);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-elevation-50);
+}
+
+.secret code {
+  font-size: 0.875rem;
+  overflow-wrap: anywhere;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(var(--base) * 0.5);
+}
+
+.autofill {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.boxes {
+  display: flex;
+  gap: calc(var(--base) * 0.4);
+  direction: ltr;
+}
+
+.boxes input {
+  width: 44px;
+  height: 52px;
+  padding: 0;
+  border: 1px solid var(--theme-elevation-250);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-input-bg);
+  color: var(--theme-elevation-1000);
+  caret-color: transparent;
+  font-family: inherit;
+  font-size: 1.375rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  transition:
+    border-color 150ms ease-out,
+    box-shadow 150ms ease-out;
+}
+
+.boxes input:hover {
+  border-color: var(--theme-elevation-400);
+}
+
+/* --theme-success-750 is dark in the light theme and light in the dark one. */
+.boxes input:focus {
+  outline: none;
+  border-color: var(--theme-success-750);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--theme-success-500) 40%, transparent);
+}
+
+.boxes input:disabled {
+  opacity: 0.6;
+}
+
+.action {
+  min-height: 44px;
+  padding: 0 calc(var(--base) * 0.5);
+  border: 0;
+  background: none;
+  color: var(--theme-elevation-650);
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.action:hover {
+  color: var(--theme-elevation-1000);
+}
+
+.action:focus-visible,
+.manual summary:focus-visible {
+  outline: var(--accessibility-outline);
+  outline-offset: var(--accessibility-outline-offset);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .boxes input {
+    transition: none;
+  }
+}

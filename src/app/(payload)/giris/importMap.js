@@ -41,8 +41,8 @@ import { ContentCalendar as ContentCalendar_94dbe610237edc2b83febf181d92f829 } f
 import { SeoHealth as SeoHealth_6065dfc8b56a1072541e1e0375c1993c } from '../../../admin/components/SeoHealth'
 import { ContentGapsSummary as ContentGapsSummary_143210e75d1a14ffa234c8fb8ff0a865 } from '../../../admin/components/ContentGapsSummary'
 import { TOTPProvider as TOTPProvider_4eaf6cb33cfb75be01716613e3c9a512 } from 'payload-totp/rsc'
-import { TOTPSetup as TOTPSetup_4eaf6cb33cfb75be01716613e3c9a512 } from 'payload-totp/rsc'
-import { TOTPVerify as TOTPVerify_4eaf6cb33cfb75be01716613e3c9a512 } from 'payload-totp/rsc'
+import { TotpSetupView as TotpSetupView_04ac6958d69d7749643fe48de6e0996a } from '../../../admin/totp/views'
+import { TotpVerifyView as TotpVerifyView_04ac6958d69d7749643fe48de6e0996a } from '../../../admin/totp/views'
 import { SystemStatusView as SystemStatusView_5e37a55f93bc7f5ef834be8d43c90fca } from '../../../admin/views/SystemStatus'
 import { EditorialCalendar as EditorialCalendar_ed12864e2a1634af42973a88ab92f71f } from '../../../admin/views/EditorialCalendar'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
@@ -93,8 +93,8 @@ export const importMap = {
   "/admin/components/SeoHealth#SeoHealth": SeoHealth_6065dfc8b56a1072541e1e0375c1993c,
   "/admin/components/ContentGapsSummary#ContentGapsSummary": ContentGapsSummary_143210e75d1a14ffa234c8fb8ff0a865,
   "payload-totp/rsc#TOTPProvider": TOTPProvider_4eaf6cb33cfb75be01716613e3c9a512,
-  "payload-totp/rsc#TOTPSetup": TOTPSetup_4eaf6cb33cfb75be01716613e3c9a512,
-  "payload-totp/rsc#TOTPVerify": TOTPVerify_4eaf6cb33cfb75be01716613e3c9a512,
+  "/admin/totp/views#TotpSetupView": TotpSetupView_04ac6958d69d7749643fe48de6e0996a,
+  "/admin/totp/views#TotpVerifyView": TotpVerifyView_04ac6958d69d7749643fe48de6e0996a,
   "/admin/views/SystemStatus#SystemStatusView": SystemStatusView_5e37a55f93bc7f5ef834be8d43c90fca,
   "/admin/views/EditorialCalendar#EditorialCalendar": EditorialCalendar_ed12864e2a1634af42973a88ab92f71f,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1,
