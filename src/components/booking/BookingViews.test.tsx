@@ -157,4 +157,26 @@ describe('booking views (conversion.md 5, 5.4; freeze G7, G9)', () => {
       ]),
     );
   });
+
+  it('BV9 the booking page shows one title: the card keeps its form name for screen readers only', async () => {
+    const markup = await html(
+      await BookingPageView({
+        title: 'رزرو نوبت',
+        tokens: null,
+        inputs: { restore: null } as never,
+      }),
+    );
+    const doc = new DOMParser().parseFromString(markup, 'text/html');
+    expect(doc.querySelectorAll('h1')).toHaveLength(1);
+    const title = doc.getElementById('bk-page-title')!;
+    expect(title.textContent).toBe(t('booking.heading'));
+    expect(title.className.split(' ')).toContain('sr-only');
+    expect(doc.querySelector('form')!.getAttribute('aria-labelledby')).toBe('bk-page-title');
+    // Every other instance keeps its visible title (the dialog is named by it).
+    const dialog = new DOMParser().parseFromString(
+      await html(await BookingDialog({})),
+      'text/html',
+    );
+    expect(dialog.getElementById('bk-dialog-title')!.className.split(' ')).not.toContain('sr-only');
+  });
 });

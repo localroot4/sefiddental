@@ -230,7 +230,12 @@ export async function BookingFormBody({
         }}
         header={
           <div className="grid gap-1">
-            <h2 id={`${p}-title`} className="text-heading font-semibold">
+            {/* The booking page's H1 already says «رزرو نوبت» right above the card: the form keeps
+                its name for assistive tech, but no second visible title (jury note 4). */}
+            <h2
+              id={`${p}-title`}
+              className={cx('text-heading font-semibold', props.instance === 'page' && 'sr-only')}
+            >
               {t('booking.heading')}
             </h2>
             <p className="text-small text-ink-muted">{t('booking.lead')}</p>
