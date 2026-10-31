@@ -18,6 +18,7 @@ import { formsHydrated } from '../helpers/booking';
 import { skipIntro } from '../helpers/intro';
 import { requireRoutes, type PendingRoute } from '../helpers/pending';
 import { MAINTENANCE_ORIGIN } from '../helpers/servers';
+import { needsWebgl2 } from '../helpers/webgl';
 
 const TEMPLATES: ReadonlyArray<{
   name: string;
@@ -84,6 +85,7 @@ async function openTemplate(page: Page, template: (typeof TEMPLATES)[number]): P
 
 /** Loads `/?tier=n` and waits for the engine where the tier runs one. */
 async function openHome(page: Page, tier: number): Promise<void> {
+  if (tier > 0) await needsWebgl2(page);
   await page.goto(`/?tier=${tier}`);
   await page.waitForLoadState('load');
   await expect(page.locator('html')).toHaveAttribute('data-tier', String(tier));

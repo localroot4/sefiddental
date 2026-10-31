@@ -427,6 +427,7 @@ test('T-SV8 a fast Tab from the track into restoration keeps every focused eleme
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
+  await needsWebgl2(page);
   await page.goto('/?tier=2');
   const { start } = await pinRange(page);
   await scrollTo(page, start);

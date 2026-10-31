@@ -340,6 +340,7 @@ test('T-RS9 the chips are one Tab stop at tiers 0, 1 and 2, whatever the scroll 
 }, testInfo) => {
   only(testInfo, 'desktop-light');
   for (const tier of [0, 1, 2]) {
+    if (tier > 0) await needsWebgl2(page);
     await page.goto(`/?tier=${tier}`);
     await page.waitForLoadState('load');
     if (tier > 0) {
