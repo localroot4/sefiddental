@@ -101,7 +101,12 @@ export function HomeHero(props: {
       aria-labelledby="hero-h1"
       className="relative isolate grid grid-cols-1 overflow-hidden bg-surface-sunken md:block lg:bg-transparent"
     >
-      <div className="contents lg:relative lg:isolate lg:block lg:overflow-clip lg:bg-surface-sunken">
+      {/* From 1024 px this box, not the section, is the render gate's cover: the section also
+          holds the transparent world window under the photo (the innermost rendered cover wins). */}
+      <div
+        data-experience-cover=""
+        className="contents lg:relative lg:isolate lg:block lg:overflow-clip lg:bg-surface-sunken"
+      >
         <div className="relative col-start-1 row-start-1 mx-auto grid min-h-[calc(100svh-65px)] w-full max-w-content content-start gap-4 px-gutter pt-2 pb-8 md:min-h-0 md:grid-cols-[minmax(0,1fr)_minmax(0,21rem)] md:content-center md:items-center md:gap-8 md:py-12 lg:min-h-[min(calc(100svh-var(--nav-h)),52rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
           <div className="grid content-start gap-4 rounded-sheet bg-surface/88 p-6 xl:p-8">
             <h1

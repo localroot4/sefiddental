@@ -24,18 +24,21 @@ export function canMount(s: {
 }
 
 /**
- * One range per cover that is at least as tall as the viewport: from its top to the scroll
- * position where its bottom edge meets the viewport bottom. Shorter covers never cover.
+ * One range per cover that fills the viewport under a sticky header `insetTop` px tall: from the
+ * scroll position where its top meets the header's bottom to the one where its bottom edge meets
+ * the viewport bottom. Shorter covers never cover.
  */
 export function coverRanges(
   covers: readonly { top: number; height: number }[],
   viewportHeight: number,
+  insetTop = 0,
 ): CoverRange[] {
   const ranges: CoverRange[] = [];
   if (!(viewportHeight > 0)) return ranges;
+  const inset = Number.isFinite(insetTop) && insetTop > 0 ? Math.min(insetTop, viewportHeight) : 0;
   for (const cover of covers) {
-    if (!(cover.height >= viewportHeight) || !Number.isFinite(cover.top)) continue;
-    ranges.push({ start: cover.top, end: cover.top + cover.height - viewportHeight });
+    if (!(cover.height >= viewportHeight - inset) || !Number.isFinite(cover.top)) continue;
+    ranges.push({ start: cover.top - inset, end: cover.top + cover.height - viewportHeight });
   }
   return ranges;
 }

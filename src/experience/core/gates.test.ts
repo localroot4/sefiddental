@@ -56,6 +56,17 @@ describe('coverRanges and isCovered', () => {
     expect(isCovered(2301, ranges)).toBe(false);
   });
 
+  it('V2 under a 72 px sticky header a 828 px photo at 72 covers a 900 px viewport at 0 only', () => {
+    const ranges = coverRanges([{ top: 72, height: 828 }], 900, 72);
+    expect(ranges).toEqual([{ start: 0, end: 0 }]);
+    expect(isCovered(0, ranges)).toBe(true);
+    expect(isCovered(1, ranges)).toBe(false);
+    // Without the inset the same photo never fills the viewport, and with a short photo (a tall
+    // desktop) nothing covers either.
+    expect(coverRanges([{ top: 72, height: 828 }], 900)).toEqual([]);
+    expect(coverRanges([{ top: 72, height: 832 }], 1200, 72)).toEqual([]);
+  });
+
   it('V2 a zero or invalid viewport gives no ranges', () => {
     expect(coverRanges([{ top: 0, height: 900 }], 0)).toEqual([]);
     expect(coverRanges([{ top: Number.NaN, height: 900 }], 900)).toEqual([]);

@@ -318,6 +318,8 @@ export function createScrollEngine(opts: {
   let initMs = 0;
   // Measured on every ScrollTrigger refresh and once at creation.
   let covers: { top: number; height: number }[] = [];
+  /** The sticky header's height: a cover fills the viewport under it. */
+  let coverInset = 0;
   let bounds: SceneBound<SceneId>[] = [];
 
   const sectionElements = (): Element[] =>
@@ -326,11 +328,24 @@ export function createScrollEngine(opts: {
     );
 
   const measure = (): void => {
-    covers = Array.from(root.querySelectorAll('[data-experience-cover]')).map((el) => {
-      const rect = el.getBoundingClientRect();
-      // Ceil: a 100dvh cover can measure a fraction under the integer viewport height.
-      return { top: rect.top + window.scrollY, height: Math.ceil(rect.height) };
-    });
+    // The innermost rendered covers: from 1024 px the hero's photo box (its section also holds
+    // the transparent world window under it); a `display: contents` box has no rects.
+    const rendered = Array.from(root.querySelectorAll('[data-experience-cover]')).filter(
+      (el) => el.getClientRects().length > 0,
+    );
+    const header = document.querySelector('header');
+    const position = header ? getComputedStyle(header).position : '';
+    coverInset =
+      header && (position === 'sticky' || position === 'fixed')
+        ? header.getBoundingClientRect().height
+        : 0;
+    covers = rendered
+      .filter((el) => !rendered.some((o) => o !== el && el.contains(o)))
+      .map((el) => {
+        const rect = el.getBoundingClientRect();
+        // Ceil: a 100dvh cover can measure a fraction under the integer viewport height.
+        return { top: rect.top + window.scrollY, height: Math.ceil(rect.height) };
+      });
     bounds = measureBounds(root);
   };
 
@@ -466,7 +481,7 @@ export function createScrollEngine(opts: {
       return subscribers.size + (lenisRaf ? 1 : 0);
     },
     covered() {
-      return isCovered(window.scrollY, coverRanges(covers, window.innerHeight));
+      return isCovered(window.scrollY, coverRanges(covers, window.innerHeight, coverInset));
     },
     insidePinnedRange() {
       const y = window.scrollY;
