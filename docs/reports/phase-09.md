@@ -196,6 +196,23 @@ Launch needs every «yes» row done. A row marked [CLIENT] cannot finish without
 | 18 | Prices or a renamed pricing page (gap 14, jury row 6) | open | client | no |
 | 19 | Clinic licence and technical director (gap 3) | open | client | no, but a trust cost on day one |
 
+### Go table update, 2026-11-05
+
+The rows the studio could close after the gate. The table above stays as it was at the gate.
+
+| # | State on 2026-11-05 | Evidence |
+|---|---|---|
+| 1 | done | CI runs 98, 99 and 101 green in Chromium, WebKit and Firefox; `engines` blocks since `6b4680c`; run 101 is on `73b857e`, the commit on the preview |
+| 2 | done | Server run 41 (`restore-check`): 123 tables, 2942 rows matched, the release answered 200 on the scratch database; recorded in `docs/deploy.md` 6.1. Off-site copy: Server run 42, artifact kept 14 days |
+| 3 | studio part done | «Watch» opened issue 1 on a forced failure, commented once on the second, closed it when green. Open: the owner sets «Watch: All activity» |
+| 4 | done | Headers run 3 (mobile preset, 3 runs, median), light and dark: home 0.97, LCP 1906 / 1907 ms; `/خدمات/ترمیم-دندان` 0.99, 1674 / 1675 ms; `/رزرو-نوبت` 0.99, 1684 / 1671 ms; TBT 5 to 26 ms; CLS 0; accessibility and best practices 1. Headers, CSP and cookies pass in the same run |
+| 5 | done (unchanged) | `docs/deploy.md` 5; previous release `c25214f` kept on the server |
+| 7 | done | the owner enrolled TOTP on the fixed setup screen (`faf14dd`, deployed in Server run 45) |
+| 13 | done | Server run 47 (`copy-sync` apply, after `sefid-backup pre-deploy`): 43 documents, 34 fields updated, 609 unchanged, 0 edited by hand; `guide-aftercare` got it in its unpublished draft; `/api/health` 200 after the restart |
+| 14 | partly done | done: `BACKUP_AGE_RECIPIENT`, the environment `server` with `ADMIN_EMAIL` and `ADMIN_PASSWORD`. Open: the environment's branch rule (main), a new admin e-mail, then the logs of the `first-admin` run deleted |
+
+Still open for launch: rows 6, 8, 9, 10, 11, 12 and 15 (the client and the owner), and the open parts of 3 and 14.
+
 ## Cut to post-launch (plan section 8, as at the gate)
 
 Plan section 8 stands. The gate adds the rows marked «gate».
