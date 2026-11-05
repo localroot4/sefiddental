@@ -62,7 +62,7 @@ jobs:
             THEME=$theme node -e '
               const fs = require("fs");
               const rows = {};
-              for (const f of fs.readdirSync(".lighthouseci").filter((f) => f.startsWith("lhr-"))) {
+              for (const f of fs.readdirSync(".lighthouseci").filter((f) => f.startsWith("lhr-") && f.endsWith(".json"))) {
                 const r = JSON.parse(fs.readFileSync(".lighthouseci/" + f, "utf8"));
                 (rows[decodeURI(new URL(r.finalDisplayedUrl).pathname)] ??= []).push(r);
               }
