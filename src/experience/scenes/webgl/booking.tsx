@@ -17,6 +17,7 @@ import { docRect, followCamera, smoothstep, useMeasured } from '../../world/anch
 import { MODELS } from '../../world/assets';
 import { brandGeometry } from '../../world/brandGeometry';
 import { useWorld } from '../../world/context';
+import { ShadowCatcher } from '../../world/ShadowCatcher';
 import { ANCHOR_DEPTH, rectToCamera, type PxRect } from '../../world/worldMath';
 import { once } from '../../engine/once';
 import type { SceneProps } from '../types';
@@ -150,6 +151,19 @@ export default function BookingScene(props: SceneProps): React.JSX.Element | nul
   const shadows = world.shadows !== 'none';
   return (
     <group ref={root}>
+      <ShadowCatcher
+        rect={() => {
+          const box = slot.current;
+          if (box === null) return null;
+          const top = box.top - window.scrollY;
+          return {
+            left: box.left - 90,
+            top: top - 60,
+            width: box.width + 180,
+            height: box.height + 160,
+          };
+        }}
+      />
       <mesh ref={glow} material={materials.glow} renderOrder={1}>
         <planeGeometry args={[1, 1]} />
       </mesh>

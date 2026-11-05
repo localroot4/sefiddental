@@ -33,7 +33,9 @@ export function worldSettings(tier: 1 | 2 | 3, settings: TierSettings): WorldSet
   return {
     particles: Math.round(PARTICLES_MAX * settings.particleFactor),
     shadows: settings.shadows,
-    shadowMapSize: settings.shadows === 'soft' ? 2048 : 1024,
+    // The shadow camera covers the viewport only; a 2048 map cleared and drawn every frame cost
+    // more than the scene on a weak GPU, and the soft radius hides the coarser texels.
+    shadowMapSize: settings.shadows === 'soft' ? 1024 : 512,
     shadowRadius: settings.shadows === 'soft' ? 6 : 1,
     grain: settings.post.grain,
     glow: settings.post.bloom,
@@ -141,6 +143,8 @@ export function wobbleStep(current: number, velocityPxS: number, dtSec: number):
 
 /** Camera distance to the plane the screen-anchored objects stand on (world units). */
 export const ANCHOR_DEPTH = 10;
+/** The shadow catchers sit this far behind it, under the boxes the objects live in. */
+export const CATCHER_DEPTH = ANCHOR_DEPTH + 0.6;
 
 /** A rectangle in viewport pixels (CSS px), as `getBoundingClientRect` gives it. */
 export interface PxRect {

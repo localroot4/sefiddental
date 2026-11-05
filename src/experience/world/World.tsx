@@ -4,9 +4,8 @@
  * The porcelain world (phase 8; docs/experience-direction.md sections 2, 3 and 6): the space
  * every WebGL scene lives in. It owns the camera path and the light drift bound to the master
  * timeline (cool dawn key at the hero exit, peach by scene 9's `--warm`), the RoomEnvironment
- * reflections, the shadow catcher behind the screen-anchored objects, the diamond dust, the
- * shared materials in both themes, and the one render call per frame (priority 1, so R3F does not
- * render on its own). The canvas fades in on its first frame: no flash at the hero hand-over.
+ * reflections, the diamond dust, the shared materials in both themes, and the one render call per
+ * frame (priority 1, so R3F does not render on its own); each scene brings its own shadow catcher. The canvas fades in on its first frame: no flash at the hero hand-over.
  * Tier 1 renders only while one of its scenes is mounted, then one clean frame, then nothing.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -34,12 +33,10 @@ import { WorldContext, type WorldApi, type WorldMotion } from './context';
 import { Dust } from './Dust';
 import { applyPalette, createMaterials, readPalette, type Palette } from './materials';
 import { SceneSlots } from './SceneSlots';
-import { ANCHOR_DEPTH, cameraPose, lightDrift, wobbleStep, worldSettings } from './worldMath';
+import { cameraPose, lightDrift, wobbleStep, worldSettings } from './worldMath';
 
 const FOV = 30;
 const ORDER = SCENES.map((scene) => scene.id);
-/** The shadow catcher sits just behind the screen-anchored plane. */
-const WALL_DEPTH = ANCHOR_DEPTH + 0.6;
 /** Seconds for the camera to settle on a new pose (a jump by `scrollTo` eases, never snaps). */
 const CAMERA_EASE = 0.35;
 const POINTER_EASE = 0.5;
@@ -90,12 +87,14 @@ export function World(props: {
   const drawingRef = useRef(0);
 
   // The camera of the world: a narrow lens, so the screen-anchored objects keep their proportions.
+  // Tier 3's glass transmission renders the opaque scene once more; at half size it costs a quarter.
   useEffect(() => {
+    gl.transmissionResolutionScale = 0.5;
     camera.fov = FOV;
     camera.near = 0.5;
     camera.far = 40;
     camera.updateProjectionMatrix();
-  }, [camera]);
+  }, [gl, camera]);
 
   // Reflections without an HDR file (storyboard scene 2). Rebuilt after a context restore: the
   // prefiltered map lives only on the GPU.
@@ -148,8 +147,6 @@ export function World(props: {
   const warmLayer = useMemo(() => document.querySelector<HTMLElement>('[data-warm-layer]'), []);
   const key = useRef<DirectionalLight>(null);
   const fill = useRef<HemisphereLight>(null);
-  const wall = useMemo(() => new Mesh(new PlaneGeometry(60, 40), materials.shadow), [materials]);
-  useEffect(() => () => wall.geometry.dispose(), [wall]);
   const background = useMemo(() => new Color(), []);
   const look = useMemo(() => ({ position: [0, 0, 10], target: [0, 0, 0] }), []);
 
@@ -197,7 +194,6 @@ export function World(props: {
     );
     camera.lookAt(look.target[0]!, look.target[1]!, look.target[2]!);
     camera.updateMatrixWorld();
-    wall.position.set(look.target[0]!, look.target[1]!, camera.position.z - WALL_DEPTH);
 
     const drift = lightDrift(engine.progress(), motion.warm);
     const light = key.current;
@@ -251,7 +247,6 @@ export function World(props: {
         shadow-camera-near={1}
         shadow-camera-far={30}
       />
-      {shadows ? <primitive object={wall} receiveShadow /> : null}
       <Dust
         count={world.particles}
         dof={world.dof}

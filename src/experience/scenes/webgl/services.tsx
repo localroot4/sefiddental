@@ -31,6 +31,7 @@ import {
   useMeasured,
 } from '../../world/anchor';
 import { useWorld } from '../../world/context';
+import { ShadowCatcher } from '../../world/ShadowCatcher';
 import { ANCHOR_DEPTH, rectToCamera } from '../../world/worldMath';
 import { once } from '../../engine/once';
 import type { SceneProps } from '../types';
@@ -259,6 +260,15 @@ export default function ServicesScene(props: SceneProps): React.JSX.Element {
   const shadows = world.shadows !== 'none';
   return (
     <group ref={root}>
+      <ShadowCatcher
+        rect={() => {
+          const l = layout.current;
+          if (l === null) return null;
+          const top = stickyTop(window.scrollY, l.stage) + l.bandTop;
+          const height = l.bandBottom - l.bandTop;
+          return { left: 0, top: top - 30, width: window.innerWidth, height: height + 140 };
+        }}
+      />
       {pieces.map((motif, k) => (
         <group
           key={k}

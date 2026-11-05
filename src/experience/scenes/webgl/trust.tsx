@@ -26,6 +26,7 @@ import {
 import { MODELS } from '../../world/assets';
 import { brandGeometry } from '../../world/brandGeometry';
 import { useWorld } from '../../world/context';
+import { ShadowCatcher } from '../../world/ShadowCatcher';
 import { ANCHOR_DEPTH, rectToCamera, type PxRect } from '../../world/worldMath';
 import { once } from '../../engine/once';
 import type { SceneProps } from '../types';
@@ -212,6 +213,21 @@ export default function TrustScene(props: SceneProps): React.JSX.Element | null 
   const shadows = world.shadows !== 'none';
   return (
     <group ref={root}>
+      {/* Under the box, with room for the shadows that fall down and to the left. */}
+      <ShadowCatcher
+        rect={() => {
+          const l = layout.current;
+          if (l === null) return null;
+          const { box } = l;
+          const top = box.top - window.scrollY;
+          return {
+            left: box.left - 80,
+            top: top - 40,
+            width: box.width + 160,
+            height: box.height + 120,
+          };
+        }}
+      />
       <mesh ref={glow} material={materials.glow} renderOrder={1}>
         <planeGeometry args={[1, 1]} />
       </mesh>
