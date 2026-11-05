@@ -1,0 +1,302 @@
+[
+  {
+    "file": "scene2-hero-exit-1440x900-light.png",
+    "lines": 21,
+    "worst": {
+      "ratio": 5.22,
+      "text": "ثبت درخواست",
+      "rect": [
+        274,
+        194,
+        92,
+        25
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene2-hero-exit-late-1440x900-light.png",
+    "lines": 19,
+    "worst": {
+      "ratio": 6.29,
+      "text": "معمولاً، در ساعات کاری",
+      "rect": [
+        576,
+        173,
+        118,
+        20
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene3-services-1440x900-light.png",
+    "lines": 8,
+    "worst": {
+      "ratio": 6.45,
+      "text": "خدمات کلینیک در پنج گروه آمده ",
+      "rect": [
+        798,
+        202,
+        530,
+        28
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene9-first-visit-1440x900-light.png",
+    "lines": 18,
+    "worst": {
+      "ratio": 5.13,
+      "text": "شماره‌تان را در فرم بگذارید یا",
+      "rect": [
+        660,
+        65,
+        92,
+        22
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene10-booking-1440x900-light.png",
+    "lines": 22,
+    "worst": {
+      "ratio": 5.22,
+      "text": "ثبت درخواست",
+      "rect": [
+        906,
+        616,
+        92,
+        25
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene2-hero-exit-1440x900-dark.png",
+    "lines": 21,
+    "worst": {
+      "ratio": 6.96,
+      "text": "ثبت درخواست",
+      "rect": [
+        274,
+        194,
+        92,
+        25
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene2-hero-exit-late-1440x900-dark.png",
+    "lines": 19,
+    "worst": {
+      "ratio": 7.83,
+      "text": "بیمه ایران، بیمه کارآفرین، بیم",
+      "rect": [
+        347,
+        194,
+        37,
+        20
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene3-services-1440x900-dark.png",
+    "lines": 8,
+    "worst": {
+      "ratio": 7.22,
+      "text": "ایمپلنت دندان، اوردنچر، جراحی ",
+      "rect": [
+        1160,
+        377,
+        375,
+        22
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene9-first-visit-1440x900-dark.png",
+    "lines": 18,
+    "worst": {
+      "ratio": 5.81,
+      "text": "شماره‌تان را در فرم بگذارید یا",
+      "rect": [
+        660,
+        65,
+        92,
+        22
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene10-booking-1440x900-dark.png",
+    "lines": 22,
+    "worst": {
+      "ratio": 6.96,
+      "text": "ثبت درخواست",
+      "rect": [
+        906,
+        616,
+        92,
+        25
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene2-hero-exit-390x844-light.png",
+    "lines": 25,
+    "worst": {
+      "ratio": 5.22,
+      "text": "ثبت درخواست",
+      "rect": [
+        149,
+        298,
+        92,
+        25
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene2-hero-exit-late-390x844-light.png",
+    "lines": 13,
+    "worst": {
+      "ratio": 6.45,
+      "text": "خدمات کلینیک در پنج گروه آمده ",
+      "rect": [
+        19,
+        346,
+        355,
+        28
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene3-services-390x844-light.png",
+    "lines": 8,
+    "worst": {
+      "ratio": 5.22,
+      "text": "رزرو نوبت",
+      "rect": [
+        287,
+        485,
+        60,
+        25
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene9-first-visit-390x844-light.png",
+    "lines": 15,
+    "worst": {
+      "ratio": 5.13,
+      "text": "از ثبت درخواست تا مراقبت بعد ا",
+      "rect": [
+        204,
+        62,
+        170,
+        28
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene10-booking-390x844-light.png",
+    "lines": 12,
+    "worst": {
+      "ratio": 5.22,
+      "text": "ثبت درخواست",
+      "rect": [
+        149,
+        675,
+        92,
+        25
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene2-hero-exit-390x844-dark.png",
+    "lines": 25,
+    "worst": {
+      "ratio": 6.96,
+      "text": "ثبت درخواست",
+      "rect": [
+        149,
+        298,
+        92,
+        25
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene2-hero-exit-late-390x844-dark.png",
+    "lines": 13,
+    "worst": {
+      "ratio": 7.42,
+      "text": "معمولاً، در ساعات کاری",
+      "rect": [
+        242,
+        138,
+        118,
+        20
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene3-services-390x844-dark.png",
+    "lines": 8,
+    "worst": {
+      "ratio": 6.96,
+      "text": "رزرو نوبت",
+      "rect": [
+        287,
+        485,
+        60,
+        25
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene9-first-visit-390x844-dark.png",
+    "lines": 15,
+    "worst": {
+      "ratio": 5.81,
+      "text": "از ثبت درخواست تا مراقبت بعد ا",
+      "rect": [
+        204,
+        62,
+        170,
+        28
+      ]
+    },
+    "errors": []
+  },
+  {
+    "file": "scene10-booking-390x844-dark.png",
+    "lines": 12,
+    "worst": {
+      "ratio": 6.96,
+      "text": "ثبت درخواست",
+      "rect": [
+        149,
+        675,
+        92,
+        25
+      ]
+    },
+    "errors": []
+  }
+]

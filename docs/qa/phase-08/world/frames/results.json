@@ -1,0 +1,3355 @@
+{
+  "label": "phase-08/world/frames",
+  "measuredAt": "2026-11-05T10:24:04.023Z",
+  "command": "E2E_PORT=3300 node scripts/measure-home.mjs docs/qa/phase-08/world/frames --only=frames --tiers=2,3 --sections=trust,services,journey,booking",
+  "viewport": "desktop",
+  "sections": [
+    "trust",
+    "services",
+    "journey",
+    "booking"
+  ],
+  "pace": 80,
+  "fling": false,
+  "host": {
+    "commit": "3044daf",
+    "dirty": true,
+    "cpus": 4,
+    "loadAverage": [
+      1.81,
+      3.93,
+      5.8
+    ],
+    "chromium": "Chromium 141.0.7390.37"
+  },
+  "frames": [
+    {
+      "gpu": "default",
+      "tier": 2,
+      "rate": 4,
+      "reachedBottom": true,
+      "scrollMs": 50532,
+      "scrollHeight": 14851,
+      "sectionsInDom": [
+        "hero",
+        "trust",
+        "services",
+        "restoration",
+        "workflow",
+        "compare",
+        "dentists",
+        "voices",
+        "journey",
+        "faq",
+        "booking",
+        "footer"
+      ],
+      "runs": 3,
+      "page": {
+        "medianFps": 14.503,
+        "minWindowFps": 4.085,
+        "worstFrameMs": 3366.4,
+        "framesOver33ms": 726,
+        "longTasksOver100ms": 128,
+        "frames": 755,
+        "p95FrameMs": 150.1,
+        "longTasks": 255,
+        "longestTaskMs": 2909
+      },
+      "heap": {
+        "beforeMiB": 4.8,
+        "afterMiB": 11.2,
+        "afterGcMiB": 9.8
+      },
+      "layout": {
+        "clsAll": 0,
+        "cls": 0
+      },
+      "engine": {
+        "initMs": 34.4,
+        "longestTaskMs": 0
+      },
+      "sections": [
+        {
+          "medianFps": 8.183,
+          "minWindowFps": 8.183,
+          "section": "trust",
+          "frames": 13,
+          "meanFps": 8,
+          "p95FrameMs": 249.9,
+          "worstFrameMs": 249.9,
+          "framesOver25ms": 13,
+          "framesOver33ms": 13,
+          "longTasks": 12,
+          "longTasksOver100ms": 8,
+          "longestTaskMs": 238
+        },
+        {
+          "medianFps": 7.001,
+          "minWindowFps": 4.839,
+          "section": "services",
+          "frames": 124,
+          "meanFps": 7.2,
+          "p95FrameMs": 200.1,
+          "worstFrameMs": 299.9,
+          "framesOver25ms": 124,
+          "framesOver33ms": 124,
+          "longTasks": 125,
+          "longTasksOver100ms": 105,
+          "longestTaskMs": 294
+        },
+        {
+          "medianFps": 26.003,
+          "minWindowFps": 26.003,
+          "section": "journey",
+          "frames": 39,
+          "meanFps": 24.9,
+          "p95FrameMs": 50.1,
+          "worstFrameMs": 66.7,
+          "framesOver25ms": 37,
+          "framesOver33ms": 37,
+          "longTasks": 1,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 50
+        },
+        {
+          "medianFps": 12.187,
+          "minWindowFps": 9.677,
+          "section": "booking",
+          "frames": 47,
+          "meanFps": 12.9,
+          "p95FrameMs": 133.3,
+          "worstFrameMs": 150,
+          "framesOver25ms": 47,
+          "framesOver33ms": 47,
+          "longTasks": 38,
+          "longTasksOver100ms": 6,
+          "longestTaskMs": 141
+        }
+      ],
+      "samples": [
+        {
+          "tier": 2,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 50532,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 15.881418740074118,
+            "minWindowFps": 3.781766841468334,
+            "worstFrameMs": 3366.5,
+            "framesOver33ms": 721,
+            "longTasksOver100ms": 125,
+            "frames": 748,
+            "p95FrameMs": 150.1,
+            "longTasks": 255,
+            "longestTaskMs": 2909
+          },
+          "sections": [
+            {
+              "medianFps": 7.384842610541868,
+              "minWindowFps": 7.384842610541868,
+              "section": "trust",
+              "frames": 13,
+              "meanFps": 7.2,
+              "p95FrameMs": 249.9,
+              "worstFrameMs": 249.9,
+              "framesOver25ms": 13,
+              "framesOver33ms": 13,
+              "longTasks": 12,
+              "longTasksOver100ms": 12,
+              "longestTaskMs": 255
+            },
+            {
+              "medianFps": 7.273057881294989,
+              "minWindowFps": 4.762358319839986,
+              "section": "services",
+              "frames": 123,
+              "meanFps": 7.2,
+              "p95FrameMs": 200.1,
+              "worstFrameMs": 299.9,
+              "framesOver25ms": 123,
+              "framesOver33ms": 123,
+              "longTasks": 124,
+              "longTasksOver100ms": 104,
+              "longestTaskMs": 294
+            },
+            {
+              "medianFps": 26.002600260025964,
+              "minWindowFps": 26.002600260025964,
+              "section": "journey",
+              "frames": 39,
+              "meanFps": 24.6,
+              "p95FrameMs": 50.1,
+              "worstFrameMs": 66.7,
+              "framesOver25ms": 37,
+              "framesOver33ms": 37,
+              "longTasks": 1,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 55
+            },
+            {
+              "medianFps": 12.187119152526433,
+              "minWindowFps": 8.85303954357664,
+              "section": "booking",
+              "frames": 47,
+              "meanFps": 12.9,
+              "p95FrameMs": 133.3,
+              "worstFrameMs": 166.7,
+              "framesOver25ms": 47,
+              "framesOver33ms": 47,
+              "longTasks": 36,
+              "longTasksOver100ms": 6,
+              "longestTaskMs": 157
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 11.3,
+            "afterGcMiB": 9.8
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 38.6,
+            "longestTaskMs": 0
+          }
+        },
+        {
+          "tier": 2,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 52707,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 14.502761256127808,
+            "minWindowFps": 4.545454545454546,
+            "worstFrameMs": 2833.3,
+            "framesOver33ms": 726,
+            "longTasksOver100ms": 136,
+            "frames": 755,
+            "p95FrameMs": 166.6,
+            "longTasks": 294,
+            "longestTaskMs": 2394
+          },
+          "sections": [
+            {
+              "medianFps": 9.835743090390473,
+              "minWindowFps": 9.835743090390473,
+              "section": "trust",
+              "frames": 13,
+              "meanFps": 8,
+              "p95FrameMs": 233.4,
+              "worstFrameMs": 233.4,
+              "framesOver25ms": 13,
+              "framesOver33ms": 13,
+              "longTasks": 13,
+              "longTasksOver100ms": 8,
+              "longestTaskMs": 238
+            },
+            {
+              "medianFps": 6.562294928283487,
+              "minWindowFps": 4.838865769863547,
+              "section": "services",
+              "frames": 124,
+              "meanFps": 6.7,
+              "p95FrameMs": 216.6,
+              "worstFrameMs": 283.3,
+              "framesOver25ms": 124,
+              "framesOver33ms": 124,
+              "longTasks": 125,
+              "longTasksOver100ms": 119,
+              "longestTaskMs": 287
+            },
+            {
+              "medianFps": 25,
+              "minWindowFps": 25,
+              "section": "journey",
+              "frames": 39,
+              "meanFps": 24.9,
+              "p95FrameMs": 50.1,
+              "worstFrameMs": 50.1,
+              "framesOver25ms": 39,
+              "framesOver33ms": 39,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 13,
+              "minWindowFps": 11.07726391581284,
+              "section": "booking",
+              "frames": 47,
+              "meanFps": 13,
+              "p95FrameMs": 116.6,
+              "worstFrameMs": 133.4,
+              "framesOver25ms": 47,
+              "framesOver33ms": 47,
+              "longTasks": 38,
+              "longTasksOver100ms": 4,
+              "longestTaskMs": 126
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.6,
+            "afterGcMiB": 9.8
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 20.4,
+            "longestTaskMs": 0
+          }
+        },
+        {
+          "tier": 2,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 49541,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 13.216818914562067,
+            "minWindowFps": 4.085280224690412,
+            "worstFrameMs": 3366.4,
+            "framesOver33ms": 732,
+            "longTasksOver100ms": 128,
+            "frames": 758,
+            "p95FrameMs": 150,
+            "longTasks": 233,
+            "longestTaskMs": 2922
+          },
+          "sections": [
+            {
+              "medianFps": 8.182562051095543,
+              "minWindowFps": 8.182562051095543,
+              "section": "trust",
+              "frames": 12,
+              "meanFps": 8.3,
+              "p95FrameMs": 266.6,
+              "worstFrameMs": 266.6,
+              "framesOver25ms": 12,
+              "framesOver33ms": 12,
+              "longTasks": 12,
+              "longTasksOver100ms": 8,
+              "longestTaskMs": 146
+            },
+            {
+              "medianFps": 7.000700070007016,
+              "minWindowFps": 4.838865769863547,
+              "section": "services",
+              "frames": 124,
+              "meanFps": 7.4,
+              "p95FrameMs": 183.3,
+              "worstFrameMs": 316.7,
+              "framesOver25ms": 124,
+              "framesOver33ms": 124,
+              "longTasks": 125,
+              "longTasksOver100ms": 105,
+              "longestTaskMs": 308
+            },
+            {
+              "medianFps": 26.559118630729923,
+              "minWindowFps": 26.559118630729923,
+              "section": "journey",
+              "frames": 38,
+              "meanFps": 25.6,
+              "p95FrameMs": 66.6,
+              "worstFrameMs": 66.7,
+              "framesOver25ms": 37,
+              "framesOver33ms": 37,
+              "longTasks": 1,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 50
+            },
+            {
+              "medianFps": 11.002200440088066,
+              "minWindowFps": 9.676795045480922,
+              "section": "booking",
+              "frames": 47,
+              "meanFps": 11.9,
+              "p95FrameMs": 133.4,
+              "worstFrameMs": 150,
+              "framesOver25ms": 47,
+              "framesOver33ms": 47,
+              "longTasks": 39,
+              "longTasksOver100ms": 7,
+              "longestTaskMs": 141
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 11.2,
+            "afterGcMiB": 9.8
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 34.4,
+            "longestTaskMs": 0
+          }
+        }
+      ]
+    },
+    {
+      "gpu": "default",
+      "tier": 2,
+      "rate": 6,
+      "reachedBottom": true,
+      "scrollMs": 56814,
+      "scrollHeight": 14851,
+      "sectionsInDom": [
+        "hero",
+        "trust",
+        "services",
+        "restoration",
+        "workflow",
+        "compare",
+        "dentists",
+        "voices",
+        "journey",
+        "faq",
+        "booking",
+        "footer"
+      ],
+      "runs": 3,
+      "page": {
+        "medianFps": 14.378,
+        "minWindowFps": 3.813,
+        "worstFrameMs": 3749.8,
+        "framesOver33ms": 689,
+        "longTasksOver100ms": 150,
+        "frames": 704,
+        "p95FrameMs": 166.7,
+        "longTasks": 461,
+        "longestTaskMs": 3014
+      },
+      "heap": {
+        "beforeMiB": 4.8,
+        "afterMiB": 10.8,
+        "afterGcMiB": 9.8
+      },
+      "layout": {
+        "clsAll": 0,
+        "cls": 0
+      },
+      "engine": {
+        "initMs": 33.1,
+        "longestTaskMs": 0
+      },
+      "sections": [
+        {
+          "medianFps": 7,
+          "minWindowFps": 7,
+          "section": "trust",
+          "frames": 14,
+          "meanFps": 7.4,
+          "p95FrameMs": 316.6,
+          "worstFrameMs": 316.6,
+          "framesOver25ms": 14,
+          "framesOver33ms": 14,
+          "longTasks": 13,
+          "longTasksOver100ms": 10,
+          "longestTaskMs": 310
+        },
+        {
+          "medianFps": 6.721,
+          "minWindowFps": 4.225,
+          "section": "services",
+          "frames": 116,
+          "meanFps": 6.7,
+          "p95FrameMs": 233.2,
+          "worstFrameMs": 399.9,
+          "framesOver25ms": 116,
+          "framesOver33ms": 116,
+          "longTasks": 117,
+          "longTasksOver100ms": 109,
+          "longestTaskMs": 392
+        },
+        {
+          "medianFps": 18.694,
+          "minWindowFps": 18.388,
+          "section": "journey",
+          "frames": 38,
+          "meanFps": 18.6,
+          "p95FrameMs": 83.3,
+          "worstFrameMs": 83.4,
+          "framesOver25ms": 38,
+          "framesOver33ms": 38,
+          "longTasks": 16,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 64
+        },
+        {
+          "medianFps": 8.974,
+          "minWindowFps": 8,
+          "section": "booking",
+          "frames": 44,
+          "meanFps": 10,
+          "p95FrameMs": 150,
+          "worstFrameMs": 166.7,
+          "framesOver25ms": 44,
+          "framesOver33ms": 44,
+          "longTasks": 42,
+          "longTasksOver100ms": 23,
+          "longestTaskMs": 161
+        }
+      ],
+      "samples": [
+        {
+          "tier": 2,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 56814,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 14.51659730959059,
+            "minWindowFps": 3.582303421099772,
+            "worstFrameMs": 3749.7999999999993,
+            "framesOver33ms": 689,
+            "longTasksOver100ms": 128,
+            "frames": 704,
+            "p95FrameMs": 166.6,
+            "longTasks": 461,
+            "longestTaskMs": 3014
+          },
+          "sections": [
+            {
+              "medianFps": 9.523809523809524,
+              "minWindowFps": 9.523809523809524,
+              "section": "trust",
+              "frames": 14,
+              "meanFps": 9.2,
+              "p95FrameMs": 350.1,
+              "worstFrameMs": 350.1,
+              "framesOver25ms": 14,
+              "framesOver33ms": 14,
+              "longTasks": 11,
+              "longTasksOver100ms": 6,
+              "longestTaskMs": 345
+            },
+            {
+              "medianFps": 6.720539372237816,
+              "minWindowFps": 4.225471140032116,
+              "section": "services",
+              "frames": 120,
+              "meanFps": 6.6,
+              "p95FrameMs": 233.2,
+              "worstFrameMs": 416.7,
+              "framesOver25ms": 120,
+              "framesOver33ms": 120,
+              "longTasks": 121,
+              "longTasksOver100ms": 111,
+              "longestTaskMs": 426
+            },
+            {
+              "medianFps": 18.693844962740705,
+              "minWindowFps": 18.387689925481414,
+              "section": "journey",
+              "frames": 39,
+              "meanFps": 18.6,
+              "p95FrameMs": 66.7,
+              "worstFrameMs": 100,
+              "framesOver25ms": 39,
+              "framesOver33ms": 39,
+              "longTasks": 16,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 63
+            },
+            {
+              "medianFps": 10.998900109989018,
+              "minWindowFps": 10.477188303647951,
+              "section": "booking",
+              "frames": 45,
+              "meanFps": 11.7,
+              "p95FrameMs": 116.6,
+              "worstFrameMs": 133.4,
+              "framesOver25ms": 45,
+              "framesOver33ms": 45,
+              "longTasks": 44,
+              "longTasksOver100ms": 7,
+              "longestTaskMs": 124
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.8,
+            "afterGcMiB": 9.8
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 42.2,
+            "longestTaskMs": 0
+          }
+        },
+        {
+          "tier": 2,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 55561,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 14.30009726517587,
+            "minWindowFps": 4.215015372409005,
+            "worstFrameMs": 3216.5,
+            "framesOver33ms": 689,
+            "longTasksOver100ms": 150,
+            "frames": 703,
+            "p95FrameMs": 166.7,
+            "longTasks": 421,
+            "longestTaskMs": 2631
+          },
+          "sections": [
+            {
+              "medianFps": 7,
+              "minWindowFps": 7,
+              "section": "trust",
+              "frames": 13,
+              "meanFps": 7.4,
+              "p95FrameMs": 316.6,
+              "worstFrameMs": 316.6,
+              "framesOver25ms": 13,
+              "framesOver33ms": 13,
+              "longTasks": 13,
+              "longTasksOver100ms": 10,
+              "longestTaskMs": 310
+            },
+            {
+              "medianFps": 6.562910181886366,
+              "minWindowFps": 4.477879276374708,
+              "section": "services",
+              "frames": 116,
+              "meanFps": 6.7,
+              "p95FrameMs": 216.7,
+              "worstFrameMs": 366.7,
+              "framesOver25ms": 116,
+              "framesOver33ms": 116,
+              "longTasks": 117,
+              "longTasksOver100ms": 109,
+              "longestTaskMs": 380
+            },
+            {
+              "medianFps": 20,
+              "minWindowFps": 20,
+              "section": "journey",
+              "frames": 38,
+              "meanFps": 19.5,
+              "p95FrameMs": 83.3,
+              "worstFrameMs": 83.4,
+              "framesOver25ms": 38,
+              "framesOver33ms": 38,
+              "longTasks": 13,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 64
+            },
+            {
+              "medianFps": 8.97350727277595,
+              "minWindowFps": 8,
+              "section": "booking",
+              "frames": 44,
+              "meanFps": 10,
+              "p95FrameMs": 150,
+              "worstFrameMs": 166.7,
+              "framesOver25ms": 44,
+              "framesOver33ms": 44,
+              "longTasks": 42,
+              "longTasksOver100ms": 23,
+              "longestTaskMs": 161
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.9,
+            "afterGcMiB": 9.8
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 27.9,
+            "longestTaskMs": 0
+          }
+        },
+        {
+          "tier": 2,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 58820,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 14.378233022987576,
+            "minWindowFps": 3.81288755995264,
+            "worstFrameMs": 4099.799999999999,
+            "framesOver33ms": 692,
+            "longTasksOver100ms": 156,
+            "frames": 707,
+            "p95FrameMs": 166.7,
+            "longTasks": 469,
+            "longestTaskMs": 3333
+          },
+          "sections": [
+            {
+              "medianFps": 6.663750372948694,
+              "minWindowFps": 6.268469597922456,
+              "section": "trust",
+              "frames": 15,
+              "meanFps": 6.7,
+              "p95FrameMs": 300,
+              "worstFrameMs": 300,
+              "framesOver25ms": 15,
+              "framesOver33ms": 15,
+              "longTasks": 15,
+              "longTasksOver100ms": 13,
+              "longestTaskMs": 301
+            },
+            {
+              "medianFps": 6.971714246097598,
+              "minWindowFps": 3.934684241589611,
+              "section": "services",
+              "frames": 116,
+              "meanFps": 6.8,
+              "p95FrameMs": 249.9,
+              "worstFrameMs": 399.9,
+              "framesOver25ms": 116,
+              "framesOver33ms": 116,
+              "longTasks": 117,
+              "longTasksOver100ms": 109,
+              "longestTaskMs": 392
+            },
+            {
+              "medianFps": 16.452050113135723,
+              "minWindowFps": 15.485869144405664,
+              "section": "journey",
+              "frames": 37,
+              "meanFps": 16.6,
+              "p95FrameMs": 83.4,
+              "worstFrameMs": 83.4,
+              "framesOver25ms": 37,
+              "framesOver33ms": 37,
+              "longTasks": 26,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 81
+            },
+            {
+              "medianFps": 8.500450045004495,
+              "minWindowFps": 6.562294928283464,
+              "section": "booking",
+              "frames": 43,
+              "meanFps": 9.3,
+              "p95FrameMs": 166.7,
+              "worstFrameMs": 183.4,
+              "framesOver25ms": 43,
+              "framesOver33ms": 43,
+              "longTasks": 42,
+              "longTasksOver100ms": 25,
+              "longestTaskMs": 180
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.5,
+            "afterGcMiB": 9.8
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 33.1,
+            "longestTaskMs": 0
+          }
+        }
+      ]
+    },
+    {
+      "gpu": "default",
+      "tier": 3,
+      "rate": 4,
+      "reachedBottom": true,
+      "scrollMs": 69688,
+      "scrollHeight": 14851,
+      "sectionsInDom": [
+        "hero",
+        "trust",
+        "services",
+        "restoration",
+        "workflow",
+        "compare",
+        "dentists",
+        "voices",
+        "journey",
+        "faq",
+        "booking",
+        "footer"
+      ],
+      "runs": 3,
+      "page": {
+        "medianFps": 6.27,
+        "minWindowFps": 1.936,
+        "worstFrameMs": 4083.3,
+        "framesOver33ms": 722,
+        "longTasksOver100ms": 182,
+        "frames": 753,
+        "p95FrameMs": 233.3,
+        "longTasks": 370,
+        "longestTaskMs": 3588
+      },
+      "heap": {
+        "beforeMiB": 4.8,
+        "afterMiB": 11.2,
+        "afterGcMiB": 10
+      },
+      "layout": {
+        "clsAll": 0,
+        "cls": 0
+      },
+      "engine": {
+        "initMs": 39.7,
+        "longestTaskMs": 0
+      },
+      "sections": [
+        {
+          "medianFps": 4.675,
+          "minWindowFps": 3.288,
+          "section": "trust",
+          "frames": 15,
+          "meanFps": 4.1,
+          "p95FrameMs": 866.6,
+          "worstFrameMs": 866.6,
+          "framesOver25ms": 15,
+          "framesOver33ms": 15,
+          "longTasks": 14,
+          "longTasksOver100ms": 13,
+          "longestTaskMs": 854
+        },
+        {
+          "medianFps": 5.455,
+          "minWindowFps": 1.936,
+          "section": "services",
+          "frames": 125,
+          "meanFps": 5.1,
+          "p95FrameMs": 350,
+          "worstFrameMs": 700,
+          "framesOver25ms": 125,
+          "framesOver33ms": 125,
+          "longTasks": 126,
+          "longTasksOver100ms": 122,
+          "longestTaskMs": 704
+        },
+        {
+          "medianFps": 20,
+          "minWindowFps": 20,
+          "section": "journey",
+          "frames": 38,
+          "meanFps": 19.1,
+          "p95FrameMs": 83.3,
+          "worstFrameMs": 83.4,
+          "framesOver25ms": 38,
+          "framesOver33ms": 38,
+          "longTasks": 14,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 75
+        },
+        {
+          "medianFps": 5.67,
+          "minWindowFps": 5.001,
+          "section": "booking",
+          "frames": 43,
+          "meanFps": 6.3,
+          "p95FrameMs": 233.2,
+          "worstFrameMs": 233.3,
+          "framesOver25ms": 43,
+          "framesOver33ms": 43,
+          "longTasks": 39,
+          "longTasksOver100ms": 35,
+          "longestTaskMs": 242
+        }
+      ],
+      "samples": [
+        {
+          "tier": 3,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 61637,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 6.885020163273331,
+            "minWindowFps": 1.935546307945419,
+            "worstFrameMs": 4083.3,
+            "framesOver33ms": 722,
+            "longTasksOver100ms": 165,
+            "frames": 753,
+            "p95FrameMs": 216.7,
+            "longTasks": 258,
+            "longestTaskMs": 3588
+          },
+          "sections": [
+            {
+              "medianFps": 4.675081813931745,
+              "minWindowFps": 3.158060950576345,
+              "section": "trust",
+              "frames": 15,
+              "meanFps": 4.1,
+              "p95FrameMs": 800,
+              "worstFrameMs": 800,
+              "framesOver25ms": 15,
+              "framesOver33ms": 15,
+              "longTasks": 15,
+              "longTasksOver100ms": 13,
+              "longestTaskMs": 799
+            },
+            {
+              "medianFps": 5.714285714285714,
+              "minWindowFps": 1.935546307945419,
+              "section": "services",
+              "frames": 122,
+              "meanFps": 5.4,
+              "p95FrameMs": 350,
+              "worstFrameMs": 766.7,
+              "framesOver25ms": 122,
+              "framesOver33ms": 122,
+              "longTasks": 123,
+              "longTasksOver100ms": 103,
+              "longestTaskMs": 756
+            },
+            {
+              "medianFps": 24.591776509935112,
+              "minWindowFps": 24.591776509935112,
+              "section": "journey",
+              "frames": 39,
+              "meanFps": 23.9,
+              "p95FrameMs": 66.6,
+              "worstFrameMs": 66.7,
+              "framesOver25ms": 38,
+              "framesOver33ms": 38,
+              "longTasks": 4,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 68
+            },
+            {
+              "medianFps": 6.000600060005992,
+              "minWindowFps": 5.373455131649658,
+              "section": "booking",
+              "frames": 44,
+              "meanFps": 7.1,
+              "p95FrameMs": 216.6,
+              "worstFrameMs": 233.3,
+              "framesOver25ms": 44,
+              "framesOver33ms": 44,
+              "longTasks": 39,
+              "longTasksOver100ms": 36,
+              "longestTaskMs": 234
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 11.2,
+            "afterGcMiB": 10
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 21.3,
+            "longestTaskMs": 0
+          }
+        },
+        {
+          "tier": 3,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 70185,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 6.269592476489028,
+            "minWindowFps": 2.307869836141239,
+            "worstFrameMs": 5533.2,
+            "framesOver33ms": 710,
+            "longTasksOver100ms": 189,
+            "frames": 728,
+            "p95FrameMs": 233.3,
+            "longTasks": 371,
+            "longestTaskMs": 4907
+          },
+          "sections": [
+            {
+              "medianFps": 3.947576188220437,
+              "minWindowFps": 3.2875811621599387,
+              "section": "trust",
+              "frames": 15,
+              "meanFps": 3.6,
+              "p95FrameMs": 866.6,
+              "worstFrameMs": 866.6,
+              "framesOver25ms": 15,
+              "framesOver33ms": 15,
+              "longTasks": 14,
+              "longTasksOver100ms": 13,
+              "longestTaskMs": 854
+            },
+            {
+              "medianFps": 5.454545499624352,
+              "minWindowFps": 2.368358727401909,
+              "section": "services",
+              "frames": 126,
+              "meanFps": 5.1,
+              "p95FrameMs": 350,
+              "worstFrameMs": 683.3,
+              "framesOver25ms": 126,
+              "framesOver33ms": 126,
+              "longTasks": 127,
+              "longTasksOver100ms": 125,
+              "longestTaskMs": 677
+            },
+            {
+              "medianFps": 20,
+              "minWindowFps": 20,
+              "section": "journey",
+              "frames": 37,
+              "meanFps": 19.1,
+              "p95FrameMs": 83.3,
+              "worstFrameMs": 83.4,
+              "framesOver25ms": 37,
+              "framesOver33ms": 37,
+              "longTasks": 14,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 75
+            },
+            {
+              "medianFps": 5.221796012672907,
+              "minWindowFps": 4.545867806164161,
+              "section": "booking",
+              "frames": 43,
+              "meanFps": 6.2,
+              "p95FrameMs": 233.4,
+              "worstFrameMs": 300,
+              "framesOver25ms": 43,
+              "framesOver33ms": 43,
+              "longTasks": 37,
+              "longTasksOver100ms": 35,
+              "longestTaskMs": 295
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 11.2,
+            "afterGcMiB": 10
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 39.7,
+            "longestTaskMs": 0
+          }
+        },
+        {
+          "tier": 3,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 69688,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 6.135096268247488,
+            "minWindowFps": 1,
+            "worstFrameMs": 4049.8999999999996,
+            "framesOver33ms": 732,
+            "longTasksOver100ms": 182,
+            "frames": 758,
+            "p95FrameMs": 233.3,
+            "longTasks": 370,
+            "longestTaskMs": 3521
+          },
+          "sections": [
+            {
+              "medianFps": 5,
+              "minWindowFps": 3.3806626098715378,
+              "section": "trust",
+              "frames": 17,
+              "meanFps": 4.4,
+              "p95FrameMs": 1000,
+              "worstFrameMs": 1000,
+              "framesOver25ms": 17,
+              "framesOver33ms": 17,
+              "longTasks": 13,
+              "longTasksOver100ms": 13,
+              "longestTaskMs": 989
+            },
+            {
+              "medianFps": 5,
+              "minWindowFps": 1.7913121361397224,
+              "section": "services",
+              "frames": 125,
+              "meanFps": 4.8,
+              "p95FrameMs": 349.9,
+              "worstFrameMs": 700,
+              "framesOver25ms": 125,
+              "framesOver33ms": 125,
+              "longTasks": 126,
+              "longTasksOver100ms": 122,
+              "longestTaskMs": 704
+            },
+            {
+              "medianFps": 18.50090009000899,
+              "minWindowFps": 18.001800180017977,
+              "section": "journey",
+              "frames": 38,
+              "meanFps": 18.4,
+              "p95FrameMs": 83.4,
+              "worstFrameMs": 83.4,
+              "framesOver25ms": 38,
+              "framesOver33ms": 38,
+              "longTasks": 17,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 84
+            },
+            {
+              "medianFps": 5.669554969264361,
+              "minWindowFps": 5.001000200039994,
+              "section": "booking",
+              "frames": 42,
+              "meanFps": 6.3,
+              "p95FrameMs": 233.2,
+              "worstFrameMs": 233.3,
+              "framesOver25ms": 42,
+              "framesOver33ms": 42,
+              "longTasks": 40,
+              "longTasksOver100ms": 35,
+              "longestTaskMs": 242
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.9,
+            "afterGcMiB": 9.9
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 49.6,
+            "longestTaskMs": 53
+          }
+        }
+      ]
+    },
+    {
+      "gpu": "default",
+      "tier": 3,
+      "rate": 6,
+      "reachedBottom": true,
+      "scrollMs": 77767,
+      "scrollHeight": 14851,
+      "sectionsInDom": [
+        "hero",
+        "trust",
+        "services",
+        "restoration",
+        "workflow",
+        "compare",
+        "dentists",
+        "voices",
+        "journey",
+        "faq",
+        "booking",
+        "footer"
+      ],
+      "runs": 3,
+      "page": {
+        "medianFps": 5.854,
+        "minWindowFps": 1.846,
+        "worstFrameMs": 4933.2,
+        "framesOver33ms": 671,
+        "longTasksOver100ms": 194,
+        "frames": 683,
+        "p95FrameMs": 266.6,
+        "longTasks": 558,
+        "longestTaskMs": 4107
+      },
+      "heap": {
+        "beforeMiB": 4.8,
+        "afterMiB": 11.2,
+        "afterGcMiB": 10
+      },
+      "layout": {
+        "clsAll": 0,
+        "cls": 0
+      },
+      "engine": {
+        "initMs": 39.8,
+        "longestTaskMs": 0
+      },
+      "sections": [
+        {
+          "medianFps": 4.039,
+          "minWindowFps": 2.813,
+          "section": "trust",
+          "frames": 15,
+          "meanFps": 3.7,
+          "p95FrameMs": 1033.3,
+          "worstFrameMs": 1033.3,
+          "framesOver25ms": 15,
+          "framesOver33ms": 15,
+          "longTasks": 15,
+          "longTasksOver100ms": 11,
+          "longestTaskMs": 1029
+        },
+        {
+          "medianFps": 4.547,
+          "minWindowFps": 1.846,
+          "section": "services",
+          "frames": 125,
+          "meanFps": 4.4,
+          "p95FrameMs": 366.7,
+          "worstFrameMs": 783.3,
+          "framesOver25ms": 125,
+          "framesOver33ms": 125,
+          "longTasks": 126,
+          "longTasksOver100ms": 121,
+          "longestTaskMs": 779
+        },
+        {
+          "medianFps": 14.885,
+          "minWindowFps": 14.287,
+          "section": "journey",
+          "frames": 35,
+          "meanFps": 14.8,
+          "p95FrameMs": 100,
+          "worstFrameMs": 100.1,
+          "framesOver25ms": 35,
+          "framesOver33ms": 35,
+          "longTasks": 29,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 93
+        },
+        {
+          "medianFps": 5.217,
+          "minWindowFps": 4.478,
+          "section": "booking",
+          "frames": 44,
+          "meanFps": 5.6,
+          "p95FrameMs": 266.6,
+          "worstFrameMs": 283.3,
+          "framesOver25ms": 44,
+          "framesOver33ms": 44,
+          "longTasks": 43,
+          "longTasksOver100ms": 39,
+          "longestTaskMs": 284
+        }
+      ],
+      "samples": [
+        {
+          "tier": 3,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 77021,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 6.667301647776015,
+            "minWindowFps": 1.8462106526354607,
+            "worstFrameMs": 4983.1,
+            "framesOver33ms": 672,
+            "longTasksOver100ms": 194,
+            "frames": 683,
+            "p95FrameMs": 249.9,
+            "longTasks": 589,
+            "longestTaskMs": 4107
+          },
+          "sections": [
+            {
+              "medianFps": 4.038772213247171,
+              "minWindowFps": 2.812675792237014,
+              "section": "trust",
+              "frames": 15,
+              "meanFps": 3.7,
+              "p95FrameMs": 1049.9,
+              "worstFrameMs": 1049.9,
+              "framesOver25ms": 15,
+              "framesOver33ms": 15,
+              "longTasks": 15,
+              "longTasksOver100ms": 11,
+              "longestTaskMs": 1036
+            },
+            {
+              "medianFps": 4.838865769863547,
+              "minWindowFps": 1.8462106526354607,
+              "section": "services",
+              "frames": 125,
+              "meanFps": 4.8,
+              "p95FrameMs": 333.4,
+              "worstFrameMs": 816.7,
+              "framesOver25ms": 125,
+              "framesOver33ms": 125,
+              "longTasks": 126,
+              "longTasksOver100ms": 121,
+              "longestTaskMs": 809
+            },
+            {
+              "medianFps": 14.88504237463885,
+              "minWindowFps": 14.285714285714187,
+              "section": "journey",
+              "frames": 36,
+              "meanFps": 14.8,
+              "p95FrameMs": 99.9,
+              "worstFrameMs": 100,
+              "framesOver25ms": 36,
+              "framesOver33ms": 36,
+              "longTasks": 30,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 90
+            },
+            {
+              "medianFps": 5.2627696846763845,
+              "minWindowFps": 4.761904761904762,
+              "section": "booking",
+              "frames": 45,
+              "meanFps": 6,
+              "p95FrameMs": 233.4,
+              "worstFrameMs": 250.1,
+              "framesOver25ms": 45,
+              "framesOver33ms": 45,
+              "longTasks": 45,
+              "longTasksOver100ms": 39,
+              "longestTaskMs": 239
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.8,
+            "afterGcMiB": 10
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 39.8,
+            "longestTaskMs": 0
+          }
+        },
+        {
+          "tier": 3,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 77767,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 5.854332643110353,
+            "minWindowFps": 1.791151710549883,
+            "worstFrameMs": 4933.2,
+            "framesOver33ms": 671,
+            "longTasksOver100ms": 196,
+            "frames": 690,
+            "p95FrameMs": 266.6,
+            "longTasks": 558,
+            "longestTaskMs": 4184
+          },
+          "sections": [
+            {
+              "medianFps": 4.796345555636351,
+              "minWindowFps": 4.545867806164198,
+              "section": "trust",
+              "frames": 14,
+              "meanFps": 4.9,
+              "p95FrameMs": 1033.3,
+              "worstFrameMs": 1033.3,
+              "framesOver25ms": 14,
+              "framesOver33ms": 14,
+              "longTasks": 12,
+              "longTasksOver100ms": 8,
+              "longestTaskMs": 1029
+            },
+            {
+              "medianFps": 4.546690474771291,
+              "minWindowFps": 1.791151710549883,
+              "section": "services",
+              "frames": 125,
+              "meanFps": 4.4,
+              "p95FrameMs": 366.7,
+              "worstFrameMs": 716.6,
+              "framesOver25ms": 125,
+              "framesOver33ms": 125,
+              "longTasks": 126,
+              "longTasksOver100ms": 125,
+              "longestTaskMs": 724
+            },
+            {
+              "medianFps": 14.997306264724498,
+              "minWindowFps": 14.755065905960961,
+              "section": "journey",
+              "frames": 35,
+              "meanFps": 14.7,
+              "p95FrameMs": 116.6,
+              "worstFrameMs": 116.7,
+              "framesOver25ms": 35,
+              "framesOver33ms": 35,
+              "longTasks": 29,
+              "longTasksOver100ms": 1,
+              "longestTaskMs": 112
+            },
+            {
+              "medianFps": 5.217391304347826,
+              "minWindowFps": 4.477879276374744,
+              "section": "booking",
+              "frames": 44,
+              "meanFps": 5.6,
+              "p95FrameMs": 283.3,
+              "worstFrameMs": 283.3,
+              "framesOver25ms": 44,
+              "framesOver33ms": 44,
+              "longTasks": 43,
+              "longTasksOver100ms": 39,
+              "longestTaskMs": 284
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 11.2,
+            "afterGcMiB": 10
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 55,
+            "longestTaskMs": 60
+          }
+        },
+        {
+          "tier": 3,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 80695,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 5.441813936004753,
+            "minWindowFps": 1.9049433279359913,
+            "worstFrameMs": 4216.500000000001,
+            "framesOver33ms": 664,
+            "longTasksOver100ms": 192,
+            "frames": 678,
+            "p95FrameMs": 300,
+            "longTasks": 556,
+            "longestTaskMs": 3604
+          },
+          "sections": [
+            {
+              "medianFps": 3.307403123192598,
+              "minWindowFps": 2.6867275658248246,
+              "section": "trust",
+              "frames": 16,
+              "meanFps": 3.4,
+              "p95FrameMs": 949.9,
+              "worstFrameMs": 949.9,
+              "framesOver25ms": 16,
+              "framesOver33ms": 16,
+              "longTasks": 15,
+              "longTasksOver100ms": 14,
+              "longestTaskMs": 937
+            },
+            {
+              "medianFps": 4.110415146355314,
+              "minWindowFps": 1.9049433279359913,
+              "section": "services",
+              "frames": 118,
+              "meanFps": 4,
+              "p95FrameMs": 433.3,
+              "worstFrameMs": 783.3,
+              "framesOver25ms": 118,
+              "framesOver33ms": 118,
+              "longTasks": 119,
+              "longTasksOver100ms": 119,
+              "longestTaskMs": 779
+            },
+            {
+              "medianFps": 14.643537479760017,
+              "minWindowFps": 14.287074959520034,
+              "section": "journey",
+              "frames": 33,
+              "meanFps": 14.8,
+              "p95FrameMs": 100,
+              "worstFrameMs": 100.1,
+              "framesOver25ms": 33,
+              "framesOver33ms": 33,
+              "longTasks": 28,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 93
+            },
+            {
+              "medianFps": 4.545867806164161,
+              "minWindowFps": 4.000400040004024,
+              "section": "booking",
+              "frames": 44,
+              "meanFps": 5.5,
+              "p95FrameMs": 266.6,
+              "worstFrameMs": 300,
+              "framesOver25ms": 44,
+              "framesOver33ms": 44,
+              "longTasks": 41,
+              "longTasksOver100ms": 36,
+              "longestTaskMs": 295
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 11.6,
+            "afterGcMiB": 10
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 30.8,
+            "longestTaskMs": 0
+          }
+        }
+      ]
+    },
+    {
+      "gpu": "swiftshader",
+      "tier": 2,
+      "rate": 4,
+      "reachedBottom": true,
+      "scrollMs": 72429,
+      "scrollHeight": 14851,
+      "sectionsInDom": [
+        "hero",
+        "trust",
+        "services",
+        "restoration",
+        "workflow",
+        "compare",
+        "dentists",
+        "voices",
+        "journey",
+        "faq",
+        "booking",
+        "footer"
+      ],
+      "runs": 3,
+      "page": {
+        "medianFps": 6.462,
+        "minWindowFps": 0.363,
+        "worstFrameMs": 4799.9,
+        "framesOver33ms": 475,
+        "longTasksOver100ms": 9,
+        "frames": 482,
+        "p95FrameMs": 316.7,
+        "longTasks": 35,
+        "longestTaskMs": 728
+      },
+      "heap": {
+        "beforeMiB": 4.8,
+        "afterMiB": 10.5,
+        "afterGcMiB": 9.7
+      },
+      "layout": {
+        "clsAll": 0,
+        "cls": 0
+      },
+      "engine": {
+        "initMs": 66.2,
+        "longestTaskMs": 570
+      },
+      "sections": [
+        {
+          "medianFps": 4.892,
+          "minWindowFps": 4.865,
+          "section": "trust",
+          "frames": 11,
+          "meanFps": 4.9,
+          "p95FrameMs": 366.7,
+          "worstFrameMs": 366.7,
+          "framesOver25ms": 11,
+          "framesOver33ms": 11,
+          "longTasks": 1,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 50
+        },
+        {
+          "medianFps": 3.871,
+          "minWindowFps": 2.572,
+          "section": "services",
+          "frames": 93,
+          "meanFps": 4.1,
+          "p95FrameMs": 449.9,
+          "worstFrameMs": 666.7,
+          "framesOver25ms": 93,
+          "framesOver33ms": 93,
+          "longTasks": 12,
+          "longTasksOver100ms": 4,
+          "longestTaskMs": 364
+        },
+        {
+          "medianFps": 7.665,
+          "minWindowFps": 6.667,
+          "section": "journey",
+          "frames": 23,
+          "meanFps": 8,
+          "p95FrameMs": 200,
+          "worstFrameMs": 233.4,
+          "framesOver25ms": 23,
+          "framesOver33ms": 23,
+          "longTasks": 0,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 0
+        },
+        {
+          "medianFps": 5.565,
+          "minWindowFps": 4.167,
+          "section": "booking",
+          "frames": 32,
+          "meanFps": 5.8,
+          "p95FrameMs": 300,
+          "worstFrameMs": 316.7,
+          "framesOver25ms": 32,
+          "framesOver33ms": 32,
+          "longTasks": 2,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 54
+        }
+      ],
+      "samples": [
+        {
+          "tier": 2,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 72429,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 5.760462319060975,
+            "minWindowFps": 0.3625487174839119,
+            "worstFrameMs": 5499.8,
+            "framesOver33ms": 463,
+            "longTasksOver100ms": 8,
+            "frames": 470,
+            "p95FrameMs": 316.7,
+            "longTasks": 35,
+            "longestTaskMs": 728
+          },
+          "sections": [
+            {
+              "medianFps": 4.891675826619873,
+              "minWindowFps": 4.864996351252732,
+              "section": "trust",
+              "frames": 11,
+              "meanFps": 4.9,
+              "p95FrameMs": 366.7,
+              "worstFrameMs": 366.7,
+              "framesOver25ms": 11,
+              "framesOver33ms": 11,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 3.871092615890838,
+              "minWindowFps": 2.727272727272727,
+              "section": "services",
+              "frames": 89,
+              "meanFps": 4.1,
+              "p95FrameMs": 416.7,
+              "worstFrameMs": 533.3,
+              "framesOver25ms": 88,
+              "framesOver33ms": 88,
+              "longTasks": 12,
+              "longTasksOver100ms": 4,
+              "longestTaskMs": 364
+            },
+            {
+              "medianFps": 7.813725810692816,
+              "minWindowFps": 6.77441207780899,
+              "section": "journey",
+              "frames": 22,
+              "meanFps": 8.3,
+              "p95FrameMs": 166.7,
+              "worstFrameMs": 216.7,
+              "framesOver25ms": 22,
+              "framesOver33ms": 22,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 5.565187265503484,
+              "minWindowFps": 4.167013917826505,
+              "section": "booking",
+              "frames": 32,
+              "meanFps": 5.8,
+              "p95FrameMs": 316.6,
+              "worstFrameMs": 416.6,
+              "framesOver25ms": 32,
+              "framesOver33ms": 32,
+              "longTasks": 2,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 54
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.5,
+            "afterGcMiB": 9.7
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 72.7,
+            "longestTaskMs": 481
+          }
+        },
+        {
+          "tier": 2,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 69518,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 6.462333825701642,
+            "minWindowFps": 0.20833767370153547,
+            "worstFrameMs": 4799.9,
+            "framesOver33ms": 475,
+            "longTasksOver100ms": 14,
+            "frames": 482,
+            "p95FrameMs": 300,
+            "longTasks": 39,
+            "longestTaskMs": 935
+          },
+          "sections": [
+            {
+              "medianFps": 6.5757027782344215,
+              "minWindowFps": 6.5757027782344215,
+              "section": "trust",
+              "frames": 12,
+              "meanFps": 5.6,
+              "p95FrameMs": 283.2,
+              "worstFrameMs": 283.2,
+              "framesOver25ms": 12,
+              "framesOver33ms": 12,
+              "longTasks": 1,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 69
+            },
+            {
+              "medianFps": 4.285959197668436,
+              "minWindowFps": 2.5715755186010583,
+              "section": "services",
+              "frames": 93,
+              "meanFps": 4.2,
+              "p95FrameMs": 449.9,
+              "worstFrameMs": 666.7,
+              "framesOver25ms": 93,
+              "framesOver33ms": 93,
+              "longTasks": 17,
+              "longTasksOver100ms": 8,
+              "longestTaskMs": 305
+            },
+            {
+              "medianFps": 6.667301647776015,
+              "minWindowFps": 6.666666666666667,
+              "section": "journey",
+              "frames": 23,
+              "meanFps": 6.9,
+              "p95FrameMs": 216.7,
+              "worstFrameMs": 233.4,
+              "framesOver25ms": 23,
+              "framesOver33ms": 23,
+              "longTasks": 1,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 65
+            },
+            {
+              "medianFps": 5.538631957906382,
+              "minWindowFps": 4,
+              "section": "booking",
+              "frames": 32,
+              "meanFps": 5.8,
+              "p95FrameMs": 300,
+              "worstFrameMs": 316.7,
+              "framesOver25ms": 32,
+              "framesOver33ms": 32,
+              "longTasks": 3,
+              "longTasksOver100ms": 1,
+              "longestTaskMs": 195
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.8,
+            "afterGcMiB": 9.7
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 66.2,
+            "longestTaskMs": 1001
+          }
+        },
+        {
+          "tier": 2,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 74715,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 6.666666666666667,
+            "minWindowFps": 0.4379721887660133,
+            "worstFrameMs": 4549.900000000001,
+            "framesOver33ms": 510,
+            "longTasksOver100ms": 9,
+            "frames": 519,
+            "p95FrameMs": 366.6,
+            "longTasks": 32,
+            "longestTaskMs": 635
+          },
+          "sections": [
+            {
+              "medianFps": 4.474405280163356,
+              "minWindowFps": 4.109476452699924,
+              "section": "trust",
+              "frames": 11,
+              "meanFps": 4.4,
+              "p95FrameMs": 533.3,
+              "worstFrameMs": 533.3,
+              "framesOver25ms": 11,
+              "framesOver33ms": 11,
+              "longTasks": 1,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 50
+            },
+            {
+              "medianFps": 3.8461538461538463,
+              "minWindowFps": 2.3377230577417607,
+              "section": "services",
+              "frames": 95,
+              "meanFps": 4,
+              "p95FrameMs": 449.9,
+              "worstFrameMs": 750,
+              "framesOver25ms": 95,
+              "framesOver33ms": 95,
+              "longTasks": 9,
+              "longTasksOver100ms": 3,
+              "longestTaskMs": 479
+            },
+            {
+              "medianFps": 7.6652242238228805,
+              "minWindowFps": 5.806638923836236,
+              "section": "journey",
+              "frames": 24,
+              "meanFps": 8,
+              "p95FrameMs": 200,
+              "worstFrameMs": 283.3,
+              "framesOver25ms": 24,
+              "framesOver33ms": 24,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 6.886374815543531,
+              "minWindowFps": 5.806638923836236,
+              "section": "booking",
+              "frames": 44,
+              "meanFps": 7.2,
+              "p95FrameMs": 233.3,
+              "worstFrameMs": 283.3,
+              "framesOver25ms": 44,
+              "framesOver33ms": 44,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10,
+            "afterGcMiB": 9.8
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 52.5,
+            "longestTaskMs": 570
+          }
+        }
+      ]
+    },
+    {
+      "gpu": "swiftshader",
+      "tier": 2,
+      "rate": 6,
+      "reachedBottom": true,
+      "scrollMs": 69665,
+      "scrollHeight": 14851,
+      "sectionsInDom": [
+        "hero",
+        "trust",
+        "services",
+        "restoration",
+        "workflow",
+        "compare",
+        "dentists",
+        "voices",
+        "journey",
+        "faq",
+        "booking",
+        "footer"
+      ],
+      "runs": 3,
+      "page": {
+        "medianFps": 6.364,
+        "minWindowFps": 0.211,
+        "worstFrameMs": 4733.2,
+        "framesOver33ms": 481,
+        "longTasksOver100ms": 14,
+        "frames": 491,
+        "p95FrameMs": 316.6,
+        "longTasks": 69,
+        "longestTaskMs": 1053
+      },
+      "heap": {
+        "beforeMiB": 4.8,
+        "afterMiB": 10.2,
+        "afterGcMiB": 9.7
+      },
+      "layout": {
+        "clsAll": 0,
+        "cls": 0
+      },
+      "engine": {
+        "initMs": 36.5,
+        "longestTaskMs": 0
+      },
+      "sections": [
+        {
+          "medianFps": 5.916,
+          "minWindowFps": 5.071,
+          "section": "trust",
+          "frames": 13,
+          "meanFps": 5.6,
+          "p95FrameMs": 416.6,
+          "worstFrameMs": 416.6,
+          "framesOver25ms": 13,
+          "framesOver33ms": 13,
+          "longTasks": 0,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 0
+        },
+        {
+          "medianFps": 4.083,
+          "minWindowFps": 3.429,
+          "section": "services",
+          "frames": 98,
+          "meanFps": 4.1,
+          "p95FrameMs": 416.7,
+          "worstFrameMs": 516.6,
+          "framesOver25ms": 97,
+          "framesOver33ms": 97,
+          "longTasks": 17,
+          "longTasksOver100ms": 3,
+          "longestTaskMs": 407
+        },
+        {
+          "medianFps": 9.396,
+          "minWindowFps": 8.956,
+          "section": "journey",
+          "frames": 22,
+          "meanFps": 9.3,
+          "p95FrameMs": 199.9,
+          "worstFrameMs": 233.3,
+          "framesOver25ms": 21,
+          "framesOver33ms": 21,
+          "longTasks": 4,
+          "longTasksOver100ms": 1,
+          "longestTaskMs": 115
+        },
+        {
+          "medianFps": 6.413,
+          "minWindowFps": 6.364,
+          "section": "booking",
+          "frames": 32,
+          "meanFps": 7,
+          "p95FrameMs": 216.6,
+          "worstFrameMs": 266.6,
+          "framesOver25ms": 32,
+          "framesOver33ms": 32,
+          "longTasks": 8,
+          "longTasksOver100ms": 1,
+          "longestTaskMs": 117
+        }
+      ],
+      "samples": [
+        {
+          "tier": 2,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 78484,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 5.854323391693214,
+            "minWindowFps": 0.2299009127066234,
+            "worstFrameMs": 4349.700000000001,
+            "framesOver33ms": 481,
+            "longTasksOver100ms": 15,
+            "frames": 491,
+            "p95FrameMs": 383.3,
+            "longTasks": 77,
+            "longestTaskMs": 974
+          },
+          "sections": [
+            {
+              "medianFps": 3.2878513891172156,
+              "minWindowFps": 2.5352826840192657,
+              "section": "trust",
+              "frames": 13,
+              "meanFps": 3.5,
+              "p95FrameMs": 700,
+              "worstFrameMs": 700,
+              "framesOver25ms": 13,
+              "framesOver33ms": 13,
+              "longTasks": 5,
+              "longTasksOver100ms": 1,
+              "longestTaskMs": 113
+            },
+            {
+              "medianFps": 4.022080347144771,
+              "minWindowFps": 2.5352826840192697,
+              "section": "services",
+              "frames": 106,
+              "meanFps": 4,
+              "p95FrameMs": 449.9,
+              "worstFrameMs": 633.3,
+              "framesOver25ms": 105,
+              "framesOver33ms": 105,
+              "longTasks": 18,
+              "longTasksOver100ms": 3,
+              "longestTaskMs": 407
+            },
+            {
+              "medianFps": 7.833783378337861,
+              "minWindowFps": 6.666666666666667,
+              "section": "journey",
+              "frames": 21,
+              "meanFps": 8.1,
+              "p95FrameMs": 216.6,
+              "worstFrameMs": 233.3,
+              "framesOver25ms": 21,
+              "framesOver33ms": 21,
+              "longTasks": 5,
+              "longTasksOver100ms": 1,
+              "longestTaskMs": 151
+            },
+            {
+              "medianFps": 5.454545454545454,
+              "minWindowFps": 4.545454545454546,
+              "section": "booking",
+              "frames": 34,
+              "meanFps": 5.5,
+              "p95FrameMs": 300,
+              "worstFrameMs": 316.7,
+              "framesOver25ms": 34,
+              "framesOver33ms": 34,
+              "longTasks": 9,
+              "longTasksOver100ms": 2,
+              "longestTaskMs": 117
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.7,
+            "afterMiB": 10.1,
+            "afterGcMiB": 9.7
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 36.5,
+            "longestTaskMs": 664
+          }
+        },
+        {
+          "tier": 2,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 69665,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 6.364214928629825,
+            "minWindowFps": 0.2112735570016057,
+            "worstFrameMs": 4733.2,
+            "framesOver33ms": 454,
+            "longTasksOver100ms": 14,
+            "frames": 466,
+            "p95FrameMs": 316.6,
+            "longTasks": 69,
+            "longestTaskMs": 1053
+          },
+          "sections": [
+            {
+              "medianFps": 5.978345668794564,
+              "minWindowFps": 5.070993914807307,
+              "section": "trust",
+              "frames": 15,
+              "meanFps": 5.6,
+              "p95FrameMs": 416.6,
+              "worstFrameMs": 416.6,
+              "framesOver25ms": 13,
+              "framesOver33ms": 13,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 4.083493346134356,
+              "minWindowFps": 3.614544928793467,
+              "section": "services",
+              "frames": 80,
+              "meanFps": 4.1,
+              "p95FrameMs": 416.7,
+              "worstFrameMs": 500,
+              "framesOver25ms": 80,
+              "framesOver33ms": 80,
+              "longTasks": 17,
+              "longTasksOver100ms": 4,
+              "longestTaskMs": 253
+            },
+            {
+              "medianFps": 9.396234578361739,
+              "minWindowFps": 8.95575855274943,
+              "section": "journey",
+              "frames": 22,
+              "meanFps": 9.3,
+              "p95FrameMs": 199.9,
+              "worstFrameMs": 233.3,
+              "framesOver25ms": 21,
+              "framesOver33ms": 21,
+              "longTasks": 4,
+              "longTasksOver100ms": 1,
+              "longestTaskMs": 115
+            },
+            {
+              "medianFps": 6.412976106426969,
+              "minWindowFps": 6.363636363636363,
+              "section": "booking",
+              "frames": 32,
+              "meanFps": 7,
+              "p95FrameMs": 216.6,
+              "worstFrameMs": 266.6,
+              "framesOver25ms": 32,
+              "framesOver33ms": 32,
+              "longTasks": 8,
+              "longTasksOver100ms": 1,
+              "longestTaskMs": 117
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.2,
+            "afterGcMiB": 9.7
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 32.6,
+            "longestTaskMs": 0
+          }
+        },
+        {
+          "tier": 2,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 50346,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 11.613277847672473,
+            "minWindowFps": 0.20478794208597,
+            "worstFrameMs": 4883.099999999999,
+            "framesOver33ms": 536,
+            "longTasksOver100ms": 7,
+            "frames": 549,
+            "p95FrameMs": 183.3,
+            "longTasks": 27,
+            "longestTaskMs": 1258
+          },
+          "sections": [
+            {
+              "medianFps": 5.9156595960449625,
+              "minWindowFps": 5.9156595960449625,
+              "section": "trust",
+              "frames": 12,
+              "meanFps": 5.6,
+              "p95FrameMs": 266.7,
+              "worstFrameMs": 266.7,
+              "framesOver25ms": 12,
+              "framesOver33ms": 12,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 7.273388489862729,
+              "minWindowFps": 3.428767358134744,
+              "section": "services",
+              "frames": 98,
+              "meanFps": 6.7,
+              "p95FrameMs": 316.7,
+              "worstFrameMs": 516.6,
+              "framesOver25ms": 97,
+              "framesOver33ms": 97,
+              "longTasks": 9,
+              "longTasksOver100ms": 2,
+              "longestTaskMs": 508
+            },
+            {
+              "medianFps": 15.738736966358472,
+              "minWindowFps": 15.738736966358472,
+              "section": "journey",
+              "frames": 25,
+              "meanFps": 15.6,
+              "p95FrameMs": 83.3,
+              "worstFrameMs": 100,
+              "framesOver25ms": 25,
+              "framesOver33ms": 25,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 12.097024050226132,
+              "minWindowFps": 10.64653503677897,
+              "section": "booking",
+              "frames": 32,
+              "meanFps": 11.2,
+              "p95FrameMs": 133.3,
+              "worstFrameMs": 133.4,
+              "framesOver25ms": 32,
+              "framesOver33ms": 32,
+              "longTasks": 2,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 59
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.2,
+            "afterGcMiB": 9.8
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 41.4,
+            "longestTaskMs": 0
+          }
+        }
+      ]
+    },
+    {
+      "gpu": "swiftshader",
+      "tier": 3,
+      "rate": 4,
+      "reachedBottom": true,
+      "scrollMs": 66912,
+      "scrollHeight": 14851,
+      "sectionsInDom": [
+        "hero",
+        "trust",
+        "services",
+        "restoration",
+        "workflow",
+        "compare",
+        "dentists",
+        "voices",
+        "journey",
+        "faq",
+        "booking",
+        "footer"
+      ],
+      "runs": 3,
+      "page": {
+        "medianFps": 5.715,
+        "minWindowFps": 0.429,
+        "worstFrameMs": 4216.5,
+        "framesOver33ms": 515,
+        "longTasksOver100ms": 8,
+        "frames": 523,
+        "p95FrameMs": 350,
+        "longTasks": 23,
+        "longestTaskMs": 745
+      },
+      "heap": {
+        "beforeMiB": 4.8,
+        "afterMiB": 10.3,
+        "afterGcMiB": 9.9
+      },
+      "layout": {
+        "clsAll": 0,
+        "cls": 0
+      },
+      "engine": {
+        "initMs": 41.1,
+        "longestTaskMs": 346
+      },
+      "sections": [
+        {
+          "medianFps": 3.132,
+          "minWindowFps": 2.857,
+          "section": "trust",
+          "frames": 14,
+          "meanFps": 3.2,
+          "p95FrameMs": 533.3,
+          "worstFrameMs": 533.3,
+          "framesOver25ms": 14,
+          "framesOver33ms": 14,
+          "longTasks": 1,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 56
+        },
+        {
+          "medianFps": 4.117,
+          "minWindowFps": 1.936,
+          "section": "services",
+          "frames": 97,
+          "meanFps": 4.2,
+          "p95FrameMs": 483.3,
+          "worstFrameMs": 783.3,
+          "framesOver25ms": 96,
+          "framesOver33ms": 96,
+          "longTasks": 12,
+          "longTasksOver100ms": 3,
+          "longestTaskMs": 745
+        },
+        {
+          "medianFps": 9.692,
+          "minWindowFps": 9.23,
+          "section": "journey",
+          "frames": 23,
+          "meanFps": 9.8,
+          "p95FrameMs": 133.4,
+          "worstFrameMs": 150,
+          "framesOver25ms": 23,
+          "framesOver33ms": 23,
+          "longTasks": 0,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 0
+        },
+        {
+          "medianFps": 4.616,
+          "minWindowFps": 3.75,
+          "section": "booking",
+          "frames": 34,
+          "meanFps": 5.4,
+          "p95FrameMs": 350,
+          "worstFrameMs": 450,
+          "framesOver25ms": 34,
+          "framesOver33ms": 34,
+          "longTasks": 1,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 56
+        }
+      ],
+      "samples": [
+        {
+          "tier": 3,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 66912,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 5.5822474318234185,
+            "minWindowFps": 0.6122761365375784,
+            "worstFrameMs": 3249.8,
+            "framesOver33ms": 499,
+            "longTasksOver100ms": 8,
+            "frames": 507,
+            "p95FrameMs": 350,
+            "longTasks": 20,
+            "longestTaskMs": 644
+          },
+          "sections": [
+            {
+              "medianFps": 4.00032002560205,
+              "minWindowFps": 3.3333333333333335,
+              "section": "trust",
+              "frames": 15,
+              "meanFps": 3.8,
+              "p95FrameMs": 533.3,
+              "worstFrameMs": 533.3,
+              "framesOver25ms": 14,
+              "framesOver33ms": 14,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 4.1165840142267855,
+              "minWindowFps": 2.9507229271171522,
+              "section": "services",
+              "frames": 97,
+              "meanFps": 4.3,
+              "p95FrameMs": 466.6,
+              "worstFrameMs": 650,
+              "framesOver25ms": 96,
+              "framesOver33ms": 96,
+              "longTasks": 6,
+              "longTasksOver100ms": 2,
+              "longestTaskMs": 644
+            },
+            {
+              "medianFps": 9.692179903940792,
+              "minWindowFps": 9.230201218386549,
+              "section": "journey",
+              "frames": 22,
+              "meanFps": 9.8,
+              "p95FrameMs": 133.4,
+              "worstFrameMs": 200,
+              "framesOver25ms": 22,
+              "framesOver33ms": 22,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 4.4283641212691744,
+              "minWindowFps": 3.7502343896493584,
+              "section": "booking",
+              "frames": 34,
+              "meanFps": 4.7,
+              "p95FrameMs": 400,
+              "worstFrameMs": 450,
+              "framesOver25ms": 34,
+              "framesOver33ms": 34,
+              "longTasks": 2,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 56
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.3,
+            "afterGcMiB": 9.8
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 46.4,
+            "longestTaskMs": 346
+          }
+        },
+        {
+          "tier": 3,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 78983,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 5.714829983807974,
+            "minWindowFps": 0.4285867352405443,
+            "worstFrameMs": 4649.8,
+            "framesOver33ms": 515,
+            "longTasksOver100ms": 11,
+            "frames": 523,
+            "p95FrameMs": 350,
+            "longTasks": 30,
+            "longestTaskMs": 751
+          },
+          "sections": [
+            {
+              "medianFps": 2.9033194619181284,
+              "minWindowFps": 2.8574149919039917,
+              "section": "trust",
+              "frames": 11,
+              "meanFps": 3.2,
+              "p95FrameMs": 383.4,
+              "worstFrameMs": 383.4,
+              "framesOver25ms": 11,
+              "framesOver33ms": 11,
+              "longTasks": 2,
+              "longTasksOver100ms": 2,
+              "longestTaskMs": 176
+            },
+            {
+              "medianFps": 4.08007769081086,
+              "minWindowFps": 1.5384615384615385,
+              "section": "services",
+              "frames": 111,
+              "meanFps": 4.1,
+              "p95FrameMs": 483.3,
+              "worstFrameMs": 833.3,
+              "framesOver25ms": 110,
+              "framesOver33ms": 110,
+              "longTasks": 12,
+              "longTasksOver100ms": 3,
+              "longestTaskMs": 751
+            },
+            {
+              "medianFps": 8.545867806164221,
+              "minWindowFps": 8,
+              "section": "journey",
+              "frames": 23,
+              "meanFps": 9.3,
+              "p95FrameMs": 150,
+              "worstFrameMs": 150,
+              "framesOver25ms": 23,
+              "framesOver33ms": 23,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 4.615526631588652,
+              "minWindowFps": 3.5295155739875064,
+              "section": "booking",
+              "frames": 33,
+              "meanFps": 5.4,
+              "p95FrameMs": 350,
+              "worstFrameMs": 483.2,
+              "framesOver25ms": 33,
+              "framesOver33ms": 33,
+              "longTasks": 1,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 93
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.7,
+            "afterMiB": 10.1,
+            "afterGcMiB": 9.9
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 41.1,
+            "longestTaskMs": 688
+          }
+        },
+        {
+          "tier": 3,
+          "rate": 4,
+          "reachedBottom": true,
+          "scrollMs": 64086,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 7,
+            "minWindowFps": 0.2371635242499703,
+            "worstFrameMs": 4216.500000000001,
+            "framesOver33ms": 517,
+            "longTasksOver100ms": 8,
+            "frames": 524,
+            "p95FrameMs": 333.4,
+            "longTasks": 23,
+            "longestTaskMs": 745
+          },
+          "sections": [
+            {
+              "medianFps": 3.1321086380619567,
+              "minWindowFps": 2,
+              "section": "trust",
+              "frames": 14,
+              "meanFps": 3.2,
+              "p95FrameMs": 733.4,
+              "worstFrameMs": 733.4,
+              "framesOver25ms": 14,
+              "framesOver33ms": 14,
+              "longTasks": 1,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 56
+            },
+            {
+              "medianFps": 4.651440075895579,
+              "minWindowFps": 1.9356087489515434,
+              "section": "services",
+              "frames": 93,
+              "meanFps": 4.2,
+              "p95FrameMs": 516.7,
+              "worstFrameMs": 783.3,
+              "framesOver25ms": 92,
+              "framesOver33ms": 92,
+              "longTasks": 13,
+              "longTasksOver100ms": 3,
+              "longestTaskMs": 745
+            },
+            {
+              "medianFps": 16.00160016001598,
+              "minWindowFps": 16.00160016001598,
+              "section": "journey",
+              "frames": 26,
+              "meanFps": 16.8,
+              "p95FrameMs": 66.7,
+              "worstFrameMs": 83.3,
+              "framesOver25ms": 26,
+              "framesOver33ms": 26,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 6.887556073907991,
+              "minWindowFps": 6.666666666666667,
+              "section": "booking",
+              "frames": 37,
+              "meanFps": 8.1,
+              "p95FrameMs": 266.5,
+              "worstFrameMs": 283.3,
+              "framesOver25ms": 37,
+              "framesOver33ms": 37,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.3,
+            "afterGcMiB": 9.9
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 35,
+            "longestTaskMs": 0
+          }
+        }
+      ]
+    },
+    {
+      "gpu": "swiftshader",
+      "tier": 3,
+      "rate": 6,
+      "reachedBottom": true,
+      "scrollMs": 54950,
+      "scrollHeight": 14851,
+      "sectionsInDom": [
+        "hero",
+        "trust",
+        "services",
+        "restoration",
+        "workflow",
+        "compare",
+        "dentists",
+        "voices",
+        "journey",
+        "faq",
+        "booking",
+        "footer"
+      ],
+      "runs": 3,
+      "page": {
+        "medianFps": 8.462,
+        "minWindowFps": 0.407,
+        "worstFrameMs": 3199.9,
+        "framesOver33ms": 487,
+        "longTasksOver100ms": 7,
+        "frames": 495,
+        "p95FrameMs": 249.9,
+        "longTasks": 32,
+        "longestTaskMs": 745
+      },
+      "heap": {
+        "beforeMiB": 4.8,
+        "afterMiB": 10.8,
+        "afterGcMiB": 9.7
+      },
+      "layout": {
+        "clsAll": 0,
+        "cls": 0
+      },
+      "engine": {
+        "initMs": 45.7,
+        "longestTaskMs": 343
+      },
+      "sections": [
+        {
+          "medianFps": 4.687,
+          "minWindowFps": 3.81,
+          "section": "trust",
+          "frames": 12,
+          "meanFps": 4.7,
+          "p95FrameMs": 466.6,
+          "worstFrameMs": 466.6,
+          "framesOver25ms": 10,
+          "framesOver33ms": 10,
+          "longTasks": 2,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 69
+        },
+        {
+          "medianFps": 5.539,
+          "minWindowFps": 3,
+          "section": "services",
+          "frames": 90,
+          "meanFps": 5.3,
+          "p95FrameMs": 366.7,
+          "worstFrameMs": 500.1,
+          "framesOver25ms": 90,
+          "framesOver33ms": 90,
+          "longTasks": 13,
+          "longTasksOver100ms": 2,
+          "longestTaskMs": 512
+        },
+        {
+          "medianFps": 12.582,
+          "minWindowFps": 12.582,
+          "section": "journey",
+          "frames": 22,
+          "meanFps": 12.7,
+          "p95FrameMs": 116.6,
+          "worstFrameMs": 116.7,
+          "framesOver25ms": 21,
+          "framesOver33ms": 21,
+          "longTasks": 0,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 0
+        },
+        {
+          "medianFps": 6.086,
+          "minWindowFps": 5.071,
+          "section": "booking",
+          "frames": 33,
+          "meanFps": 6.7,
+          "p95FrameMs": 300,
+          "worstFrameMs": 316.7,
+          "framesOver25ms": 33,
+          "framesOver33ms": 33,
+          "longTasks": 3,
+          "longTasksOver100ms": 0,
+          "longestTaskMs": 68
+        }
+      ],
+      "samples": [
+        {
+          "tier": 3,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 60878,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 7.164606842199544,
+            "minWindowFps": 0.8163265306122449,
+            "worstFrameMs": 2433.2,
+            "framesOver33ms": 487,
+            "longTasksOver100ms": 7,
+            "frames": 495,
+            "p95FrameMs": 333.4,
+            "longTasks": 41,
+            "longestTaskMs": 745
+          },
+          "sections": [
+            {
+              "medianFps": 4.3478260869565215,
+              "minWindowFps": 3.2433309008351547,
+              "section": "trust",
+              "frames": 14,
+              "meanFps": 4,
+              "p95FrameMs": 383.4,
+              "worstFrameMs": 383.4,
+              "framesOver25ms": 13,
+              "framesOver33ms": 13,
+              "longTasks": 1,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 69
+            },
+            {
+              "medianFps": 4.580283995732524,
+              "minWindowFps": 2.500208350695892,
+              "section": "services",
+              "frames": 88,
+              "meanFps": 4.5,
+              "p95FrameMs": 466.7,
+              "worstFrameMs": 683.3,
+              "framesOver25ms": 87,
+              "framesOver33ms": 87,
+              "longTasks": 15,
+              "longTasksOver100ms": 2,
+              "longestTaskMs": 676
+            },
+            {
+              "medianFps": 12.58226867982969,
+              "minWindowFps": 12.58226867982969,
+              "section": "journey",
+              "frames": 23,
+              "meanFps": 11.7,
+              "p95FrameMs": 150,
+              "worstFrameMs": 150,
+              "framesOver25ms": 23,
+              "framesOver33ms": 23,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 5.217845030002603,
+              "minWindowFps": 4.761904761904762,
+              "section": "booking",
+              "frames": 34,
+              "meanFps": 5.8,
+              "p95FrameMs": 316.7,
+              "worstFrameMs": 316.8,
+              "framesOver25ms": 34,
+              "framesOver33ms": 34,
+              "longTasks": 5,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 68
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 10.3,
+            "afterGcMiB": 9.7
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 41.7,
+            "longestTaskMs": 399
+          }
+        },
+        {
+          "tier": 3,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 54950,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 8.461538461538462,
+            "minWindowFps": 0.40680172483931326,
+            "worstFrameMs": 3966.4000000000005,
+            "framesOver33ms": 481,
+            "longTasksOver100ms": 6,
+            "frames": 492,
+            "p95FrameMs": 249.9,
+            "longTasks": 32,
+            "longestTaskMs": 987
+          },
+          "sections": [
+            {
+              "medianFps": 4.742906569049938,
+              "minWindowFps": 3.8095238095238093,
+              "section": "trust",
+              "frames": 12,
+              "meanFps": 4.8,
+              "p95FrameMs": 549.9,
+              "worstFrameMs": 549.9,
+              "framesOver25ms": 10,
+              "framesOver33ms": 10,
+              "longTasks": 3,
+              "longTasksOver100ms": 2,
+              "longestTaskMs": 544
+            },
+            {
+              "medianFps": 5.538631957906382,
+              "minWindowFps": 3,
+              "section": "services",
+              "frames": 90,
+              "meanFps": 5.3,
+              "p95FrameMs": 366.7,
+              "worstFrameMs": 500,
+              "framesOver25ms": 90,
+              "framesOver33ms": 90,
+              "longTasks": 13,
+              "longTasksOver100ms": 2,
+              "longestTaskMs": 512
+            },
+            {
+              "medianFps": 13.547513063673293,
+              "minWindowFps": 13.547513063673293,
+              "section": "journey",
+              "frames": 22,
+              "meanFps": 13.8,
+              "p95FrameMs": 100,
+              "worstFrameMs": 116.6,
+              "framesOver25ms": 21,
+              "framesOver33ms": 21,
+              "longTasks": 1,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 52
+            },
+            {
+              "medianFps": 6.085538291337013,
+              "minWindowFps": 5.070565368038555,
+              "section": "booking",
+              "frames": 33,
+              "meanFps": 6.7,
+              "p95FrameMs": 300,
+              "worstFrameMs": 316.7,
+              "framesOver25ms": 33,
+              "framesOver33ms": 33,
+              "longTasks": 1,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 59
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.7,
+            "afterMiB": 10.8,
+            "afterGcMiB": 9.7
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 53.9,
+            "longestTaskMs": 343
+          }
+        },
+        {
+          "tier": 3,
+          "rate": 6,
+          "reachedBottom": true,
+          "scrollMs": 53163,
+          "scrollHeight": 14851,
+          "sectionsInDom": [
+            "hero",
+            "trust",
+            "services",
+            "restoration",
+            "workflow",
+            "compare",
+            "dentists",
+            "voices",
+            "journey",
+            "faq",
+            "booking",
+            "footer"
+          ],
+          "page": {
+            "medianFps": 8.85303954357664,
+            "minWindowFps": 0.31250976593018537,
+            "worstFrameMs": 3199.8999999999996,
+            "framesOver33ms": 515,
+            "longTasksOver100ms": 8,
+            "frames": 522,
+            "p95FrameMs": 216.7,
+            "longTasks": 28,
+            "longestTaskMs": 685
+          },
+          "sections": [
+            {
+              "medianFps": 4.686727565824825,
+              "minWindowFps": 4,
+              "section": "trust",
+              "frames": 10,
+              "meanFps": 4.7,
+              "p95FrameMs": 466.6,
+              "worstFrameMs": 466.6,
+              "framesOver25ms": 10,
+              "framesOver33ms": 10,
+              "longTasks": 2,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 60
+            },
+            {
+              "medianFps": 7.07921234775454,
+              "minWindowFps": 3.428767358134755,
+              "section": "services",
+              "frames": 105,
+              "meanFps": 6.6,
+              "p95FrameMs": 333.3,
+              "worstFrameMs": 500.1,
+              "framesOver25ms": 104,
+              "framesOver33ms": 104,
+              "longTasks": 10,
+              "longTasksOver100ms": 2,
+              "longestTaskMs": 484
+            },
+            {
+              "medianFps": 12.000369242130576,
+              "minWindowFps": 12.000369242130576,
+              "section": "journey",
+              "frames": 21,
+              "meanFps": 12.7,
+              "p95FrameMs": 116.6,
+              "worstFrameMs": 116.7,
+              "framesOver25ms": 21,
+              "framesOver33ms": 21,
+              "longTasks": 0,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 0
+            },
+            {
+              "medianFps": 6.1771973173314265,
+              "minWindowFps": 5.6248242242430075,
+              "section": "booking",
+              "frames": 28,
+              "meanFps": 6.9,
+              "p95FrameMs": 250,
+              "worstFrameMs": 283.4,
+              "framesOver25ms": 28,
+              "framesOver33ms": 28,
+              "longTasks": 3,
+              "longTasksOver100ms": 0,
+              "longestTaskMs": 74
+            }
+          ],
+          "heap": {
+            "beforeMiB": 4.8,
+            "afterMiB": 11,
+            "afterGcMiB": 9.8
+          },
+          "layout": {
+            "clsAll": 0,
+            "cls": 0
+          },
+          "engine": {
+            "initMs": 45.7,
+            "longestTaskMs": 318
+          }
+        }
+      ]
+    }
+  ]
+}
