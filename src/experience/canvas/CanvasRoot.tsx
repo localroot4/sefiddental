@@ -18,6 +18,7 @@ import { applyStyle } from '../core/applyStyle';
 import type { FrameRuntime } from '../core/store';
 import type { ScrollEngine } from '../engine/scrollEngine';
 import type { StepSource } from '../tier/tierStore';
+import { World } from '../world/World';
 
 import { ContextLoss } from './ContextLoss';
 import { FrameDriver } from './FrameDriver';
@@ -65,8 +66,8 @@ export function CanvasRoot(props: CanvasRootProps): React.ReactPortal {
     powerPreference: 'high-performance' as const,
   }));
   const base = settings.pixelRatio ?? 1;
-  const shadows =
-    settings.shadows === 'none' ? false : settings.shadows === 'soft' ? 'soft' : 'percentage';
+  // three 0.186 removed PCFSoftShadowMap: soft and hard are both PCF, the World sets the radius.
+  const shadows = settings.shadows === 'none' ? false : 'percentage';
 
   const onMonitorStep = useCallback(() => stepDown('monitor'), [stepDown]);
   const onRepeatedLoss = useCallback(() => stepDown('context-loss'), [stepDown]);
@@ -95,8 +96,12 @@ export function CanvasRoot(props: CanvasRootProps): React.ReactPortal {
         )}
         <ContextLoss runtime={runtime} onRepeatedLoss={onRepeatedLoss} />
         <Preload all />
-        {/* Phase 8: one scene slot per registry entry with `webgl.load` (scenes/lifecycle.ts). */}
-        {stress > 0 && <StressScene loops={stress} />}
+        {/* The world and its scene slots (scenes/lifecycle.ts); the stress quad replaces it. */}
+        {stress > 0 ? (
+          <StressScene loops={stress} />
+        ) : (
+          <World tier={tier} settings={settings} engine={engine} />
+        )}
       </Canvas>
     </div>,
     document.body,
