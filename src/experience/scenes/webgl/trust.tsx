@@ -112,7 +112,7 @@ function measure(): Layout | null {
 
 export default function TrustScene(props: SceneProps): React.JSX.Element | null {
   const { ref } = props;
-  const { materials, motion, fov, world } = useWorld();
+  const { materials, motion, fov, world, emptyRef } = useWorld();
   const camera = useThree((state) => state.camera);
   const size = useThree((state) => state.size);
   const layout = useMeasured(measure);
@@ -151,9 +151,15 @@ export default function TrustScene(props: SceneProps): React.JSX.Element | null 
   useFrame(() => {
     const group = root.current;
     const l = layout.current;
-    if (!group) return;
+    if (!group) {
+      emptyRef.current += 1;
+      return;
+    }
     group.visible = l !== null && models !== null;
-    if (!group.visible || l === null) return;
+    if (!group.visible || l === null) {
+      emptyRef.current += 1;
+      return;
+    }
     followCamera(group, camera);
     if (arrived.current < 0) arrived.current = motion.time;
     const appear = smoothstep(0, ASSEMBLE_S, motion.time - arrived.current);

@@ -24,7 +24,11 @@ export interface WorldSettings {
   /** The light depth of field: dust far from the focus plane grows soft and faint. */
   dof: boolean;
   transmission: number;
-  /** Tier 1 draws only while one of its scenes is mounted (the hero exit; the molar lane's 4). */
+  /**
+   * Draws every frame (the dust, the light) even with no scene in view: tiers 2 and 3 from
+   * 1024 px. Tier 1, and every tier under 1024 px where no scene of this lane has a text-free
+   * box, draw only while a mounted scene draws something.
+   */
   drawsIdle: boolean;
 }
 
@@ -41,7 +45,7 @@ export function worldSettings(tier: 1 | 2 | 3, settings: TierSettings): WorldSet
     glow: settings.post.bloom,
     dof: settings.post.dof,
     transmission: settings.transmission,
-    drawsIdle: tier >= 2,
+    drawsIdle: tier >= 2 && settings.heroExitParallax,
   };
 }
 

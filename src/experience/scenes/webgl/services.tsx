@@ -195,7 +195,7 @@ function measure(): Layout | null {
 
 export default function ServicesScene(props: SceneProps): React.JSX.Element {
   const { ref } = props;
-  const { materials, motion, fov, world } = useWorld();
+  const { materials, motion, fov, world, emptyRef } = useWorld();
   const camera = useThree((state) => state.camera);
   const size = useThree((state) => state.size);
   const layout = useMeasured(measure);
@@ -218,9 +218,15 @@ export default function ServicesScene(props: SceneProps): React.JSX.Element {
   useFrame(() => {
     const group = root.current;
     const l = layout.current;
-    if (!group) return;
+    if (!group) {
+      emptyRef.current += 1;
+      return;
+    }
     group.visible = l !== null;
-    if (l === null) return;
+    if (l === null) {
+      emptyRef.current += 1;
+      return;
+    }
     followCamera(group, camera);
     if (mounted.current < 0) mounted.current = motion.time;
 

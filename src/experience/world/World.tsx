@@ -94,6 +94,8 @@ export function World(props: {
     warm: 0,
   }));
   const drawingRef = useRef(0);
+  const emptyRef = useRef(0);
+  const shownRef = useRef(false);
 
   // The camera of the world: a narrow lens, so the screen-anchored objects keep their proportions.
   // Tier 3's glass transmission renders the opaque scene once more; at half size it costs a quarter.
@@ -225,7 +227,10 @@ export function World(props: {
 
   const cleanDrawn = useRef(false);
   useFrame(() => {
-    const idle = !world.drawsIdle && drawingRef.current === 0;
+    const drawing = drawingRef.current - emptyRef.current > 0;
+    emptyRef.current = 0;
+    shownRef.current = world.drawsIdle || drawing;
+    const idle = !shownRef.current;
     if (idle && cleanDrawn.current) return;
     gl.render(scene, camera);
     cleanDrawn.current = idle;
@@ -237,7 +242,18 @@ export function World(props: {
   }, 1);
 
   const api = useMemo<WorldApi>(
-    () => ({ engine, tier, settings, world, materials, palette, motion, fov: FOV, drawingRef }),
+    () => ({
+      engine,
+      tier,
+      settings,
+      world,
+      materials,
+      palette,
+      motion,
+      fov: FOV,
+      drawingRef,
+      emptyRef,
+    }),
     [engine, tier, settings, world, materials, palette, motion],
   );
   const shadows = world.shadows !== 'none';
@@ -267,7 +283,7 @@ export function World(props: {
         dof={world.dof}
         palette={palette}
         motion={motion}
-        visible={() => world.drawsIdle || drawingRef.current > 0}
+        visible={() => shownRef.current}
       />
       <SceneSlots onMount={onSceneMount} />
     </WorldContext.Provider>

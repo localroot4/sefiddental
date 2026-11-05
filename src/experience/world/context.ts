@@ -36,8 +36,14 @@ export interface WorldApi {
   motion: WorldMotion;
   /** Vertical field of view of the world camera (degrees). */
   fov: number;
-  /** Scene slots mounted now; tier 1 renders only while one is. */
+  /** Scene slots mounted now. */
   drawingRef: { current: number };
+  /**
+   * A mounted scene that draws nothing this frame (no text-free box on this layout) adds 1; the
+   * World resets it after the frame. Without `drawsIdle` the World renders only while mounted
+   * scenes outnumber the empty ones: a scene that never reports counts as drawing.
+   */
+  emptyRef: { current: number };
 }
 
 export const WorldContext = createContext<WorldApi | null>(null);

@@ -41,9 +41,11 @@ describe('worldSettings (experience direction section 3)', () => {
     expect(at(3).shadowMapSize).toBeLessThanOrEqual(2048);
   });
 
-  it('WM3 tier 1 draws only while a scene is mounted; transmission only at tier 3', () => {
+  it('WM3 tier 1 and narrow layouts draw only while a scene draws; transmission only at tier 3', () => {
     const at = (tier: 1 | 2 | 3) => worldSettings(tier, tierSettings(tier, VIEWPORT, true));
     expect([at(3).drawsIdle, at(2).drawsIdle, at(1).drawsIdle]).toEqual([true, true, false]);
+    const narrow = { width: 820, height: 1180, dpr: 2 };
+    expect(worldSettings(3, tierSettings(3, narrow, false)).drawsIdle).toBe(false);
     expect(at(3).transmission).toBeGreaterThan(0);
     expect(at(2).transmission).toBe(0);
   });

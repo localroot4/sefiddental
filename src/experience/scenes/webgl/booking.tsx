@@ -36,7 +36,7 @@ function measure(): PxRect | null {
 
 export default function BookingScene(props: SceneProps): React.JSX.Element | null {
   const { ref } = props;
-  const { materials, motion, fov, world } = useWorld();
+  const { materials, motion, fov, world, emptyRef } = useWorld();
   const camera = useThree((state) => state.camera);
   const size = useThree((state) => state.size);
   const canvas = useThree((state) => state.gl.domElement);
@@ -101,7 +101,10 @@ export default function BookingScene(props: SceneProps): React.JSX.Element | nul
     const stage = shown && motion.warm >= 0.999;
     if (html.hasAttribute(STAGE_ATTR) !== stage) html.toggleAttribute(STAGE_ATTR, stage);
     if (group) group.visible = shown;
-    if (!shown || box === null || group === null) return;
+    if (!shown || box === null || group === null) {
+      emptyRef.current += 1;
+      return;
+    }
     followCamera(group, camera);
     if (arrived.current < 0) arrived.current = motion.time;
     const appear = smoothstep(0, APPEAR_S, motion.time - arrived.current);
