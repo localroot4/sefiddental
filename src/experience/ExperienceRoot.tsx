@@ -213,24 +213,31 @@ function ExperienceHost(props: {
   // phone draws no WebGL in phase 7, so its debug flag loads none either: `?debug=1` then measures
   // the path visitors get (the DOM frame monitor), and the canvas's own monitor, which also samples
   // at rest, cannot step the owner's phone down and write the light floor.
-  // Phase 8 (D5): without the debug flag the chunk waits for the first scroll, where the hero
-  // exit begins, so the tier 1 Lighthouse window and the engine set after `load` (T-EX5) hold no
-  // three.js. A reload that lands below the top counts as scrolled on the first tick.
-  const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    if (scrolled || engine === null) return;
-    return engine.onTick(() => {
-      if (window.scrollY > 0) setScrolled(true);
-    });
-  }, [engine, scrolled]);
   // Tier 1 draws the hero exit only from 1024 px (`heroExitParallax` is tier >= 1 and wide), and
   // its narrow molar is posters: a narrow tier 1 page loads no canvas.
   const worldDraws = readyTier >= 2 || tier.settings.heroExitParallax;
+  // Phase 8 (D5): without the debug flag the chunk waits until the world window under the hero
+  // (the trust band; services without facts) shows at least 1 px: the first scroll at 1440x900,
+  // at once on a screen taller than the hero. The tier 1 Lighthouse window and the engine set
+  // after `load` (T-EX5) then hold no three.js, and an idle page keeps a sleeping ticker (T-PH12).
+  const [windowSeen, setWindowSeen] = useState(false);
+  useEffect(() => {
+    const target =
+      rootRef.current?.querySelector('[data-world-slot="hero-exit"]') ??
+      rootRef.current?.querySelector('[data-scene="services"]');
+    if (windowSeen || engine === null || !worldDraws || !target) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setWindowSeen(true);
+      },
+      { rootMargin: '0px 0px -1px 0px' },
+    );
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [engine, windowSeen, worldDraws]);
   const [canvasModule, setCanvasModule] = useState<CanvasModule | null>(null);
   const wantsCanvas =
-    loaded &&
-    readyTier >= 1 &&
-    ((tier.debug && !tier.phone) || (SCENES_LOAD_WEBGL && scrolled && worldDraws));
+    loaded && readyTier >= 1 && ((tier.debug && !tier.phone) || (SCENES_LOAD_WEBGL && windowSeen));
   useEffect(() => {
     if (!wantsCanvas || canvasModule !== null) return;
     let cancelled = false;
