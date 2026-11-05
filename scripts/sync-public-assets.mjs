@@ -11,6 +11,8 @@
 //   design/brand/3d/*.glb                   -> public/brand/3d/ (the home world's Draco glTF)
 //   three's gltf Draco decoder              -> public/brand/3d/draco/ (wasm and a same-origin
 //                                             worker, scripts/draco-worker.mjs)
+//   design/brand/3d/molar.glb              -> public/brand/3d/molar.glb, decoded from Draco
+//                                             (scripts/molar-glb.mjs: the molar scenes need no decoder)
 import {
   copyFileSync,
   cpSync,
@@ -25,6 +27,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { buildDracoWorker } from './draco-worker.mjs';
+import { buildMolarGlb } from './molar-glb.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pub = path.join(root, 'public');
@@ -96,6 +99,8 @@ copyFileSync(
   path.join(modelsOut, 'draco', 'draco_decoder.wasm'),
 );
 writeFileSync(path.join(modelsOut, 'draco', 'draco-worker.js'), buildDracoWorker(root));
+// The molar scenes load it without the decoder, so it replaces the Draco copy above.
+writeFileSync(path.join(modelsOut, 'molar.glb'), await buildMolarGlb(root));
 
 // The static page module uses only erasable TypeScript, so Node 22 imports it directly.
 const staticPage = from('src', 'lib', 'system-pages', 'staticPage.ts');
@@ -227,5 +232,5 @@ for (const { url, width, height } of heroPlaceholderFiles()) {
 writeFileSync(stamp, HERO_RECIPE);
 
 console.log(
-  `sync-public-assets: ${copies.length} brand and font files, ${cards} share cards, favicon.ico, detect-gpu benchmarks, ${models.length} models and the Draco decoder, brand/icons.svg (${Object.keys(ICONS).length} icons), ${placeholders} hero placeholders written; maintenance.html and brand/lockup.svg ${maintenance}`,
+  `sync-public-assets: ${copies.length} brand and font files, ${cards} share cards, favicon.ico, detect-gpu benchmarks, ${models.length} models (molar.glb decoded) and the Draco decoder, brand/icons.svg (${Object.keys(ICONS).length} icons), ${placeholders} hero placeholders written; maintenance.html and brand/lockup.svg ${maintenance}`,
 );
