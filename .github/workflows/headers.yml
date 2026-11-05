@@ -34,3 +34,42 @@ jobs:
         env:
           ORIGIN: ${{ inputs.origin }}
         run: node scripts/check-headers.mjs "$ORIGIN"
+
+  # Go table row 4: Lighthouse of the deployed site from outside Iran, mobile preset, both themes.
+  # It records, it does not gate: the preview sends X-Robots-Tag noindex (SEO fails there) and
+  # the runner's path to the server is slow and uneven. The CI gate stays ci.yml's lhci job.
+  lighthouse:
+    name: Lighthouse of ${{ inputs.origin }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+      - name: Home, a service and booking, 3 runs each, light then dark
+        env:
+          ORIGIN: ${{ inputs.origin }}
+        run: |
+          for theme in light dark; do
+            flags='--headless=new --no-sandbox'
+            if [ "$theme" = dark ]; then flags="$flags --blink-settings=preferredColorScheme=0"; fi
+            rm -rf .lighthouseci
+            npx --yes @lhci/cli@0.15.1 collect --numberOfRuns=3 \
+              --url="$ORIGIN/" \
+              --url="$ORIGIN/%D8%AE%D8%AF%D9%85%D8%A7%D8%AA/%D8%AA%D8%B1%D9%85%DB%8C%D9%85-%D8%AF%D9%86%D8%AF%D8%A7%D9%86" \
+              --url="$ORIGIN/%D8%B1%D8%B2%D8%B1%D9%88-%D9%86%D9%88%D8%A8%D8%AA" \
+              --settings.chromeFlags="$flags" > /dev/null
+            THEME=$theme node -e '
+              const fs = require("fs");
+              const rows = {};
+              for (const f of fs.readdirSync(".lighthouseci").filter((f) => f.startsWith("lhr-"))) {
+                const r = JSON.parse(fs.readFileSync(".lighthouseci/" + f, "utf8"));
+                (rows[decodeURI(new URL(r.finalDisplayedUrl).pathname)] ??= []).push(r);
+              }
+              const med = (a) => a.sort((x, y) => x - y)[Math.floor(a.length / 2)];
+              for (const [p, rs] of Object.entries(rows)) {
+                const c = (k) => med(rs.map((r) => r.categories[k].score));
+                const a = (k) => Math.round(med(rs.map((r) => r.audits[k].numericValue)));
+                console.log(`${process.env.THEME} ${p}: performance ${c("performance")}, accessibility ${c("accessibility")}, best practices ${c("best-practices")}; LCP ${a("largest-contentful-paint")} ms, TBT ${a("total-blocking-time")} ms, CLS ${med(rs.map((r) => r.audits["cumulative-layout-shift"].numericValue)).toFixed(3)} (median of ${rs.length})`);
+              }'
+          done
