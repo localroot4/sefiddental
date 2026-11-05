@@ -42,7 +42,8 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [140, 440],
     pinnedDesktop: true,
     direction: 'horizontal',
-    webgl: { minTier: 2 },
+    // Procedural relief: no download.
+    webgl: { minTier: 2, load: () => import('./webgl/services'), assets: () => [] },
   },
   {
     id: 'restoration',
