@@ -213,9 +213,24 @@ function ExperienceHost(props: {
   // phone draws no WebGL in phase 7, so its debug flag loads none either: `?debug=1` then measures
   // the path visitors get (the DOM frame monitor), and the canvas's own monitor, which also samples
   // at rest, cannot step the owner's phone down and write the light floor.
+  // Phase 8 (D5): without the debug flag the chunk waits for the first scroll, where the hero
+  // exit begins, so the tier 1 Lighthouse window and the engine set after `load` (T-EX5) hold no
+  // three.js. A reload that lands below the top counts as scrolled on the first tick.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    if (scrolled || engine === null) return;
+    return engine.onTick(() => {
+      if (window.scrollY > 0) setScrolled(true);
+    });
+  }, [engine, scrolled]);
+  // Tier 1 draws the hero exit only from 1024 px (`heroExitParallax` is tier >= 1 and wide), and
+  // its narrow molar is posters: a narrow tier 1 page loads no canvas.
+  const worldDraws = readyTier >= 2 || tier.settings.heroExitParallax;
   const [canvasModule, setCanvasModule] = useState<CanvasModule | null>(null);
   const wantsCanvas =
-    loaded && readyTier >= 1 && ((tier.debug && !tier.phone) || SCENES_LOAD_WEBGL);
+    loaded &&
+    readyTier >= 1 &&
+    ((tier.debug && !tier.phone) || (SCENES_LOAD_WEBGL && scrolled && worldDraws));
   useEffect(() => {
     if (!wantsCanvas || canvasModule !== null) return;
     let cancelled = false;

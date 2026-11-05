@@ -116,7 +116,7 @@ test('T-EX1 P1 the canvas host mounts only after load, and three.js loads only a
   await holdLoad(page);
   await recordLayerMount(page);
   const webgl = watchScripts(page);
-  // D5: in phase 7 the canvas chunk is requested only under the debug flag (no scene draws yet).
+  // D5: the debug flag requests the canvas chunk at `load`; without it the first scroll does.
   await page.goto('/?debug=1&tier=2');
   await page.waitForLoadState('load');
   const layer = page.locator('[data-experience-layer]');
@@ -195,7 +195,8 @@ test('T-EX2 ?tier=N fixes the tier; ?tier=0 never mounts a canvas or fetches thr
   await expectNoLayerAfterLoad(page);
   expect([...webgl]).toEqual([]);
 
-  // D5: without the debug flag no registry scene draws yet, so tier 2 fetches no three.js either.
+  // D5: without the debug flag three.js waits for the first scroll (T-WD1), so a still tier 2
+  // page fetches none either.
   await page.goto('/?tier=2');
   await expect(html).toHaveAttribute('data-tier', '2');
   await expectNoLayerAfterLoad(page);
