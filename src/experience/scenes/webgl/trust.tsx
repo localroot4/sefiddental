@@ -36,11 +36,17 @@ const WIDE = '(min-width: 1024px)';
 const MARK_ASPECT = 223 / 184;
 /** Gap between the box and the text around it (CSS px). */
 const GAP = 32;
-/** Diamonds: place in the box (0..1, inline from the left), size in CSS px, loop phase. */
+/**
+ * Diamonds: their box (`strip`, the band between the photo and the facts, shows first as the
+ * photo leaves; `box`, the mark's), place in it (0..1, inline from the left), size in CSS px and
+ * loop phase.
+ */
 const DIAMONDS = [
-  { u: 0.86, v: 0.28, size: 34, phase: 0 },
-  { u: 0.7, v: 0.8, size: 22, phase: 2.1 },
-  { u: 0.1, v: 0.66, size: 18, phase: 4.2 },
+  { in: 'strip', u: 0.12, v: 0.5, size: 20, phase: 1 },
+  { in: 'strip', u: 0.58, v: 0.45, size: 14, phase: 3.3 },
+  { in: 'box', u: 0.86, v: 0.28, size: 34, phase: 0 },
+  { in: 'box', u: 0.7, v: 0.8, size: 22, phase: 2.1 },
+  { in: 'box', u: 0.1, v: 0.66, size: 18, phase: 4.2 },
 ] as const;
 const LOOP_S = 12;
 /** The mark appears over this long once its model has arrived. */
@@ -49,6 +55,8 @@ const ASSEMBLE_S = 0.8;
 interface Layout {
   /** The text-free box in document px. */
   box: PxRect;
+  /** The text-free band between the photo's bottom and the facts, full content width. */
+  strip: PxRect;
   /** The services mark's centre: document x, and its y relative to the stage top. */
   target: { x: number; y: number };
   stage: { docTop: number; navH: number; roomHeight: number; pinned: boolean };
@@ -67,7 +75,13 @@ function measure(): Layout | null {
   const railRect = rail.getBoundingClientRect();
   const markRect = mark.getBoundingClientRect();
   const heading = stage.querySelector('h2')?.parentElement?.getBoundingClientRect();
-  const factsBottom = docRect(facts).top + facts.getBoundingClientRect().height;
+  const factsBox = docRect(facts);
+  const factsBottom = factsBox.top + factsBox.height;
+  const band = docRect(facts.parentElement ?? facts);
+  const row = facts.firstElementChild?.getBoundingClientRect();
+  const stripTop = band.top + GAP / 2;
+  const stripBottom =
+    factsBox.top + (row ? row.top - facts.getBoundingClientRect().top : 0) - GAP / 2;
   const left = markRect.right + GAP;
   const right = (heading ? heading.left : window.innerWidth / 2) - GAP;
   const boxTop = factsBottom + GAP / 2;
@@ -76,6 +90,12 @@ function measure(): Layout | null {
   const room = stage.nextElementSibling;
   return {
     box: { left, top: boxTop, width: right - left, height: boxBottom - boxTop },
+    strip: {
+      left: factsBox.left,
+      top: stripTop,
+      width: factsBox.width,
+      height: Math.max(0, stripBottom - stripTop),
+    },
     target: {
       x: markRect.left + markRect.width / 2,
       y: markRect.top - stageRect.top + markRect.height / 2,
@@ -190,10 +210,13 @@ export default function TrustScene(props: SceneProps): React.JSX.Element | null 
     DIAMONDS.forEach((d, i) => {
       const gem = gems.current[i];
       if (!gem) return;
+      const area = d.in === 'strip' ? l.strip : l.box;
+      // A strip too low for the gem and its drift stays empty.
+      const fits = area.height >= d.size + 24;
       const p = rectToCamera(
         {
-          left: l.box.left + l.box.width * d.u + Math.sin(loop + d.phase) * 10,
-          top: boxTop + l.box.height * d.v + Math.cos(loop + d.phase) * 8,
+          left: area.left + area.width * d.u + Math.sin(loop + d.phase) * 10,
+          top: area.top - y + area.height * d.v + Math.cos(loop + d.phase) * 6,
           width: 0,
           height: 0,
         },
@@ -201,7 +224,7 @@ export default function TrustScene(props: SceneProps): React.JSX.Element | null 
         fov,
         ANCHOR_DEPTH,
       );
-      const s = d.size * p.unitsPerPx * (1 - exit) * appear;
+      const s = fits ? d.size * p.unitsPerPx * (1 - exit) * appear : 0;
       gem.visible = s > 1e-4;
       gem.position.set(p.x, p.y, p.z + 0.2);
       gem.scale.setScalar(s);
