@@ -18,13 +18,16 @@ import { createFrameMonitor } from '../tier/frameMonitor';
 export function MonitorProbe(props: {
   tier: Tier;
   runtime: FrameRuntime;
+  /** Phone rules (D26): phone mode, and frames count only while the page scrolls. */
+  phone: boolean;
   onStepDown: () => void;
 }): null {
-  const { onStepDown, runtime } = props;
+  const { onStepDown, runtime, phone } = props;
   const [monitor] = useState(() =>
-    createFrameMonitor({ tier: props.tier, mode: 'auto', onStepDown: () => onStepDown() }),
+    createFrameMonitor({ tier: props.tier, mode: 'auto', phone, onStepDown: () => onStepDown() }),
   );
   const seenResumes = useRef(-1);
+  const lastY = useRef<number | null>(null);
 
   // rAF stops in a background tab, so the gate never reads 'hidden'; reset on return instead.
   useEffect(() => {
@@ -41,6 +44,12 @@ export function MonitorProbe(props: {
       seenResumes.current = runtime.resumes;
       monitor.reset(now);
       return;
+    }
+    if (phone) {
+      const y = window.scrollY;
+      const scrolled = lastY.current !== null && y !== lastY.current;
+      lastY.current = y;
+      if (!scrolled) return;
     }
     monitor.push(delta, now);
   });

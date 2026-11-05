@@ -31,6 +31,8 @@ export interface CanvasRootProps {
   tier: 1 | 2 | 3;
   settings: TierSettings;
   mode: 'auto' | 'fixed';
+  /** A phone: the canvas monitor follows the phone rules (D26). */
+  phone: boolean;
   engine: ScrollEngine;
   runtime: FrameRuntime;
   stepDown: (source: StepSource) => void;
@@ -57,7 +59,7 @@ const RESIZE = { scroll: false } as const;
 const PERFORMANCE = { min: 0.5, max: 1, debounce: 200 } as const;
 
 export function CanvasRoot(props: CanvasRootProps): React.ReactPortal {
-  const { tier, settings, mode, engine, runtime, stepDown, stress } = props;
+  const { tier, settings, mode, phone, engine, runtime, stepDown, stress } = props;
   // Antialias is fixed at context creation; a later tier drop keeps it (tier 1 starts without).
   const [gl] = useState(() => ({
     antialias: tier >= 2,
@@ -92,7 +94,13 @@ export function CanvasRoot(props: CanvasRootProps): React.ReactPortal {
         <ThemeClearColor />
         <FrameDriver engine={engine} runtime={runtime} />
         {mode === 'auto' && (
-          <MonitorProbe key={tier} tier={tier} runtime={runtime} onStepDown={onMonitorStep} />
+          <MonitorProbe
+            key={tier}
+            tier={tier}
+            phone={phone}
+            runtime={runtime}
+            onStepDown={onMonitorStep}
+          />
         )}
         <ContextLoss runtime={runtime} onRepeatedLoss={onRepeatedLoss} />
         <Preload all />
