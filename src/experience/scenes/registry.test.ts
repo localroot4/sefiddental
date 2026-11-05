@@ -52,7 +52,14 @@ describe('scene registry', () => {
   it('V7 phase 8: a WebGL scene loads its chunk lazily and lists its assets; the hero never draws over the photo', () => {
     const loading = SCENES.filter((s) => s.webgl?.load !== undefined).map((s) => s.id);
     expect(loading).toEqual(
-      expect.arrayContaining(['trust', 'services', 'booking', 'restoration', 'workflow']),
+      expect.arrayContaining([
+        'trust',
+        'services',
+        'booking',
+        'restoration',
+        'workflow',
+        'compare',
+      ]),
     );
     for (const scene of SCENES) {
       if (scene.webgl?.load) expect(scene.webgl.assets).toBeTypeOf('function');

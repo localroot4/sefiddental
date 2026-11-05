@@ -6,7 +6,7 @@
 import { modelManifest } from '../world/assets';
 
 import type { SceneDefinition, SceneId } from './types';
-import { molarAssets } from './webgl/assets';
+import { compareAssets, molarAssets } from './webgl/assets';
 
 export const SCENES: readonly SceneDefinition[] = Object.freeze([
   {
@@ -76,7 +76,11 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [940, 1040],
     pinnedDesktop: false,
     direction: 'vertical',
-    webgl: { minTier: 2 },
+    webgl: {
+      minTier: 2,
+      load: () => import('./webgl/compare'),
+      assets: compareAssets,
+    },
   },
   {
     id: 'dentists',
