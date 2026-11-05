@@ -269,6 +269,17 @@
   }
 }
 
+/* Scene 6's WebGL wipe (src/experience/scenes/webgl/compare.tsx) draws the compare slider's two
+   photos while its world slot is live: the slider box lets the canvas through and its photo layers
+   (the box's only div children) hide; the labels, the divider, the handle and the range input
+   stay. Here, not in CompareSlider's classes: the slider island ships on every service page. */
+[data-world-slot='compare'][data-world-live] figure > div:first-child {
+  background: transparent;
+}
+[data-world-slot='compare'][data-world-live] figure > div:first-child > div {
+  visibility: hidden;
+}
+
 /* The scroll engine's settle (phone spec D25): while `data-settling` is on the experience root
    (one --dur-3 window after the engine starts and when it goes), the targets it scrubs ease to
    and from their scrubbed state instead of jumping. Only the marked targets get it, so no other

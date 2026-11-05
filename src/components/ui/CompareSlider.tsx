@@ -39,22 +39,14 @@ export function CompareSlider(props: {
   return (
     <div
       ref={root}
-      data-compare=""
       className={cx(
-        'relative aspect-square w-full max-w-[28rem] touch-pan-y overflow-hidden rounded-media bg-surface-sunken [--pos:50] in-data-world-live:bg-transparent',
+        'relative aspect-square w-full max-w-[28rem] touch-pan-y overflow-hidden rounded-media bg-surface-sunken [--pos:50]',
         props.className,
       )}
     >
-      {/* Inside the home's compare world slot, the WebGL wipe draws both photos while the slot is
-          live (`data-world-live`, phase 8 scene 6): the layers hide, the controls stay. */}
-      <div data-compare-before="" className="absolute inset-0 in-data-world-live:invisible">
-        {props.before}
-      </div>
+      <div className="absolute inset-0">{props.before}</div>
       {/* The divider sits --pos% from the start side; the after layer keeps the end side. */}
-      <div
-        data-compare-after=""
-        className="absolute inset-0 [clip-path:inset(0_calc(var(--pos)*1%)_0_0)] in-data-world-live:invisible ltr:[clip-path:inset(0_0_0_calc(var(--pos)*1%))]"
-      >
+      <div className="absolute inset-0 [clip-path:inset(0_calc(var(--pos)*1%)_0_0)] ltr:[clip-path:inset(0_0_0_calc(var(--pos)*1%))]">
         {props.after}
       </div>
       <span className="pointer-events-none absolute start-3 top-3 rounded-badge bg-surface-raised px-2 py-1 text-caption leading-[1.4] font-semibold">

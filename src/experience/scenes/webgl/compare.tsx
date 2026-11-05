@@ -20,9 +20,13 @@ import { useSlotPass, type PassDraw } from './pass';
 const SLOT = '[data-scene="compare"] [data-world-slot="compare"]';
 const WIDE = '(min-width: 1024px)';
 
-/** The decoded, same-origin photo of a CompareSlider layer, or null. */
-function layerImage(root: Element, layer: 'before' | 'after'): HTMLImageElement | null {
-  const img = root.querySelector<HTMLImageElement>(`[data-compare-${layer}] picture img`);
+/** CompareSlider's box: the figure's first child (globals.css hides its layers while live). */
+const ROOT = 'figure > div:first-child';
+
+/** The decoded, same-origin photo of a CompareSlider layer (0 before, 1 after), or null. */
+function layerImage(root: Element, layer: 0 | 1): HTMLImageElement | null {
+  const layers = root.querySelectorAll(':scope > div');
+  const img = layers[layer]?.querySelector<HTMLImageElement>('picture img') ?? null;
   if (img === null || !img.complete || img.naturalWidth === 0) return null;
   const src = img.currentSrc || img.src;
   try {
@@ -47,7 +51,7 @@ export default function CompareScene(props: SceneProps): null {
     ({ slot, dt, time }) => {
       if (!wipeDraws(settings, wide.matches)) return null;
       if (box.current === null || !slot.contains(box.current.root)) {
-        const root = slot.querySelector<HTMLElement>('[data-compare]');
+        const root = slot.querySelector<HTMLElement>(ROOT);
         if (root === null) return null;
         const style = getComputedStyle(root);
         box.current = {
@@ -57,8 +61,8 @@ export default function CompareScene(props: SceneProps): null {
         };
       }
       const { root, radius, rtl } = box.current;
-      const before = layerImage(root, 'before');
-      const after = layerImage(root, 'after');
+      const before = layerImage(root, 0);
+      const after = layerImage(root, 1);
       if (before === null || after === null) return null;
       const srcs = { before: before.currentSrc, after: after.currentSrc };
       if (images.current?.before !== srcs.before || images.current.after !== srcs.after) {
