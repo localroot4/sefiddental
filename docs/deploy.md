@@ -1469,7 +1469,7 @@ each run here.
 
 | Date (UTC) | Dump | Tables, rows | Media files | Result |
 |---|---|---|---|---|
-| not run yet; it needs the owner's OK | | | | |
+| 2026-10-31 12:33 (Server run 41, `restore-check`) | `sefid-20261031T044705Z-pre-deploy.dump` (1.4 MB) | 123 tables, 2942 rows, all counts match; release `c25214f` answered `/api/health` 200 on the scratch database | 0 (the nightly media archive was empty) | passed; the scratch database and copy removed |
 
 Every step is an action of the workflow "Server" (3.4). For
 `run`, the line after "run:" goes into the input `command`. `<stamp>` is the
