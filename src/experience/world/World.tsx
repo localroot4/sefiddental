@@ -226,6 +226,21 @@ export function World(props: {
   }, -1);
 
   const cleanDrawn = useRef(false);
+  // A resize, a DPR change or a restored context clears the buffer (alpha: false shows it black),
+  // so the idle page draws its clean frame again.
+  const size = useThree((state) => state.size);
+  const dpr = useThree((state) => state.viewport.dpr);
+  useEffect(() => {
+    cleanDrawn.current = false;
+  }, [size, dpr]);
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const redraw = () => {
+      cleanDrawn.current = false;
+    };
+    canvas.addEventListener('webglcontextrestored', redraw);
+    return () => canvas.removeEventListener('webglcontextrestored', redraw);
+  }, [gl]);
   useFrame(() => {
     const drawing = drawingRef.current - emptyRef.current > 0;
     emptyRef.current = 0;
