@@ -6,6 +6,7 @@
 import { modelManifest } from '../world/assets';
 
 import type { SceneDefinition, SceneId } from './types';
+import { molarAssets } from './webgl/assets';
 
 export const SCENES: readonly SceneDefinition[] = Object.freeze([
   {
@@ -51,7 +52,11 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [440, 640],
     pinnedDesktop: true,
     direction: 'vertical',
-    webgl: { minTier: 1 },
+    webgl: {
+      minTier: 1,
+      load: () => import('./webgl/restoration'),
+      assets: molarAssets,
+    },
   },
   {
     id: 'workflow',

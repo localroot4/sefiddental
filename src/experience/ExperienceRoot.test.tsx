@@ -29,6 +29,16 @@ const mocks = vi.hoisted(() => ({
   gpu: { options: null as GpuOptions | null, answer: (_: unknown) => {} },
 }));
 
+// XR1 and XR7 hold the phase 7 rule (D5: no scene draws WebGL) and its phase 8 successor (a
+// registry scene declares `webgl.load`) by swapping the registry flag, as tierStore.test.ts does.
+const registry = vi.hoisted(() => ({ sceneLoadsWebgl: false }));
+vi.mock('./scenes/registry', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./scenes/registry')>()),
+  get SCENES_LOAD_WEBGL() {
+    return registry.sceneLoadsWebgl;
+  },
+}));
+
 // The benchmark runs only in auto mode without a query tier (XR5); it answers when told to.
 vi.mock('detect-gpu', () => ({
   getGPUTier: (options: GpuOptions) =>
@@ -178,6 +188,7 @@ beforeEach(() => {
 
 afterEach(async () => {
   cleanup();
+  registry.sceneLoadsWebgl = false;
   // The root's deferred unmount check (data-pins) runs before the next test sets its own.
   await new Promise((resolve) => setTimeout(resolve, 0));
   vi.restoreAllMocks();
@@ -195,6 +206,13 @@ describe('ExperienceRoot (dom)', () => {
     home('/?debug=1&tier=2');
     await flush();
     expect(mocks.canvasImports).toBe(1);
+  });
+
+  it('XR1 phase 8: once a registry scene draws WebGL, tier 2 mounts the canvas without the flag', async () => {
+    registry.sceneLoadsWebgl = true;
+    home('/?tier=2');
+    // The idle mount is a 200 ms timer in jsdom.
+    await waitFor(() => expect(mocks.canvasMounts).toBeGreaterThan(0), { timeout: 3000 });
   });
 
   it('XR2 keep-place: a relatch that changes the pins reads the old place, moves data-pins and restores it at once, never on unmount', async () => {

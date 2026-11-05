@@ -12,7 +12,8 @@
 // (tier 0). The scene module adds `data-motion` to the slot at tiers 1 to 3 without a pin, which
 // turns on the `--dur-4` crossfade; in the pinned scrub (tiers 2 and 3 from 1024 px) the engine
 // writes opacity and transform inline and leaves the attribute off. The slot is decorative and
-// the world slot phase 8 replaces with the 3D molar at tiers 2 and 3.
+// the world slot phase 8 replaces with the 3D molar where the tier gives it the canvas: the layers
+// hide while the slot is live (`data-world-live`, scenes/webgl/pass.ts) and return with it.
 const CROWN =
   'M52 118C40 106 28 90 28 72c0-20 12-32 26-32 10 0 17 6 24 11 7-8 14-15 22-15s15 7 22 15c7-5 14-11 24-11 14 0 26 12 26 32 0 18-12 34-24 46-18 8-78 8-96 0z';
 const ROOTS =
@@ -53,7 +54,7 @@ export function MolarStepper(props: { className?: string }) {
           key={level}
           viewBox="0 0 200 240"
           data-level={level}
-          className={`col-start-1 row-start-1 w-full in-data-motion:transition-[opacity,transform] in-data-motion:duration-[var(--dur-4)] ${LAYER[i]}`}
+          className={`col-start-1 row-start-1 w-full in-data-motion:transition-[opacity,transform] in-data-motion:duration-[var(--dur-4)] in-data-world-live:invisible ${LAYER[i]}`}
         >
           {i === 0 ? (
             <defs>

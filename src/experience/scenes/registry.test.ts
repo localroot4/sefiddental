@@ -49,9 +49,12 @@ describe('scene registry', () => {
     expect(isSceneId('nope')).toBe(false);
   });
 
-  it('V7 phase 8 world scenes load WebGL; the hero never draws over the photo', () => {
-    const loads = SCENES.filter((s) => s.webgl?.load !== undefined).map((s) => s.id);
-    expect(loads).toEqual(expect.arrayContaining(['trust', 'services', 'booking']));
+  it('V7 phase 8: a WebGL scene loads its chunk lazily and lists its assets; the hero never draws over the photo', () => {
+    const loading = SCENES.filter((s) => s.webgl?.load !== undefined).map((s) => s.id);
+    expect(loading).toEqual(expect.arrayContaining(['trust', 'services', 'booking', 'restoration']));
+    for (const scene of SCENES) {
+      if (scene.webgl?.load) expect(scene.webgl.assets).toBeTypeOf('function');
+    }
     expect(SCENES_LOAD_WEBGL).toBe(true);
     expect(SCENES.find((s) => s.id === 'hero')?.webgl).toBeNull();
   });
