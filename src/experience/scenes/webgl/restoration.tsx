@@ -13,7 +13,8 @@ import { useCallback, useImperativeHandle, useMemo, useRef } from 'react';
 import type { SceneProps } from '../types';
 
 import { useMolar, useRigLifetime } from './hooks';
-import { damp, levelFromChoice, molarDraws } from './math';
+import { molarDraws } from './assets';
+import { damp, levelFromChoice } from './math';
 import { useSlotPass, type PassDraw } from './pass';
 import { createMolarRig } from './restorationRig';
 

@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import { tierSettings, type Tier } from '@/lib/qualityTier';
+
 import {
   FIRST_PINNED_SCENE,
   isSceneId,
   PLACEHOLDER_SCENE_IDS,
   SCENES,
   SCENES_LOAD_WEBGL,
+  scenesDrawWebgl,
 } from './registry';
 
 describe('scene registry', () => {
@@ -83,5 +86,15 @@ describe('scene registry', () => {
       const bytes = (manifest ?? []).reduce((sum, item) => sum + item.bytes, 0);
       expect(bytes, scene.id).toBeLessThan(500 * 1024);
     }
+  });
+
+  it('phase 8: the canvas has work where a scene draws on this device: not on a tier 1 phone', () => {
+    const desktop = (tier: Tier) => tierSettings(tier, { width: 1440, height: 900, dpr: 1 }, true);
+    const phone = (tier: Tier) => tierSettings(tier, { width: 390, height: 844, dpr: 3 }, false);
+    expect(scenesDrawWebgl(1, desktop(1))).toBe(true);
+    expect(scenesDrawWebgl(2, phone(2))).toBe(true);
+    expect(scenesDrawWebgl(0, desktop(0))).toBe(false);
+    // A tier 1 phone draws nothing: no hero exit, molar posters, DOM steps, DOM slider.
+    expect(scenesDrawWebgl(1, phone(1))).toBe(false);
   });
 });

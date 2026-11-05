@@ -214,8 +214,6 @@ test('T-EX2 ?tier=N fixes the tier; ?tier=0 never mounts a canvas or fetches thr
   await expectNoLayerAfterLoad(page);
   expect([...webgl]).toEqual([]);
 });
-  expect(webgl.size).toBeGreaterThan(0);
-});
 
 test('T-EX3 P8 no overlay without ?debug=1; with it the overlay shows fps, tier, DPR, memory', async ({
   page,

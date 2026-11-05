@@ -4,9 +4,10 @@
  * slot host (world/SceneSlots.tsx) one scene ahead.
  */
 import { modelManifest } from '../world/assets';
+import type { TierSettings } from '@/lib/qualityTier';
 
 import type { SceneDefinition, SceneId } from './types';
-import { compareAssets, molarAssets } from './webgl/assets';
+import { compareAssets, diagonalDraws, molarAssets, molarDraws, wipeDraws } from './webgl/assets';
 
 export const SCENES: readonly SceneDefinition[] = Object.freeze([
   {
@@ -35,6 +36,8 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
       minTier: 1,
       load: () => import('./webgl/trust'),
       assets: () => modelManifest('mark', 'diamond'),
+      // The hero exit has a text-free box from 1024 px only.
+      draws: (settings) => settings.heroExitParallax,
     },
   },
   {
@@ -44,7 +47,12 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     pinnedDesktop: true,
     direction: 'horizontal',
     // Procedural relief: no download.
-    webgl: { minTier: 2, load: () => import('./webgl/services'), assets: () => [] },
+    webgl: {
+      minTier: 2,
+      load: () => import('./webgl/services'),
+      assets: () => [],
+      draws: (settings) => settings.pinnedScenes,
+    },
   },
   {
     id: 'restoration',
@@ -56,6 +64,7 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
       minTier: 1,
       load: () => import('./webgl/restoration'),
       assets: molarAssets,
+      draws: molarDraws,
     },
   },
   {
@@ -68,6 +77,7 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
       minTier: 2,
       load: () => import('./webgl/workflow'),
       assets: molarAssets,
+      draws: diagonalDraws,
     },
   },
   {
@@ -80,6 +90,7 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
       minTier: 2,
       load: () => import('./webgl/compare'),
       assets: compareAssets,
+      draws: wipeDraws,
     },
   },
   {
@@ -117,6 +128,8 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
       minTier: 2,
       load: () => import('./webgl/booking'),
       assets: () => modelManifest('mark', 'diamond'),
+      // The empty slot under the hours exists from 1024 px only.
+      draws: (settings) => settings.pinnedScenes,
     },
   },
   {
@@ -134,6 +147,14 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
  * store confirms WebGL 2 on the main thread first.
  */
 export const SCENES_LOAD_WEBGL = SCENES.some((scene) => scene.webgl?.load !== undefined);
+
+/** A registry scene draws WebGL at this tier on this device and layout: the canvas has work. */
+export function scenesDrawWebgl(tier: number, settings: TierSettings): boolean {
+  return SCENES.some(
+    ({ webgl }) =>
+      webgl?.load !== undefined && tier >= webgl.minTier && (webgl.draws?.(settings) ?? true),
+  );
+}
 
 const IDS: ReadonlySet<string> = new Set(SCENES.map((scene) => scene.id));
 

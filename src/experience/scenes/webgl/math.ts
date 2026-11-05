@@ -2,8 +2,6 @@
  * Pure math of the scenes 4 to 6 (no three.js, no DOM): the level a chip selects, the turntable,
  * the workflow beats, the wipe edge and the tier gates. Unit-tested in math.test.ts.
  */
-import type { TierSettings } from '@/lib/qualityTier';
-
 /** معمولی, VIP, CIP. */
 export const LEVELS = 3;
 
@@ -130,16 +128,8 @@ export function wipeAmplitude(current: number, speed: number, dt: number): numbe
   return damp(current, target, dt, target > current ? 0.08 : 0.6);
 }
 
-/** Scene 4 draws the 3D molar where the tier settings give it the canvas (else the SVG stays). */
-export const molarDraws = (settings: Pick<TierSettings, 'molar'>): boolean =>
-  settings.molar === 'canvas';
-
 /** Scene 5 draws only on the pinned diagonal; phones and tier 1 keep the DOM steps. */
 export const workflowDraws = (tier: number, pins: boolean): boolean => tier >= 2 && pins;
-
-/** Scene 6: the WebGL wipe at tiers 2 and 3 from 1024 px; the DOM clip-path everywhere else. */
-export const wipeDraws = (settings: Pick<TierSettings, 'compareWipe'>, wide: boolean): boolean =>
-  settings.compareWipe === 'webgl' && wide;
 
 export interface PassViewport {
   /** CSS px from the canvas's bottom-left, as WebGLRenderer.setViewport takes them. */

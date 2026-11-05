@@ -20,7 +20,7 @@ import { keepPlace, restorePlace } from './core/reloadPlace';
 import { createFrameRuntime, createStore, useStore, type ExperienceState } from './core/store';
 import type { ScrollEngine } from './engine/scrollEngine';
 import type { ScenePlace } from './engine/timelineMath';
-import { isSceneId, SCENES, SCENES_LOAD_WEBGL } from './scenes/registry';
+import { isSceneId, SCENES, SCENES_LOAD_WEBGL, scenesDrawWebgl } from './scenes/registry';
 import type { SceneId } from './scenes/types';
 import { TierProvider, useTier, useTierStore } from './tier/TierProvider';
 
@@ -213,9 +213,9 @@ function ExperienceHost(props: {
   // phone draws no WebGL in phase 7, so its debug flag loads none either: `?debug=1` then measures
   // the path visitors get (the DOM frame monitor), and the canvas's own monitor, which also samples
   // at rest, cannot step the owner's phone down and write the light floor.
-  // Tier 1 draws the hero exit only from 1024 px (`heroExitParallax` is tier >= 1 and wide), and
-  // its narrow molar is posters: a narrow tier 1 page loads no canvas.
-  const worldDraws = readyTier >= 2 || tier.settings.heroExitParallax;
+  // Only where a registry scene draws at this tier and on this device (`webgl.draws`): a tier 1
+  // phone keeps the posters and the SVG, so it loads no three.js.
+  const worldDraws = scenesDrawWebgl(readyTier, tier.settings);
   // Phase 8 (D5): without the debug flag the chunk waits until the world window under the hero
   // (the trust band; services without facts) shows at least 1 px: the first scroll at 1440x900,
   // at once on a screen taller than the hero. The tier 1 Lighthouse window and the engine set

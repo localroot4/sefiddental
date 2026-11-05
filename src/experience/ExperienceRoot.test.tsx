@@ -37,6 +37,7 @@ vi.mock('./scenes/registry', async (importOriginal) => ({
   get SCENES_LOAD_WEBGL() {
     return registry.sceneLoadsWebgl;
   },
+  scenesDrawWebgl: () => registry.sceneLoadsWebgl,
 }));
 
 // The benchmark runs only in auto mode without a query tier (XR5); it answers when told to.

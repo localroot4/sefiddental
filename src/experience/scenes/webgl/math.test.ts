@@ -2,19 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { tierSettings } from '@/lib/qualityTier';
 
+import { diagonalDraws, molarDraws, wipeDraws } from './assets';
 import {
   damp,
   fitDistance,
   levelBlend,
   levelFromChoice,
-  molarDraws,
   passViewport,
   pinProgress,
   ramp,
   STEP_YAW,
   turntableYaw,
   wipeAmplitude,
-  wipeDraws,
   wipeEdge,
   WIPE_REST,
   workflowDraws,
@@ -143,6 +142,9 @@ describe('tier gates', () => {
   });
 
   it('scene 5: only the pinned diagonal at tiers 2 and 3', () => {
+    expect(diagonalDraws(tierSettings(2, desktop, true))).toBe(true);
+    expect(diagonalDraws(tierSettings(1, desktop, true))).toBe(false);
+    expect(diagonalDraws(tierSettings(3, phone, false))).toBe(false);
     expect(workflowDraws(3, true)).toBe(true);
     expect(workflowDraws(2, true)).toBe(true);
     expect(workflowDraws(2, false)).toBe(false);

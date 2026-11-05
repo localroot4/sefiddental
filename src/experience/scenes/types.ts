@@ -58,6 +58,8 @@ export interface SceneDefinition {
     minTier: 1 | 2 | 3;
     load?: () => Promise<{ default: ComponentType<SceneProps> }>;
     assets?: (tier: 1 | 2 | 3) => AssetManifest;
+    /** Where it draws within its tiers (a device class, a layout); omitted: at every one. */
+    draws?: (settings: TierSettings) => boolean;
   };
 }
 

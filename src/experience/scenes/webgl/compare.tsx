@@ -14,7 +14,7 @@ import { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 're
 import type { SceneProps } from '../types';
 
 import { createWipeRig } from './compareRig';
-import { wipeDraws } from './math';
+import { wipeDraws } from './assets';
 import { useSlotPass, type PassDraw } from './pass';
 
 const SLOT = '[data-scene="compare"] [data-world-slot="compare"]';

@@ -54,7 +54,8 @@ export function SceneSlots(props: { onMount: () => void }): React.JSX.Element {
       const state = slotState({
         tier,
         minTier: scene.webgl?.minTier ?? null,
-        hasLoader: true,
+        // A scene that draws nothing on this device and layout never loads its chunk.
+        hasLoader: scene.webgl?.draws?.(settings) ?? true,
         sceneIndex: INDEX.get(scene.id) ?? -1,
         activeIndex,
         loaded: modules[scene.id] !== undefined,
