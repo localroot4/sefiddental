@@ -52,6 +52,13 @@ const PLUGIN_NEEDLES = ['MorphSVG', 'Draggable'] as const;
 /** The engine chunk (gsap core, ScrollTrigger, Lenis, the DOM scene modules): at most this. */
 const ENGINE_LIMIT_KIB = 64;
 
+/**
+ * Phase 8: the canvas chunks (three.js and R3F, the canvas host, the slot scenes, GLTFLoader) load
+ * after `load` beside the engine at tier 1; each holds one of these strings, and none of the
+ * engine's does. They are measured by T-EX1 and the report, not against the engine's limit.
+ */
+const CANVAS_NEEDLES = ['WebGLRenderer', 'KHR_mesh_quantization', 'data-world-live'] as const;
+
 /** Start times of the given resource URLs in the page's resource timing. */
 async function startTimes(page: Page, urls: Set<string>): Promise<number[]> {
   return page.evaluate(
@@ -148,6 +155,7 @@ test('T-EX5 the scroll engine (GSAP, ScrollTrigger, Lenis) never loads at tier 0
 
   await holdLoad(page);
   const atOne = watchScripts(page, 'ScrollTrigger');
+  const canvasChunks = CANVAS_NEEDLES.map((needle) => watchScripts(page, needle));
   const plugins = PLUGIN_NEEDLES.map((needle) => watchScripts(page, needle));
   const sizes = watchScriptSizes(page);
   await page.goto('/?tier=1');
@@ -161,16 +169,20 @@ test('T-EX5 the scroll engine (GSAP, ScrollTrigger, Lenis) never loads at tier 0
     for (const start of await startTimes(page, urls))
       expect(start).toBeGreaterThanOrEqual(loadStart);
 
-  // The engine set is every script that started after `load` (at tier 0 none does).
+  // The engine set is every script that started after `load` (at tier 0 none does), less the
+  // canvas chunks.
   await page.waitForTimeout(1500);
-  const afterLoad = await page.evaluate(
-    (since) =>
-      performance
-        .getEntriesByType('resource')
-        .filter((entry) => entry.startTime >= since && /\.js(\?|$)/.test(entry.name))
-        .map((entry) => entry.name),
-    loadStart,
-  );
+  const canvas = new Set(canvasChunks.flatMap((urls) => [...urls]));
+  const afterLoad = (
+    await page.evaluate(
+      (since) =>
+        performance
+          .getEntriesByType('resource')
+          .filter((entry) => entry.startTime >= since && /\.js(\?|$)/.test(entry.name))
+          .map((entry) => entry.name),
+      loadStart,
+    )
+  ).filter((url) => !canvas.has(url));
   const engineBytes = afterLoad.reduce((sum, url) => sum + (sizes.get(url) ?? 0), 0);
   const engineNote = `${(engineBytes / 1024).toFixed(1)} (${afterLoad.length} scripts after load)`;
   testInfo.annotations.push({ type: 'engine chunk KiB', description: engineNote });
@@ -201,6 +213,8 @@ test('T-EX2 ?tier=N fixes the tier; ?tier=0 never mounts a canvas or fetches thr
   await expect(html).toHaveAttribute('data-tier', '2');
   await expectNoLayerAfterLoad(page);
   expect([...webgl]).toEqual([]);
+});
+  expect(webgl.size).toBeGreaterThan(0);
 });
 
 test('T-EX3 P8 no overlay without ?debug=1; with it the overlay shows fps, tier, DPR, memory', async ({
