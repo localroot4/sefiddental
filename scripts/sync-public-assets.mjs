@@ -8,6 +8,9 @@
 //                                             and public/brand/lockup.svg (the header logo sprite)
 //   src/components/ui/icons.ts             -> public/brand/icons.svg (Phosphor and brand-mark sprite)
 //   node_modules/detect-gpu/dist/benchmarks -> public/detect-gpu/benchmarks/ (no third-party CDN)
+//   design/brand/3d/*.glb                   -> public/brand/3d/ (the home world's Draco glTF)
+//   three's gltf Draco decoder              -> public/brand/3d/draco/ (wasm and a same-origin
+//                                             worker, scripts/draco-worker.mjs)
 import {
   copyFileSync,
   cpSync,
@@ -20,6 +23,8 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+
+import { buildDracoWorker } from './draco-worker.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pub = path.join(root, 'public');
@@ -78,6 +83,19 @@ if (!existsSync(benchmarks)) {
 const benchmarksOut = path.join(pub, 'detect-gpu', 'benchmarks');
 rmSync(benchmarksOut, { recursive: true, force: true });
 cpSync(benchmarks, benchmarksOut, { recursive: true });
+
+// The home world's models and their Draco decoder (phase 8).
+const modelsOut = path.join(pub, 'brand', '3d');
+rmSync(modelsOut, { recursive: true, force: true });
+mkdirSync(path.join(modelsOut, 'draco'), { recursive: true });
+const models = readdirSync(from('design', 'brand', '3d')).filter((name) => name.endsWith('.glb'));
+for (const name of models)
+  copyFileSync(from('design', 'brand', '3d', name), path.join(modelsOut, name));
+copyFileSync(
+  from('node_modules', 'three', 'examples', 'jsm', 'libs', 'draco', 'gltf', 'draco_decoder.wasm'),
+  path.join(modelsOut, 'draco', 'draco_decoder.wasm'),
+);
+writeFileSync(path.join(modelsOut, 'draco', 'draco-worker.js'), buildDracoWorker(root));
 
 // The static page module uses only erasable TypeScript, so Node 22 imports it directly.
 const staticPage = from('src', 'lib', 'system-pages', 'staticPage.ts');
@@ -209,5 +227,5 @@ for (const { url, width, height } of heroPlaceholderFiles()) {
 writeFileSync(stamp, HERO_RECIPE);
 
 console.log(
-  `sync-public-assets: ${copies.length} brand and font files, ${cards} share cards, favicon.ico, detect-gpu benchmarks, brand/icons.svg (${Object.keys(ICONS).length} icons), ${placeholders} hero placeholders written; maintenance.html and brand/lockup.svg ${maintenance}`,
+  `sync-public-assets: ${copies.length} brand and font files, ${cards} share cards, favicon.ico, detect-gpu benchmarks, ${models.length} models and the Draco decoder, brand/icons.svg (${Object.keys(ICONS).length} icons), ${placeholders} hero placeholders written; maintenance.html and brand/lockup.svg ${maintenance}`,
 );
