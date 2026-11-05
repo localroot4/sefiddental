@@ -39,7 +39,7 @@ export default function WorkflowScene(props: SceneProps): null {
 
   useRigLifetime(rig);
   useImperativeHandle(ref, () => ({ dispose: () => void rig?.dispose() }), [rig]);
-  useRoomEnvironment(gl, rig);
+  useRoomEnvironment(gl, rig !== null && tier === 3 ? rig : null);
 
   // The nav height token, read again on resize (not per frame: it is a computed style).
   const nav = useRef(0);

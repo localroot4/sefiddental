@@ -197,7 +197,7 @@ float sefidEdge = uBuild < 0.999 ? 1.0 - smoothstep(0.0, 0.05, sefidCut - vObjPo
         '#include <roughnessmap_fragment>',
         `#include <roughnessmap_fragment>
 roughnessFactor = mix(0.72, roughnessFactor, uGlaze);
-{
+if (uCharacter > 0.001) {
   float wobR = (sefidNoise(vObjPos.xz * 18.0) - 0.5) * 0.05;
   float fr = exp(-pow((vObjPos.x + wobR) / 0.022, 2.0)) * exp(-(vObjPos.z * vObjPos.z) / 0.14)
     + exp(-pow((vObjPos.z - wobR) / 0.022, 2.0)) * exp(-(vObjPos.x * vObjPos.x) / 0.14);

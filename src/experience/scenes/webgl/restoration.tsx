@@ -35,7 +35,7 @@ export default function RestorationScene(props: SceneProps): null {
 
   useRigLifetime(rig);
   useImperativeHandle(ref, () => ({ dispose: () => void rig?.dispose() }), [rig]);
-  useRoomEnvironment(gl, rig !== null && tier >= 2 ? rig : null);
+  useRoomEnvironment(gl, rig !== null && tier === 3 ? rig : null);
 
   const wide = useMemo(() => window.matchMedia('(min-width: 1024px)'), []);
   const level = useRef<number | null>(null);

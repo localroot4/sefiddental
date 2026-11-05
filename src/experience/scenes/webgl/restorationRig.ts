@@ -35,8 +35,8 @@ export function createMolarRig(geometry: BufferGeometry, opts: { tier: 1 | 2 | 3
   studio.shadow.position.y = SHADOW_Y;
   scene.add(studio.group);
 
-  // Tier 1 has no environment: more sheen and glow keep the enamel from going flat.
-  const enamel = createEnamel({ color: '#F3ECDF', sss: opts.tier === 1 ? 0.3 : 0.2 });
+  // Only tier 3 has the room environment: more glow keeps the enamel from going flat without it.
+  const enamel = createEnamel({ color: '#F3ECDF', sss: opts.tier === 3 ? 0.2 : 0.3 });
   const molar = new Mesh(geometry, enamel.material);
   const turntable = new Group();
   turntable.add(molar);
