@@ -229,6 +229,29 @@ describe('ExperienceRoot (dom)', () => {
     await waitFor(() => expect(mocks.canvasMounts).toBeGreaterThan(0), { timeout: 3000 });
   });
 
+  it('XR1 phase 8: a page that opens below the world window (a restored place) still mounts the canvas', async () => {
+    registry.sceneLoadsWebgl = true;
+    home('/?tier=2');
+    const windowObserver = () =>
+      observers.find((o) => o.options?.rootMargin === '0px 0px -1px 0px');
+    await waitFor(() => expect(windowObserver()).toBeDefined(), { timeout: 3000 });
+    const services = document.querySelector('[data-scene="services"]')!;
+    const above = { bottom: -400 } as DOMRectReadOnly;
+    act(() =>
+      windowObserver()?.callback(
+        [
+          {
+            target: services,
+            isIntersecting: false,
+            boundingClientRect: above,
+          } as IntersectionObserverEntry,
+        ],
+        {} as IntersectionObserver,
+      ),
+    );
+    await waitFor(() => expect(mocks.canvasMounts).toBeGreaterThan(0), { timeout: 3000 });
+  });
+
   it('XR2 keep-place: a relatch that changes the pins reads the old place, moves data-pins and restores it at once, never on unmount', async () => {
     const html = document.documentElement;
     html.setAttribute('data-pins', ''); // the inline latch (pinsScript.ts)

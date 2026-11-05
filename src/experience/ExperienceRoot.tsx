@@ -228,7 +228,9 @@ function ExperienceHost(props: {
     if (windowSeen || engine === null || !worldDraws || !target) return;
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) setWindowSeen(true);
+        // A page that opens below the window (a restored place, an anchor) counts it as seen.
+        if (entries.some((e) => e.isIntersecting || e.boundingClientRect.bottom <= 0))
+          setWindowSeen(true);
       },
       { rootMargin: '0px 0px -1px 0px' },
     );
@@ -324,6 +326,7 @@ function ExperienceHost(props: {
           tier={readyTier as 1 | 2 | 3}
           settings={tier.settings}
           mode={tier.mode}
+          phone={tier.phone}
           engine={engine}
           runtime={runtime}
           stepDown={tier.stepDown}
