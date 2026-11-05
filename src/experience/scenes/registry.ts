@@ -64,7 +64,11 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [640, 940],
     pinnedDesktop: true,
     direction: 'diagonal',
-    webgl: { minTier: 2 },
+    webgl: {
+      minTier: 2,
+      load: () => import('./webgl/workflow'),
+      assets: molarAssets,
+    },
   },
   {
     id: 'compare',
