@@ -10,11 +10,9 @@
  */
 import { useCallback, useImperativeHandle, useMemo, useRef } from 'react';
 
-import { useThree } from '@react-three/fiber';
-
 import type { SceneProps } from '../types';
 
-import { useMolar, useRigLifetime, useRoomEnvironment } from './hooks';
+import { useMolar, useRigLifetime } from './hooks';
 import { damp, levelFromChoice, molarDraws } from './math';
 import { useSlotPass, type PassDraw } from './pass';
 import { createMolarRig } from './restorationRig';
@@ -25,17 +23,12 @@ const LEVEL_TAU = 0.3;
 const BOX_GROW = 1.3;
 
 export default function RestorationScene(props: SceneProps): null {
-  const { tier, settings, progress, ref } = props;
-  const gl = useThree((state) => state.gl);
+  const { settings, progress, ref } = props;
   const geometry = useMolar();
-  const rig = useMemo(
-    () => (geometry ? createMolarRig(geometry, { tier }) : null),
-    [geometry, tier],
-  );
+  const rig = useMemo(() => (geometry ? createMolarRig(geometry) : null), [geometry]);
 
   useRigLifetime(rig);
   useImperativeHandle(ref, () => ({ dispose: () => void rig?.dispose() }), [rig]);
-  useRoomEnvironment(gl, rig !== null && tier === 3 ? rig : null);
 
   const wide = useMemo(() => window.matchMedia('(min-width: 1024px)'), []);
   const level = useRef<number | null>(null);

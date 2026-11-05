@@ -1,9 +1,9 @@
 /**
  * The light set of the molar slots (scenes 4 and 5), private to each slot scene: a key light that
- * can drift from cool to warm, a cool rim, a sky fill, a soft contact shadow under the tooth, and
- * an optional room environment for the clearcoat reflections. The contact shadow is a radial
- * blob, not a shadow map: the tooth floats on its turntable, and the blob costs one quad at every
- * tier (the storyboard's hard shadow at tier 2 would cost a depth pass for the same picture).
+ * can drift from cool to warm, a cool rim, a sky fill and a soft contact shadow under the tooth; no
+ * environment map (the enamel draws its own studio reflection, molar.ts). The contact shadow is a
+ * radial blob, not a shadow map: the tooth floats on its turntable, and the blob costs one quad at
+ * every tier (the storyboard's hard shadow at tier 2 would cost a depth pass for the same picture).
  */
 import {
   Color,
@@ -12,12 +12,8 @@ import {
   HemisphereLight,
   Mesh,
   PlaneGeometry,
-  PMREMGenerator,
   ShaderMaterial,
-  type Texture,
-  type WebGLRenderer,
 } from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 export interface Studio {
   group: Group;
@@ -64,15 +60,16 @@ export function createStudio(): Studio {
   let dark = false;
   let warm = 0;
   const apply = (): void => {
-    // ACES maps the off-white enamel to white early: lights kept low so the levels' tints read.
-    const base = dark ? 1.05 : 1.4;
+    // Without an environment map the sky fill carries the ambient; ACES whitens the enamel early,
+    // so the key stays moderate and the levels' tints still read.
+    const base = dark ? 1.6 : 2.0;
     key.color.copy(COOL).lerp(WARM, warm);
     key.intensity = base * (1 + 0.25 * warm);
     rim.intensity = dark ? 1.1 : 0.7;
     rim.color.set(dark ? '#7FD3CB' : '#DCE8F0');
     fill.color.set(dark ? '#29506B' : '#E4EEF4');
     fill.groundColor.set(dark ? '#0F3B3A' : '#E8D8C8');
-    fill.intensity = dark ? 0.5 : 0.55;
+    fill.intensity = dark ? 1.0 : 1.25;
     shadowMaterial.uniforms.uColor!.value.set(dark ? '#000000' : '#0A243F');
     shadowMaterial.uniforms.uOpacity!.value = dark ? 0.5 : 0.24;
   };
@@ -91,15 +88,4 @@ export function createStudio(): Studio {
       apply();
     },
   };
-}
-
-/** A prefiltered room environment for the clearcoat (tiers 2 and 3); render target, so a lost
- * context empties it: the caller builds it again on `webglcontextrestored`. */
-export function createRoomEnvironment(gl: WebGLRenderer): { texture: Texture; dispose(): void } {
-  const pmrem = new PMREMGenerator(gl);
-  const room = new RoomEnvironment();
-  const target = pmrem.fromScene(room, 0.04);
-  pmrem.dispose();
-  room.dispose();
-  return { texture: target.texture, dispose: () => target.dispose() };
 }

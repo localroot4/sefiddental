@@ -18,7 +18,6 @@ import {
   Scene,
   ShaderMaterial,
   Vector3,
-  type Texture,
 } from 'three';
 
 import { disposeObject3D, type DisposeCount } from '../dispose';
@@ -127,7 +126,7 @@ const POINTS_VERTEX = /* glsl */ `
     vSettled = t;
     vec4 mv = modelViewMatrix * vec4(p, 1.0);
     gl_Position = projectionMatrix * mv;
-    gl_PointSize = uSize * uPixelRatio * (1.0 + 1.2 * vGlow) * (0.6 + 0.4 * t) / -mv.z;
+    gl_PointSize = uSize * uPixelRatio * (1.0 + 0.6 * vGlow) * (0.6 + 0.4 * t) / -mv.z;
   }
 `;
 
@@ -159,7 +158,6 @@ export interface WorkflowRig {
     pixelRatio: number;
   }): void;
   setTheme(dark: boolean, brand: string): void;
-  setEnvironment(texture: Texture | null): void;
   dispose(): DisposeCount;
 }
 
@@ -289,14 +287,11 @@ export function createWorkflowRig(
     },
     setTheme(dark, brand) {
       studio.setTheme(dark);
-      enamel.material.color.set(dark ? '#EFE7D8' : '#E9DFCC');
+      enamel.material.color.set(dark ? '#F2ECE1' : '#F0E8DA');
       enamel.uniforms.uBuildEdge.value.set(brand);
       wireMaterial.color.set(brand);
       pointUniforms.uColor.value.set(brand);
       pointUniforms.uGlowColor.value.set(dark ? '#E9FFFC' : '#5FD3C8');
-    },
-    setEnvironment(texture) {
-      scene.environment = texture;
     },
     dispose: () => disposeObject3D(scene),
   };

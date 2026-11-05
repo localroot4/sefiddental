@@ -1,11 +1,10 @@
-/** Hooks the slot scenes share: the molar geometry, the room environment and the theme. */
+/** Hooks the slot scenes share: the molar geometry and the theme. */
 import { useEffect, useState } from 'react';
 
-import type { BufferGeometry, Texture, WebGLRenderer } from 'three';
+import type { BufferGeometry } from 'three';
 
 import { loadMolar } from './molar';
 import { isDark, token, watchTheme } from './pass';
-import { createRoomEnvironment } from './studio';
 
 /** The shared molar geometry once it has loaded; null before and after a failed load. */
 export function useMolar(): BufferGeometry | null {
@@ -24,30 +23,6 @@ export function useMolar(): BufferGeometry | null {
     };
   }, []);
   return geometry;
-}
-
-/** The room environment on `target` while it is set, built again after a lost context returns. */
-export function useRoomEnvironment(
-  gl: WebGLRenderer,
-  target: { setEnvironment(texture: Texture | null): void } | null,
-): void {
-  useEffect(() => {
-    if (target === null) return;
-    let env: ReturnType<typeof createRoomEnvironment> | null = null;
-    const build = (): void => {
-      env?.dispose();
-      env = createRoomEnvironment(gl);
-      target.setEnvironment(env.texture);
-    };
-    build();
-    const canvas = gl.domElement;
-    canvas.addEventListener('webglcontextrestored', build);
-    return () => {
-      canvas.removeEventListener('webglcontextrestored', build);
-      target.setEnvironment(null);
-      env?.dispose();
-    };
-  }, [gl, target]);
 }
 
 /**

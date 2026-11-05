@@ -15,7 +15,7 @@ const tooth = () => {
 describe('slot rigs', () => {
   it('scene 4: dispose frees the molar, its enamel and the studio, once each', () => {
     const geometry = tooth();
-    const rig = createMolarRig(geometry, { tier: 3 });
+    const rig = createMolarRig(geometry);
     rig.update({ level: 1.5, progress: 0.5, time: 1, aspect: 0.83 });
     const freed = vi.spyOn(geometry, 'dispose');
     const count = rig.dispose();

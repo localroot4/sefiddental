@@ -3,7 +3,7 @@
  * enamel. The geometry loads once per page view and is shared; disposing it only frees the GPU
  * buffers, which the next draw uploads again, so either scene may dispose it.
  *
- * Enamel (experience-direction section 6): MeshPhysicalMaterial (clearcoat, sheen) with a
+ * Enamel (experience-direction section 6): MeshPhysicalMaterial (clearcoat) with a
  * subsurface-like term instead of transmission: a warm ivory glow toward the silhouette and
  * through the thin cusps. Transmission renders the opaque scene into its own target at canvas
  * size, which a scissored slot pass cannot use, and costs a second render. Layers in the shader:
@@ -80,6 +80,8 @@ export interface EnamelUniforms {
   /** Subsurface-like glow strength. */
   uSss: { value: number };
   uSssColor: { value: Color };
+  /** Strength of the studio softbox reflection (the clearcoat's environment). */
+  uReflect: { value: number };
   /** 0..1: the solid exists from the root tips up to this share of the height (scene 5). */
   uBuild: { value: number };
   uBuildEdge: { value: Color };
@@ -94,7 +96,7 @@ export interface Enamel {
   setLevel(refine: number, character: number): void;
 }
 
-const ENAMEL = { roughness: 0.52, clearcoat: 0.25, clearcoatRoughness: 0.42, sheen: 0.45 };
+const ENAMEL = { roughness: 0.52, clearcoat: 0.25, clearcoatRoughness: 0.42 };
 
 export function createEnamel(opts: { color: string; sss: number }): Enamel {
   const uniforms: EnamelUniforms = {
@@ -102,6 +104,7 @@ export function createEnamel(opts: { color: string; sss: number }): Enamel {
     uCharacter: { value: 0 },
     uSss: { value: opts.sss },
     uSssColor: { value: new Color('#F4D6B4') },
+    uReflect: { value: 0.35 },
     uBuild: { value: 1 },
     uBuildEdge: { value: new Color('#2BB5AA') },
     uGlaze: { value: 1 },
@@ -110,9 +113,6 @@ export function createEnamel(opts: { color: string; sss: number }): Enamel {
     color: opts.color,
     metalness: 0,
     ...ENAMEL,
-    sheenRoughness: 0.6,
-    sheenColor: new Color('#F3E3C8'),
-    envMapIntensity: 0.55,
   });
   const yMin = MOLAR_Y.min.toFixed(3);
   const yMax = MOLAR_Y.max.toFixed(3);
@@ -153,6 +153,7 @@ vObjPos = transformed;`,
 uniform float uCharacter;
 uniform float uSss;
 uniform vec3 uSssColor;
+uniform float uReflect;
 uniform float uBuild;
 uniform vec3 uBuildEdge;
 uniform float uGlaze;
@@ -220,6 +221,13 @@ material.clearcoat *= uGlaze;
   float rim = pow(1.0 - facing, 2.5);
   float thin = smoothstep(0.2, 0.4, vObjPos.y) * 0.35;
   outgoingLight += uSssColor * (rim + thin) * uSss * uGlaze;
+  // Studio reflection without an environment map: two soft panels (above and to the start side)
+  // seen in the reflected view ray, Schlick-weighted, on the glazed surface only. A PMREM room
+  // doubled the frame time on a software GPU for the same picture on a small slot.
+  vec3 r = reflect(-geometryViewDir, normal);
+  float panels = smoothstep(0.55, 0.95, r.y) + 0.6 * smoothstep(0.6, 0.95, r.x) * smoothstep(-0.2, 0.4, r.y);
+  float fresnel = 0.04 + 0.96 * pow(1.0 - facing, 5.0);
+  outgoingLight += vec3(panels) * (0.25 + fresnel) * uReflect * uGlaze;
   outgoingLight = mix(outgoingLight, uBuildEdge * 1.6, sefidEdge);
 }
 #include <opaque_fragment>`,
@@ -236,7 +244,7 @@ material.clearcoat *= uGlaze;
       material.roughness = ENAMEL.roughness - 0.28 * refine;
       material.clearcoat = ENAMEL.clearcoat + 0.65 * refine;
       material.clearcoatRoughness = ENAMEL.clearcoatRoughness - 0.3 * refine;
-      material.sheen = ENAMEL.sheen - 0.15 * refine;
+      uniforms.uReflect.value = 0.2 + 0.3 * refine;
     },
   };
 }

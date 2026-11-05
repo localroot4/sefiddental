@@ -3,7 +3,7 @@
  * framed to the molar slot of RestorationSection. `update` takes the smoothed level position
  * (0 plain, 1 VIP, 2 CIP) and the scroll progress.
  */
-import { Group, Mesh, PerspectiveCamera, Scene, type BufferGeometry, type Texture } from 'three';
+import { Group, Mesh, PerspectiveCamera, Scene, type BufferGeometry } from 'three';
 
 import { disposeObject3D, type DisposeCount } from '../dispose';
 
@@ -23,11 +23,10 @@ export interface MolarRig {
   camera: PerspectiveCamera;
   update(frame: { level: number; progress: number; time: number; aspect: number }): void;
   setTheme(dark: boolean): void;
-  setEnvironment(texture: Texture | null): void;
   dispose(): DisposeCount;
 }
 
-export function createMolarRig(geometry: BufferGeometry, opts: { tier: 1 | 2 | 3 }): MolarRig {
+export function createMolarRig(geometry: BufferGeometry): MolarRig {
   const scene = new Scene();
   const camera = new PerspectiveCamera(FOV, 1, 0.1, 30);
   const studio = createStudio();
@@ -35,8 +34,7 @@ export function createMolarRig(geometry: BufferGeometry, opts: { tier: 1 | 2 | 3
   studio.shadow.position.y = SHADOW_Y;
   scene.add(studio.group);
 
-  // Only tier 3 has the room environment: more glow keeps the enamel from going flat without it.
-  const enamel = createEnamel({ color: '#F3ECDF', sss: opts.tier === 3 ? 0.2 : 0.3 });
+  const enamel = createEnamel({ color: '#F3ECDF', sss: 0.26 });
   const molar = new Mesh(geometry, enamel.material);
   const turntable = new Group();
   turntable.add(molar);
@@ -66,11 +64,7 @@ export function createMolarRig(geometry: BufferGeometry, opts: { tier: 1 | 2 | 3
     },
     setTheme(dark) {
       studio.setTheme(dark);
-      enamel.material.color.set(dark ? '#EFE7D8' : '#E9DFCC');
-      enamel.material.envMapIntensity = dark ? 0.4 : 0.6;
-    },
-    setEnvironment(texture) {
-      scene.environment = texture;
+      enamel.material.color.set(dark ? '#F2ECE1' : '#F0E8DA');
     },
     dispose: () => disposeObject3D(scene),
   };

@@ -12,11 +12,9 @@
  */
 import { useCallback, useEffect, useImperativeHandle, useMemo, useRef } from 'react';
 
-import { useThree } from '@react-three/fiber';
-
 import type { SceneProps } from '../types';
 
-import { useMolar, useRigLifetime, useRoomEnvironment } from './hooks';
+import { useMolar, useRigLifetime } from './hooks';
 import { pinProgress, workflowDraws } from './math';
 import { token, useSlotPass, type PassDraw } from './pass';
 import { createWorkflowRig } from './workflowRig';
@@ -26,7 +24,6 @@ const STEP = '[data-workflow-step]';
 
 export default function WorkflowScene(props: SceneProps): null {
   const { tier, settings, ref } = props;
-  const gl = useThree((state) => state.gl);
   const geometry = useMolar();
   const particles = settings.scene5Particles;
   const rig = useMemo(
@@ -39,7 +36,6 @@ export default function WorkflowScene(props: SceneProps): null {
 
   useRigLifetime(rig);
   useImperativeHandle(ref, () => ({ dispose: () => void rig?.dispose() }), [rig]);
-  useRoomEnvironment(gl, rig !== null && tier === 3 ? rig : null);
 
   // The nav height token, read again on resize (not per frame: it is a computed style).
   const nav = useRef(0);
