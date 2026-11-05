@@ -123,6 +123,27 @@ describe('hero image (freeze F3, nav-conversion-hero 2.6)', () => {
     } as unknown as Media;
     expect(heroImage(PHOTO, portrait).tall.avif).toBe('/p.avif 640w');
   });
+
+  it('HI4 on the client preview (demo): the stock photo without a client photo; a client photo wins', () => {
+    const image = heroImage(null, null, true);
+    expect([image.placeholder, image.demo]).toEqual([false, true]);
+    expect(image.wide.avif).toBe(
+      '/demo-photos/hero-1280.avif 1280w, /demo-photos/hero-1600.avif 1600w, /demo-photos/hero-1920.avif 1920w, /demo-photos/hero-2560.avif 2560w',
+    );
+    expect(image.tall.other).toBe(
+      '/demo-photos/hero-p640.webp 640w, /demo-photos/hero-p828.webp 828w, /demo-photos/hero-p1080.webp 1080w',
+    );
+    expect(image.preloadHref).toBe('/demo-photos/hero-1280.avif');
+    expect(image.img).toEqual({
+      src: '/demo-photos/hero-p1080.webp',
+      width: 1080,
+      height: 1350,
+      alt: expect.stringMatching(/عکس نمایشی$/),
+    });
+    const real = heroImage(PHOTO, null, true);
+    expect([real.placeholder, real.demo]).toEqual([false, undefined]);
+    expect(real.img.alt).toBe(PHOTO.alt);
+  });
 });
 
 describe('hero mark relief (brief decision 19, phase 7 D3)', () => {
@@ -130,6 +151,8 @@ describe('hero mark relief (brief decision 19, phase 7 D3)', () => {
     expect(heroRelief(true, { placeholder: false })).toBe(true);
     expect(heroRelief(true, { placeholder: true })).toBe(false);
     expect(heroRelief(false, { placeholder: false })).toBe(false);
+    // The preview's stock photo neither: the client judges the relief on their own photo.
+    expect(heroRelief(true, { placeholder: false, demo: true })).toBe(false);
   });
 });
 

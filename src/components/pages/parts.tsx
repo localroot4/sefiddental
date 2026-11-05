@@ -11,6 +11,7 @@ import { MediaFrame, MediaPlaceholder } from '@/components/ui/Media';
 import { Picture } from '@/components/ui/Picture';
 import { t } from '@/i18n/fa';
 import { toClinicHours } from '@/lib/data/clinicHours';
+import type { DemoPhotoKey } from '@/lib/demoPhotos';
 import { hoursTableNote } from '@/lib/hoursState';
 import type { Clinic, Media } from '@/payload-types';
 
@@ -53,8 +54,15 @@ export function Band(props: {
   );
 }
 
-/** The inner-hero media (family A): the page photo, else the labeled block of gap 45. */
-export function HeroMedia(props: { media: number | Media | null | undefined; caption: string }) {
+/**
+ * The inner-hero media (family A): the page photo, else the labeled block of gap 45 (on the client
+ * preview its `demo` photo).
+ */
+export function HeroMedia(props: {
+  media: number | Media | null | undefined;
+  caption: string;
+  demo?: DemoPhotoKey;
+}) {
   const media = mediaOf(props.media);
   return (
     <MediaFrame ratio="hero">
@@ -65,7 +73,7 @@ export function HeroMedia(props: { media: number | Media | null | undefined; cap
           sizes="(min-width: 1024px) 30rem, (min-width: 744px) 40vw, 100vw"
         />
       ) : (
-        <MediaPlaceholder caption={props.caption} />
+        <MediaPlaceholder caption={props.caption} demo={props.demo} />
       )}
     </MediaFrame>
   );

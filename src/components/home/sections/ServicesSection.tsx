@@ -103,7 +103,9 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
                   }
                   featured={i === 0}
                   media={
-                    i === 0 ? <MediaPlaceholder caption={t('home.services.photo')} /> : undefined
+                    i === 0 ? (
+                      <MediaPlaceholder caption={t('home.services.photo')} demo="shade-guide" />
+                    ) : undefined
                   }
                   className={WORLD}
                 />

@@ -60,7 +60,7 @@ export async function About({ page }: { page: Page }) {
             {t('pages.book')}
           </ButtonLink>
         }
-        media={<HeroMedia media={page.heroMedia} caption={t('pages.photo.about')} />}
+        media={<HeroMedia media={page.heroMedia} caption={t('pages.photo.about')} demo="about" />}
       />
       <Alternating
         sections={[

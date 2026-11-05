@@ -55,7 +55,7 @@ export async function HubTemplate({ page }: { page: Page }) {
                 sizes="(min-width: 1024px) 30rem, (min-width: 744px) 40vw, 100vw"
               />
             ) : (
-              <MediaPlaceholder caption={t('services.photo.hub')} />
+              <MediaPlaceholder caption={t('services.photo.hub')} demo="services-hub" />
             )}
           </MediaFrame>
         }
@@ -87,7 +87,10 @@ export async function HubTemplate({ page }: { page: Page }) {
                         featured={i === 0}
                         media={
                           i === 0 ? (
-                            <MediaPlaceholder caption={t('services.photo.tile')} />
+                            <MediaPlaceholder
+                              caption={t('services.photo.tile')}
+                              demo="shade-guide"
+                            />
                           ) : undefined
                         }
                       />

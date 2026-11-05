@@ -29,6 +29,7 @@ import { getHomeData, getHomePage } from '@/components/home/homeData';
 import { heroImage, heroSubtext, sectionCopy, trustFacts } from '@/components/home/homeView';
 import { JsonLd } from '@/components/seo/JsonLd';
 import { buttonClasses } from '@/components/ui/Button';
+import { onPreview } from '@/components/ui/Media';
 import { ExperienceRoot } from '@/experience/ExperienceRoot';
 import { t } from '@/i18n/fa';
 import { siteCapFrom } from '@/lib/qualityTier';
@@ -100,7 +101,11 @@ export default async function HomePage() {
         <HomeHero
           title={page?.title ?? clinic.nameFa}
           subtext={heroSubtext(page, free)}
-          image={heroImage(mediaOf(page?.hero?.photo), mediaOf(page?.hero?.photoPortrait))}
+          image={heroImage(
+            mediaOf(page?.hero?.photo),
+            mediaOf(page?.hero?.photoPortrait),
+            onPreview(),
+          )}
           relief={features.heroMarkRelief !== false}
           phone={clinic.phones.landline}
           facts={trustFacts({

@@ -245,6 +245,56 @@ describe('ui components: content, media, cards', () => {
     }
   });
 
+  it('UM5b a slot with a demo photo shows it on the client preview only, without the caption; elsewhere the placeholder', () => {
+    preview(true);
+    const html = renderToStaticMarkup(
+      <>
+        <MediaPlaceholder caption="جای یک" demo="services-hub" />
+        <MediaPlaceholder caption="جای دو" demo="workflow-scan" />
+        <MediaPlaceholder caption="جای سه" variant="card" demo="dentist-1" />
+        <MediaPlaceholder caption="جای چهار" />
+      </>,
+    );
+    const root = document.createElement('div');
+    root.innerHTML = html;
+    const pictures = [...root.querySelectorAll('picture')];
+    expect(pictures.map((p) => p.dataset.demoPhoto)).toEqual([
+      'services-hub',
+      'workflow-scan',
+      'dentist-1',
+    ]);
+    // The photo fills the placeholder's box; only the slot without a photo keeps its caption.
+    for (const picture of pictures) expect(picture.className).toContain('absolute inset-0');
+    expect(root.textContent).toBe('جای عکس: جای چهار');
+    const slots = [...root.querySelectorAll<HTMLElement>('[data-photo-slot]')];
+    expect(slots.map((s) => s.dataset.photoSlot)).toEqual(['جای چهار']);
+    const [frame, card, portrait] = pictures.map((p) => p.querySelector('img')!);
+    // The hero frame (the inner page's LCP): 4:5 under 1024 px, 3:2 from 1024, eager and high.
+    const wide = pictures[0]!.querySelector('source[media="(min-width: 1024px)"]')!;
+    expect(wide.getAttribute('srcset')).toBe(
+      '/demo-photos/services-hub-960.avif 960w, /demo-photos/services-hub-1440.avif 1440w',
+    );
+    expect(frame!.getAttribute('src')).toBe('/demo-photos/services-hub-p1080.webp');
+    expect([frame!.getAttribute('loading'), frame!.getAttribute('fetchpriority')]).toEqual([
+      'eager',
+      'high',
+    ]);
+    // A card is a 3:2 file, lazy; width and height give the ratio before it loads (CLS 0).
+    expect(card!.getAttribute('src')).toBe('/demo-photos/workflow-scan-1280.webp');
+    expect([card!.getAttribute('width'), card!.getAttribute('height')]).toEqual(['1280', '853']);
+    expect(card!.getAttribute('loading')).toBe('lazy');
+    expect(portrait!.getAttribute('fetchpriority')).toBeNull();
+    for (const img of [frame, card, portrait]) {
+      expect(img!.getAttribute('alt')).toMatch(/عکس نمایشی$/);
+    }
+    expect(html).not.toMatch(/ style="/);
+    preview(false);
+    const live = renderToStaticMarkup(<MediaPlaceholder caption="جای یک" demo="services-hub" />);
+    expect(live).not.toContain('<picture');
+    expect(live).not.toContain('demo-photos');
+    expect(live).toContain('data-photo-slot="جای یک"');
+  });
+
   it('UM6 the empty state shares the placeholder panel: the mark, one sentence, one action, no outline', () => {
     const { container } = render(<EmptyState action={<a href="/x">a</a>}>e</EmptyState>);
     const panel = container.firstElementChild!;

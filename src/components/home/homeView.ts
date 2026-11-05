@@ -1,5 +1,6 @@
 import { t } from '@/i18n/fa';
 import { mediaPath } from '@/lib/data/mediaPath';
+import { DEMO_HERO, demoPhotoUrl } from '@/lib/demoPhotos';
 import { hoursSummary, type ClinicHours } from '@/lib/hoursState';
 import { toPersianDigits } from '@/lib/persianText';
 import type { Media, Page } from '@/payload-types';
@@ -68,15 +69,20 @@ export interface HeroImage {
   /** The first URL of the wide AVIF srcset, the preload's required href. */
   preloadHref: string;
   placeholder: boolean;
+  /** The client preview's stock photo (DEMO_CONTENT), standing in for the missing client photo. */
+  demo?: boolean;
 }
 
 /**
  * The static mark relief on the hero (brief decision 19, phase 7 D3): only with the «نقش برجستهٔ
- * لوگو» feature on and a real photo. The placeholder never carries it (gap 36 open), so the
- * client judges it on their own photo.
+ * لوگو» feature on and a real photo. Neither the placeholder nor the preview's stock photo carries
+ * it (gap 36 open), so the client judges it on their own photo.
  */
-export function heroRelief(feature: boolean, image: Pick<HeroImage, 'placeholder'>): boolean {
-  return feature && !image.placeholder;
+export function heroRelief(
+  feature: boolean,
+  image: Pick<HeroImage, 'placeholder' | 'demo'>,
+): boolean {
+  return feature && !image.placeholder && !image.demo;
 }
 
 const srcSet = (list: Size[]) => list.map((s) => `${s.url} ${s.width}w`).join(', ');
@@ -98,9 +104,10 @@ const TALL = ['p640', 'p828', 'p1080'] as const;
 
 /**
  * The hero photo's sources: the client's photo (Payload sizes, the 4:5 crop from photoPortrait or
- * from the landscape's focal point), else the neutral placeholder rasters (freeze F3).
+ * from the landscape's focal point), else on the client preview (`demo`, DEMO_CONTENT) the stock
+ * photo of src/lib/demoPhotos.ts, else the neutral placeholder rasters (freeze F3).
  */
-export function heroImage(photo: Media | null, portrait: Media | null): HeroImage {
+export function heroImage(photo: Media | null, portrait: Media | null, demo = false): HeroImage {
   const wideAvif = mediaSizes(photo, WIDE, true);
   const wideWebp = mediaSizes(photo, WIDE, false);
   const tallSource = portrait ?? photo;
@@ -119,6 +126,26 @@ export function heroImage(photo: Media | null, portrait: Media | null): HeroImag
       },
       preloadHref: (wideAvif[0] as Size).url,
       placeholder: false,
+    };
+  }
+  if (demo) {
+    const set = (crop: 'wide' | 'tall', ext: 'avif' | 'webp') =>
+      srcSet(
+        DEMO_HERO[crop].map((width) => ({ url: demoPhotoUrl('hero', crop, width, ext), width })),
+      );
+    const tallest = DEMO_HERO.tall.at(-1) ?? 1080;
+    return {
+      wide: { avif: set('wide', 'avif'), other: set('wide', 'webp'), otherType: 'image/webp' },
+      tall: { avif: set('tall', 'avif'), other: set('tall', 'webp'), otherType: 'image/webp' },
+      img: {
+        src: demoPhotoUrl('hero', 'tall', tallest, 'webp'),
+        width: tallest,
+        height: (tallest * 5) / 4,
+        alt: DEMO_HERO.alt,
+      },
+      preloadHref: demoPhotoUrl('hero', 'wide', DEMO_HERO.wide[0], 'avif'),
+      placeholder: false,
+      demo: true,
     };
   }
   const sizes = (crop: 'landscape' | 'portrait', ext: 'avif' | 'jpg') =>

@@ -19,6 +19,7 @@ import { getServiceTree } from '@/lib/data/catalog';
 import { getArticlesForService, getCases, getDoctors, getTestimonials } from '@/lib/data/content';
 import { getClinic, getSeoDefaults } from '@/lib/data/globals';
 import { getPublished } from '@/lib/data/published';
+import { DEMO_CATEGORY_PHOTOS } from '@/lib/demoPhotos';
 import { buildPath, PAGE_PATHS } from '@/lib/paths';
 import { telHref } from '@/lib/phone';
 import { breadcrumbNode, faqPageNode, jsonLdGraph, serviceNode } from '@/lib/seo/jsonld';
@@ -410,7 +411,10 @@ export async function ServiceTemplate({ service }: { service: Service }) {
                 sizes="(min-width: 1024px) 30rem, (min-width: 744px) 40vw, 100vw"
               />
             ) : (
-              <MediaPlaceholder caption={t('services.photo.service')} />
+              <MediaPlaceholder
+                caption={t('services.photo.service')}
+                demo={category ? DEMO_CATEGORY_PHOTOS[category.key] : undefined}
+              />
             )}
           </MediaFrame>
         }

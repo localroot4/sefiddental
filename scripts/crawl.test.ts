@@ -191,6 +191,9 @@ describe('crawl page rules (T-CR)', () => {
     expect(problems({ body: 'دکتر فرضی ۱' })).toEqual(['shows «فرضی»']);
     expect(problems({ body: 'طرح نمایشی' })).toEqual(['shows «طرح نمایشی»']);
     expect(problems({ body: 'دکتر فرضی ۱، طرح نمایشی' }, ['demo'])).toEqual([]);
+    const stock = '<img src="/demo-photos/hero-p1080.webp" alt="اتاق درمان؛ عکس نمایشی">';
+    expect(problems({ body: stock })).toEqual(['shows a demo stock photo']);
+    expect(problems({ body: stock }, ['demo'])).toEqual([]);
     for (const marker of ['نمونهٔ آزمایشی', 'نمونه آزمایشی', 'نمونه‌ی آزمایشی']) {
       expect(problems({ body: marker })).toEqual(['shows «نمونهٔ آزمایشی»']);
       expect(problems({ body: marker }, ['qa'])).toEqual([]);

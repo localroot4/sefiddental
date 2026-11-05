@@ -8,6 +8,7 @@ import { TextLink } from '@/components/ui/TextLink';
 import { t } from '@/i18n/fa';
 import { getServiceTree } from '@/lib/data/catalog';
 import { getClinic } from '@/lib/data/globals';
+import { DEMO_CATEGORY_PHOTOS } from '@/lib/demoPhotos';
 import { buildPath, PAGE_PATHS } from '@/lib/paths';
 import { breadcrumbNode, faqPageNode, itemListNode, jsonLdGraph } from '@/lib/seo/jsonld';
 import type { ServiceCategory } from '@/payload-types';
@@ -65,7 +66,10 @@ export async function CategoryTemplate({ category }: { category: ServiceCategory
                 sizes="(min-width: 1024px) 30rem, (min-width: 744px) 40vw, 100vw"
               />
             ) : (
-              <MediaPlaceholder caption={t('services.photo.category')} />
+              <MediaPlaceholder
+                caption={t('services.photo.category')}
+                demo={DEMO_CATEGORY_PHOTOS[category.key]}
+              />
             )}
           </MediaFrame>
         }

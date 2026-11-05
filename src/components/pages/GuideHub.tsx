@@ -36,7 +36,11 @@ export async function GuideHub({ page }: { page: Page }) {
         // Text-only while no guide is published (jury #9), as the articles hub.
         media={
           items.length ? (
-            <HeroMedia media={page.heroMedia} caption={t('pages.photo.guideHub')} />
+            <HeroMedia
+              media={page.heroMedia}
+              caption={t('pages.photo.guideHub')}
+              demo="guide-hub"
+            />
           ) : undefined
         }
       />

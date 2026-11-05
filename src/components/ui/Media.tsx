@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { t } from '@/i18n/fa';
+import { DEMO_KINDS, DEMO_PHOTOS, demoPhotoUrl, type DemoPhotoKey } from '@/lib/demoPhotos';
 import { readEnv } from '@/lib/env';
 
 import { cx } from './cx';
@@ -41,12 +42,67 @@ export function MediaFrame(props: { ratio: Ratio; children: ReactNode; className
 }
 
 /**
- * Whether the «جای عکس» captions show: on the client preview only (DEMO_CONTENT), where the clinic
- * sees which photo goes where. Unset is off, so readEnv parses the flag only when it is set: a
- * page or a test without the full environment never needs it.
+ * Whether this is the client preview (DEMO_CONTENT): the «جای عکس» captions show, where the clinic
+ * sees which photo goes where, and a slot with a demo photo (src/lib/demoPhotos.ts) shows it.
+ * Unset is off, so readEnv parses the flag only when it is set: a page or a test without the full
+ * environment never needs it.
  */
-export function photoCaptions(): boolean {
+export function onPreview(): boolean {
   return Boolean(process.env.DEMO_CONTENT) && readEnv().demoContent;
+}
+
+const srcSet = (
+  key: DemoPhotoKey,
+  crop: 'wide' | 'tall',
+  widths: readonly number[],
+  ext: 'avif' | 'webp',
+) => widths.map((w) => `${demoPhotoUrl(key, crop, w, ext)} ${w}w`).join(', ');
+
+/**
+ * A demo photo of the client preview in a placeholder's box: `<picture>` with AVIF, then WebP; a
+ * `frame` photo switches from its 4:5 crop to the 3:2 crop at 1024 px, as the hero frame does
+ * (RATIO.hero), and loads eagerly at high priority (the inner page's LCP, as Picture `priority`).
+ */
+function DemoPicture(props: { photo: DemoPhotoKey; className: string }) {
+  const { kind, alt } = DEMO_PHOTOS[props.photo];
+  const files = DEMO_KINDS[kind];
+  const main = files.tall.length ? 'tall' : 'wide';
+  const largest = files[main].at(-1) ?? 0;
+  const frame = kind === 'frame';
+  return (
+    <picture data-demo-photo={props.photo} className={cx('block', props.className)}>
+      {frame
+        ? (['avif', 'webp'] as const).map((ext) => (
+            <source
+              key={ext}
+              media="(min-width: 1024px)"
+              type={`image/${ext}`}
+              srcSet={srcSet(props.photo, 'wide', files.wide, ext)}
+              sizes={files.sizes}
+            />
+          ))
+        : null}
+      {(['avif', 'webp'] as const).map((ext) => (
+        <source
+          key={ext}
+          type={`image/${ext}`}
+          srcSet={srcSet(props.photo, main, files[main], ext)}
+          sizes={files.sizes}
+        />
+      ))}
+      <img
+        src={demoPhotoUrl(props.photo, main, largest, 'webp')}
+        alt={alt}
+        width={largest}
+        height={Math.round(main === 'tall' ? (largest * 5) / 4 : (largest * 2) / 3)}
+        sizes={files.sizes}
+        loading={frame ? 'eager' : 'lazy'}
+        fetchPriority={frame ? 'high' : undefined}
+        decoding={frame ? 'sync' : 'async'}
+        className="size-full object-cover"
+      />
+    </picture>
+  );
 }
 
 /**
@@ -59,14 +115,24 @@ export function photoCaptions(): boolean {
  * is decorative and keeps the caption in `data-photo-slot` for QA. Nothing moves. The
  * panel is a size container, so its content never changes the ratio. `fill` and `card` fill a
  * positioned frame (MediaFrame, a card's media slot) that clips them to its radius; `standalone`
- * has its own ratio and radius. Every placement has a row in docs/content/gaps.md.
+ * has its own ratio and radius. Every placement has a row in docs/content/gaps.md. On the client
+ * preview a slot given a `demo` photo shows that photo in the same box instead, without caption.
  */
 export function MediaPlaceholder(props: {
   caption: string;
   ratio?: Ratio;
   variant?: 'fill' | 'standalone' | 'card';
+  /** The client preview's stock photo for this slot (src/lib/demoPhotos.ts). */
+  demo?: DemoPhotoKey;
   className?: string;
 }) {
+  const box =
+    props.variant === 'standalone'
+      ? cx('relative overflow-hidden rounded-media', RATIO[props.ratio ?? '4:3'])
+      : 'absolute inset-0';
+  if (props.demo && onPreview()) {
+    return <DemoPicture photo={props.demo} className={cx(box, props.className)} />;
+  }
   return (
     <div
       data-photo-slot={props.caption}
@@ -84,7 +150,7 @@ export function MediaPlaceholder(props: {
         size="custom"
         className="aspect-[184/223] h-[min(56%,10rem)] w-auto max-w-full place-self-center text-surface-raised/75 dark:text-brand/15 [@container(height<10rem)]:invisible"
       />
-      {photoCaptions() ? (
+      {onPreview() ? (
         <p className="max-w-[30ch]">
           <span className="font-semibold text-brand-strong">{t('ui.placeholder.prefix')}</span>{' '}
           {props.caption}

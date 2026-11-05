@@ -4,7 +4,7 @@ import { BookingForm } from '@/components/booking/BookingForm';
 import { ButtonLink } from '@/components/ui/Button';
 import { FactsRow } from '@/components/ui/Content';
 import { Icon } from '@/components/ui/Icon';
-import { photoCaptions } from '@/components/ui/Media';
+import { onPreview } from '@/components/ui/Media';
 import { t } from '@/i18n/fa';
 import { telHref } from '@/lib/phone';
 
@@ -58,10 +58,11 @@ const SETTLE_STEP = [
  * context, so it stays under the photo), and the band sits on the page surface: nothing of the
  * hero paints over the world behind the page.
  *
- * While the photo is the placeholder (gap 36), its «جای عکس» captions show on the client preview
- * only (DEMO_CONTENT); elsewhere a phone skips the 4:5 band (hidden; the img stays eager, as it
- * is the LCP from 744 px) and the trust band follows the form. In dark mode the placeholder raster
- * is dimmed over the sunken surface, so it never is the brightest thing on the page.
+ * While the photo is the placeholder (gap 36), the client preview (DEMO_CONTENT) shows the demo
+ * stock photo instead (homeView.heroImage, src/lib/demoPhotos.ts), with no caption; elsewhere a
+ * phone skips the 4:5 band (hidden; the img stays eager, as it is the LCP from 744 px) and the
+ * trust band follows the form. In dark mode the placeholder raster is dimmed over the sunken
+ * surface, so it never is the brightest thing on the page.
  */
 export function HomeHero(props: {
   title: string;
@@ -80,7 +81,7 @@ export function HomeHero(props: {
 }) {
   const { image } = props;
   // The «جای عکس» captions tell the clinic which photo goes where: the preview only (DEMO_CONTENT).
-  const captions = image.placeholder && photoCaptions();
+  const captions = image.placeholder && onPreview();
   // Elsewhere a phone skips the empty 4:5 band under the form (it showed only grain).
   const band = !image.placeholder || captions;
   preload(image.preloadHref, {

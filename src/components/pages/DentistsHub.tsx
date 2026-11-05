@@ -46,7 +46,11 @@ export async function DentistsHub({ page }: { page: Page }) {
         // an unfinished page.
         media={
           doctors.length ? (
-            <HeroMedia media={page.heroMedia} caption={t('pages.photo.dentistsHub')} />
+            <HeroMedia
+              media={page.heroMedia}
+              caption={t('pages.photo.dentistsHub')}
+              demo="dentists-hub"
+            />
           ) : undefined
         }
       />

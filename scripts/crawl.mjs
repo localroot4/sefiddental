@@ -43,12 +43,14 @@ const attrs = (tag) =>
 /**
  * Placeholder text that must never reach a visitor. «نمونه» alone is ordinary Persian («برای
  * نمونه» in the orthodontics copy): the QA fixture marks its rows «نمونهٔ آزمایشی». The demo words
- * belong to the DEMO_CONTENT preview, which the live site refuses (src/lib/env.ts).
+ * belong to the DEMO_CONTENT preview, which the live site refuses (src/lib/env.ts), and so do its
+ * stock photos (src/lib/demoPhotos.ts: the /demo-photos files, their alt «… عکس نمایشی»).
  */
 export const PLACEHOLDERS = [
   { label: 'NEEDS_CLIENT', pattern: /NEEDS_CLIENT/ },
   { label: '«فرضی»', pattern: /فرضی/, allow: 'demo' },
   { label: '«طرح نمایشی»', pattern: /طرح[\s‌]*نمایشی/, allow: 'demo' },
+  { label: 'a demo stock photo', pattern: /\/demo-photos\/|عکس[\s‌]*نمایشی/, allow: 'demo' },
   { label: '«نمونهٔ آزمایشی»', pattern: /نمونه[ٔۀ‌\s]*(ی[‌\s]*)?آزمایشی/, allow: 'qa' },
 ];
 
