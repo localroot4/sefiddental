@@ -15,7 +15,8 @@ import { media } from './HomeSection';
  * Scene 10 (family J): the full form on the warm stage with the static map and the hours; the
  * map sits under the form on phones. «رزرو نوبت» links scroll here (the chrome's booking route).
  * `[data-booking-card]` is the box the scene module (scenes/dom/booking.ts) raises once on
- * enter at tiers 1 to 3; the server HTML is the resting state.
+ * enter at tiers 1 to 3; the server HTML is the resting state. `[data-world-slot="booking-mark"]`
+ * is where the world's mark idles at tiers 2 and 3.
  */
 export function BookingSection(props: { clinic: Clinic; hours: ClinicHours }) {
   const map = media(props.clinic.maps?.staticMap);
@@ -45,6 +46,13 @@ export function BookingSection(props: { clinic: Clinic; hours: ClinicHours }) {
               <span>{props.clinic.address.fullFa}</span>
             </p>
             <HoursTable hours={props.hours} note={hoursTableNote(props.hours)} />
+            {/* The idle mark's place beside the form (phase 8, scenes/webgl/booking.tsx): empty,
+                text-free, from 1024 px; shorter than the form column, so it adds no height. */}
+            <div
+              data-world-slot="booking-mark"
+              aria-hidden="true"
+              className="hidden aspect-square w-[12rem] justify-self-center lg:block"
+            />
           </div>
         </div>
       </Section>

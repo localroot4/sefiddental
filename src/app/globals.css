@@ -311,3 +311,11 @@
     translate: 0 4%;
   }
 }
+
+/* Phase 8, scene 10: the booking stage is transparent only while the world paints, behind the
+   warm layer, the colour that composites to its own `--color-warm-soft` (scenes/webgl/booking.tsx
+   writes the attribute after that frame and removes it before the world stops), so the idle mark
+   beside the form shows and every text pair keeps the contrast it has on the opaque stage. */
+[data-world-stage] [data-home-section='booking'] > section {
+  background-color: transparent;
+}

@@ -51,7 +51,7 @@ describe('scene registry', () => {
 
   it('V7 phase 8 world scenes load WebGL; the hero never draws over the photo', () => {
     const loads = SCENES.filter((s) => s.webgl?.load !== undefined).map((s) => s.id);
-    expect(loads).toEqual(expect.arrayContaining(['trust', 'services']));
+    expect(loads).toEqual(expect.arrayContaining(['trust', 'services', 'booking']));
     expect(SCENES_LOAD_WEBGL).toBe(true);
     expect(SCENES.find((s) => s.id === 'hero')?.webgl).toBeNull();
   });
@@ -60,6 +60,7 @@ describe('scene registry', () => {
     const at = (id: string) => SCENES.find((s) => s.id === id)?.webgl?.minTier;
     expect(at('trust')).toBe(1);
     expect(at('services')).toBe(2);
+    expect(at('booking')).toBe(2);
   });
 
   it('V7 every scene with a loader declares its downloads, none over the tier 1 budget', () => {

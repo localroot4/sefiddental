@@ -99,7 +99,12 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [1360, 1460],
     pinnedDesktop: false,
     direction: 'vertical',
-    webgl: { minTier: 1 },
+    // Tier 1 runs the world at the hero exit and the molar only (experience direction section 3).
+    webgl: {
+      minTier: 2,
+      load: () => import('./webgl/booking'),
+      assets: () => modelManifest('mark', 'diamond'),
+    },
   },
   {
     id: 'footer',
