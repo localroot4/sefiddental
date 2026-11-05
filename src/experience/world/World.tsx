@@ -105,9 +105,15 @@ export function World(props: {
     camera.updateProjectionMatrix();
   }, [gl, camera]);
 
+  // The environment and the precompile are the world's heaviest moments (on a software GPU they
+  // stall the page for a while): tier 1 pays them only once one of its scenes mounts.
+  const [needed, setNeeded] = useState(world.drawsIdle);
+  const onSceneMount = useMemo(() => () => setNeeded(true), []);
+
   // Reflections without an HDR file (storyboard scene 2). Rebuilt after a context restore: the
   // prefiltered map lives only on the GPU.
   useEffect(() => {
+    if (!needed) return;
     let target: WebGLRenderTarget | null = null;
     const build = () => {
       target?.dispose();
@@ -126,7 +132,7 @@ export function World(props: {
       scene.environment = null;
       target?.dispose();
     };
-  }, [gl, scene]);
+  }, [gl, scene, needed]);
 
   // The canvas is opaque; it shows only after a frame has been drawn into it.
   useEffect(() => {
@@ -160,6 +166,7 @@ export function World(props: {
   // Every program the scenes use, compiled before their first frame (KHR_parallel_shader_compile
   // where the driver has it), so a scene mounting mid-scroll does not stall a frame.
   useEffect(() => {
+    if (!needed) return;
     const probe = new Group();
     const geometry = new PlaneGeometry(0.01, 0.01);
     for (const material of materials.all) {
@@ -175,7 +182,7 @@ export function World(props: {
         console.error('[world] shader precompile failed.', error);
       },
     );
-  }, [gl, camera, scene, materials]);
+  }, [gl, camera, scene, materials, needed]);
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.1);
@@ -262,7 +269,7 @@ export function World(props: {
         motion={motion}
         visible={() => world.drawsIdle || drawingRef.current > 0}
       />
-      <SceneSlots />
+      <SceneSlots onMount={onSceneMount} />
     </WorldContext.Provider>
   );
 }
