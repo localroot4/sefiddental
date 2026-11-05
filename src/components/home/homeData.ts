@@ -38,7 +38,7 @@ export async function getHomeData() {
         depth: 1,
       })
     : [];
-  const demo = await demoKinds(doctors, cases, testimonials);
+  const demo = await demoKinds(page, doctors, cases, testimonials);
   return {
     page,
     features,
@@ -60,10 +60,18 @@ export async function getHomeData() {
 /**
  * The kinds that show the client preview's demo content (DEMO_CONTENT, src/lib/demoContent.ts):
  * those with nothing published at all. A published case or voice that is not on the home page
- * still hides its demo, and the first one published replaces it.
+ * still hides its demo, and the first one published replaces it. The workflow steps show while
+ * the home page has no `workflow` block with a step.
  */
-async function demoKinds(doctors: unknown[], cases: unknown[], testimonials: unknown[]) {
-  if (!readEnv().demoContent) return { dentists: false, cases: false, voices: false };
+async function demoKinds(
+  page: Page | null,
+  doctors: unknown[],
+  cases: unknown[],
+  testimonials: unknown[],
+) {
+  if (!readEnv().demoContent) {
+    return { dentists: false, cases: false, voices: false, workflow: false };
+  }
   const [anyCase, anyVoice] = await Promise.all([
     cases.length ? cases : getCases({ limit: 1 }),
     testimonials.length ? testimonials : getTestimonials({ limit: 1 }),
@@ -72,5 +80,6 @@ async function demoKinds(doctors: unknown[], cases: unknown[], testimonials: unk
     dentists: doctors.length === 0,
     cases: anyCase.length === 0,
     voices: anyVoice.length === 0,
+    workflow: !page?.blocks?.some((b) => b.blockType === 'workflow' && b.items?.length),
   };
 }

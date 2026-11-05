@@ -5,13 +5,20 @@ import { MediaFrame, MediaPlaceholder } from '@/components/ui/Media';
 import { TestimonialCard } from '@/components/ui/Testimonial';
 import { TextLink } from '@/components/ui/TextLink';
 import { t } from '@/i18n/fa';
-import { DEMO_COPY, DEMO_DOCTORS, DEMO_VOICES } from '@/lib/demoContent';
+import {
+  DEMO_COPY,
+  DEMO_DOCTOR_PHOTOS,
+  DEMO_DOCTORS,
+  DEMO_VOICE_PHOTOS,
+  DEMO_VOICES,
+} from '@/lib/demoContent';
 import { PAGE_PATHS } from '@/lib/paths';
 
 /*
  * Demo variants of home scenes 6 to 8 for the client preview (DEMO_CONTENT; getHomeData picks
  * them while nothing of the kind is published). The section and family of CasesSection,
- * DentistsSection and VoicesSection, with the house photo placeholder in each image slot and
+ * DentistsSection and VoicesSection, with a stock photo in each dentist and voice slot (the
+ * before/after pair keeps the house photo placeholder: two stock photos would claim a result) and
  * without what a demo item must not carry: a scene id (the experience root sends `scene_view` for
  * each one), the section intro (it may speak of consent or of the dentists), a consent or result
  * line, the compare slider (its first move sends `case_slider_use`) and links to pages that do not
@@ -63,12 +70,18 @@ export function DemoDentistsSection(props: { copy: Copy }) {
       }
     >
       <CardRail label={t('home.dentists.rail')}>
-        {DEMO_DOCTORS.map((doctor) => (
+        {DEMO_DOCTORS.map((doctor, i) => (
           <DentistCard
             key={doctor.id}
             name={`${t('home.dentists.title')} ${doctor.name}`}
             specialty={doctor.specialty}
-            media={<MediaPlaceholder caption={t('pages.photo.dentist')} variant="card" />}
+            media={
+              <MediaPlaceholder
+                caption={t('pages.photo.dentist')}
+                variant="card"
+                demo={DEMO_DOCTOR_PHOTOS[i]}
+              />
+            }
           />
         ))}
       </CardRail>
@@ -81,12 +94,14 @@ export function DemoVoicesSection(props: { copy: Copy }) {
   return (
     <HomeSection section="voices" family="H" copy={headingOnly(props.copy)}>
       <ul className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {DEMO_VOICES.map((quote) => (
+        {DEMO_VOICES.map((quote, i) => (
           <li key={quote} className="grid content-start gap-3">
             <TestimonialCard
               label={DEMO_COPY.patient}
               consent={DEMO_COPY.label}
-              media={<MediaPlaceholder caption={DEMO_COPY.posterPhoto} />}
+              media={
+                <MediaPlaceholder caption={DEMO_COPY.posterPhoto} demo={DEMO_VOICE_PHOTOS[i]} />
+              }
             />
             <p className="text-small text-ink-muted">{quote}</p>
           </li>

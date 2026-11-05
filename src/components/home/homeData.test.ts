@@ -39,6 +39,14 @@ function publish(rows: { doctors?: object[]; cases?: Rows; voices?: Rows }) {
   vi.mocked(getTestimonials).mockImplementation(reader(rows.voices));
 }
 
+/** The published home page with a `workflow` block of these steps. */
+function homePage(items: object[]) {
+  vi.mocked(getPublished).mockImplementation((async (collection: string) =>
+    collection === 'pages'
+      ? [{ id: 1, blocks: [{ blockType: 'workflow', items }] }]
+      : []) as never);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   env.demoContent = false;
@@ -54,15 +62,15 @@ describe('getHomeData: demo content of the client preview', () => {
     publish({});
     const data = await getHomeData();
     expect(data.doctors).toEqual([]);
-    expect(data.demo).toEqual({ dentists: false, cases: false, voices: false });
+    expect(data.demo).toEqual({ dentists: false, cases: false, voices: false, workflow: false });
     expect(vi.mocked(getCases).mock.calls).toEqual([[{ home: true, limit: 3 }]]);
   });
 
-  it('HD2 flag on, nothing published: the demo dentists, cases and voices', async () => {
+  it('HD2 flag on, nothing published: the demo dentists, cases, voices and workflow steps', async () => {
     env.demoContent = true;
     publish({});
     const data = await getHomeData();
-    expect(data.demo).toEqual({ dentists: true, cases: true, voices: true });
+    expect(data.demo).toEqual({ dentists: true, cases: true, voices: true, workflow: true });
     // The demo sections hold the demo items; the real lists stay empty.
     expect([data.doctors, data.cases, data.testimonials]).toEqual([[], [], []]);
   });
@@ -70,21 +78,37 @@ describe('getHomeData: demo content of the client preview', () => {
   it('HD3 flag on with real items: real only, even when none is marked for the home page', async () => {
     env.demoContent = true;
     publish({ doctors: [DOCTOR], cases: { home: [CASE] }, voices: { home: [VOICE] } });
+    homePage([{ title: 'گام ۱' }]);
     const shown = await getHomeData();
     expect(shown.doctors).toEqual([DOCTOR]);
-    expect(shown.demo).toEqual({ dentists: false, cases: false, voices: false });
+    expect(shown.demo).toEqual({ dentists: false, cases: false, voices: false, workflow: false });
     // Published, but none on the home page: the sections hide and no demo stands in.
     publish({ doctors: [DOCTOR], cases: { off: [CASE] }, voices: { off: [VOICE] } });
     const hidden = await getHomeData();
-    expect(hidden.demo).toEqual({ dentists: false, cases: false, voices: false });
+    expect(hidden.demo).toEqual({ dentists: false, cases: false, voices: false, workflow: false });
     expect([hidden.cases, hidden.testimonials]).toEqual([[], []]);
   });
 
   it('HD4 flag on: each kind follows its own published rows', async () => {
     env.demoContent = true;
     publish({ doctors: [DOCTOR] });
-    expect((await getHomeData()).demo).toEqual({ dentists: false, cases: true, voices: true });
+    expect((await getHomeData()).demo).toEqual({
+      dentists: false,
+      cases: true,
+      voices: true,
+      workflow: true,
+    });
     publish({ cases: { off: [CASE] } });
-    expect((await getHomeData()).demo).toEqual({ dentists: true, cases: false, voices: true });
+    expect((await getHomeData()).demo).toEqual({
+      dentists: true,
+      cases: false,
+      voices: true,
+      workflow: true,
+    });
+    // A workflow block with no step still shows the demo steps; one step replaces them.
+    homePage([]);
+    expect((await getHomeData()).demo.workflow).toBe(true);
+    homePage([{ title: 'گام ۱' }]);
+    expect((await getHomeData()).demo.workflow).toBe(false);
   });
 });

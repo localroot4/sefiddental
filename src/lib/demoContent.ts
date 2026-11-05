@@ -1,13 +1,17 @@
 import type { Doctor } from '@/payload-types';
 
+import { DEMO_HERO, DEMO_PHOTOS, type DemoPhotoKey } from './demoPhotos';
+
 /*
  * Demo content of the client preview (DEMO_CONTENT, src/lib/env.ts, refused on the live site):
- * stand-ins for the dentists, the patient voices and a before/after pair, so the preview looks
- * complete before the clinic sends them. Nothing is stored: the home view model and the dentists
- * hub show these only while nothing of that kind is published, and the first published item
- * replaces them. Each one says what it is («فرضی», «طرح نمایشی»; never «نمونه», which reads as a
- * real case) and has no photo, council number, degree, profile, consent line, JSON-LD or booking
- * binding. The house photo placeholder (MediaPlaceholder) stands where each photo goes.
+ * stand-ins for the dentists, the patient voices, the digital workflow steps and a before/after
+ * pair, so the preview looks complete before the clinic sends them. Nothing is stored: the home
+ * view model and the dentists hub show these only while nothing of that kind is published, and
+ * the first published item replaces them. Each one says what it is («فرضی», «طرح نمایشی»; never
+ * «نمونه», which reads as a real case) and has no council number, degree, profile, consent line,
+ * JSON-LD or booking binding. The dentists, voices and steps show a stock photo of
+ * src/lib/demoPhotos.ts, each alt ending in «عکس نمایشی»; the before/after pair keeps the house
+ * placeholder, as two stock photos would claim a treatment result.
  */
 
 /** Every demo line a visitor reads (the copy test of src/i18n/fa.test.ts reads them). */
@@ -44,7 +48,44 @@ export const DEMO_VOICES = [
   'اینجا سخن یک بیمار واقعی دربارهٔ لمینت سرامیکی می‌آید.',
 ];
 
+/** The stock photo of each demo dentist and voice, by position. */
+export const DEMO_DOCTOR_PHOTOS = ['dentist-1', 'dentist-2', 'dentist-3'] as const;
+export const DEMO_VOICE_PHOTOS = ['voice-1', 'voice-2', 'voice-3'] as const;
+
+/**
+ * Home scene 5 while no `workflow` block is published (gap 48 open): four steps of the shot list
+ * rows ۲۱، ۲۲، ۲۴ and ۲۵ in the fields WorkflowSection reads, each line saying the clinic's own
+ * text goes there, and the section's heading when the page has no `workflow` row.
+ */
+export const DEMO_WORKFLOW_HEADING = 'روش دیجیتال درمان';
+export const DEMO_WORKFLOW: Array<{
+  id: string;
+  title: string;
+  text: string;
+  photo: null;
+  demo: DemoPhotoKey;
+}> = [
+  ['اسکن و تصویر سه‌بعدی', 'workflow-scan'],
+  ['طراحی روی صفحه', 'workflow-design'],
+  ['ساخت در لابراتوار', 'workflow-make'],
+  ['لبخند نهایی', 'workflow-smile'],
+].map(([title, demo], i) => ({
+  id: `demo-${i + 1}`,
+  title: title as string,
+  text: `${DEMO_COPY.label}؛ شرح این گام به زبان کلینیک اینجا می‌آید.`,
+  photo: null,
+  demo: demo as DemoPhotoKey,
+}));
+
 /** Every visible demo string, for the copy test. */
 export function demoCopy(): string[] {
-  return [...Object.values(DEMO_COPY), ...DEMO_DOCTORS.map((d) => d.name), ...DEMO_VOICES];
+  return [
+    ...Object.values(DEMO_COPY),
+    ...DEMO_DOCTORS.map((d) => d.name),
+    ...DEMO_VOICES,
+    DEMO_WORKFLOW_HEADING,
+    ...DEMO_WORKFLOW.flatMap((s) => [s.title, s.text]),
+    DEMO_HERO.alt,
+    ...Object.values(DEMO_PHOTOS).map((p) => p.alt),
+  ];
 }

@@ -1,5 +1,6 @@
 import { MediaFrame, MediaPlaceholder } from '@/components/ui/Media';
 import { Picture } from '@/components/ui/Picture';
+import type { DemoPhotoKey } from '@/lib/demoPhotos';
 import type { Page } from '@/payload-types';
 
 import { HomeSection, media, PIN_STAGE, PinRoom, type Copy } from './HomeSection';
@@ -8,6 +9,12 @@ type WorkflowBlock = Extract<NonNullable<Page['blocks']>[number], { blockType: '
 
 /** One step of the home page's `workflow` block (title, line, 4:3 photo), as Payload generates it. */
 export type WorkflowItem = NonNullable<WorkflowBlock['items']>[number];
+
+/** A published step, or a demo step of the client preview (src/lib/demoContent.ts DEMO_WORKFLOW). */
+type Step = Omit<WorkflowItem, 'photo'> & {
+  photo: WorkflowItem['photo'] | null;
+  demo?: DemoPhotoKey;
+};
 
 /**
  * Diagonal placement of step n inside the stage (lanes WORKFLOW): its centre at
@@ -49,11 +56,12 @@ const STEP =
  * photo. Tier 0, tier 1 and phones read them as a vertical list; at tiers 2 and 3 from 1024 px
  * the stage sticks and the scene module pans the list along a diagonal (`scenes/dom/workflow.ts`).
  * It renders nothing until the block is published (the e2e fixture publishes it on the e2e
- * database only). The warm overlay of each photo is the scene's light shift, one opacity per step.
+ * database only), except on the client preview, which shows the demo steps (DEMO_WORKFLOW) with
+ * their stock photos while no block is published; the scene runs on them as on real steps. The warm overlay of each photo is the scene's light shift, one opacity per step.
  * `sizes` names the wider of the two layouts at each width: from 1280 px the vertical list's
  * photo column (37rem in the 80rem container) is wider than the diagonal's step (28rem).
  */
-export function WorkflowSection(props: { items: WorkflowItem[]; copy?: Copy }) {
+export function WorkflowSection(props: { items: Step[]; copy?: Copy }) {
   const items = props.items.slice(0, PLACE.length);
   if (items.length === 0) return null;
   return (
@@ -90,7 +98,7 @@ export function WorkflowSection(props: { items: WorkflowItem[]; copy?: Copy }) {
                       sizes="(min-width: 1280px) 37rem, (min-width: 1024px) 28rem, (min-width: 744px) 50vw, 100vw"
                     />
                   ) : (
-                    <MediaPlaceholder caption={item.title} />
+                    <MediaPlaceholder caption={item.title} demo={item.demo} />
                   )}
                   <span
                     className="absolute inset-0 bg-warm opacity-0"

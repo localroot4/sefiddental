@@ -32,6 +32,7 @@ import { buttonClasses } from '@/components/ui/Button';
 import { onPreview } from '@/components/ui/Media';
 import { ExperienceRoot } from '@/experience/ExperienceRoot';
 import { t } from '@/i18n/fa';
+import { DEMO_WORKFLOW, DEMO_WORKFLOW_HEADING } from '@/lib/demoContent';
 import { siteCapFrom } from '@/lib/qualityTier';
 import { faqPageNode, jsonLdGraph } from '@/lib/seo/jsonld';
 import { buildMetadata } from '@/lib/seo/metadata';
@@ -122,10 +123,17 @@ export default async function HomePage() {
           path={data.restoration?.path ?? null}
           copy={sectionCopy(page, 'restoration')}
         />
-        <WorkflowSection
-          items={block(page, 'workflow')?.items ?? []}
-          copy={sectionCopy(page, 'workflow')}
-        />
+        {data.demo.workflow ? (
+          <WorkflowSection
+            items={DEMO_WORKFLOW}
+            copy={sectionCopy(page, 'workflow') ?? { heading: DEMO_WORKFLOW_HEADING, intro: null }}
+          />
+        ) : (
+          <WorkflowSection
+            items={block(page, 'workflow')?.items ?? []}
+            copy={sectionCopy(page, 'workflow')}
+          />
+        )}
         {data.demo.cases ? (
           <DemoCasesSection copy={sectionCopy(page, 'compare')} />
         ) : (

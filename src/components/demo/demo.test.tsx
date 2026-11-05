@@ -1,11 +1,13 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { WorkflowSection } from '@/components/home/sections/WorkflowSection';
+import { DentistList } from '@/components/pages/lists';
 import { DentistsHub } from '@/components/pages/DentistsHub';
 import { t } from '@/i18n/fa';
 import { getDoctors } from '@/lib/data/content';
 import { getClinic } from '@/lib/data/globals';
-import { DEMO_COPY, DEMO_DOCTORS, DEMO_VOICES, demoCopy } from '@/lib/demoContent';
+import { DEMO_COPY, DEMO_DOCTORS, DEMO_VOICES, DEMO_WORKFLOW, demoCopy } from '@/lib/demoContent';
 import { stubSiteEnv } from '@/lib/http/testEnv';
 import { readYaml } from '@/seed/sources';
 import { pagesYaml } from '@/seed/schemas';
@@ -67,6 +69,11 @@ function expectDemoCards(markup: string) {
       expect(cards[i], part).toContain(part);
     }
   });
+}
+
+/** No slot of these captions is left: their photos fill them, so no «جای عکس» shows. */
+function expectNoCaption(markup: string, captions: string[]) {
+  for (const caption of captions) expect(markup).not.toContain(caption);
 }
 
 beforeEach(() => {
@@ -146,6 +153,63 @@ describe('demo content of the client preview (DEMO_CONTENT)', () => {
     // The one link is «همهٔ پزشکان», to the hub.
     const links = [...markup.matchAll(/<a\b[^>]*\shref="([^"]*)"/g)].map((m) => m[1]);
     expect(links).toEqual(['/پزشکان']);
+  });
+
+  it('DM6 stock photos on the client preview: demo dentists, voices and steps, captions hidden; the pair and a real dentist keep the placeholder', () => {
+    vi.stubEnv('DEMO_CONTENT', '1');
+    const markup = renderToStaticMarkup(
+      <>
+        <DemoCasesSection copy={null} />
+        <DemoDentistsSection copy={null} />
+        <DemoVoicesSection copy={null} />
+        <WorkflowSection items={DEMO_WORKFLOW} />
+      </>,
+    );
+    const photos = [...markup.matchAll(/data-demo-photo="([^"]+)"/g)].map((m) => m[1]);
+    expect(photos).toEqual([
+      'dentist-1',
+      'dentist-2',
+      'dentist-3',
+      'voice-1',
+      'voice-2',
+      'voice-3',
+      'workflow-scan',
+      'workflow-design',
+      'workflow-make',
+      'workflow-smile',
+    ]);
+    // A stock face never stands for a named dentist: each card keeps «فرضی» and the demo label.
+    expectNoCaption(markup, [t('pages.photo.dentist'), DEMO_COPY.posterPhoto]);
+    for (const doctor of DEMO_DOCTORS) expect(markup).toContain(`دکتر ${doctor.name}`);
+    expect(
+      markup
+        .split('<article')
+        .slice(1)
+        .every((card) => card.includes(LABEL)),
+    ).toBe(true);
+    // The before/after pair is no stock pair: it keeps both labelled placeholders.
+    for (const caption of [DEMO_COPY.beforePhoto, DEMO_COPY.afterPhoto]) {
+      expect(markup).toContain(`data-photo-slot="${caption}"`);
+    }
+    // A published dentist without a photo keeps the placeholder on the preview too.
+    const real = renderToStaticMarkup(<DentistList doctors={[{ ...REAL, photo: null }]} />);
+    expect(real).not.toContain('data-demo-photo');
+    expect(real).toContain(`data-photo-slot="${t('pages.photo.dentist')}"`);
+  });
+
+  it('DM7 flag off: no stock photo, the placeholders as before', () => {
+    vi.stubEnv('DEMO_CONTENT', '');
+    env.demoContent = false;
+    const markup = renderToStaticMarkup(
+      <>
+        <DemoDentistsSection copy={null} />
+        <WorkflowSection items={DEMO_WORKFLOW} />
+      </>,
+    );
+    expect(markup).not.toContain('demo-photos');
+    expect(markup.match(/data-photo-slot=/g)).toHaveLength(
+      DEMO_DOCTORS.length + DEMO_WORKFLOW.length,
+    );
   });
 
   it('DM5 the copy says «فرضی» or «طرح نمایشی», never «نمونه»', () => {

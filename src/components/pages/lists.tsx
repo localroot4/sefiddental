@@ -4,6 +4,7 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { MediaPlaceholder } from '@/components/ui/Media';
 import { Picture } from '@/components/ui/Picture';
 import { t } from '@/i18n/fa';
+import { DEMO_DOCTOR_PHOTOS } from '@/lib/demoContent';
 import { buildPath, PAGE_PATHS } from '@/lib/paths';
 import type { Doctor } from '@/payload-types';
 
@@ -53,7 +54,12 @@ export function DentistList(props: { doctors: DentistItem[] }) {
               photo ? (
                 <Picture media={photo} crop="portrait" sizes="(min-width: 1024px) 26rem, 84vw" />
               ) : (
-                <MediaPlaceholder caption={t('pages.photo.dentist')} variant="card" />
+                <MediaPlaceholder
+                  caption={t('pages.photo.dentist')}
+                  variant="card"
+                  // Demo dentists only (negative ids): a real dentist never gets a stock face.
+                  demo={doctor.id < 0 ? DEMO_DOCTOR_PHOTOS[-doctor.id - 1] : undefined}
+                />
               )
             }
           />
