@@ -67,9 +67,10 @@ export function createStudio(): Studio {
     key.intensity = base * (1 + 0.25 * warm);
     rim.intensity = dark ? 1.1 : 0.7;
     rim.color.set(dark ? '#7FD3CB' : '#DCE8F0');
-    fill.color.set(dark ? '#29506B' : '#E4EEF4');
+    // The smile's warm light reaches the shadow side too, so the finished tooth reads bright.
+    fill.color.set(dark ? '#29506B' : '#E4EEF4').lerp(WARM, 0.35 * warm);
     fill.groundColor.set(dark ? '#0F3B3A' : '#E8D8C8');
-    fill.intensity = dark ? 1.0 : 1.25;
+    fill.intensity = (dark ? 1.0 : 1.25) * (1 + 0.45 * warm);
     shadowMaterial.uniforms.uColor!.value.set(dark ? '#000000' : '#0A243F');
     shadowMaterial.uniforms.uOpacity!.value = dark ? 0.5 : 0.24;
   };
