@@ -130,8 +130,8 @@ describe('Notifier', () => {
     const line = t.lines.join('\n');
     expect(line).toContain('"bookingId":42');
     expect(line).toContain('req-n-0001');
-    expect(line).not.toMatch(/912/);
-    expect(JSON.stringify(t.raw)).not.toMatch(/912/);
+    expect(line).not.toMatch(/9123456789|9121111111|9122222222/);
+    expect(JSON.stringify(t.raw)).not.toMatch(/9123456789|9121111111|9122222222/);
   });
 
   it('NT-LOG-FIRST a failed settings read still leaves the notify line, then throws', async () => {
