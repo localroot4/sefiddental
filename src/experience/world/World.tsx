@@ -60,8 +60,17 @@ export function World(props: {
   useEffect(() => () => materials.all.forEach((m) => m.dispose()), [materials]);
 
   const [palette, setPalette] = useState<Palette>(() => readPalette(document.documentElement));
+  // The canvas still holds a frame of the old theme: hide it at once (no fade) and show it again
+  // with the first frame drawn in the new one, so a theme switch never flashes the old surface.
+  const revealed = useRef(false);
   useEffect(() => {
-    const read = () => setPalette(readPalette(document.documentElement));
+    const canvas = gl.domElement;
+    const read = () => {
+      canvas.style.setProperty('transition', 'none');
+      canvas.style.setProperty('opacity', '0');
+      revealed.current = false;
+      setPalette(readPalette(document.documentElement));
+    };
     const observer = new MutationObserver(read);
     observer.observe(document.documentElement, {
       attributes: true,
@@ -73,7 +82,7 @@ export function World(props: {
       observer.disconnect();
       scheme.removeEventListener('change', read);
     };
-  }, []);
+  }, [gl]);
   useEffect(() => applyPalette(materials, palette), [materials, palette]);
 
   const [motion] = useState<WorldMotion>(() => ({
@@ -120,11 +129,9 @@ export function World(props: {
   }, [gl, scene]);
 
   // The canvas is opaque; it shows only after a frame has been drawn into it.
-  const revealed = useRef(false);
   useEffect(() => {
     const canvas = gl.domElement;
     canvas.style.setProperty('opacity', '0');
-    canvas.style.setProperty('transition', 'opacity var(--dur-3) var(--ease-out)');
     return () => {
       canvas.style.removeProperty('opacity');
       canvas.style.removeProperty('transition');
@@ -217,6 +224,7 @@ export function World(props: {
     cleanDrawn.current = idle;
     if (!revealed.current) {
       revealed.current = true;
+      gl.domElement.style.setProperty('transition', 'opacity var(--dur-3) var(--ease-out)');
       gl.domElement.style.setProperty('opacity', '1');
     }
   }, 1);
