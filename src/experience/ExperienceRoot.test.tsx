@@ -209,9 +209,22 @@ describe('ExperienceRoot (dom)', () => {
     expect(mocks.canvasImports).toBe(1);
   });
 
-  it('XR1 phase 8: once a registry scene draws WebGL, tier 2 mounts the canvas without the flag', async () => {
+  it('XR1 phase 8: once a registry scene draws WebGL, tier 2 mounts the canvas when the world window shows', async () => {
     registry.sceneLoadsWebgl = true;
     home('/?tier=2');
+    const windowObserver = () =>
+      observers.find((o) => o.options?.rootMargin === '0px 0px -1px 0px');
+    await waitFor(() => expect(windowObserver()).toBeDefined(), { timeout: 3000 });
+    // Past the 200 ms idle mount: nothing mounts before the window shows.
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    expect(mocks.canvasMounts).toBe(0);
+    const services = document.querySelector('[data-scene="services"]')!;
+    act(() =>
+      windowObserver()?.callback(
+        [{ target: services, isIntersecting: true } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      ),
+    );
     // The idle mount is a 200 ms timer in jsdom.
     await waitFor(() => expect(mocks.canvasMounts).toBeGreaterThan(0), { timeout: 3000 });
   });
