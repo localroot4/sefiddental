@@ -49,9 +49,25 @@ describe('scene registry', () => {
     expect(isSceneId('nope')).toBe(false);
   });
 
-  it('V7 no scene loads WebGL in phase 3; the hero never draws over the photo', () => {
-    for (const scene of SCENES) expect(scene.webgl?.load).toBeUndefined();
-    expect(SCENES_LOAD_WEBGL).toBe(false);
+  it('V7 phase 8 world scenes load WebGL; the hero never draws over the photo', () => {
+    const loads = SCENES.filter((s) => s.webgl?.load !== undefined).map((s) => s.id);
+    expect(loads).toEqual(expect.arrayContaining(['trust']));
+    expect(SCENES_LOAD_WEBGL).toBe(true);
     expect(SCENES.find((s) => s.id === 'hero')?.webgl).toBeNull();
+  });
+
+  it('V7 tier 1 runs only the hero exit of the world scenes (experience direction section 3)', () => {
+    const at = (id: string) => SCENES.find((s) => s.id === id)?.webgl?.minTier;
+    expect(at('trust')).toBe(1);
+  });
+
+  it('V7 every scene with a loader declares its downloads, none over the tier 1 budget', () => {
+    for (const scene of SCENES) {
+      if (scene.webgl?.load === undefined) continue;
+      const manifest = scene.webgl.assets?.(1);
+      expect(manifest, scene.id).toBeDefined();
+      const bytes = (manifest ?? []).reduce((sum, item) => sum + item.bytes, 0);
+      expect(bytes, scene.id).toBeLessThan(500 * 1024);
+    }
   });
 });

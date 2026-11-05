@@ -1,7 +1,10 @@
 /**
- * Scene registry, storyboard order (docs/experience/storyboard.md overview table). Phase 3
- * values: no scene loads WebGL yet (`webgl.load` stays undefined until phase 8).
+ * Scene registry, storyboard order (docs/experience/storyboard.md overview table). Phase 8 fills
+ * `webgl.load` and `assets` scene by scene; each loader is its own chunk, fetched by the canvas's
+ * slot host (world/SceneSlots.tsx) one scene ahead.
  */
+import { modelManifest } from '../world/assets';
+
 import type { SceneDefinition, SceneId } from './types';
 
 export const SCENES: readonly SceneDefinition[] = Object.freeze([
@@ -27,7 +30,11 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [100, 140],
     pinnedDesktop: false,
     direction: 'vertical',
-    webgl: { minTier: 1 },
+    webgl: {
+      minTier: 1,
+      load: () => import('./webgl/trust'),
+      assets: () => modelManifest('mark', 'diamond'),
+    },
   },
   {
     id: 'services',
@@ -104,8 +111,8 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
 ] satisfies SceneDefinition[]);
 
 /**
- * A scene draws WebGL (phase 8), so tier 1 mounts the canvas too: ExperienceRoot loads it (D5)
- * and the tier store confirms WebGL 2 on the main thread first.
+ * A scene draws WebGL, so tier 1 mounts the canvas too: ExperienceRoot loads it (D5) and the tier
+ * store confirms WebGL 2 on the main thread first.
  */
 export const SCENES_LOAD_WEBGL = SCENES.some((scene) => scene.webgl?.load !== undefined);
 
