@@ -225,6 +225,7 @@ test('T-AD9 admin login and dashboard screenshots at three widths, light and dar
         page.locator(`a[href="${ADMIN_ROUTE}/collections/tags"]`).first(),
       ).toBeAttached();
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme);
+      await dashboardSettled(page);
       await captureTemplate(page, testInfo, 'admin-dashboard', theme);
       await context.close();
     }
@@ -237,9 +238,19 @@ test('T-AD9 admin login and dashboard screenshots at three widths, light and dar
 type QaBooking = { id: number; phone: string; phoneNational: string };
 
 /** Opens the admin as `role` and returns a REST helper bound to that session. */
+/**
+ * The dashboard's widgets stream in behind skeletons, and React reveals the streamed panels a
+ * moment after the load event; until then they sit in hidden containers at the end of the body.
+ */
+async function dashboardSettled(page: Page): Promise<void> {
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
+  await expect(page.locator('[hidden] section[aria-labelledby]')).toHaveCount(0);
+}
+
 async function adminAs(page: Page, role: 'admin' | 'editor') {
   await restoreSession(page, role);
   await page.goto(ADMIN_ROUTE);
+  await dashboardSettled(page);
   return {
     create: async (data: Record<string, unknown>): Promise<QaBooking> => {
       const { status, body } = await page.evaluate(async (row) => {
@@ -976,6 +987,7 @@ test('T-AD41 the dashboard view: greeting and date, four KPI tiles, the week, qu
   const phone = await context.newPage();
   await restoreSession(phone, 'admin');
   await phone.goto(ADMIN_ROUTE);
+  await dashboardSettled(phone);
   await expect(phone.getByRole('region', { name: adminText('admin.today.heading') })).toBeVisible();
   expect(
     await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
@@ -987,6 +999,30 @@ test('T-AD41 the dashboard view: greeting and date, four KPI tiles, the week, qu
   expect(heights.length).toBe(4);
   for (const h of heights) expect(h).toBeGreaterThanOrEqual(44);
   await context.close();
+});
+
+test('T-AD42 a required field left empty inside an array keeps Payload’s red border', async ({
+  page,
+}, testInfo) => {
+  const api = await adminAs(page, 'admin');
+  const booking = await api.create({ phone: uniquePhone(testInfo), name: token('مرز') });
+  await page.goto(`${ADMIN_ROUTE}/collections/bookings/${booking.id}`);
+  await page.locator('#field-adminNotes .array-field__add-row').first().click();
+  const note = page.locator('#field-adminNotes__0__text');
+  await expect(note).toBeVisible();
+  await page.locator('#action-save').click();
+  // The required note is the error, inside the array (itself a .field-type).
+  await expect(page.locator('.field-type.textarea.error').first()).toBeVisible();
+  const red = await page.evaluate(() => {
+    const probe = document.createElement('span');
+    probe.style.color = 'var(--theme-error-500)';
+    document.body.append(probe);
+    const color = getComputedStyle(probe).color;
+    probe.remove();
+    return color;
+  });
+  // Polled: Payload's inputs fade their border colour in.
+  await expect.poll(() => note.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(red);
 });
 
 test('T-AD31 an editor adds a case: two photos, written consent, publish (admin guide)', async ({
@@ -1111,6 +1147,7 @@ test('T-AD34 the dashboard, the calendar and an article form at three widths, li
       await expect(
         page.getByRole('region', { name: adminText('admin.seo.heading') }),
       ).toBeVisible();
+      await dashboardSettled(page);
       await captureTemplate(page, testInfo, 'admin-dashboard-editor', theme);
       await page.goto(CALENDAR_PATH);
       await expect(page.locator('#content-calendar')).toBeVisible();

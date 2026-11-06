@@ -100,17 +100,22 @@ html[data-theme='dark'] {
   --hover-color: var(--admin-on-brand);
 }
 
-// Field boundaries at 3:1 against the surface (WCAG 1.4.11; Payload's line colour is 1.3:1);
-// error states keep Payload's own red border.
-.field-type:not(.error) :is(input:not([type='checkbox'], [type='radio']), textarea),
-.react-select:not(.react-select--error) .rs__control {
+// Field boundaries at 3:1 against the surface (WCAG 1.4.11; Payload's line colour is 1.3:1).
+// Unlayered rules beat every Payload rule, so the states are excluded on the control itself: a
+// field in error (its own wrapper, at any depth inside rows, groups and arrays) keeps Payload's
+// red border, and a disabled or read-only control keeps Payload's look.
+$field-control: ":is(input:not([type='checkbox'], [type='radio']), textarea):not(.error *, .date-time-field--has-error *, :disabled, [readonly])";
+$select-control: '.rs__control:not(.react-select--error *, .rs__control--is-disabled)';
+
+.field-type #{$field-control},
+.react-select #{$select-control} {
   border-color: var(--theme-elevation-400);
 }
 
 // Fields: the brand ring on focus instead of a darker grey border.
-.field-type:not(.error) :is(input:not([type='checkbox'], [type='radio']), textarea):focus,
-.react-select:not(.react-select--error) .rs__control--is-focused,
-.date-time-picker input:focus {
+.field-type #{$field-control}:focus,
+.react-select #{$select-control}.rs__control--is-focused,
+.date-time-picker input:not(.date-time-field--has-error *):focus {
   border-color: var(--admin-brand);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-brand) 22%, transparent);
 }
