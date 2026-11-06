@@ -24,10 +24,8 @@ function place(el: Element, top: number, height = 100, left = 0, width = 100) {
 
 const VIEW_H = 800;
 const DOC_H = 6000;
-let scrollY = 0;
 /** Lays the page out for the scroll position: every box keeps its document place. */
 function layout(y: number) {
-  scrollY = y;
   Object.defineProperty(window, 'scrollY', { configurable: true, value: y });
   const at = (sel: string, top: number, h = 100) => place(document.querySelector(sel)!, top - y, h);
   at('[data-dock="services"]', 1000);

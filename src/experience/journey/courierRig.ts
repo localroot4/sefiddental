@@ -137,29 +137,41 @@ const POINTS_FRAGMENT = /* glsl */ `
   }
 `;
 
-/** The glazed mark: clearcoat and the enamel's two studio softboxes, no environment map. */
-function createGlaze(): MeshPhysicalMaterial {
+/**
+ * The glazed mark: clearcoat, a studio falloff from top to bottom, a soft diagonal glass streak,
+ * two softboxes in the reflection and a light rim, no environment map. The orthographic view sees
+ * a flat face in one colour, so the falloff and the streak follow the view-space position.
+ */
+function createGlaze(): { material: MeshPhysicalMaterial; rim: { value: Color } } {
+  const rim = { value: new Color('#CFF5F1') };
   const material = new MeshPhysicalMaterial({
-    roughness: 0.3,
+    roughness: 0.24,
     metalness: 0,
     clearcoat: 1,
-    clearcoatRoughness: 0.12,
+    clearcoatRoughness: 0.08,
   });
   material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
-    shader.fragmentShader = shader.fragmentShader.replace(
-      '#include <opaque_fragment>',
-      `{
+    shader.uniforms.uRim = rim;
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 uRim;')
+      .replace(
+        '#include <opaque_fragment>',
+        `{
+  vec3 mv = -vViewPosition;
   float facing = saturate(dot(normal, geometryViewDir));
   vec3 r = reflect(-geometryViewDir, normal);
-  float panels = smoothstep(0.55, 0.95, r.y) + 0.6 * smoothstep(0.6, 0.95, r.x) * smoothstep(-0.2, 0.4, r.y);
-  float fresnel = 0.04 + 0.96 * pow(1.0 - facing, 5.0);
-  outgoingLight += vec3(panels) * (0.2 + fresnel) * 0.42;
+  float boxes = smoothstep(0.35, 0.9, r.y) * 0.55 + smoothstep(0.55, 0.95, r.x) * smoothstep(-0.3, 0.5, r.y) * 0.35;
+  float fresnel = 0.04 + 0.96 * pow(1.0 - facing, 4.0);
+  outgoingLight *= 0.8 + 0.34 * smoothstep(-0.55, 0.55, mv.y);
+  float streak = exp(-pow((mv.x * 0.62 + mv.y * 0.78 - 0.12) / 0.2, 2.0)) * facing;
+  outgoingLight += vec3(boxes) * (0.25 + fresnel) + vec3(0.16 * streak);
+  outgoingLight += uRim * pow(1.0 - facing, 3.0) * 0.3;
 }
 #include <opaque_fragment>`,
-    );
+      );
   };
-  material.customProgramCacheKey = () => 'sefid-glaze-1';
-  return material;
+  material.customProgramCacheKey = () => 'sefid-glaze-2';
+  return { material, rim };
 }
 
 export interface CourierFrame {
@@ -209,7 +221,7 @@ export function createCourierRig(
   tilt.add(spin);
   scene.add(holder);
 
-  const glaze = createGlaze();
+  const { material: glaze, rim } = createGlaze();
   const mark = new Mesh(geometry.mark, glaze);
   mark.scale.setScalar(MARK_FILL / MARK_HEIGHT);
   spin.add(mark);
@@ -349,7 +361,10 @@ export function createCourierRig(
       enamel.material.color.set(ivory);
       archEnamel.material.color.set(ivory);
       enamel.uniforms.uBuildEdge.value.set(brand);
-      glaze.color.set(dark ? '#0B8C82' : '#037D74');
+      // Brand teal, lifted on navy so the mark keeps its presence in the dark theme.
+      glaze.color.set(dark ? '#139E92' : '#0A8A80');
+      glaze.emissive.set(dark ? '#0B4F4A' : '#000000');
+      rim.value.set(dark ? '#7FE3D9' : '#CFF5F1');
       wireMaterial.color.set(brand);
       pointUniforms.uColor.value.set(brand);
       pointUniforms.uGlowColor.value.set(dark ? '#E9FFFC' : '#5FD3C8');

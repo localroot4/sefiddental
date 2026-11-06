@@ -115,17 +115,20 @@ export default function JourneyLayer(props: {
         mark.current?.style.setProperty('opacity', isTooth ? '0' : '1');
         tooth.current?.style.setProperty('opacity', String(isTooth ? fade * (1 - pose.arch) : 0));
         crown.current?.style.setProperty('opacity', String(isTooth ? fade * pose.arch : 0));
-        if (pose.dock === 'restoration' || lastLevel < 0) {
-          const choice = root
-            .querySelector('[data-scene="restoration"] [data-choices]')
-            ?.getAttribute('data-choice');
-          const level = pose.dock === 'restoration' ? levelFromChoice(choice ?? null) : 0;
-          if (level !== lastLevel) {
-            levels.current.forEach((g, i) =>
-              g?.style.setProperty('opacity', i === level ? '1' : '0'),
-            );
-            lastLevel = level;
-          }
+        // The chips' level at the restoration dock, plain everywhere else.
+        const level =
+          pose.dock === 'restoration'
+            ? levelFromChoice(
+                root
+                  .querySelector('[data-scene="restoration"] [data-choices]')
+                  ?.getAttribute('data-choice') ?? null,
+              )
+            : 0;
+        if (level !== lastLevel) {
+          levels.current.forEach((g, i) =>
+            g?.style.setProperty('opacity', i === level ? '1' : '0'),
+          );
+          lastLevel = level;
         }
       }
 
@@ -194,7 +197,7 @@ export default function JourneyLayer(props: {
           const p = projectArch(t);
           return (
             <g key={i} transform={`translate(${p.u} ${p.v}) rotate(${deg(footprintAngle(t.yaw))})`}>
-              <Crown width={t.width} />
+              <Crown width={t.width} className="fill-surface-raised stroke-brand/60" />
             </g>
           );
         })}

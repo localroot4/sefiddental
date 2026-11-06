@@ -161,6 +161,8 @@ export function createJourney(opts: {
   // The engine registered ScrollTrigger before it was created (every tier from 1): a trigger over
   // the whole page wakes the driver on scroll.
   const scroll = ScrollTrigger.create({ start: 0, end: 'max', onUpdate: follow });
+  // A chip of the restoration levels changes the tooth without a scroll.
+  root.addEventListener('change', follow);
 
   measure();
   apply();
@@ -185,6 +187,7 @@ export function createJourney(opts: {
       observer.disconnect();
       window.removeEventListener('resize', schedule);
       scroll.kill();
+      root.removeEventListener('change', follow);
       molar?.removeAttribute(LIVE_ATTR);
       html.removeAttribute(STAGE_ATTR);
       part?.removeAttribute(AWAY_ATTR);
