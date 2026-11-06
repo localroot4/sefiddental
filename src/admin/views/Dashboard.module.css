@@ -1,0 +1,226 @@
+/*
+ * Dashboard view (operate mode): the admin theme tokens of custom.scss (--admin-*) over Payload's
+ * (--theme-*), spacing in multiples of --base, logical properties for RTL, every target at least
+ * 44px. Three layouts: one column on phones, six columns from 768px, twelve from 1280px.
+ */
+
+.root {
+  display: grid;
+  gap: calc(var(--base) * 1.25);
+  padding-block: calc(var(--base) * 1.25) var(--spacing-view-bottom);
+}
+
+/* Greeting and date at the inline start, quick actions at the inline end. */
+.head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: var(--base) calc(var(--base) * 1.5);
+}
+
+.hello {
+  display: grid;
+  gap: calc(var(--base) * 0.2);
+}
+
+.greeting {
+  margin: 0;
+  font-size: clamp(1.5rem, 1.1rem + 1.2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0;
+}
+
+.date {
+  margin: 0;
+  color: var(--theme-elevation-650);
+  font-size: calc(var(--base) * 0.75);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(var(--base) * 0.5);
+}
+
+.action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: 44px;
+  padding-inline: calc(var(--base) * 0.8);
+  border: 1px solid var(--theme-elevation-200);
+  border-radius: var(--admin-radius-control);
+  background: var(--theme-elevation-0);
+  color: var(--theme-text);
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    background-color var(--admin-duration) var(--admin-ease),
+    border-color var(--admin-duration) var(--admin-ease);
+}
+
+.action:hover {
+  border-color: var(--admin-brand);
+  background: var(--admin-brand-soft);
+}
+
+.primary {
+  border-color: var(--admin-brand);
+  background: var(--admin-brand);
+  color: var(--admin-on-brand);
+}
+
+.primary:hover {
+  border-color: var(--admin-brand-strong);
+  background: var(--admin-brand-strong);
+}
+
+/* Payload's `a:focus { outline: none }` outranks its own :focus-visible ring on links. */
+.action:focus-visible {
+  outline: var(--accessibility-outline);
+  outline-offset: var(--accessibility-outline-offset);
+}
+
+/* Phones: the actions fill the width, two to a row. */
+@media (max-width: 767px) {
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    inline-size: 100%;
+  }
+
+  .action {
+    padding-inline: calc(var(--base) * 0.5);
+    text-align: center;
+  }
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--base);
+  align-items: start;
+}
+
+/* A widget that renders nothing for this role leaves no empty cell. */
+.grid > :empty {
+  display: none;
+}
+
+/* Each cell holds one panel; the panel fills it so a row lines up. */
+.grid > * > section,
+.grid > * > .skeleton {
+  block-size: 100%;
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    align-items: stretch;
+  }
+
+  .kpi,
+  .trend,
+  .calendar {
+    grid-column: span 6;
+  }
+
+  .side {
+    grid-column: span 3;
+  }
+}
+
+@media (min-width: 1280px) {
+  .grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .kpi {
+    grid-column: span 8;
+  }
+
+  .trend {
+    grid-column: span 4;
+  }
+
+  /* As tall as its rows, not as tall as the two panels beside it. */
+  .calendar {
+    grid-column: span 7;
+    grid-row: span 2;
+    align-self: start;
+  }
+
+  .side {
+    grid-column: span 5;
+  }
+}
+
+/* Payload's collection cards below the panels, set apart by a hairline; lower cards, and two
+   to a row on phones (Payload drops to one under 400px, which made the page three screens longer). */
+.sections {
+  padding-block-start: calc(var(--base) * 1.25);
+  border-block-start: 1px solid var(--theme-elevation-150);
+}
+
+.sections :global(.card) {
+  min-block-size: 64px;
+}
+
+@media (max-width: 767px) {
+  .sections :global(.collections) {
+    --cols: 2;
+  }
+
+  .sections :global(.card) {
+    padding: calc(var(--base) * 0.6);
+  }
+}
+
+/* Loading: the panel frame with grey bars; a slow pulse unless motion is reduced. */
+.skeleton {
+  display: grid;
+  align-content: start;
+  gap: calc(var(--base) * 0.6);
+  min-block-size: calc(var(--base) * 7);
+  padding: var(--base);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--admin-radius-card);
+  background: var(--theme-elevation-0);
+}
+
+.skeletonHeading,
+.skeletonLine {
+  display: block;
+  block-size: calc(var(--base) * 0.6);
+  border-radius: var(--style-radius-s);
+  background: var(--theme-elevation-100);
+  animation: pulse 1.6s var(--admin-ease) infinite alternate;
+}
+
+.skeletonHeading {
+  inline-size: 40%;
+  block-size: calc(var(--base) * 0.8);
+}
+
+.skeletonLine:nth-child(odd) {
+  inline-size: 85%;
+}
+
+@keyframes pulse {
+  to {
+    opacity: 0.45;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeletonHeading,
+  .skeletonLine {
+    animation: none;
+  }
+
+  .action {
+    transition: none;
+  }
+}

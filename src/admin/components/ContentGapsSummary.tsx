@@ -20,7 +20,7 @@ export function ContentGapsSummaryBody({ report }: { report: ContentGapsReport |
         {adminText('admin.gaps.heading')}
       </h2>
       {report === null ? (
-        <p className={styles.empty}>{adminText('admin.unknown')}</p>
+        <p className={styles.error}>{adminText('admin.home.failed')}</p>
       ) : report.total === 0 ? (
         <p className={styles.empty}>{adminText('admin.gaps.none')}</p>
       ) : (

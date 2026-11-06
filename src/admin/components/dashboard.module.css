@@ -41,12 +41,22 @@
   background: var(--theme-elevation-50);
 }
 
+/* Inside a row the link reads as the row's title, in the body colour. */
+.item .link {
+  color: var(--theme-text);
+}
+
 .link {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
-  color: var(--theme-text);
+  color: var(--admin-brand-strong);
   font-weight: 600;
+  text-underline-offset: 0.25em;
+}
+
+.link:hover {
+  text-decoration-thickness: 2px;
 }
 
 .meta {
@@ -127,4 +137,48 @@
 .empty {
   margin: 0;
   color: var(--theme-elevation-650);
+}
+
+/* A failed read: the error tokens, body-colour text (AA in both themes), never «nothing». */
+.error {
+  margin: 0;
+  padding: calc(var(--base) * 0.5) calc(var(--base) * 0.75);
+  border-inline-start: 4px solid var(--admin-danger);
+  border-radius: var(--style-radius-s);
+  background: var(--admin-danger-soft);
+}
+
+/* The week's trend: the total, then seven bars; today in the brand colour. */
+.trendTotal {
+  margin: 0 0 calc(var(--base) * 0.5);
+  color: var(--theme-elevation-650);
+}
+
+.trendChart {
+  display: block;
+  inline-size: 100%;
+  max-inline-size: 22rem;
+  block-size: auto;
+  overflow: visible;
+}
+
+/* 3:1 against the panel in both themes (WCAG 1.4.11): 3.5 light, 4.0 dark. */
+.trendBar {
+  fill: var(--theme-elevation-400);
+}
+
+.trendToday {
+  fill: var(--admin-brand);
+}
+
+.trendLabel,
+.trendValue {
+  fill: var(--theme-elevation-650);
+  font-family: var(--font-body);
+  font-size: 12px;
+}
+
+.trendValue {
+  fill: var(--theme-text);
+  font-weight: 600;
 }

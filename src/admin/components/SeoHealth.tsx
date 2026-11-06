@@ -21,7 +21,7 @@ export function SeoHealthBody({ report }: { report: SeoHealthReport | null }) {
         {adminText('admin.seo.heading')}
       </h2>
       <p className={styles.lead}>{adminText('admin.seo.lead')}</p>
-      {report === null ? <p className={styles.empty}>{adminText('admin.unknown')}</p> : null}
+      {report === null ? <p className={styles.error}>{adminText('admin.home.failed')}</p> : null}
       {report && rules.length === 0 ? (
         <p className={styles.empty}>{adminText('admin.seo.allGood')}</p>
       ) : null}

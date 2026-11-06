@@ -70,7 +70,7 @@ export function ContentCalendarBody({ items, now }: { items: CalendarItem[] | nu
       <h2 id="content-calendar-widget" className={panel.todayHeading}>
         {adminText('admin.calendar.title')}
       </h2>
-      {items === null ? <p className={styles.empty}>{adminText('admin.unknown')}</p> : null}
+      {items === null ? <p className={styles.error}>{adminText('admin.home.failed')}</p> : null}
       {failed.length > 0 ? (
         <a className={`${styles.link} ${styles.alertLink}`} href={`${CALENDAR_PATH}?kind=failed`}>
           {adminText('admin.calendar.failedCount', { n: formatNumberFa(failed.length) })}
