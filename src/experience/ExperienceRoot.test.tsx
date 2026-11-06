@@ -231,6 +231,15 @@ describe('ExperienceRoot (dom)', () => {
     expect(mocks.journeyTiers).toEqual([]);
   });
 
+  it('XR13 a canvas with nothing to draw never mounts: the debug flag loads the chunk, a tier that draws nothing keeps the page frames', async () => {
+    registry.sceneLoadsWebgl = false;
+    home('/?debug=1&tier=2');
+    await waitFor(() => expect(mocks.canvasImports).toBe(1), { timeout: 3000 });
+    // Past the idle mount (a 200 ms timer in jsdom).
+    await act(() => new Promise((resolve) => setTimeout(resolve, 800)));
+    expect(mocks.canvasMounts).toBe(0);
+  });
+
   it('XR1 phase 8: once a registry scene draws WebGL, tier 2 mounts the canvas when the world window shows', async () => {
     registry.sceneLoadsWebgl = true;
     home('/?tier=2');

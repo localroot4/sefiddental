@@ -305,7 +305,11 @@ function ExperienceHost(props: {
 
   const CanvasRoot = canvasModule?.CanvasRoot;
   const DevOverlay = overlayModule?.DevOverlay;
-  const canvasMounted = Boolean(CanvasRoot) && idleReached && engine !== null && readyTier >= 1;
+  // Only while something draws (the courier from tier 2, a slot scene, the debug stress quad): a
+  // step down to tier 1 unmounts the canvas, so no empty frame keeps the ticker awake.
+  const canvasHasWork = worldDraws || tier.stress > 0;
+  const canvasMounted =
+    Boolean(CanvasRoot) && idleReached && engine !== null && readyTier >= 1 && canvasHasWork;
 
   // While no canvas renders, the frame monitor samples the engine's page frames instead (D5):
   // same sampler, same step rule, auto mode only, and only while the page scrolls (D26).
