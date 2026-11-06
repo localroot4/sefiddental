@@ -74,6 +74,12 @@ Tier 0, reduced motion, Save-Data and no WebGL 2 get no canvas, as in phase 7.
 
 ## Open
 
+- The owner allowed the preview deploy with CI red on the GPU-less runner
+  (2026-11-06): `allow_red_ci` in `server.yml` also accepts the Chromium e2e
+  step and the coverage step, preview only. Take them out once CI is green: the
+  WebGL scene components (`src/experience/scenes/webgl/*.tsx`) have no unit
+  tests, and the Chromium e2e times out under SwiftShader.
+
 - Frame rates on real phones and laptops (owner's check list).
 - T-EN4g and the tier 2 keyboard walk depend on runner speed without a GPU.
 - Scene 6 needs a real before/after case with a slider to show on the preview.
