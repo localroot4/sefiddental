@@ -6,7 +6,7 @@
  * so the pose holds it still during the pin. A box that is not rendered at this width (`display:
  * none`) is left out: the courier skips that station.
  */
-import { STATIONS, type Dock, type DockId, type Viewport } from './pose';
+import { STATIONS, type Box, type Dock, type DockId, type Viewport } from './pose';
 
 const IDS: ReadonlySet<string> = new Set(STATIONS.map((s) => s.id));
 
@@ -45,34 +45,89 @@ function navHeight(): number {
   return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 0;
 }
 
+/**
+ * A viewport rect of `el` (or of text inside it) in document px: inside a sticky stage at its
+ * place in flow, with the scroll range of its pin (the room after the stage is in flow, so its
+ * top less the stage's height is the stage's place, even while the stage is stuck).
+ */
+function placeInFlow(
+  el: Element,
+  rect: { left: number; top: number; width: number; height: number },
+  nav: number,
+): Box {
+  const sy = window.scrollY;
+  let top = rect.top + sy;
+  let pin: Box['pin'] = null;
+  const stage = stickyStage(el as HTMLElement);
+  const room = stage?.nextElementSibling;
+  if (stage && room instanceof HTMLElement && room.hasAttribute('data-pin-room')) {
+    const roomTop = room.getBoundingClientRect().top + sy;
+    const stageRect = stage.getBoundingClientRect();
+    const flowTop = roomTop - stageRect.height;
+    top = flowTop + (rect.top - stageRect.top);
+    const start = flowTop - nav;
+    pin = { start, end: start + room.getBoundingClientRect().height };
+  }
+  return { left: rect.left + window.scrollX, top, width: rect.width, height: rect.height, pin };
+}
+
 /** Every rendered `[data-dock]` box under `root`, in document px. */
 export function measureDocks(root: ParentNode = document): Dock[] {
   const docks: Dock[] = [];
   const nav = navHeight();
-  const sy = window.scrollY;
-  const sx = window.scrollX;
   for (const el of root.querySelectorAll<HTMLElement>('[data-dock]')) {
     const id = el.dataset.dock;
     if (!isDockId(id) || el.getClientRects().length === 0) continue;
     const rect = homeRect(el);
     if (!(rect.width > 0 && rect.height > 0)) continue;
-    let top = rect.top + sy;
-    let pin: Dock['pin'] = null;
-    const stage = stickyStage(el);
-    const room = stage?.nextElementSibling;
-    if (stage && room instanceof HTMLElement && room.hasAttribute('data-pin-room')) {
-      // The room follows the stage in flow: its top less the stage's height is the stage's place,
-      // even while the stage is stuck.
-      const roomTop = room.getBoundingClientRect().top + sy;
-      const stageRect = stage.getBoundingClientRect();
-      const flowTop = roomTop - stageRect.height;
-      top = flowTop + (rect.top - stageRect.top);
-      const start = flowTop - nav;
-      pin = { start, end: start + room.getBoundingClientRect().height };
-    }
-    docks.push({ id, left: rect.left + sx, top, width: rect.width, height: rect.height, pin });
+    docks.push({ id, ...placeInFlow(el, rect, nav) });
   }
   return docks;
+}
+
+/** What the courier never sits under: the controls and fields, and every line of shown text. */
+const CONTROLS = 'a[href], button, input, select, textarea, [role="button"]';
+/** Decorative or not the page's text: the courier's own layers, the header, the dev overlay. */
+const SKIP = '[aria-hidden="true"], header, [data-dev-overlay], [data-courier-layer]';
+
+/**
+ * The boxes of the page's text and controls under `root`, in document px (pose.ts fades the
+ * courier out over them). One box per text node (its lines' union) and per control; measured with
+ * the docks, never per frame.
+ */
+export function measureObstacles(root: Element): Box[] {
+  const nav = navHeight();
+  const out: Box[] = [];
+  const add = (el: Element, rects: Iterable<DOMRect>): void => {
+    let left = Infinity;
+    let top = Infinity;
+    let right = -Infinity;
+    let bottom = -Infinity;
+    for (const r of rects) {
+      if (!(r.width > 0 && r.height > 0)) continue;
+      left = Math.min(left, r.left);
+      top = Math.min(top, r.top);
+      right = Math.max(right, r.right);
+      bottom = Math.max(bottom, r.bottom);
+    }
+    if (right > left && bottom > top) {
+      out.push(placeInFlow(el, { left, top, width: right - left, height: bottom - top }, nav));
+    }
+  };
+  const shown = (el: Element): boolean =>
+    el.closest(SKIP) === null && getComputedStyle(el).visibility !== 'hidden';
+  for (const el of root.querySelectorAll(CONTROLS)) {
+    if (shown(el)) add(el, el.getClientRects());
+  }
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const range = document.createRange();
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    const el = node.parentElement;
+    if (el === null || !node.textContent?.trim() || !shown(el)) continue;
+    range.selectNodeContents(node);
+    add(el, range.getClientRects());
+  }
+  return out;
 }
 
 /** The viewport and the scroll range the pose needs. */

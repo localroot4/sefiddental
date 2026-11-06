@@ -110,6 +110,8 @@ export default function JourneyLayer(props: {
           `translate3d(${pose.x - BOX / 2}px, ${pose.y - BOX / 2}px, 0) scale(${pose.scale / BOX})`,
         );
         box.style.setProperty('--breathe', String(idleAmount(pose)));
+        // Over text the courier fades out (pose.ts clearance), so no line ever sits on it.
+        box.style.setProperty('opacity', String(Math.round(pose.opacity * 1000) / 1000));
         // Seated in the arch the tooth is a crown seen from above: its turn is the footprint's.
         spin.current?.style.setProperty('transform', `rotateY(${domSpin(pose)}rad)`);
         const isTooth = pose.form === 'tooth';

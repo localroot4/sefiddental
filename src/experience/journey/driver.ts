@@ -15,8 +15,8 @@
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import { AWAY_ATTR, HERE_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
-import { measureDocks, measureViewport } from './docks';
-import { courierPose, type Dock, type Pose, type Viewport } from './pose';
+import { measureDocks, measureObstacles, measureViewport } from './docks';
+import { courierPose, type Box, type Dock, type Pose, type Viewport } from './pose';
 /** The molar slot's attribute that hides its SVG art (MolarStepper, phase 8 pass.ts). */
 const LIVE_ATTR = 'data-world-live';
 /** Still frames before the driver lets go of the tick. */
@@ -87,6 +87,7 @@ export function createJourney(opts: {
   const { root, engine, tier, render } = opts;
   const html = document.documentElement;
   let docks: Dock[] = [];
+  let obstacles: Box[] = [];
   let bands: Band[] = [];
   let viewport: Viewport = { width: 0, height: 0, maxScroll: 0 };
   let webgl = false;
@@ -104,6 +105,7 @@ export function createJourney(opts: {
 
   const measure = (): void => {
     docks = measureDocks(root);
+    obstacles = measureObstacles(root);
     bands = measureBands(root);
     viewport = measureViewport();
   };
@@ -112,7 +114,7 @@ export function createJourney(opts: {
   let away: boolean | null = null;
   const apply = (): void => {
     const scrollY = window.scrollY;
-    const pose = courierPose(scrollY, docks, viewport, tier);
+    const pose = courierPose(scrollY, docks, viewport, tier, obstacles);
     const opacity = String(Math.round(pose.smile * 1000) / 1000);
     if (photo && opacity !== lastOpacity) {
       photo.style.opacity = opacity;
@@ -172,7 +174,7 @@ export function createJourney(opts: {
 
   return {
     tier,
-    pose: () => courierPose(window.scrollY, docks, viewport, tier),
+    pose: () => courierPose(window.scrollY, docks, viewport, tier, obstacles),
     docks: () => docks,
     viewport: () => viewport,
     setWebgl(on) {

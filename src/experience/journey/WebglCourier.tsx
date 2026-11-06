@@ -136,7 +136,7 @@ export function WebglCourier(props: {
         );
       }
 
-      if (!pose.hidden) {
+      if (!pose.hidden && pose.opacity > 0.005) {
         const atRestoration = pose.dock === 'restoration';
         const target = atRestoration
           ? levelFromChoice(choices?.getAttribute('data-choice') ?? null)

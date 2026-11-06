@@ -12,7 +12,13 @@ const tooth = () => {
   return geometry;
 };
 const mark = () => new BoxGeometry(1, 1.21, 0.17);
-const pose = (over: Partial<Pose>): Pose => ({ ...NO_POSE, hidden: false, scale: 200, ...over });
+const pose = (over: Partial<Pose>): Pose => ({
+  ...NO_POSE,
+  hidden: false,
+  scale: 200,
+  opacity: 1,
+  ...over,
+});
 const frame = (p: Pose) => ({
   pose: p,
   time: 1,

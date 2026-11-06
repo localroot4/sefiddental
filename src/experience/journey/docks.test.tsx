@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { isDockId, measureDocks, measureViewport } from './docks';
+import { isDockId, measureDocks, measureObstacles, measureViewport } from './docks';
 
 /** Gives `el` a viewport rect (jsdom lays nothing out); `rendered: false` is `display: none`. */
 function place(
@@ -106,6 +106,37 @@ describe('measureDocks', () => {
     Object.defineProperty(part, 'offsetTop', { configurable: true, value: 300 });
     expect(measureDocks()).toEqual([
       { id: 'footer', left: 1140, top: 1500, width: 96, height: 120, pin: null },
+    ]);
+  });
+
+  it('DK5 the obstacles: every shown text line and control, never decorative or hidden text', () => {
+    document.body.innerHTML = `
+      <main id="root">
+        <p id="lead">two lines</p>
+        <div aria-hidden="true"><p>decorative</p></div>
+        <p style="visibility: hidden">hidden</p>
+        <a id="cta" href="/x"></a>
+      </main>`;
+    scrollTo(500);
+    const lead = document.getElementById('lead')!;
+    const lines = [
+      { left: 100, top: 40, width: 300, height: 20, right: 400, bottom: 60 },
+      { left: 100, top: 62, width: 200, height: 20, right: 300, bottom: 82 },
+    ] as DOMRect[];
+    // jsdom lays out no text: the lead's two lines, a small box for anything else.
+    const other = [{ left: 0, top: 0, width: 50, height: 10, right: 50, bottom: 10 }] as DOMRect[];
+    Object.defineProperty(Range.prototype, 'getClientRects', {
+      configurable: true,
+      value(this: Range) {
+        return this.startContainer.parentElement === lead ? lines : other;
+      },
+    });
+    place(document.getElementById('cta')!, { top: 300, left: 20, w: 120, h: 44 });
+    const boxes = measureObstacles(document.getElementById('root')!);
+    delete (Range.prototype as { getClientRects?: unknown }).getClientRects;
+    expect(boxes).toEqual([
+      { left: 20, top: 800, width: 120, height: 44, pin: null },
+      { left: 100, top: 540, width: 300, height: 42, pin: null },
     ]);
   });
 

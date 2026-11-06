@@ -4,9 +4,12 @@ import { ARCH_DEPTH, ARCH_SLOT, ARCH_TEETH, archLayout, footprintAngle, projectA
 import {
   archFrame,
   bounceOut,
+  clearance,
   courierPose,
   CROWN_SHARE,
+  FADE_PX,
   FOOTER_DROP_PX,
+  FORM_SHARE,
   holdRanges,
   domSpin,
   idleAmount,
@@ -15,6 +18,7 @@ import {
   NO_POSE,
   STATIONS,
   viewportTop,
+  type Box,
   type Dock,
   type DockId,
   type Pose,
@@ -381,6 +385,58 @@ describe('seat and spin', () => {
     const seated = at(holds.find((h) => h.dock.id === 'smile')!.end - 1);
     expect(seatAmount(seated)).toBe(1);
     expect(domSpin(seated)).toBe(0);
+  });
+});
+
+describe('never under text', () => {
+  /** A paragraph across the page between the dentists and the booking docks. */
+  const text: Box = { left: 0, top: 10_500, width: 1440, height: 60, pin: null };
+  const withText = (y: number) => courierPose(y, page(), VIEW, 2, [text]);
+
+  it('J22 the courier fades out over text and back, continuously, the same both ways', () => {
+    const holds = holdsOf();
+    const a = holds.find((h) => h.dock.id === 'dentists')!;
+    const b = holds.find((h) => h.dock.id === 'booking')!;
+    let hidden = 0;
+    let prev = withText(a.end);
+    for (let y = a.end; y <= b.start; y += 1) {
+      const pose = withText(y);
+      const half = (pose.scale * FORM_SHARE) / 2;
+      const top = text.top - y;
+      const touching = pose.y + half > top && pose.y - half < top + text.height;
+      // Wherever its form's box touches the text, the courier shows nothing.
+      if (touching) expect(pose.opacity, `at ${y}`).toBe(0);
+      if (pose.opacity === 0) hidden += 1;
+      expect(Math.abs(pose.opacity - prev.opacity), `fade step at ${y}`).toBeLessThan(0.2);
+      expect(withText(y)).toEqual(pose);
+      prev = pose;
+    }
+    expect(hidden).toBeGreaterThan(0);
+    // Away from it the courier is whole, and docks (clear of text) show it whole.
+    expect(withText(a.end).opacity).toBe(1);
+    expect(withText(middleOf('booking')).opacity).toBe(1);
+  });
+
+  it('J23 clearance is 1 from FADE_PX away, 0 on contact, and follows a pinned box', () => {
+    const pose = { ...at(middleOf('dentists')), scale: 100 };
+    const half = (100 * FORM_SHARE) / 2;
+    const box = (gap: number): Box => ({
+      left: pose.x + half + gap,
+      top: 2000 + pose.y - 10,
+      width: 50,
+      height: 20,
+      pin: null,
+    });
+    expect(clearance(pose, [box(FADE_PX + 1)], 2000)).toBe(1);
+    expect(clearance(pose, [box(0)], 2000)).toBe(0);
+    const mid = clearance(pose, [box(FADE_PX / 2)], 2000);
+    expect(mid).toBeGreaterThan(0);
+    expect(mid).toBeLessThan(1);
+    expect(clearance(pose, [], 2000)).toBe(1);
+    // A box in a stuck stage stays put on screen through its pin.
+    const pinned: Box = { ...box(0), top: 5000 + pose.y - 10, pin: { start: 5000, end: 6000 } };
+    expect(clearance(pose, [pinned], 5500)).toBe(0);
+    expect(clearance(pose, [pinned], 6500)).toBe(1);
   });
 });
 
