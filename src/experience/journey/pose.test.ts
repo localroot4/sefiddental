@@ -8,7 +8,9 @@ import {
   CROWN_SHARE,
   FOOTER_DROP_PX,
   holdRanges,
+  domSpin,
   idleAmount,
+  seatAmount,
   MIN_TRAVEL_VH,
   NO_POSE,
   STATIONS,
@@ -342,6 +344,30 @@ describe('courierPose: purity', () => {
       prev = pose;
     }
     expect(prev.dock).toBe('smile');
+  });
+});
+
+describe('seat and spin', () => {
+  it('J21 only the tooth seats: after the smile the mark turns face to the reader again (DOM spin)', () => {
+    const d6 = at(middleOf('dentists'));
+    expect(d6.arch).toBe(1);
+    expect(seatAmount(d6)).toBe(0);
+    expect(domSpin(d6)).toBeCloseTo(d6.rotation, 9);
+    expect(Math.abs(domSpin(d6))).toBeGreaterThan(0.2);
+    // The whip out of the smile turns the DOM mark too.
+    const holds = holdsOf();
+    const a = holds.find((h) => h.dock.id === 'smile')!;
+    const b = holds.find((h) => h.dock.id === 'dentists')!;
+    let edge = 1;
+    for (let t = 0; t <= 0.3; t += 0.005) {
+      const p = at(a.end + (b.start - a.end) * t);
+      if (p.form === 'mark') edge = Math.min(edge, Math.abs(Math.cos(domSpin(p))));
+    }
+    expect(edge).toBeLessThan(0.2);
+    // Seated in the arch the tooth shows its footprint: no spin.
+    const seated = at(holds.find((h) => h.dock.id === 'smile')!.end - 1);
+    expect(seatAmount(seated)).toBe(1);
+    expect(domSpin(seated)).toBe(0);
   });
 });
 

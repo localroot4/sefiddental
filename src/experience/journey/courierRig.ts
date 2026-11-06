@@ -34,7 +34,7 @@ import { createStudio } from '../scenes/webgl/studio';
 
 import { ARCH_DEPTH, ARCH_ELEVATION, ARCH_SLOT, archLayout } from './arch';
 import type { Beats } from './beats';
-import type { Pose } from './pose';
+import { seatAmount, type Pose } from './pose';
 
 /** The pass box is this much larger than the pose's scale: room for the turn and the shadow. */
 export const BOX_GROW = 1.5;
@@ -314,7 +314,7 @@ export function createCourierRig(
       mark.visible = !isTooth;
       tooth.visible = isTooth;
       // Near the arch the tooth turns its crown to the camera and pivots on it, as it seats.
-      const seat = isTooth ? pose.arch : 0;
+      const seat = seatAmount(pose);
       tilt.rotation.x = isTooth ? TOOTH_TILT + (ARCH_ELEVATION - TOOTH_TILT) * seat : 0;
       const centre = (MOLAR_Y.min + MOLAR_Y.max) / 2;
       tooth.position.y = -(centre + (CROWN_Y - centre) * seat) * toothScale;

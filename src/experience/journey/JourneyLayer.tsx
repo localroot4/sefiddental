@@ -21,7 +21,7 @@ import { levelFromChoice } from '../scenes/webgl/math';
 
 import { ARCH_SLOT, archLayout, footprintAngle, projectArch } from './arch';
 import { createJourney, type BandId, type Frame, type EngineTicks, type Journey } from './driver';
-import { archFrame, CROWN_SHARE, holdRanges, idleAmount } from './pose';
+import { archFrame, CROWN_SHARE, domSpin, holdRanges, idleAmount, seatAmount } from './pose';
 
 /** The courier's box before its scale (px). */
 const BOX = 100;
@@ -106,15 +106,13 @@ export default function JourneyLayer(props: {
         );
         box.style.setProperty('--breathe', String(idleAmount(pose)));
         // Seated in the arch the tooth is a crown seen from above: its turn is the footprint's.
-        spin.current?.style.setProperty(
-          'transform',
-          `rotateY(${pose.rotation * (1 - pose.arch)}rad)`,
-        );
+        spin.current?.style.setProperty('transform', `rotateY(${domSpin(pose)}rad)`);
         const isTooth = pose.form === 'tooth';
         const fade = isTooth ? 1 - pose.smile : 1;
         mark.current?.style.setProperty('opacity', isTooth ? '0' : '1');
-        tooth.current?.style.setProperty('opacity', String(isTooth ? fade * (1 - pose.arch) : 0));
-        crown.current?.style.setProperty('opacity', String(isTooth ? fade * pose.arch : 0));
+        const seat = seatAmount(pose);
+        tooth.current?.style.setProperty('opacity', String(isTooth ? fade * (1 - seat) : 0));
+        crown.current?.style.setProperty('opacity', String(isTooth ? fade * seat : 0));
         // The chips' level at the restoration dock, plain everywhere else.
         const level =
           pose.dock === 'restoration'

@@ -394,6 +394,19 @@ export function courierPose(
   };
 }
 
+/** 0..1 how far the tooth has seated into the arch (its crown turns to the camera); 0 for the mark. */
+export function seatAmount(pose: Pose): number {
+  return pose.form === 'tooth' ? pose.arch : 0;
+}
+
+/**
+ * The DOM courier's turn about the vertical axis: the pose's, except a seated tooth, which shows
+ * its crown's footprint (the SVG arch's own angle) instead.
+ */
+export function domSpin(pose: Pose): number {
+  return pose.rotation * (1 - seatAmount(pose));
+}
+
 /**
  * How much of the idle motion (the breath, the slow turn) shows: none at the footer, where the
  * mark must land exactly on the playground's part, fading out on the way there.
