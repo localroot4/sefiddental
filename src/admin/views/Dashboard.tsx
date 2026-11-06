@@ -81,7 +81,7 @@ export function Dashboard(props: DashboardViewServerProps) {
         </div>
         <div className={styles.trend}>
           <Suspense fallback={<PanelSkeleton rows={2} />}>
-            <BookingsTrend {...widget} />
+            <BookingsTrend {...widget} now={now} />
           </Suspense>
         </div>
         <div className={styles.calendar}>

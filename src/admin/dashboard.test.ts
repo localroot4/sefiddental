@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { CALENDAR_PATH } from '@/admin/calendar';
 import { ADMIN_ROUTE } from '@/lib/paths';
 
-import { greetingKey, loadTrend, quickActions, trendDays } from './dashboard';
+import { greetingKey, loadTrend, quickActions, TREND_CAP, trendDays } from './dashboard';
 
 // 18 Oct 2026 in Tehran (UTC+3:30): 12:00 local is 08:30Z.
 const tehran = (hhmm: string, day = '2026-10-18') => {
@@ -71,7 +71,7 @@ describe('dashboard greeting and trend', () => {
         },
       }),
     );
-    expect(days.at(-1)).toEqual({ key: '2026-10-18', count: 1 });
+    expect(days?.at(-1)).toEqual({ key: '2026-10-18', count: 1 });
   });
 
   it('DS4 quick actions follow the navigation: status for admins, a new article with create access', () => {
@@ -89,5 +89,13 @@ describe('dashboard greeting and trend', () => {
     expect(hrefs({ role: 'editor' }, false)).toEqual([bookings, CALENDAR_PATH]);
     expect(hrefs(null, true)).toEqual([]);
     expect(quickActions({ role: 'editor' }, true).filter((a) => a.primary)).toHaveLength(1);
+  });
+
+  it('DS5 a week that fills the cap is unknown, never an undercount', async () => {
+    const at = tehran('09:00').toISOString();
+    const docs = Array.from({ length: TREND_CAP }, (_, id) => ({ id, createdAt: at }));
+    const find = vi.fn(async () => ({ docs }));
+    expect(await loadTrend({ find } as unknown as Payload, tehran('12:00'))).toBeNull();
+    expect(find).toHaveBeenCalledWith(expect.objectContaining({ limit: TREND_CAP }));
   });
 });

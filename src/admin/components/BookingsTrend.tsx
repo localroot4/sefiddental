@@ -89,10 +89,15 @@ export function BookingsTrendBody({ days }: { days: TrendDay[] | null }) {
   );
 }
 
-/** The dashboard's trend panel for TOTP-verified staff: one read (dashboard.ts loadTrend). */
-export async function BookingsTrend({ payload, user }: ServerProps) {
+/**
+ * The dashboard's trend panel for TOTP-verified staff: one read (dashboard.ts loadTrend). `now`
+ * comes from the view, so the header's date and the trend's today are the same day.
+ */
+export async function BookingsTrend({
+  payload,
+  user,
+  now = new Date(),
+}: ServerProps & { now?: Date }) {
   if (!(await isVerifiedStaff(payload, user))) return null;
-  return (
-    <BookingsTrendBody days={await widgetRead('trend', () => loadTrend(payload, new Date()))} />
-  );
+  return <BookingsTrendBody days={await widgetRead('trend', () => loadTrend(payload, now))} />;
 }

@@ -9,9 +9,9 @@ import { addDaysToKey, CLINIC_TZ, type DateKey, zonedDateKey, zonedParts } from 
 import { ADMIN_ROUTE } from '@/lib/paths';
 
 export const TREND_DAYS = 7;
-// shortcut: a week with more requests than this undercounts its oldest days; switch to one
-// count per day if the clinic ever takes over 2 000 requests a week.
-const TREND_CAP = 2000;
+// shortcut: a week with this many requests reads as unknown (null) rather than undercounting its
+// oldest days; switch to one count per day if the clinic ever nears 2 000 requests a week.
+export const TREND_CAP = 2000;
 
 /** The dashboard greeting for the hour on the Tehran clock. */
 export function greetingKey(now: Date): AdminMessageKey {
@@ -41,9 +41,10 @@ export function trendDays(createdAts: readonly string[], now: Date, days = TREND
 
 /**
  * One read of createdAt alone (indexed, no personal data) for the real requests of the last
- * seven Tehran days. Access is overridden: callers check isVerifiedStaff first.
+ * seven Tehran days; null when the read hit the cap. Access is overridden: callers check
+ * isVerifiedStaff first.
  */
-export async function loadTrend(payload: Payload, now: Date): Promise<TrendDay[]> {
+export async function loadTrend(payload: Payload, now: Date): Promise<TrendDay[] | null> {
   const first = tehranDayStart(new Date(now.getTime() - (TREND_DAYS - 1) * 86_400_000));
   const { docs } = await payload.find({
     collection: 'bookings',
@@ -55,6 +56,7 @@ export async function loadTrend(payload: Payload, now: Date): Promise<TrendDay[]
     depth: 0,
     overrideAccess: true,
   });
+  if (docs.length >= TREND_CAP) return null;
   return trendDays(
     docs.map((doc) => doc.createdAt),
     now,
