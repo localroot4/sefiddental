@@ -344,6 +344,9 @@
 [data-courier-breathe] {
   animation: courier-breathe 6s var(--ease-in-out) infinite;
 }
+[data-courier]:not([data-shown]) [data-courier-breathe] {
+  animation-play-state: paused;
+}
 @keyframes courier-breathe {
   0%,
   100% {

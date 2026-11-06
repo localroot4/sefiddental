@@ -102,6 +102,8 @@ export default function JourneyLayer(props: {
       const box = courier.current;
       const show = !webgl && !pose.hidden;
       box?.style.setProperty('visibility', show ? 'visible' : 'hidden');
+      // The breath pauses while the DOM courier is hidden.
+      if (box && box.hasAttribute('data-shown') !== show) box.toggleAttribute('data-shown', show);
       if (box && show) {
         box.style.setProperty(
           'transform',
