@@ -46,6 +46,8 @@ AVIF (quality 50) and WebP (quality 72) at the widths of
 `smile-*` was downloaded on 2026-11-06 (the original size); its photographer comes
 from the file's own XMP creator field, as the Pexels page was not reachable from
 the build host. It shows only the smile (nose to chin), as the voice posters do.
+The owner checked the page and the photographer on 2026-11-06. Every demo photo is
+to be replaced one by one with the clinic's own commissioned images.
 
 Not filled on purpose: the before/after pair (two stock photos would claim a
 treatment result), the address and wayfinding photos and the static map (a
