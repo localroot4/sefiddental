@@ -131,7 +131,9 @@ async function pixelContrast(page: Page, target: Locator): Promise<Contrast> {
     const color = style.color;
     const range = document.createRange();
     range.selectNodeContents(el);
-    const lines = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+    // A form field's value has no text node to select: its own box holds the text.
+    const textLines = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
+    const lines = textLines.length > 0 ? textLines : [el.getBoundingClientRect()];
     const left = Math.max(Math.min(...lines.map((r) => r.left)), 0);
     const top = Math.max(Math.min(...lines.map((r) => r.top)), 0);
     const right = Math.min(Math.max(...lines.map((r) => r.right)), window.innerWidth);
