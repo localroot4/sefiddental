@@ -15,6 +15,14 @@ import sharp from 'sharp';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const origin = process.argv[2] ?? 'http://localhost:3000';
 const tier = process.argv.find((a) => a.startsWith('--tier='))?.slice(7) ?? '2';
+// `--only=1440x900:dock-hero,390x844:dock-services`: retake just these shots.
+const only = process.argv
+  .find((a) => a.startsWith('--only='))
+  ?.slice(7)
+  .split(',')
+  .map((pair) => pair.split(':'));
+const wanted = (size, stop) =>
+  !only || only.some(([s, name]) => s === size && stop.includes(name));
 const SIZES = [
   { name: '1440x900', width: 1440, height: 900, phone: false },
   { name: '1024x768', width: 1024, height: 768, phone: false },
@@ -27,6 +35,7 @@ const browser = await chromium.launch({
 });
 mkdirSync(here, { recursive: true });
 for (const size of SIZES) {
+  if (only && !only.some(([s]) => s === size.name)) continue;
   for (const scheme of ['light', 'dark']) {
     const context = await browser.newContext({
       viewport: { width: size.width, height: size.height },
@@ -57,6 +66,7 @@ for (const size of SIZES) {
         : [dock];
     });
     for (const stop of stops) {
+      if (!wanted(size.name, stop.name)) continue;
       // Twice: a smooth scroll still running would carry the first jump on.
       for (let k = 0; k < 2; k += 1) {
         await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), Math.ceil(stop.y));
