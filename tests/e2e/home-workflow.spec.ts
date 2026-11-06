@@ -318,7 +318,7 @@ test('T-WF3 390 touch: a vertical timeline, no spacer; ?tier=1 scrubs a Rise on 
   expect(warm).toEqual(['0', '0', '0', '0']);
 });
 
-test('T-WF4 the scene is one section between restoration and compare, with its world slot and four lazy photos', async ({
+test('T-WF4 the scene is one section between restoration and compare, with its journey dock and four lazy photos', async ({
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
@@ -336,7 +336,14 @@ test('T-WF4 the scene is one section between restoration and compare, with its w
     () => (window as unknown as { __sefid: Hook }).__sefid.snapshot().labels,
   );
   expect(labels).toContain('workflow');
-  await expect(page.locator('[data-world-slot="workflow"]')).toHaveCount(1);
+  // The courier's D4 box (docs/experience/journey.md) replaced the scene's own world slot; the
+  // journey's smile band (no scene id) follows the section.
+  await expect(page.locator('[data-scene="workflow"] [data-dock="workflow"]')).toHaveCount(1);
+  expect(
+    await page
+      .locator('[data-scene="workflow"]')
+      .evaluate((el) => el.nextElementSibling?.hasAttribute('data-smile-band')),
+  ).toBe(true);
   const imgs = page.locator('[data-scene="workflow"] picture img');
   await expect(imgs).toHaveCount(4);
   expect(await imgs.evaluateAll((els) => els.map((el) => el.getAttribute('loading')))).toEqual([
