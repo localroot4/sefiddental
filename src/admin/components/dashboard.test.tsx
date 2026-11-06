@@ -11,7 +11,7 @@ import { adminText } from '@/i18n/fa-admin';
 import { ADMIN_ROUTE } from '@/lib/paths';
 
 import { BookingsTodayBody } from './BookingsToday';
-import { BookingsTrendBody } from './BookingsTrend';
+import { BookingsTrend, BookingsTrendBody } from './BookingsTrend';
 import { CalendarNavLink } from './CalendarNavLink';
 import { CalendarAgenda, ContentCalendar, ContentCalendarBody } from './ContentCalendar';
 import { ContentGapsSummary, ContentGapsSummaryBody } from './ContentGapsSummary';
@@ -236,11 +236,21 @@ describe('SEO health and content gaps (H33)', () => {
   it('DB6 nothing for an unverified session; content gaps and nothing else for editors', async () => {
     const payload = staffPayload(async () => ({ docs: [] }));
     const props = (user: object | null) => dashboardProps(payload, user);
-    for (const Widget of [ContentCalendar, SeoHealth, ContentGapsSummary]) {
-      expect(await Widget(props({ ...EDITOR, _strategy: 'local-jwt', hasTotp: true }))).toBeNull();
-      expect(await Widget(props(null))).toBeNull();
+    const refused = [
+      { ...EDITOR, _strategy: 'local-jwt', hasTotp: true }, // enrolled, code not entered
+      { ...EDITOR, _strategy: 'local-jwt', hasTotp: false }, // not enrolled, setup forced
+      { ...EDITOR, role: 'none', _strategy: 'totp' }, // verified, but not staff
+      null,
+    ];
+    for (const Widget of [ContentCalendar, SeoHealth, ContentGapsSummary, BookingsTrend]) {
+      for (const user of refused)
+        expect(await Widget(props(user)), JSON.stringify(user)).toBeNull();
     }
     expect(payload.find).not.toHaveBeenCalled();
+    // Control: a verified editor gets the trend, from one read.
+    expect(await BookingsTrend(props({ ...EDITOR, _strategy: 'totp' }))).not.toBeNull();
+    expect(payload.find).toHaveBeenCalledTimes(1);
+    payload.find.mockClear();
     expect(await ContentGapsSummary(props({ ...EDITOR, _strategy: 'totp' }))).toBeNull();
     expect(await ContentCalendar(props({ ...EDITOR, _strategy: 'totp' }))).not.toBeNull();
   });
