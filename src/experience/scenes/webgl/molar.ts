@@ -87,6 +87,8 @@ export interface EnamelUniforms {
   uBuildEdge: { value: Color };
   /** 0 matte milled block, 1 glazed enamel (scene 5). */
   uGlaze: { value: number };
+  /** 0..1 the enamel dissolves in a noise pattern (the arch into the smile, journey D5). */
+  uDissolve: { value: number };
 }
 
 export interface Enamel {
@@ -108,6 +110,7 @@ export function createEnamel(opts: { color: string; sss: number }): Enamel {
     uBuild: { value: 1 },
     uBuildEdge: { value: new Color('#2BB5AA') },
     uGlaze: { value: 1 },
+    uDissolve: { value: 0 },
   };
   const material = new MeshPhysicalMaterial({
     color: opts.color,
@@ -157,6 +160,7 @@ uniform float uReflect;
 uniform float uBuild;
 uniform vec3 uBuildEdge;
 uniform float uGlaze;
+uniform float uDissolve;
 varying vec3 vObjPos;
 varying vec3 vObjNormal;
 ${NOISE_GLSL}`,
@@ -166,6 +170,7 @@ ${NOISE_GLSL}`,
         `#include <clipping_planes_fragment>
 float sefidCut = mix(${yMin} - 0.02, ${yMax} + 0.06, uBuild);
 if (vObjPos.y > sefidCut) discard;
+if (uDissolve > 0.0 && sefidNoise(vObjPos.xy * 7.0 + vObjPos.z * 5.0) * 0.98 + 0.01 < uDissolve) discard;
 float sefidEdge = uBuild < 0.999 ? 1.0 - smoothstep(0.0, 0.05, sefidCut - vObjPos.y) : 0.0;`,
       )
       .replace(
@@ -233,7 +238,7 @@ material.clearcoat *= uGlaze;
 #include <opaque_fragment>`,
       );
   };
-  material.customProgramCacheKey = () => 'sefid-enamel-1';
+  material.customProgramCacheKey = () => 'sefid-enamel-2';
 
   return {
     material,

@@ -2,22 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { tierSettings } from '@/lib/qualityTier';
 
-import { diagonalDraws, molarDraws, wipeDraws } from './assets';
+import { wipeDraws } from './assets';
 import {
   damp,
-  fitDistance,
   levelBlend,
   levelFromChoice,
   passViewport,
-  pinProgress,
   ramp,
   STEP_YAW,
   turntableYaw,
   wipeAmplitude,
   wipeEdge,
   WIPE_REST,
-  workflowDraws,
-  workflowStages,
 } from './math';
 
 const desktop = { width: 1440, height: 900, dpr: 1 };
@@ -59,57 +55,13 @@ describe('scene 4 level and turntable', () => {
     expect(damp(0.4, 1, 0, 0.3)).toBe(0.4);
     expect(damp(0.4, 1, 0.016, 0)).toBe(1);
   });
-
-  it('fits the box by height in a tall view and by width in a wide one', () => {
-    const half = Math.tan((12 * Math.PI) / 180);
-    expect(fitDistance(24, 0.5, 1, 1)).toBeCloseTo(1 / (2 * half * 0.5), 10);
-    expect(fitDistance(24, 2, 1, 1)).toBeCloseTo(1 / (2 * half), 10);
-  });
 });
 
-describe('scene 5 beats', () => {
+describe('ramp', () => {
   it('ramps smoothly between its edges', () => {
     expect(ramp(-1, 0, 1)).toBe(0);
     expect(ramp(0.5, 0, 1)).toBe(0.5);
     expect(ramp(2, 0, 1)).toBe(1);
-  });
-
-  it('shows one beat per step: scan, wireframe, solid with glaze, warm light', () => {
-    const scan = workflowStages(0);
-    // Mostly formed as the pin starts, complete a little after.
-    expect(scan.assemble).toBeGreaterThan(0.7);
-    expect(workflowStages(0.1).assemble).toBe(1);
-    expect(scan.points).toBe(1);
-    expect(scan.wire).toBe(0);
-    expect(scan.build).toBe(0);
-
-    const design = workflowStages(1 / 3);
-    expect(design.wire).toBe(1);
-    expect(design.points).toBeLessThan(0.3);
-    expect(design.build).toBe(0);
-
-    const make = workflowStages(2 / 3);
-    expect(make.build).toBe(1);
-    expect(make.wire).toBeLessThan(0.5);
-    expect(make.glaze).toBeGreaterThan(0.4);
-    expect(make.warm).toBe(0);
-
-    const smile = workflowStages(1);
-    expect(smile).toMatchObject({ points: 0, wire: 0, build: 1, glaze: 1, warm: 1 });
-  });
-
-  it('forms the cloud as the stage comes up to the nav, before the pin starts', () => {
-    expect(workflowStages(-0.3).assemble).toBe(0);
-    expect(workflowStages(-0.1).assemble).toBeGreaterThan(0.3);
-  });
-
-  it('measures the pin on the room: 0 when the stage sticks, 1 at the end of the room', () => {
-    // nav 72, stage 828, room 1800: the room's top is at 900 when the stage reaches the nav.
-    expect(pinProgress(900, 72, 828, 1800)).toBe(0);
-    expect(pinProgress(0, 72, 828, 1800)).toBe(0.5);
-    expect(pinProgress(-900, 72, 828, 1800)).toBe(1);
-    expect(pinProgress(1080, 72, 828, 1800)).toBeLessThan(0);
-    expect(pinProgress(100, 72, 828, 0)).toBe(0);
   });
 });
 
@@ -133,24 +85,6 @@ describe('scene 6 wipe', () => {
 });
 
 describe('tier gates', () => {
-  it('scene 4: the 3D molar at tiers 2 and 3, and at tier 1 from 1024 px only', () => {
-    expect(molarDraws(tierSettings(3, desktop, true))).toBe(true);
-    expect(molarDraws(tierSettings(2, phone, false))).toBe(true);
-    expect(molarDraws(tierSettings(1, desktop, true))).toBe(true);
-    expect(molarDraws(tierSettings(1, phone, false))).toBe(false);
-    expect(molarDraws(tierSettings(0, desktop, true))).toBe(false);
-  });
-
-  it('scene 5: only the pinned diagonal at tiers 2 and 3', () => {
-    expect(diagonalDraws(tierSettings(2, desktop, true))).toBe(true);
-    expect(diagonalDraws(tierSettings(1, desktop, true))).toBe(false);
-    expect(diagonalDraws(tierSettings(3, phone, false))).toBe(false);
-    expect(workflowDraws(3, true)).toBe(true);
-    expect(workflowDraws(2, true)).toBe(true);
-    expect(workflowDraws(2, false)).toBe(false);
-    expect(workflowDraws(1, true)).toBe(false);
-  });
-
   it('scene 6: the WebGL wipe at tiers 2 and 3 on a wide screen, the DOM clip-path otherwise', () => {
     expect(wipeDraws(tierSettings(3, desktop, true), true)).toBe(true);
     expect(wipeDraws(tierSettings(2, desktop, true), true)).toBe(true);

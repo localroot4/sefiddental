@@ -20,6 +20,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import type { TierSettings } from '@/lib/qualityTier';
 
+import { AWAY_ATTR, LIFTOFF_EVENT } from '../../journey/attrs';
 import type { DomScene } from '../types';
 
 type DraggableClass = (typeof import('./playground.lazy'))['default'];
@@ -110,15 +111,19 @@ const scene: DomScene = {
       if (drags.some((drag) => drag.isPressed)) return;
       homeTimer = window.setTimeout(goHome, HOME_AFTER_MS);
     };
-    const drop = (): void => {
+    // The journey's courier delivers the mark (docs/experience/journey.md section 4): while it
+    // has not landed, the mark part waits at home, hidden, and the enter drop leaves it out.
+    const drop = (enter = false): void => {
       if (gone) return;
+      const falling = enter ? parts.filter((part) => !part.hasAttribute(AWAY_ATTR)) : parts;
+      if (falling.length === 0) return;
       clearHomeTimer();
       killAll();
-      gsap.set(parts, {
+      gsap.set(falling, {
         x: 0,
         y: (_: number, part: HTMLElement) => -(part.offsetTop + part.offsetHeight + DROP_ABOVE_PX),
       });
-      gsap.to(parts, {
+      gsap.to(falling, {
         y: 0,
         ease: 'bounce.out',
         duration: 1.3,
@@ -126,6 +131,13 @@ const scene: DomScene = {
         onComplete: armHome,
       });
     };
+    // The courier lifts off the mark's box: the part, wherever it was thrown, waits at home.
+    const onLiftoff = (event: Event): void => {
+      const part = event.currentTarget as HTMLElement;
+      for (const tween of gsap.getTweensOf(part)) tween.kill();
+      gsap.set(part, { x: 0, y: 0 });
+    };
+    for (const part of parts) part.addEventListener(LIFTOFF_EVENT, onLiftoff);
     const settle = (part: HTMLElement): void => {
       part.style.removeProperty('will-change');
       const floor = floorY(field, part);
@@ -190,11 +202,11 @@ const scene: DomScene = {
       start: ENTER,
       once: true,
       onEnter: () => {
-        load().then(drop, failed);
+        load().then(() => drop(true), failed);
       },
     });
     const onReplay = (): void => {
-      load().then(drop, failed);
+      load().then(() => drop(), failed);
     };
     replay.addEventListener('click', onReplay);
     // Its box is there at every tier (D24): only its visibility and its inertness change.
@@ -208,6 +220,7 @@ const scene: DomScene = {
       enter.kill();
       clearHomeTimer();
       replay.removeEventListener('click', onReplay);
+      for (const part of parts) part.removeEventListener(LIFTOFF_EVENT, onLiftoff);
       replay.classList.add('invisible');
       replay.setAttribute('inert', '');
       for (const drag of drags) drag.kill();

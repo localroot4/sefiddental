@@ -6,7 +6,7 @@
  * unmounts it two scenes away, where its handle frees what R3F does not. React state changes
  * only when a slot changes state, never per frame.
  */
-import { useEffect, useMemo, useRef, useState, type ComponentType } from 'react';
+import { useMemo, useRef, useState, type ComponentType } from 'react';
 
 import { useFrame } from '@react-three/fiber';
 
@@ -19,9 +19,7 @@ import { useWorld } from './context';
 const SLOTS = SCENES.filter((scene) => scene.webgl?.load !== undefined);
 const INDEX = new Map(SCENES.map((scene, i) => [scene.id, i]));
 
-/** `onMount` runs when a first slot mounts (the World then builds its environment). */
-export function SceneSlots(props: { onMount: () => void }): React.JSX.Element {
-  const { onMount } = props;
+export function SceneSlots(): React.JSX.Element {
   const { engine, tier, settings, drawingRef } = useWorld();
   const [modules, setModules] = useState<Partial<Record<SceneId, ComponentType<SceneProps>>>>({});
   const [states, setStates] = useState<Partial<Record<SceneId, SlotState>>>({});
@@ -75,10 +73,6 @@ export function SceneSlots(props: { onMount: () => void }): React.JSX.Element {
   }, -2);
 
   const mounted = SLOTS.filter((scene) => isMounted(states[scene.id] ?? 'idle'));
-  const anyMounted = mounted.length > 0;
-  useEffect(() => {
-    if (anyMounted) onMount();
-  }, [anyMounted, onMount]);
   return (
     <>
       {mounted.map((scene) => {

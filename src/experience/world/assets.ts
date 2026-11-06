@@ -12,7 +12,6 @@ const BASE = '/brand/3d';
 
 export const MODELS = {
   mark: `${BASE}/mark.glb`,
-  diamond: `${BASE}/diamond.glb`,
 } as const;
 
 export const DRACO_FILES = {
@@ -22,7 +21,6 @@ export const DRACO_FILES = {
 
 const BYTES: Record<string, number> = {
   [MODELS.mark]: 8529,
-  [MODELS.diamond]: 4479,
   [DRACO_FILES.worker]: 13537,
   [DRACO_FILES.wasm]: 63458,
 };

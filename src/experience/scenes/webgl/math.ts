@@ -1,6 +1,6 @@
 /**
- * Pure math of the scenes 4 to 6 (no three.js, no DOM): the level a chip selects, the turntable,
- * the workflow beats, the wipe edge and the tier gates. Unit-tested in math.test.ts.
+ * Pure math of the slot scenes and the courier (no three.js, no DOM): the level a chip selects,
+ * the turntable, the wipe edge and the pass viewport. Unit-tested in math.test.ts.
  */
 /** معمولی, VIP, CIP. */
 export const LEVELS = 3;
@@ -55,58 +55,6 @@ export function turntableYaw(s: number, progress: number, time: number): number 
   );
 }
 
-/** Camera distance at which a `width` x `height` box fills a perspective view of `fovDeg`. */
-export function fitDistance(fovDeg: number, aspect: number, width: number, height: number): number {
-  const half = Math.tan(((fovDeg / 2) * Math.PI) / 180);
-  const safeAspect = aspect > 0 ? aspect : 1;
-  return Math.max(height / (2 * half), width / (2 * half * safeAspect));
-}
-
-/**
- * Progress of a sticky stage through its room (the pinRoom.ts geometry: the stage sticks under
- * the nav and the room after it is the scroll distance), unclamped: below 0 while the stage
- * comes up to the nav, above 1 once it leaves.
- */
-export function pinProgress(roomTop: number, navH: number, stageH: number, roomH: number): number {
-  if (!(roomH > 0)) return 0;
-  return (navH + stageH - roomTop) / roomH;
-}
-
-export interface WorkflowStages {
-  /** The point cloud converges on the tooth (scan). */
-  assemble: number;
-  /** Height of the scan band, 0 at the root tips to 1 above the cusps. */
-  scan: number;
-  /** Point cloud opacity. */
-  points: number;
-  /** Wireframe opacity (design). */
-  wire: number;
-  /** The solid builds from the root tips to the cusps (design to solid). */
-  build: number;
-  /** Matte milled block to glazed enamel (make). */
-  glaze: number;
-  /** Cool to warm light (smile). */
-  warm: number;
-}
-
-/**
- * The four beats over the pin progress `p`, with step i of the DOM path at the stage centre at
- * p = i / 3 (workflow.ts): the scan forms the cloud as the stage arrives (p < 0) and through the
- * first step, the wireframe owns the second, the solid and its glaze the third, the warm light
- * the fourth. Overlaps are short so two beats never compete.
- */
-export function workflowStages(p: number): WorkflowStages {
-  return {
-    assemble: ramp(p, -0.25, 0.1),
-    scan: ramp(p, -0.15, 0.28),
-    points: 1 - ramp(p, 0.2, 0.33),
-    wire: ramp(p, 0.16, 0.32) * (1 - ramp(p, 0.56, 0.7)),
-    build: ramp(p, 0.36, 0.6),
-    glaze: ramp(p, 0.58, 0.76),
-    warm: ramp(p, 0.8, 1),
-  };
-}
-
 /**
  * The divider of the compare slider in texture space (x from the left, 0..1). CompareSlider puts
  * the divider `pos`% from the start side and shows the after photo on the end side: in RTL the
@@ -127,9 +75,6 @@ export function wipeAmplitude(current: number, speed: number, dt: number): numbe
   const target = Math.min(WIPE_MAX, WIPE_REST + Math.abs(speed) * WIPE_GAIN);
   return damp(current, target, dt, target > current ? 0.08 : 0.6);
 }
-
-/** Scene 5 draws only on the pinned diagonal; phones and tier 1 keep the DOM steps. */
-export const workflowDraws = (tier: number, pins: boolean): boolean => tier >= 2 && pins;
 
 export interface PassViewport {
   /** CSS px from the canvas's bottom-left, as WebGLRenderer.setViewport takes them. */

@@ -1,13 +1,16 @@
 /**
  * Scene registry, storyboard order (docs/experience/storyboard.md overview table). Phase 8 fills
  * `webgl.load` and `assets` scene by scene; each loader is its own chunk, fetched by the canvas's
- * slot host (world/SceneSlots.tsx) one scene ahead.
+ * slot host (world/SceneSlots.tsx) one scene ahead. The journey (docs/experience/journey.md)
+ * replaced the per-scene objects of scenes 2, 3, 4, 5 and 10 with one courier that is not a
+ * slot (journey/courier.ts): those scenes keep a `webgl` entry without a loader.
  */
-import { modelManifest } from '../world/assets';
 import type { TierSettings } from '@/lib/qualityTier';
 
+import { COURIER } from '../journey/courier';
+
 import type { SceneDefinition, SceneId } from './types';
-import { compareAssets, diagonalDraws, molarAssets, molarDraws, wipeDraws } from './webgl/assets';
+import { compareAssets, wipeDraws } from './webgl/assets';
 
 export const SCENES: readonly SceneDefinition[] = Object.freeze([
   {
@@ -32,13 +35,8 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [100, 140],
     pinnedDesktop: false,
     direction: 'vertical',
-    webgl: {
-      minTier: 1,
-      load: () => import('./webgl/trust'),
-      assets: () => modelManifest('mark', 'diamond'),
-      // The hero exit has a text-free box from 1024 px only.
-      draws: (settings) => settings.heroExitParallax,
-    },
+    // The courier's first dock (D1) sits in this band from 1024 px.
+    webgl: { minTier: 2 },
   },
   {
     id: 'services',
@@ -46,13 +44,7 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [140, 440],
     pinnedDesktop: true,
     direction: 'horizontal',
-    // Procedural relief: no download.
-    webgl: {
-      minTier: 2,
-      load: () => import('./webgl/services'),
-      assets: () => [],
-      draws: (settings) => settings.pinnedScenes,
-    },
+    webgl: { minTier: 2 },
   },
   {
     id: 'restoration',
@@ -60,12 +52,7 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [440, 640],
     pinnedDesktop: true,
     direction: 'vertical',
-    webgl: {
-      minTier: 1,
-      load: () => import('./webgl/restoration'),
-      assets: molarAssets,
-      draws: molarDraws,
-    },
+    webgl: { minTier: 2 },
   },
   {
     id: 'workflow',
@@ -73,12 +60,7 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [640, 940],
     pinnedDesktop: true,
     direction: 'diagonal',
-    webgl: {
-      minTier: 2,
-      load: () => import('./webgl/workflow'),
-      assets: molarAssets,
-      draws: diagonalDraws,
-    },
+    webgl: { minTier: 2 },
   },
   {
     id: 'compare',
@@ -123,14 +105,7 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
     desktopRangeVh: [1360, 1460],
     pinnedDesktop: false,
     direction: 'vertical',
-    // Tier 1 runs the world at the hero exit and the molar only (experience direction section 3).
-    webgl: {
-      minTier: 2,
-      load: () => import('./webgl/booking'),
-      assets: () => modelManifest('mark', 'diamond'),
-      // The empty slot under the hours exists from 1024 px only.
-      draws: (settings) => settings.pinnedScenes,
-    },
+    webgl: { minTier: 2 },
   },
   {
     id: 'footer',
@@ -148,8 +123,12 @@ export const SCENES: readonly SceneDefinition[] = Object.freeze([
  */
 export const SCENES_LOAD_WEBGL = SCENES.some((scene) => scene.webgl?.load !== undefined);
 
-/** A registry scene draws WebGL at this tier on this device and layout: the canvas has work. */
+/**
+ * The canvas has work at this tier on this device and layout: the courier (tiers 2 and 3, any
+ * width), or a registry scene that draws there. A tier 1 device loads no three.js.
+ */
 export function scenesDrawWebgl(tier: number, settings: TierSettings): boolean {
+  if (tier >= COURIER.minTier) return true;
   return SCENES.some(
     ({ webgl }) =>
       webgl?.load !== undefined && tier >= webgl.minTier && (webgl.draws?.(settings) ?? true),

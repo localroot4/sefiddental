@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 
 import { tierSettings } from '@/lib/qualityTier';
 
+import { COURIER } from '../journey/courier';
 import { SCENES } from '../scenes/registry';
 
 import { buildDracoWorker } from '../../../scripts/draco-worker.mjs';
@@ -16,7 +17,6 @@ const root = path.resolve(__dirname, '../../..');
 /** Where each served file comes from (scripts/sync-public-assets.mjs). */
 const SOURCES: Record<string, string> = {
   [MODELS.mark]: 'design/brand/3d/mark.glb',
-  [MODELS.diamond]: 'design/brand/3d/diamond.glb',
   [DRACO_FILES.wasm]: 'node_modules/three/examples/jsm/libs/draco/gltf/draco_decoder.wasm',
 };
 
@@ -34,7 +34,7 @@ describe('world assets', () => {
     );
     sources[DRACO_FILES.worker] = Buffer.from(buildDracoWorker(root) as string);
     for (const [url, bytes] of Object.entries(sources)) {
-      const entry = modelManifest('mark', 'diamond').find((item) => item.url === url);
+      const entry = modelManifest('mark').find((item) => item.url === url);
       expect(entry?.bytes, url).toBe(gzipSync(bytes).length);
     }
   });
@@ -46,6 +46,8 @@ describe('world assets', () => {
         if (!webgl?.assets || tier < webgl.minTier) return [];
         return [webgl.assets(tier)];
       });
+      // The courier of the journey (docs/experience/journey.md section 6) at tiers 2 and 3.
+      if (tier >= COURIER.minTier) manifests.push(COURIER.assets());
       const budget = tierSettings(tier, { width: 1440, height: 900, dpr: 1 }, true);
       const kb = manifestBytes(manifests) / 1024 + SCENE_JS_KB;
       expect(kb, `tier ${tier}`).toBeLessThanOrEqual(budget.webglAssetBudgetKB);
@@ -53,7 +55,7 @@ describe('world assets', () => {
   });
 
   it('AS3 shared files count once', () => {
-    const one = modelManifest('mark', 'diamond');
+    const one = COURIER.assets();
     expect(manifestBytes([one, one])).toBe(manifestBytes([one]));
   });
 });

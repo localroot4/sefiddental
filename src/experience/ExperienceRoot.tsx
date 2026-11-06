@@ -9,7 +9,7 @@
  */
 import 'lenis/dist/lenis.css';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Tier } from '@/lib/qualityTier';
 import { track } from '@/lib/track/track';
@@ -20,6 +20,7 @@ import { keepPlace, restorePlace } from './core/reloadPlace';
 import { createFrameRuntime, createStore, useStore, type ExperienceState } from './core/store';
 import type { ScrollEngine } from './engine/scrollEngine';
 import type { ScenePlace } from './engine/timelineMath';
+import type { Journey } from './journey/driver';
 import { isSceneId, SCENES, SCENES_LOAD_WEBGL, scenesDrawWebgl } from './scenes/registry';
 import type { SceneId } from './scenes/types';
 import { TierProvider, useTier, useTierStore } from './tier/TierProvider';
@@ -34,6 +35,7 @@ const PINS_ATTR = 'data-pins';
 type EngineModule = typeof import('./engine/scrollEngine');
 type CanvasModule = typeof import('./canvas/CanvasRoot');
 type OverlayModule = typeof import('./overlay/DevOverlay');
+type JourneyModule = typeof import('./journey/JourneyLayer');
 
 export function ExperienceRoot(props: {
   siteCap: Tier | null;
@@ -60,7 +62,13 @@ function ExperienceHost(props: {
 }): React.JSX.Element {
   const tier = useTier();
   const tierStore = useTierStore();
-  const rootRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  // The journey layer needs the element in a render: the ref keeps the effects' reads cheap.
+  const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
+  const setRoot = useCallback((el: HTMLDivElement | null) => {
+    rootRef.current = el;
+    setRootEl(el);
+  }, []);
   const [experience] = useState(() => createStore<ExperienceState>({ engine: null }));
   const [runtime] = useState(createFrameRuntime);
   const engine = useStore(experience, (state) => state.engine);
@@ -275,6 +283,26 @@ function ExperienceHost(props: {
     };
   }, [tier.debug, overlayModule]);
 
+  // The journey (docs/experience/journey.md): its layer and driver come with the engine at tiers
+  // 1 to 3 (the DOM courier, the bands, the hand-offs); the canvas courier reads its pose.
+  const [journeyModule, setJourneyModule] = useState<JourneyModule | null>(null);
+  const [journey, setJourney] = useState<Journey | null>(null);
+  const journeyWanted = engine !== null && readyTier >= 1;
+  useEffect(() => {
+    if (!journeyWanted || journeyModule !== null) return;
+    let cancelled = false;
+    import('./journey/JourneyLayer').then(
+      (mod) => {
+        if (!cancelled) setJourneyModule(mod);
+      },
+      (error: unknown) => console.error('[experience] journey layer failed to load.', error),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [journeyWanted, journeyModule]);
+  const JourneyLayer = journeyModule?.default;
+
   const CanvasRoot = canvasModule?.CanvasRoot;
   const DevOverlay = overlayModule?.DevOverlay;
   const canvasMounted = Boolean(CanvasRoot) && idleReached && engine !== null && readyTier >= 1;
@@ -318,9 +346,18 @@ function ExperienceHost(props: {
   }, []);
 
   return (
-    <div ref={rootRef} data-experience-root="" data-site-cap={props.siteCap ?? undefined}>
+    <div ref={setRoot} data-experience-root="" data-site-cap={props.siteCap ?? undefined}>
       {props.notice}
       {props.children}
+      {JourneyLayer && journeyWanted && rootEl !== null ? (
+        <JourneyLayer
+          root={rootEl}
+          engine={engine}
+          tier={readyTier}
+          debug={tier.debug}
+          onJourney={setJourney}
+        />
+      ) : null}
       {CanvasRoot && canvasMounted && engine !== null ? (
         <CanvasRoot
           tier={readyTier as 1 | 2 | 3}
@@ -331,6 +368,7 @@ function ExperienceHost(props: {
           runtime={runtime}
           stepDown={tier.stepDown}
           stress={tier.stress}
+          journey={journey}
         />
       ) : null}
       {DevOverlay ? <DevOverlay tier={tier} runtime={runtime} experience={experience} /> : null}

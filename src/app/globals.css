@@ -323,10 +323,33 @@
   }
 }
 
-/* Phase 8, scene 10: the booking stage is transparent only while the world paints, behind the
-   warm layer, the colour that composites to its own `--color-warm-soft` (scenes/webgl/booking.tsx
-   writes the attribute after that frame and removes it before the world stops), so the idle mark
-   beside the form shows and every text pair keeps the contrast it has on the opaque stage. */
-[data-world-stage] [data-home-section='booking'] > section {
+/* The journey (phase 8's scene 10 rule, extended to the footer): the booking and footer stages
+   are transparent only while the journey layer paints their own colours under them
+   (journey/driver.ts writes the attribute while its layer is mounted), so the courier shows over
+   them and every text pair keeps the contrast it has on the opaque stage. */
+[data-world-stage] [data-home-section='booking'] > section,
+[data-world-stage] [data-scene='footer'] {
   background-color: transparent;
+}
+
+/* The journey (docs/experience/journey.md, src/experience/journey): the footer's mark part stays
+   away until the courier lands on its box (the hand-off), and the DOM courier breathes on the
+   compositor, so a page at rest runs no script loop. `--breathe` (0..1) fades the breath out on
+   the way into the footer, where the mark must land still. Tier 0 never sets either. */
+[data-courier-away] {
+  visibility: hidden;
+}
+[data-courier-breathe] {
+  animation: courier-breathe 6s var(--ease-in-out) infinite;
+}
+@keyframes courier-breathe {
+  0%,
+  100% {
+    translate: 0 calc(-3px * var(--breathe, 1));
+    scale: 1;
+  }
+  50% {
+    translate: 0 calc(3px * var(--breathe, 1));
+    scale: calc(1 + 0.015 * var(--breathe, 1));
+  }
 }

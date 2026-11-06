@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 
 import { tierSettings, type Tier } from '@/lib/qualityTier';
 
+import { COURIER } from '../journey/courier';
+
 import {
   FIRST_PINNED_SCENE,
   isSceneId,
@@ -52,18 +54,11 @@ describe('scene registry', () => {
     expect(isSceneId('nope')).toBe(false);
   });
 
-  it('V7 phase 8: a WebGL scene loads its chunk lazily and lists its assets; the hero never draws over the photo', () => {
+  it('V7 a slot scene loads its chunk lazily and lists its assets; the hero never draws over the photo', () => {
+    // The journey (docs/experience/journey.md): one courier replaced the per-scene objects of
+    // scenes 2 to 5 and 10, so only the compare wipe is still a slot.
     const loading = SCENES.filter((s) => s.webgl?.load !== undefined).map((s) => s.id);
-    expect(loading).toEqual(
-      expect.arrayContaining([
-        'trust',
-        'services',
-        'booking',
-        'restoration',
-        'workflow',
-        'compare',
-      ]),
-    );
+    expect(loading).toEqual(['compare']);
     for (const scene of SCENES) {
       if (scene.webgl?.load) expect(scene.webgl.assets).toBeTypeOf('function');
     }
@@ -71,11 +66,14 @@ describe('scene registry', () => {
     expect(SCENES.find((s) => s.id === 'hero')?.webgl).toBeNull();
   });
 
-  it('V7 tier 1 runs only the hero exit of the world scenes (experience direction section 3)', () => {
+  it('V7 the courier stations draw WebGL from tier 2; tier 1 keeps the DOM courier', () => {
     const at = (id: string) => SCENES.find((s) => s.id === id)?.webgl?.minTier;
-    expect(at('trust')).toBe(1);
-    expect(at('services')).toBe(2);
-    expect(at('booking')).toBe(2);
+    for (const id of ['trust', 'services', 'restoration', 'workflow', 'booking']) {
+      expect(at(id), id).toBe(COURIER.minTier);
+    }
+    expect(COURIER.minTier).toBe(2);
+    const bytes = COURIER.assets().reduce((sum, item) => sum + item.bytes, 0);
+    expect(bytes).toBeLessThan(500 * 1024);
   });
 
   it('V7 every scene with a loader declares its downloads, none over the tier 1 budget', () => {
@@ -88,13 +86,14 @@ describe('scene registry', () => {
     }
   });
 
-  it('phase 8: the canvas has work where a scene draws on this device: not on a tier 1 phone', () => {
+  it('the canvas has work at tiers 2 and 3 at any width (the courier), never at tier 1 or 0', () => {
     const desktop = (tier: Tier) => tierSettings(tier, { width: 1440, height: 900, dpr: 1 }, true);
     const phone = (tier: Tier) => tierSettings(tier, { width: 390, height: 844, dpr: 3 }, false);
-    expect(scenesDrawWebgl(1, desktop(1))).toBe(true);
     expect(scenesDrawWebgl(2, phone(2))).toBe(true);
+    expect(scenesDrawWebgl(3, desktop(3))).toBe(true);
     expect(scenesDrawWebgl(0, desktop(0))).toBe(false);
-    // A tier 1 phone draws nothing: no hero exit, molar posters, DOM steps, DOM slider.
+    // Tier 1 runs the DOM courier: no three.js, on a phone or a desktop.
     expect(scenesDrawWebgl(1, phone(1))).toBe(false);
+    expect(scenesDrawWebgl(1, desktop(1))).toBe(false);
   });
 });

@@ -23,6 +23,8 @@ const mocks = vi.hoisted(() => ({
   /** createScrollEngine throws (a broken engine build or browser). */
   createThrows: false,
   canvasImports: 0,
+  /** The tier of every render of the journey layer. */
+  journeyTiers: [] as number[],
   /** Renders of the canvas host: the factory count above sees only the file's first import. */
   canvasMounts: 0,
   /** detect-gpu: the options of the last call and the answer it waits for. */
@@ -82,6 +84,14 @@ vi.mock('./engine/scrollEngine', () => ({
   prepareScrollEngine: () => {},
 }));
 // The factory runs on the first `import()` only: a count of 0 proves the chunk was never asked for.
+// The journey layer needs a real layout (ResizeObserver, ScrollTrigger): its own tests cover it.
+vi.mock('./journey/JourneyLayer', () => ({
+  default: (props: { tier: number }) => {
+    mocks.journeyTiers.push(props.tier);
+    return null;
+  },
+}));
+
 vi.mock('./canvas/CanvasRoot', () => {
   mocks.canvasImports += 1;
   return {
@@ -154,6 +164,7 @@ beforeEach(() => {
   observers = [];
   observed = [];
   disconnected = 0;
+  mocks.journeyTiers = [];
   vi.stubGlobal(
     'IntersectionObserver',
     class {
@@ -207,6 +218,17 @@ describe('ExperienceRoot (dom)', () => {
     home('/?debug=1&tier=2');
     await flush();
     expect(mocks.canvasImports).toBe(1);
+  });
+
+  it('XR12 the journey layer comes with the engine at the ready tier; tier 0 loads none', async () => {
+    const view = home('/?tier=1');
+    await waitFor(() => expect(mocks.journeyTiers.length).toBeGreaterThan(0), { timeout: 3000 });
+    expect(new Set(mocks.journeyTiers)).toEqual(new Set([1]));
+    view.unmount();
+    mocks.journeyTiers = [];
+    home('/?tier=0');
+    await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
+    expect(mocks.journeyTiers).toEqual([]);
   });
 
   it('XR1 phase 8: once a registry scene draws WebGL, tier 2 mounts the canvas when the world window shows', async () => {

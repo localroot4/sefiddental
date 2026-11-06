@@ -2,12 +2,14 @@
 
 /**
  * The one fixed canvas behind the home content (spec EXP 3.9). Imported with a plain `import()`
- * after the gates, so no three.js byte loads before `load`. Portal to `body` (a transformed
- * ancestor would turn `position: fixed` into `absolute`); decorative, `aria-hidden`, no pointer
- * events; `.site` (z-index 1) stacks above this layer (z-index 0).
+ * after the gates, so no three.js byte loads before `load`. Transparent (the journey,
+ * docs/experience/journey.md): it draws the courier over the page's own surfaces. It renders
+ * inside the experience root, under every section of `.site` (z-index -1, after the warm layer
+ * and the journey layer in tree order), with no transformed, filtered or contained ancestor up
+ * to `.site` (WarmLayer.tsx has the same rule, which `position: fixed` needs); decorative,
+ * `aria-hidden`, no pointer events.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
 
 import { Preload } from '@react-three/drei/core/Preload';
 import { Canvas, type RootState } from '@react-three/fiber';
@@ -17,6 +19,7 @@ import type { TierSettings } from '@/lib/qualityTier';
 import { applyStyle } from '../core/applyStyle';
 import type { FrameRuntime } from '../core/store';
 import type { ScrollEngine } from '../engine/scrollEngine';
+import type { Journey } from '../journey/driver';
 import type { StepSource } from '../tier/tierStore';
 import { World } from '../world/World';
 
@@ -24,7 +27,6 @@ import { ContextLoss } from './ContextLoss';
 import { FrameDriver } from './FrameDriver';
 import { MonitorProbe } from './MonitorProbe';
 import { StressScene } from './StressScene';
-import { ThemeClearColor } from './ThemeClearColor';
 import { TierDpr } from './TierDpr';
 
 export interface CanvasRootProps {
@@ -38,12 +40,14 @@ export interface CanvasRootProps {
   stepDown: (source: StepSource) => void;
   /** `?debug=1&stress=N` only; 0 otherwise. */
   stress: number;
+  /** The journey driver the courier reads its pose from (null until it runs). */
+  journey: Journey | null;
 }
 
 const LAYER_STYLE = {
   position: 'fixed',
   inset: '0',
-  'z-index': '0',
+  'z-index': '-1',
   'pointer-events': 'none',
   contain: 'strict',
 } as const;
@@ -58,25 +62,23 @@ const RESIZE = { scroll: false } as const;
 // R3F defaults, stated for TierDpr's movement regression.
 const PERFORMANCE = { min: 0.5, max: 1, debounce: 200 } as const;
 
-export function CanvasRoot(props: CanvasRootProps): React.ReactPortal {
-  const { tier, settings, mode, phone, engine, runtime, stepDown, stress } = props;
+export function CanvasRoot(props: CanvasRootProps): React.JSX.Element {
+  const { tier, settings, mode, phone, engine, runtime, stepDown, stress, journey } = props;
   // Antialias is fixed at context creation; a later tier drop keeps it (tier 1 starts without).
   const [gl] = useState(() => ({
     antialias: tier >= 2,
-    alpha: false,
+    alpha: true,
     stencil: false,
     powerPreference: 'high-performance' as const,
   }));
   const base = settings.pixelRatio ?? 1;
-  // three 0.186 removed PCFSoftShadowMap: soft and hard are both PCF, the World sets the radius.
-  const shadows = settings.shadows === 'none' ? false : 'percentage';
 
   const onMonitorStep = useCallback(() => stepDown('monitor'), [stepDown]);
   const onRepeatedLoss = useCallback(() => stepDown('context-loss'), [stepDown]);
   const onCreated = useCallback((state: RootState) => runtime.setR3f(state.get), [runtime]);
   useEffect(() => () => runtime.setR3f(null), [runtime]);
 
-  return createPortal(
+  return (
     <div data-experience-layer="" aria-hidden="true" ref={styleLayer}>
       <Canvas
         ref={hideCanvas}
@@ -84,14 +86,13 @@ export function CanvasRoot(props: CanvasRootProps): React.ReactPortal {
         dpr={base}
         gl={gl}
         performance={PERFORMANCE}
-        shadows={shadows}
+        shadows={false}
         resize={RESIZE}
         style={CANVAS_STYLE}
         onCreated={onCreated}
         fallback={null}
       >
         <TierDpr base={base} />
-        <ThemeClearColor />
         <FrameDriver engine={engine} runtime={runtime} />
         {mode === 'auto' && (
           <MonitorProbe
@@ -108,10 +109,9 @@ export function CanvasRoot(props: CanvasRootProps): React.ReactPortal {
         {stress > 0 ? (
           <StressScene loops={stress} />
         ) : (
-          <World tier={tier} settings={settings} engine={engine} />
+          <World tier={tier} settings={settings} engine={engine} journey={journey} />
         )}
       </Canvas>
-    </div>,
-    document.body,
+    </div>
   );
 }
