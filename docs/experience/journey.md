@@ -97,3 +97,28 @@ A tier change mid-page switches courier type at the current pose, with no jump.
 6. Tier 0 and reduced motion load no courier chunk.
 7. Unit tests for `courierPose`; e2e for docks, reverse, hand-off, tier 0; lint,
    types, build, bundle green.
+
+## 8. As built (2026-11-06, branch `p9-journey`)
+
+- Code: `src/experience/journey/` (pose, docks, arch, beats, driver, the DOM and WebGL
+  couriers). The pose is pure and unit-tested; `?debug=1` installs `window.__sefidJourney`
+  (pose, holds, which courier draws) for the e2e rows in `tests/e2e/home-journey.spec.ts`.
+- Layers: the journey layer (bands, DOM courier) and the transparent canvas sit inside
+  `.site` at z-index -1, after the warm layer: under every section and its text. The booking
+  and footer stages are transparent while the layer paints their own colours under them
+  (`html[data-world-stage]`), so the courier shows over them. The FAQ stays opaque: the
+  courier passes behind it.
+- D1 sits in the hero's world window under the photo (from 1024 px): the canvas cannot draw
+  over the photo (it is under the page, and the render gate draws nothing while the photo
+  covers the viewport), so the courier rises into view as the photo scrolls away. The intro's
+  SVG mark is not handed over at the same box.
+- Docks per width: from 1024 px all eight (D4 only on the pinned diagonal, tiers 2 and 3);
+  from 744 px D2, D3, D5, D8; under 744 px D2 (beside the services mark), D3, D5, D8. A dock
+  that is not rendered is skipped.
+- In travel the courier passes under text (never over it): the text stays on top, but its
+  contrast drops while the courier is behind it. At every dock the box holds no text.
+- D4 draws the point cloud and the wireframe as two extra calls on the tooth; the courier is
+  otherwise one call (mark or tooth) plus its soft contact shadow, and the arch one
+  instanced call. No shadow map at any tier.
+- D5 photo: `smile-*` (Pexels, Daniel Xavier) on the client preview only; elsewhere the
+  labelled placeholder (gaps row 65).

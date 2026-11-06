@@ -1,0 +1,80 @@
+// Journey evidence (docs/experience/journey.md): the home page at every dock of the courier and
+// half way through every travel, at 1440x900, 1024x768 and 390x844, light and dark. JPEG, at most
+// 1000 px wide. The stops come from the page itself (`window.__sefidJourney.holds()`, `?debug=1`);
+// the developer overlay is hidden for the shot.
+//   node docs/qa/journey/capture.mjs <origin> [--tier=2]
+// (after `npm run build` and `npm run db:e2e`, with the standalone server on <origin>, DEMO_CONTENT
+// on for the stock photos; Chromium from PW_CHROMIUM_EXECUTABLE, WebGL on SwiftShader)
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { chromium } from 'playwright';
+import sharp from 'sharp';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+const origin = process.argv[2] ?? 'http://localhost:3000';
+const tier = process.argv.find((a) => a.startsWith('--tier='))?.slice(7) ?? '2';
+const SIZES = [
+  { name: '1440x900', width: 1440, height: 900, phone: false },
+  { name: '1024x768', width: 1024, height: 768, phone: false },
+  { name: '390x844', width: 390, height: 844, phone: true },
+];
+
+const browser = await chromium.launch({
+  executablePath: process.env.PW_CHROMIUM_EXECUTABLE,
+  args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'],
+});
+mkdirSync(here, { recursive: true });
+for (const size of SIZES) {
+  for (const scheme of ['light', 'dark']) {
+    const context = await browser.newContext({
+      viewport: { width: size.width, height: size.height },
+      colorScheme: scheme,
+      locale: 'fa-IR',
+      isMobile: size.phone,
+      hasTouch: size.phone,
+    });
+    await context.addInitScript(() => sessionStorage.setItem('sefid-intro', '1'));
+    const page = await context.newPage();
+    // Phones are tier 1 (the DOM courier); the canvas courier from tier 2.
+    await page.goto(`${origin}/?tier=${size.phone ? 1 : tier}&debug=1`);
+    await page.waitForLoadState('load');
+    await page.mouse.wheel(0, 400);
+    await page.waitForFunction(() => window.__sefidJourney, null, { timeout: 30_000 });
+    if (!size.phone) {
+      await page.waitForFunction(() => window.__sefidJourney.webgl(), null, { timeout: 90_000 });
+    }
+    await page.waitForTimeout(1500);
+    await page.evaluate(() => window.__sefidJourney.measure());
+    const holds = await page.evaluate(() => window.__sefidJourney.holds());
+    const stops = holds.flatMap((h, i) => {
+      const next = holds[i + 1];
+      const at = h.id === 'footer' ? h.start + 2 : (h.start + h.end) / 2;
+      const dock = { name: `${String(i + 1).padStart(2, '0')}-dock-${h.id}`, y: at };
+      return next
+        ? [dock, { name: `${String(i + 1).padStart(2, '0')}-travel-${h.id}-${next.id}`, y: (h.end + next.start) / 2 }]
+        : [dock];
+    });
+    for (const stop of stops) {
+      // Twice: a smooth scroll still running would carry the first jump on.
+      for (let k = 0; k < 2; k += 1) {
+        await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), Math.ceil(stop.y));
+        await page.waitForTimeout(900);
+      }
+      await page.evaluate(() =>
+        document.querySelector('[data-dev-overlay]')?.style.setProperty('display', 'none'),
+      );
+      await page.waitForTimeout(600);
+      const shot = await page.screenshot({ type: 'png' });
+      const file = path.join(here, `${size.name}-${scheme}-${stop.name}.jpg`);
+      await sharp(shot)
+        .resize({ width: Math.min(1000, size.width) })
+        .jpeg({ quality: 68, mozjpeg: true })
+        .toFile(file);
+      console.log(path.basename(file));
+    }
+    await context.close();
+  }
+}
+await browser.close();
