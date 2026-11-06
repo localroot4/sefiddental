@@ -88,6 +88,8 @@ export const MIN_TRAVEL_VH = 0.6;
  */
 const HOLD_VH = 0.5;
 const SMILE_HOLD_VH = 0.9;
+/** No hold is shorter than this share of the viewport height (unless the scroll range ends). */
+const MIN_HOLD_VH = 0.2;
 /** The form fills this share of its dock's shorter side. */
 const FILL = 0.86;
 /** The courier is this much smaller at the middle of a travel (it reads as distance). */
@@ -188,28 +190,35 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
       return { dock, start: clampY(centre - half), end: clampY(centre + half) };
     });
   const min = MIN_TRAVEL_VH * viewport.height;
+  // A hold keeps a short stretch of its own, so a station's sequence (the smile) never cuts.
+  const keep = MIN_HOLD_VH * viewport.height;
+  const room = (h: Hold): number => Math.max(0, h.end - h.start - keep);
   for (let i = 1; i < holds.length; i += 1) {
     const a = holds[i - 1]!;
     const b = holds[i]!;
-    // A hold never starts before the previous one ends (docks out of order collapse onto it).
+    // A hold never starts before the previous one ends (docks out of order line up after it).
     if (b.start < a.start) b.start = a.start;
-    if (b.end < b.start) b.end = b.start;
+    if (b.end < b.start + keep) b.end = Math.min(top, b.start + keep);
     let need = min - (b.start - a.end);
     if (need <= 0) continue;
     // Half from each side, then the rest from whichever side still has room.
-    const giveA = Math.min(need / 2, a.end - a.start);
-    const giveB = Math.min(need / 2, b.end - b.start);
+    const giveA = Math.min(need / 2, room(a));
+    const giveB = Math.min(need / 2, room(b));
     a.end -= giveA;
     b.start += giveB;
     need -= giveA + giveB;
+    const moreB = Math.max(0, Math.min(need, room(b)));
+    b.start += moreB;
+    need -= moreB;
+    const moreA = Math.max(0, Math.min(need, room(a)));
+    a.end -= moreA;
+    need -= moreA;
+    // Docks too close or out of order to make room: the next hold moves later, so the travel
+    // still spans its minimum (up to the end of the scroll range), never a cut.
     if (need > 0) {
-      const moreB = Math.min(need, b.end - b.start);
-      b.start += moreB;
-      need -= moreB;
-      const moreA = Math.min(need, a.end - a.start);
-      a.end -= moreA;
+      b.start = Math.min(top, b.start + need);
+      b.end = Math.min(top, Math.max(b.end, b.start + keep));
     }
-    // Overlapping docks that could not make room: no travel, the next hold starts here.
     if (b.start < a.end) b.start = a.end;
     if (b.end < b.start) b.end = b.start;
   }

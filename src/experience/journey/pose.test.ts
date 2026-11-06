@@ -341,6 +341,10 @@ describe('courierPose: purity', () => {
     for (let y = 1; y < 5000; y += 1) {
       const pose = courierPose(y, docks, view, 1);
       expect(Number.isFinite(pose.x) && Number.isFinite(pose.y)).toBe(true);
+      // Still no jump: a crowded travel is steeper, never a cut.
+      expect(Math.abs(pose.x - prev.x) + Math.abs(pose.y - prev.y), `step at ${y}`).toBeLessThan(
+        12,
+      );
       prev = pose;
     }
     expect(prev.dock).toBe('smile');
