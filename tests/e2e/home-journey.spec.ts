@@ -161,11 +161,16 @@ test.describe('desktop, WebGL courier', () => {
           (svg) => getComputedStyle(svg).visibility !== 'hidden',
         ).length,
         part: getComputedStyle(document.querySelector('[data-playground-part="mark"]')!).visibility,
+        servicesMark: getComputedStyle(
+          document.querySelector('[data-scene="services"] [data-mark]')!,
+        ).visibility,
       }));
       const pose = await probe<Pose>(page, 'pose');
       expect(state.dom, stop.name).toBe('hidden');
       expect(state.arch, stop.name).toBe('hidden');
       expect(state.molarArt, `${stop.name}: the stepper's own molar hides`).toBe(0);
+      // D2 is the services mark's own box: the courier stands in for it, one mark on screen.
+      expect(state.servicesMark, `${stop.name}: the services SVG mark steps aside`).toBe('hidden');
       // The footer's mark part shows only once the courier is home, never beside it.
       expect(state.part === 'visible', stop.name).toBe(pose.hidden);
     }
@@ -299,6 +304,7 @@ test.describe('tier 0 and reduced motion', () => {
     await expect(page.locator('[data-playground-part="mark"]')).not.toHaveAttribute(
       'data-courier-away',
     );
+    await expect(page.locator('[data-scene="services"] [data-mark]')).toBeVisible();
   };
 
   test('T-JN7 tier 0 loads no courier chunk and keeps the static art', async ({ page }) => {
@@ -330,6 +336,7 @@ test.describe('phone, DOM courier', () => {
     });
     const holds = await open(page, 'tier=1');
     expect(holds.map((h) => h.id)).toEqual(['services', 'restoration', 'smile', 'footer']);
+    await expect(page.locator('[data-scene="services"] [data-mark]')).toBeHidden();
     for (const stop of stops(holds)) {
       await scrollToY(page, stop.y);
       const pose = await probe<Pose>(page, 'pose');

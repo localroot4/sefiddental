@@ -43,9 +43,15 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
   const id = 'home-services-title';
   const accents = categories.map((c) => c.accent);
   // The mark (at most 96 px, its own paint layer): the silhouette the morph drives, then one ink
-  // outline per world, crossfaded in by the scene; static at tier 0.
+  // outline per world, crossfaded in by the scene; static at tier 0. It is also D2 of the journey
+  // (docs/experience/journey.md): at tiers 1 to 3 the courier stands in for it, hidden.
   const mark = (
-    <div data-mark="" aria-hidden="true" className="relative size-16 contain-paint md:size-24">
+    <div
+      data-mark=""
+      data-dock="services"
+      aria-hidden="true"
+      className="relative size-16 contain-paint md:size-24"
+    >
       <svg viewBox={SERVICE_MORPH_VIEWBOX} className="absolute inset-0 size-full fill-brand">
         <path d={SERVICE_MARK_OUTLINE} />
       </svg>
@@ -57,19 +63,6 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
           className="absolute inset-0 size-full fill-transparent text-ink opacity-0"
         />
       ))}
-    </div>
-  );
-  // D2 of the journey (docs/experience/journey.md): the courier's empty box beside the mark,
-  // at its end side on phones and toward the heading from 1024 px (from 744 px to 1024 px the
-  // heading's lead reaches the mark: no box); absolute, so the header keeps its height.
-  const action = (
-    <div className="relative w-fit">
-      <div
-        data-dock="services"
-        aria-hidden="true"
-        className="absolute bottom-0 start-[calc(100%+1.5rem)] h-16 w-24 md:hidden lg:start-auto lg:end-[calc(100%+2rem)] lg:block lg:h-32 lg:w-[10rem]"
-      />
-      {mark}
     </div>
   );
   return (
@@ -84,11 +77,11 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
               id={id}
               title={props.copy.heading}
               lead={props.copy.intro ? ltr(props.copy.intro) : undefined}
-              action={action}
+              action={mark}
               className="lg:[[data-pins]_&]:mb-6"
             />
           ) : (
-            <div className="mb-8 md:mb-12">{action}</div>
+            <div className="mb-8 md:mb-12">{mark}</div>
           )}
           <div data-rail="" className="-mx-gutter lg:mx-0 lg:[[data-pins]_&]:overflow-x-clip">
             <div

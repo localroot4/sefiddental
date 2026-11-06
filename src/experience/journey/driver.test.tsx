@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AWAY_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
+import { AWAY_ATTR, HERE_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
 import { createJourney, type Frame } from './driver';
 
 const triggers = vi.hoisted(() => ({
@@ -101,6 +101,9 @@ describe('journey driver', () => {
       document.querySelector('[data-dock="restoration"]')!.hasAttribute('data-world-live'),
     ).toBe(true);
     expect(last().pose.dock).toBe('services');
+    // D2 is the services mark's own box: the courier stands in for it while the journey runs.
+    const servicesMark = document.querySelector('[data-dock="services"]')!;
+    expect(servicesMark.hasAttribute(HERE_ATTR)).toBe(true);
     expect(last().bands.map((b) => b.id)).toEqual(['booking', 'footer']);
     expect(last().bands[0]).toEqual({ id: 'booking', top: 4000, height: 900 });
     // Before the smile station the photo waits for the arch.
@@ -109,6 +112,7 @@ describe('journey driver', () => {
     expect(document.querySelector('[data-dock="footer"]')!.hasAttribute(AWAY_ATTR)).toBe(true);
     journey.destroy();
     expect(html.hasAttribute(STAGE_ATTR)).toBe(false);
+    expect(servicesMark.hasAttribute(HERE_ATTR)).toBe(false);
     expect(document.querySelector('[data-dock="footer"]')!.hasAttribute(AWAY_ATTR)).toBe(false);
     expect(document.querySelector<HTMLElement>('[data-smile-photo]')!.style.opacity).toBe('');
     expect(triggers.created[0]!.kill).toHaveBeenCalled();

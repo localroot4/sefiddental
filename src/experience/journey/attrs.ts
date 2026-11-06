@@ -6,3 +6,5 @@ export const STAGE_ATTR = 'data-world-stage';
 export const AWAY_ATTR = 'data-courier-away';
 /** Dispatched on the mark part when the courier lifts off it again (footer.ts sends it home). */
 export const LIFTOFF_EVENT = 'sefid:courier-liftoff';
+/** On the services mark while the courier stands in for it (D2 is the mark's own box). */
+export const HERE_ATTR = 'data-courier-here';

@@ -14,7 +14,7 @@
  */
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-import { AWAY_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
+import { AWAY_ATTR, HERE_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
 import { measureDocks, measureViewport } from './docks';
 import { courierPose, type Dock, type Pose, type Viewport } from './pose';
 /** The molar slot's attribute that hides its SVG art (MolarStepper, phase 8 pass.ts). */
@@ -95,8 +95,11 @@ export function createJourney(opts: {
   const photo = root.querySelector<HTMLElement>('[data-smile-photo]');
   const molar = root.querySelector<HTMLElement>('[data-dock="restoration"]');
   const part = root.querySelector<HTMLElement>('[data-dock="footer"]');
+  const servicesMark = root.querySelector<HTMLElement>('[data-dock="services"]');
   // The courier carries the tooth: the slot's own art steps aside (tier 0 keeps it).
   molar?.setAttribute(LIVE_ATTR, '');
+  // D2 is the services mark's own box: one mark on screen, the courier (tier 0 keeps the SVG).
+  servicesMark?.setAttribute(HERE_ATTR, '');
   html.setAttribute(STAGE_ATTR, '');
 
   const measure = (): void => {
@@ -189,6 +192,7 @@ export function createJourney(opts: {
       scroll.kill();
       root.removeEventListener('change', follow);
       molar?.removeAttribute(LIVE_ATTR);
+      servicesMark?.removeAttribute(HERE_ATTR);
       html.removeAttribute(STAGE_ATTR);
       part?.removeAttribute(AWAY_ATTR);
       photo?.style.removeProperty('opacity');

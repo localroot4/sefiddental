@@ -333,10 +333,12 @@
 }
 
 /* The journey (docs/experience/journey.md, src/experience/journey): the footer's mark part stays
-   away until the courier lands on its box (the hand-off), and the DOM courier breathes on the
+   away until the courier lands on its box (the hand-off), the services mark steps aside for the
+   courier that docks in its box (D2), and the DOM courier breathes on the
    compositor, so a page at rest runs no script loop. `--breathe` (0..1) fades the breath out on
    the way into the footer, where the mark must land still. Tier 0 never sets either. */
-[data-courier-away] {
+[data-courier-away],
+[data-courier-here] {
   visibility: hidden;
 }
 [data-courier-breathe] {
