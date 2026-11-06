@@ -62,15 +62,11 @@ export default buildConfig({
         '/admin/components/CalendarNavLink#CalendarNavLink',
         '/admin/components/SystemStatusNavLink#SystemStatusNavLink',
       ],
-      // The dashboard in task order (H33; G15: not the experimental widgets API): today's
-      // requests, the content calendar, SEO health, then the content gaps for admins.
-      beforeDashboard: [
-        '/admin/components/BookingsToday#BookingsToday',
-        '/admin/components/ContentCalendar#ContentCalendar',
-        '/admin/components/SeoHealth#SeoHealth',
-        '/admin/components/ContentGapsSummary#ContentGapsSummary',
-      ],
       views: {
+        // The dashboard in task order (H33; G15: not the experimental widgets API): today's
+        // requests and the week's trend, the content calendar, SEO health, the content gaps for
+        // admins, then Payload's collection cards (src/admin/views/Dashboard.tsx).
+        dashboard: { Component: '/admin/views/Dashboard#Dashboard' },
         systemStatus: {
           Component: '/admin/views/SystemStatus#SystemStatusView',
           path: '/system-status',

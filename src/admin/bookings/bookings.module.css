@@ -209,20 +209,21 @@
   color: var(--theme-elevation-650);
 }
 
-/* Dashboard widget: one panel, four figures that each open their view. Payload pads each
-   dashboard widget below by 6px; the same inset lines the panel up with their cards. */
+/* Dashboard panel (src/admin/views/Dashboard.tsx), shared by every widget: a raised surface
+   with the admin card radius; the grid cell around it sets its width. */
 .today {
-  margin-inline: 6px;
-  margin-block-end: calc(var(--base) * 1.5);
   padding: var(--base);
   border: 1px solid var(--theme-elevation-150);
-  border-radius: var(--style-radius-m);
+  border-radius: var(--admin-radius-card);
   background: var(--theme-elevation-0);
+  box-shadow: var(--admin-shadow);
 }
 
 .todayHeading {
   margin: 0 0 calc(var(--base) * 0.75);
-  font-size: 1.15rem;
+  font-size: calc(var(--base) * 0.85);
+  font-weight: 700;
+  line-height: 1.4;
 }
 
 .todayEmpty {
@@ -230,16 +231,21 @@
   color: var(--theme-elevation-650);
 }
 
+/* Four figures in one strip: hairlines between them (the gap shows the line colour behind). */
 .figures {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: calc(var(--base) * 0.5);
+  gap: 1px;
   margin: 0;
   padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-elevation-150);
   list-style: none;
 }
 
-@media (min-width: 1024px) {
+@media (min-width: 768px) {
   .figures {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
@@ -248,18 +254,18 @@
 .figure {
   display: grid;
   align-content: start;
-  gap: calc(var(--base) * 0.2);
+  gap: calc(var(--base) * 0.25);
   min-height: 44px;
   height: 100%;
-  padding: calc(var(--base) * 0.6) calc(var(--base) * 0.75);
-  border-radius: var(--style-radius-s);
-  background: var(--theme-elevation-50);
+  padding: calc(var(--base) * 0.75);
+  background: var(--theme-elevation-0);
   color: var(--theme-text);
   text-decoration: none;
+  transition: background-color var(--admin-duration) var(--admin-ease);
 }
 
 .figure:hover {
-  background: var(--theme-elevation-100);
+  background: var(--theme-elevation-50);
 }
 
 .figureLabel {
@@ -267,30 +273,49 @@
 }
 
 .figureValue {
-  font-size: 1.75rem;
-  font-weight: 600;
-  line-height: 1.2;
+  font-size: calc(var(--base) * 1.6);
+  font-weight: 700;
+  line-height: 1.15;
   font-variant-numeric: tabular-nums;
 }
 
+/* New requests carry the brand; an emergency today tints its figure (warning, not error). */
+.brand {
+  color: var(--admin-brand-strong);
+}
+
+.figure:has(.alert.figureValue) {
+  background: var(--admin-warning-soft);
+}
+
 .alert {
-  color: var(--theme-warning-650);
+  color: var(--admin-warning);
 }
 
 .figureNote {
   font-size: 0.9em;
 }
 
-/* This month's «فوری نبود» share, under today's figures. */
+/* This month's «فوری نبود» share and the open emergencies, under a hairline. */
 .month {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0 calc(var(--base) * 0.5);
-  margin: calc(var(--base) * 0.5) 0 0;
+  margin: 0;
+}
+
+.figures + .month {
+  margin-block-start: calc(var(--base) * 0.5);
 }
 
 .monthValue {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .figure {
+    transition: none;
+  }
 }

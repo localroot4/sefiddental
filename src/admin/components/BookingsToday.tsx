@@ -60,8 +60,9 @@ const FIGURES: ReadonlyArray<{
   label: AdminMessageKey;
   value: 'newToday' | 'emergencyToday' | 'waiting' | 'suspiciousToday';
   alert?: boolean;
+  brand?: boolean;
 }> = [
-  { label: 'admin.today.new', value: 'newToday' },
+  { label: 'admin.today.new', value: 'newToday', brand: true },
   { label: 'admin.today.emergency', value: 'emergencyToday', alert: true },
   { label: 'admin.today.waiting', value: 'waiting' },
   { label: 'admin.today.suspicious', value: 'suspiciousToday' },
@@ -94,9 +95,9 @@ export function BookingsTodayBody({ counts, now }: { counts: WidgetCounts; now: 
               <a className={styles.figure} href={links[figure.value]}>
                 <span className={styles.figureLabel}>{adminText(figure.label)}</span>
                 <span
-                  className={
-                    figure.alert && n ? `${styles.figureValue} ${styles.alert}` : styles.figureValue
-                  }
+                  className={`${styles.figureValue} ${
+                    figure.alert && n ? styles.alert : figure.brand && n ? styles.brand : ''
+                  }`}
                 >
                   {num(n)}
                 </span>

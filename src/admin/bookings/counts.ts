@@ -25,9 +25,12 @@ export function tehranMonthStart(now: Date): Date {
   return zonedWallTimeToInstant(first, '00:00', CLINIC_TZ);
 }
 
-const real: Where = { status: { not_in: ['suspicious', 'spam'] } };
+/** Suspicious and spam rows are not real requests (R-6). */
+export const real: Where = { status: { not_in: ['suspicious', 'spam'] } };
 const emergency: Where = { kind: { equals: 'emergency' } };
-const since = (start: Date): Where => ({ createdAt: { greater_than_equal: start.toISOString() } });
+export const since = (start: Date): Where => ({
+  createdAt: { greater_than_equal: start.toISOString() },
+});
 
 /** Every number the tabs and the dashboard show, as a filter on bookings (admin-notify.md 4.9). */
 const QUERIES = {

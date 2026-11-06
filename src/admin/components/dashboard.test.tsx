@@ -11,6 +11,7 @@ import { adminText } from '@/i18n/fa-admin';
 import { ADMIN_ROUTE } from '@/lib/paths';
 
 import { BookingsTodayBody } from './BookingsToday';
+import { BookingsTrend, BookingsTrendBody } from './BookingsTrend';
 import { CalendarNavLink } from './CalendarNavLink';
 import { CalendarAgenda, ContentCalendar, ContentCalendarBody } from './ContentCalendar';
 import { ContentGapsSummary, ContentGapsSummaryBody } from './ContentGapsSummary';
@@ -235,11 +236,21 @@ describe('SEO health and content gaps (H33)', () => {
   it('DB6 nothing for an unverified session; content gaps and nothing else for editors', async () => {
     const payload = staffPayload(async () => ({ docs: [] }));
     const props = (user: object | null) => dashboardProps(payload, user);
-    for (const Widget of [ContentCalendar, SeoHealth, ContentGapsSummary]) {
-      expect(await Widget(props({ ...EDITOR, _strategy: 'local-jwt', hasTotp: true }))).toBeNull();
-      expect(await Widget(props(null))).toBeNull();
+    const refused = [
+      { ...EDITOR, _strategy: 'local-jwt', hasTotp: true }, // enrolled, code not entered
+      { ...EDITOR, _strategy: 'local-jwt', hasTotp: false }, // not enrolled, setup forced
+      { ...EDITOR, role: 'none', _strategy: 'totp' }, // verified, but not staff
+      null,
+    ];
+    for (const Widget of [ContentCalendar, SeoHealth, ContentGapsSummary, BookingsTrend]) {
+      for (const user of refused)
+        expect(await Widget(props(user)), JSON.stringify(user)).toBeNull();
     }
     expect(payload.find).not.toHaveBeenCalled();
+    // Control: a verified editor gets the trend, from one read.
+    expect(await BookingsTrend(props({ ...EDITOR, _strategy: 'totp' }))).not.toBeNull();
+    expect(payload.find).toHaveBeenCalledTimes(1);
+    payload.find.mockClear();
     expect(await ContentGapsSummary(props({ ...EDITOR, _strategy: 'totp' }))).toBeNull();
     expect(await ContentCalendar(props({ ...EDITOR, _strategy: 'totp' }))).not.toBeNull();
   });
@@ -350,5 +361,31 @@ describe('Persian list cells and the bookings widget (H33, H34, H35)', () => {
     expect(links[2]).toBe(listHref(cond(0, 'status', 'equals', ['new']), 'callbackDueAt'));
     expect(links[5]).toBe(tabHref('emergency'));
     expect(text(html)).toContain('فوری‌های باز');
+  });
+
+  it('DB13 the week’s trend: a failed read, an empty week and seven labelled days', () => {
+    const broken = text(renderToStaticMarkup(<BookingsTrendBody days={null} />));
+    expect(broken).toContain('نامشخص');
+    expect(broken).not.toContain('درخواستی ثبت نشده');
+    const quiet = renderToStaticMarkup(
+      <BookingsTrendBody
+        days={Array.from({ length: 7 }, (_, i) => ({
+          key: `2026-10-1${i}` as `${number}-${number}-${number}`,
+          count: 0,
+        }))}
+      />,
+    );
+    expect(text(quiet)).toContain('در هفت روز اخیر درخواستی ثبت نشده است.');
+    expect(quiet).not.toContain('<svg');
+    const days = [2, 0, 1, 0, 0, 3, 4].map((count, i) => ({
+      key: `2026-10-1${i + 2}` as `${number}-${number}-${number}`,
+      count,
+    }));
+    const html = renderToStaticMarkup(<BookingsTrendBody days={days} />);
+    expect(text(html)).toContain('۱۰ درخواست در هفت روز');
+    expect(html.match(/<rect /g)).toHaveLength(7);
+    // Screen readers get one line per day; the last is today, 18 Oct 2026 (26 Mehr).
+    expect(text(html)).toContain('یک‌شنبه ۲۶ مهر: ۴ درخواست');
+    expect(latin(html)).toEqual([]);
   });
 });

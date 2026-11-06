@@ -170,6 +170,8 @@ test('T-AG1 section 1: the first sign-in sets up the code; later sign-ins ask fo
   await page.waitForURL((url) => url.pathname.replace(/\/$/, '') === ADMIN_ROUTE);
   const today = page.getByRole('region', { name: adminText('admin.today.heading') });
   await expect(today).toBeVisible();
+  // Every panel revealed, no skeleton left (the widgets stream in after the page).
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
   await shot(page, 'dashboard', today);
 
   // Steps 7 to 9: every later sign-in (two POSTs).
@@ -327,7 +329,8 @@ test('T-AG7 section 8: the status view, with the manager account', async ({ page
   await as(page, 'manager');
   // A new account starts with the menu closed.
   await page.getByRole('button', { name: 'باز کردن منو' }).click();
-  await page.getByRole('link', { name: 'وضعیت سیستم', exact: true }).click();
+  // The navigation's link: the dashboard's quick actions carry one with the same name.
+  await page.locator('.nav').getByRole('link', { name: 'وضعیت سیستم', exact: true }).click();
   await page.waitForURL(new RegExp(`${ADMIN_ROUTE}/system-status`));
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('وضعیت سیستم');
   const config = page.locator('section[aria-labelledby="status-config"] dl > div');

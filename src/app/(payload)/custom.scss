@@ -4,6 +4,225 @@
   --font-body: var(--font-vazirmatn), system-ui, sans-serif;
 }
 
+// ---------------------------------------------------------------------------------------------
+// Theme layer (docs/admin/ui.md). Operate mode: the public site's teal and its navy-tinted
+// neutrals (design/tokens.css), red for danger, green for success. Payload derives every
+// --theme-elevation-* from --color-base-*, light and dark, so the neutral ramp re-tints the whole
+// admin. Ramp: OKLab steps between the site's surface, line, muted ink and ink; contrast pairs
+// are measured in docs/admin/ui.md.
+// ---------------------------------------------------------------------------------------------
+:root {
+  --color-base-0: #ffffff;
+  --color-base-50: #f4f7f7;
+  --color-base-100: #e9eeef;
+  --color-base-150: #d9e0e1;
+  --color-base-200: #c1ccd3;
+  --color-base-250: #a9b8c6;
+  --color-base-300: #99a8b7;
+  --color-base-350: #8a99a8;
+  --color-base-400: #7b8a9a;
+  --color-base-450: #718191;
+  --color-base-500: #677789;
+  --color-base-550: #5d6e81;
+  --color-base-600: #546578;
+  --color-base-650: #4a5c70;
+  --color-base-700: #344b61;
+  --color-base-750: #1e3a52;
+  --color-base-800: #0f2c45;
+  --color-base-850: #0b2338;
+  --color-base-900: #071a2b;
+  --color-base-950: #04121f;
+  --color-base-1000: #020b14;
+
+  // Payload's success scale is blue; success is green on the site (DESIGN.md 1).
+  --color-success-50: #eef7ef;
+  --color-success-100: #ddf0df;
+  --color-success-150: #c6e6c9;
+  --color-success-200: #b1dcac;
+  --color-success-250: #9bd28f;
+  --color-success-300: #89c481;
+  --color-success-350: #77b673;
+  --color-success-400: #64a966;
+  --color-success-450: #529b58;
+  --color-success-500: #3e8e4b;
+  --color-success-550: #398746;
+  --color-success-600: #348141;
+  --color-success-650: #2f7a3c;
+  --color-success-700: #296d35;
+  --color-success-750: #24602f;
+  --color-success-800: #1f5229;
+  --color-success-850: #1a4423;
+  --color-success-900: #14351c;
+  --color-success-950: #0f2615;
+
+  --admin-brand: #007a72;
+  --admin-brand-strong: #00655f;
+  --admin-brand-soft: #ecf6f4;
+  --admin-on-brand: #ffffff;
+  --admin-warning: #a85012;
+  --admin-warning-soft: #fbefe4;
+  --admin-danger: #c81e2e;
+  --admin-danger-soft: #fdecec;
+  --admin-nav-bg: var(--color-base-50);
+  --admin-login-bg: var(--admin-brand-soft);
+  --admin-shadow: 0 1px 2px rgb(10 36 63 / 0.05), 0 6px 20px rgb(10 36 63 / 0.06);
+  --admin-radius-card: 16px;
+  --admin-radius-control: 10px;
+  --admin-duration: 180ms;
+  --admin-ease: cubic-bezier(0.2, 0, 0, 1);
+
+  --style-radius-s: 6px;
+  --style-radius-m: 10px;
+  --style-radius-l: 16px;
+  --accessibility-outline: 2px solid var(--admin-brand);
+}
+
+html[data-theme='dark'] {
+  --admin-brand: #2bb5aa;
+  --admin-brand-strong: #5ccbc1;
+  --admin-brand-soft: #0f3b3a;
+  --admin-on-brand: #071a2b;
+  --admin-warning: #f0a05a;
+  --admin-warning-soft: #3a2614;
+  --admin-danger: #ff6b6b;
+  --admin-danger-soft: #3b1a1f;
+  --admin-nav-bg: var(--color-base-950);
+  --admin-login-bg: var(--color-base-950);
+  // Dark surfaces separate by lightness and hairlines, not shadows (DESIGN.md 3).
+  --admin-shadow: none;
+}
+
+// Primary buttons in the brand colour; Payload's disabled state stays as it is.
+.btn--style-primary:not(.btn--disabled) {
+  --bg-color: var(--admin-brand);
+  --color: var(--admin-on-brand);
+  --hover-bg: var(--admin-brand-strong);
+  --hover-color: var(--admin-on-brand);
+}
+
+// Field boundaries at 3:1 against the surface (WCAG 1.4.11; Payload's line colour is 1.3:1).
+// Unlayered rules beat every Payload rule, so the states are excluded on the control itself: a
+// field in error (its own wrapper, at any depth inside rows, groups and arrays) keeps Payload's
+// red border, and a disabled or read-only control keeps Payload's look.
+$field-control: ":is(input:not([type='checkbox'], [type='radio']), textarea):not(.error *, .date-time-field--has-error *, :disabled, [readonly])";
+$select-control: '.rs__control:not(.react-select--error *, .rs__control--is-disabled)';
+
+.field-type #{$field-control},
+.react-select #{$select-control} {
+  border-color: var(--theme-elevation-400);
+}
+
+// Fields: the brand ring on focus instead of a darker grey border.
+.field-type #{$field-control}:focus,
+.react-select #{$select-control}.rs__control--is-focused,
+.date-time-picker input:not(.date-time-field--has-error *):focus {
+  border-color: var(--admin-brand);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--admin-brand) 22%, transparent);
+}
+
+// Navigation: a tinted rail, group headings in small muted type, 44 px links; the current
+// view's link on a brand-soft pill with the brand bar at its inline start.
+.nav {
+  border-color: var(--theme-elevation-100);
+  background: var(--admin-nav-bg);
+}
+
+.nav-group__toggle {
+  margin-block-end: calc(var(--base) * 0.2);
+  color: var(--theme-elevation-650);
+  font-size: calc(var(--base) * 0.6);
+  font-weight: 600;
+}
+
+.nav__link {
+  min-block-size: 44px;
+  margin-inline: calc(var(--base) * -0.5);
+  padding-inline: calc(var(--base) * 0.5);
+  border-radius: var(--admin-radius-control);
+  color: var(--theme-text);
+  font-size: calc(var(--base) * 0.75);
+  line-height: 1.5;
+  transition: background-color var(--admin-duration) var(--admin-ease);
+}
+
+.nav__link:hover,
+.nav a.nav__link:focus-visible {
+  background: var(--theme-elevation-100);
+  text-decoration: none;
+}
+
+.nav__link:has(.nav__link-indicator) {
+  background: var(--admin-brand-soft);
+  color: var(--admin-brand-strong);
+}
+
+.nav__link-indicator {
+  inset-inline-start: 0;
+  inline-size: 3px;
+  block-size: 20px;
+  border-radius: 3px;
+  background: var(--admin-brand);
+}
+
+// Breadcrumb links in the brand colour.
+.step-nav a {
+  color: var(--admin-brand-strong);
+}
+
+// Collection cards (dashboard and list headers): raised surface, brand edge on hover.
+.card {
+  border-color: var(--theme-elevation-150);
+  border-radius: var(--style-radius-m);
+  background: var(--theme-elevation-0);
+  transition-duration: var(--admin-duration);
+}
+
+.card--has-onclick:hover {
+  border-color: var(--admin-brand);
+  background: var(--theme-elevation-0);
+  box-shadow: var(--admin-shadow);
+}
+
+.card__title {
+  font-size: calc(var(--base) * 0.75);
+  line-height: 1.5;
+}
+
+.collections__label {
+  color: var(--theme-elevation-650);
+  font-size: calc(var(--base) * 0.75);
+  font-weight: 600;
+}
+
+// Sign-in, password and TOTP screens: a calm brand surface, the form on one raised sheet.
+.template-minimal {
+  background: var(--admin-login-bg);
+}
+
+.template-minimal__wrap {
+  padding: calc(var(--base) * 1.5);
+  border: 1px solid var(--theme-elevation-150);
+  border-radius: var(--admin-radius-card);
+  background: var(--theme-elevation-0);
+  box-shadow: var(--admin-shadow);
+}
+
+@media (max-width: 767px) {
+  .template-minimal {
+    padding-inline: var(--gutter-h);
+  }
+
+  .template-minimal__wrap {
+    padding: var(--base);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav__link {
+    transition: none;
+  }
+}
+
 // Payload's mobile list rule (@payloadcms/ui views/List/index.scss, max-width 1024px) bleeds the
 // table to the viewport edges with physical `left` and `padding-left`. In RTL that pushes the
 // table past the left edge and the whole page scrolls sideways. Mirror it. `[dir='rtl']` also
