@@ -12,7 +12,10 @@ export interface ArchTooth {
   x: number;
   /** Crown centre toward the viewer: 0 at the back molars, `ARCH_DEPTH` at the front teeth. */
   z: number;
-  /** Turn of the tooth about the vertical axis: along the curve (0 at the front). */
+  /**
+   * Turn of the tooth about the vertical axis (three.js `rotation.y`, radians) that lays its
+   * mesial-distal axis along the curve: 0 at the front.
+   */
   yaw: number;
   /** Crown width along the curve (arch units). */
   width: number;
@@ -73,7 +76,7 @@ export function archLayout(): ArchTooth[] {
   for (const w of widths) {
     const width = w * unit;
     const x = xAtArc(at + width / 2);
-    teeth.push({ x, z: curveZ(x), yaw: Math.atan(curveSlope(x)), width });
+    teeth.push({ x, z: curveZ(x), yaw: -Math.atan(curveSlope(x)), width });
     at += width + gap;
   }
   return teeth;
@@ -89,4 +92,9 @@ export function projectArch(
   elevation = ARCH_ELEVATION,
 ): { u: number; v: number } {
   return { u: point.x, v: (point.z - ARCH_DEPTH / 2) * Math.sin(elevation) };
+}
+
+/** The screen angle (radians, clockwise, y down) of a tooth's footprint under that view. */
+export function footprintAngle(yaw: number, elevation = ARCH_ELEVATION): number {
+  return Math.atan(-Math.sin(elevation) * Math.tan(yaw));
 }

@@ -1,0 +1,108 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+
+import { isDockId, measureDocks, measureViewport } from './docks';
+
+/** Gives `el` a viewport rect (jsdom lays nothing out); `rendered: false` is `display: none`. */
+function place(
+  el: Element,
+  rect: { top: number; left?: number; w?: number; h?: number },
+  rendered = true,
+) {
+  const box = {
+    top: rect.top,
+    left: rect.left ?? 0,
+    width: rect.w ?? 100,
+    height: rect.h ?? 100,
+    right: (rect.left ?? 0) + (rect.w ?? 100),
+    bottom: rect.top + (rect.h ?? 100),
+    x: rect.left ?? 0,
+    y: rect.top,
+    toJSON: () => ({}),
+  } as DOMRect;
+  Object.defineProperty(el, 'getBoundingClientRect', { configurable: true, value: () => box });
+  Object.defineProperty(el, 'getClientRects', {
+    configurable: true,
+    value: () => (rendered ? [box] : []),
+  });
+}
+
+const scrollTo = (y: number) =>
+  Object.defineProperty(window, 'scrollY', { configurable: true, value: y });
+
+beforeEach(() => {
+  document.documentElement.style.setProperty('--nav-h', '64px');
+  scrollTo(0);
+});
+afterEach(() => {
+  document.body.innerHTML = '';
+  document.documentElement.removeAttribute('style');
+});
+
+describe('measureDocks', () => {
+  it('DK1 reads every rendered dock in document px; unknown ids and hidden boxes are left out', () => {
+    document.body.innerHTML = `
+      <div data-dock="hero"></div>
+      <div data-dock="nope"></div>
+      <div data-dock="dentists"></div>
+      <div data-dock="booking"></div>`;
+    const [hero, nope, dentists, booking] = Array.from(document.querySelectorAll('[data-dock]'));
+    scrollTo(300);
+    place(hero!, { top: 700, left: 40, w: 288, h: 144 });
+    place(nope!, { top: 900 });
+    place(dentists!, { top: 1200 }, false);
+    place(booking!, { top: 1500, w: 0, h: 0 });
+    expect(measureDocks()).toEqual([
+      { id: 'hero', left: 40, top: 1000, width: 288, height: 144, pin: null },
+    ]);
+    expect(isDockId('hero')).toBe(true);
+    expect(isDockId('nope')).toBe(false);
+    expect(isDockId(undefined)).toBe(false);
+  });
+
+  it('DK2 a dock in a stuck stage is measured at its place in flow, with the pin of its room', () => {
+    document.body.innerHTML = `
+      <div><div id="stage" style="position: sticky"><div data-dock="services"></div></div>
+      <div id="room" data-pin-room=""></div></div>`;
+    const stage = document.getElementById('stage')!;
+    const room = document.getElementById('room')!;
+    const dock = document.querySelector('[data-dock]')!;
+    // Scrolled 600 px into the pin: the stage sits under the 64 px nav, its room scrolls on.
+    scrollTo(2000);
+    place(stage, { top: 64, h: 836 });
+    place(dock, { top: 64 + 200, left: 300, w: 160, h: 128 });
+    place(room, { top: 836 - 600 + 64, h: 1800 });
+    const [measured] = measureDocks();
+    // The stage's flow top: the room's document top less the stage's height.
+    const flowTop = 2000 + 300 - 836;
+    expect(measured).toEqual({
+      id: 'services',
+      left: 300,
+      top: flowTop + 200,
+      width: 160,
+      height: 128,
+      pin: { start: flowTop - 64, end: flowTop - 64 + 1800 },
+    });
+    // The same box measured before the pin gives the same numbers.
+    scrollTo(0);
+    place(stage, { top: flowTop, h: 836 });
+    place(dock, { top: flowTop + 200, left: 300, w: 160, h: 128 });
+    place(room, { top: flowTop + 836, h: 1800 });
+    expect(measureDocks()[0]).toEqual(measured);
+  });
+
+  it('DK3 the viewport is the client width, the window height and the scroll range', () => {
+    Object.defineProperty(document.documentElement, 'scrollHeight', {
+      configurable: true,
+      value: 5000,
+    });
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      value: 1425,
+    });
+    expect(measureViewport()).toEqual({
+      width: 1425,
+      height: window.innerHeight,
+      maxScroll: 5000 - window.innerHeight,
+    });
+  });
+});

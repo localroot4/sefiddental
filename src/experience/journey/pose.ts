@@ -74,12 +74,20 @@ export interface Pose {
   dock: DockId | null;
   /** 0..1 through the hold at `dock` (0 while travelling). */
   local: number;
+  /** 0..1 through the travel toward `to` (0 at a dock). */
+  travel: number;
+  /** The dock the courier travels toward, null at a dock. */
+  to: DockId | null;
 }
 
 /** A travel spans at least this share of the viewport height in scroll. */
 export const MIN_TRAVEL_VH = 0.6;
-/** An unpinned dock holds while its centre is within this share of the viewport's middle. */
+/**
+ * An unpinned dock holds while its centre is within this share of the viewport's middle; the
+ * smile station holds longer, for the seat, the pull-back and the dissolve.
+ */
 const HOLD_VH = 0.5;
+const SMILE_HOLD_VH = 0.9;
 /** The form fills this share of its dock's shorter side. */
 const FILL = 0.86;
 /** The courier is this much smaller at the middle of a travel (it reads as distance). */
@@ -122,7 +130,7 @@ const PULL_BACK = 0.16;
 /** The tooth starts this many of its own heights above the slot. */
 const SEAT_LIFT = 1.3;
 /** Molar.glb: crown width over the whole tooth's height (the courier box holds the height). */
-export const CROWN_SHARE = 1.03 / 1.44 / FILL;
+export const CROWN_SHARE = 1.03 / 1.44;
 
 const clamp01 = (t: number): number => (t <= 0 ? 0 : t >= 1 ? 1 : t);
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
@@ -176,7 +184,7 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
     .map((dock): Hold => {
       if (dock.pin) return { dock, start: clampY(dock.pin.start), end: clampY(dock.pin.end) };
       const centre = dock.top + dock.height / 2 - viewport.height / 2;
-      const half = (HOLD_VH * viewport.height) / 2;
+      const half = ((dock.id === 'smile' ? SMILE_HOLD_VH : HOLD_VH) * viewport.height) / 2;
       return { dock, start: clampY(centre - half), end: clampY(centre + half) };
     });
   const min = MIN_TRAVEL_VH * viewport.height;
@@ -281,6 +289,8 @@ export const NO_POSE: Pose = {
   hidden: true,
   dock: null,
   local: 0,
+  travel: 0,
+  to: null,
 };
 
 /**
@@ -321,6 +331,8 @@ export function courierPose(
       hidden: hold.dock.id === 'footer',
       dock: hold.dock.id,
       local,
+      travel: 0,
+      to: null,
     };
   }
 
@@ -377,5 +389,16 @@ export function courierPose(
     hidden: false,
     dock: null,
     local: 0,
+    travel: t,
+    to: b.dock.id,
   };
+}
+
+/**
+ * How much of the idle motion (the breath, the slow turn) shows: none at the footer, where the
+ * mark must land exactly on the playground's part, fading out on the way there.
+ */
+export function idleAmount(pose: Pose): number {
+  if (pose.hidden || pose.dock === 'footer') return 0;
+  return pose.to === 'footer' ? 1 - pose.travel : 1;
 }

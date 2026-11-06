@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ARCH_DEPTH, ARCH_SLOT, ARCH_TEETH, archLayout, projectArch } from './arch';
+import { ARCH_DEPTH, ARCH_SLOT, ARCH_TEETH, archLayout, footprintAngle, projectArch } from './arch';
 import {
   archFrame,
   bounceOut,
@@ -8,6 +8,7 @@ import {
   CROWN_SHARE,
   FOOTER_DROP_PX,
   holdRanges,
+  idleAmount,
   MIN_TRAVEL_VH,
   NO_POSE,
   STATIONS,
@@ -243,6 +244,12 @@ describe('courierPose: travel', () => {
     expect(bounceOut(0.5)).toBeGreaterThan(0.7);
     expect(bounceOut(0.8)).toBeGreaterThan(0.9);
     expect(bounceOut(0.95)).toBeGreaterThan(0.98);
+    // The idle motion fades out on the way down, so the mark lands still.
+    expect(idleAmount(at(y(0.5)))).toBeCloseTo(0.5, 5);
+    expect(at(y(0.5))).toMatchObject({ to: 'footer', dock: null });
+    expect(idleAmount(at(y(1)))).toBe(0);
+    expect(idleAmount(at(middleOf('booking')))).toBe(1);
+    expect(idleAmount(at(y(0.999)))).toBeLessThan(0.01);
   });
 });
 
@@ -375,5 +382,10 @@ describe('arch layout', () => {
       1,
     );
     expect(projectArch({ x: 0.2, z: ARCH_DEPTH / 2 })).toEqual({ u: 0.2, v: 0 });
+    // Footprints follow the curve: rising toward the ends on screen (the back is up).
+    const slot = teeth[ARCH_SLOT]!;
+    expect(footprintAngle(slot.yaw)).toBeLessThan(0);
+    expect(footprintAngle(teeth[1]!.yaw)).toBeGreaterThan(0);
+    expect(footprintAngle(0)).toBeCloseTo(0, 9);
   });
 });
