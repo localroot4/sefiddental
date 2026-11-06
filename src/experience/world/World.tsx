@@ -17,6 +17,7 @@ import type { TierSettings } from '@/lib/qualityTier';
 
 import type { ScrollEngine } from '../engine/scrollEngine';
 import { COURIER } from '../journey/courier';
+import type { Pulse } from '../canvas/pulse';
 import type { Journey } from '../journey/driver';
 import { WebglCourier } from '../journey/WebglCourier';
 
@@ -28,13 +29,15 @@ export function World(props: {
   settings: TierSettings;
   engine: ScrollEngine;
   journey: Journey | null;
+  pulse: Pulse;
 }): React.JSX.Element {
-  const { tier, settings, engine, journey } = props;
+  const { tier, settings, engine, journey, pulse } = props;
   const gl = useThree((state) => state.gl);
   const scene = useThree((state) => state.scene);
   const camera = useThree((state) => state.camera);
 
   const revealed = useRef(false);
+  const drawingRef = useRef(0);
   useEffect(() => {
     const canvas = gl.domElement;
     canvas.style.setProperty('opacity', '0');
@@ -42,6 +45,7 @@ export function World(props: {
       canvas.style.setProperty('transition', 'none');
       canvas.style.setProperty('opacity', '0');
       revealed.current = false;
+      pulse.request();
     };
     const observer = new MutationObserver(hide);
     observer.observe(document.documentElement, {
@@ -56,16 +60,28 @@ export function World(props: {
       canvas.style.removeProperty('opacity');
       canvas.style.removeProperty('transition');
     };
-  }, [gl]);
+  }, [gl, pulse]);
 
   // Transparent clear: the courier's passes draw over the page's own surfaces.
   useEffect(() => {
     gl.setClearColor(0x000000, 0);
   }, [gl]);
 
-  // Every advanced frame renders (the FrameDriver gates them), so a resize, a DPR change or a
-  // restored context is drawn again on the next tick.
+  // A resize, a DPR change or a restored context clears the buffer: draw again.
+  const size = useThree((state) => state.size);
+  const dpr = useThree((state) => state.viewport.dpr);
+  useEffect(() => pulse.request(), [pulse, size, dpr]);
+  useEffect(() => {
+    const canvas = gl.domElement;
+    const again = () => pulse.request();
+    canvas.addEventListener('webglcontextrestored', again);
+    return () => canvas.removeEventListener('webglcontextrestored', again);
+  }, [gl, pulse]);
+
+  // Only the frames asked for (pulse.ts), or every frame while a slot scene draws (the compare
+  // wipe breathes): at rest nothing renders, and the canvas keeps its last frame.
   useFrame(() => {
+    if (!pulse.begin(drawingRef.current > 0)) return;
     gl.render(scene, camera);
     if (!revealed.current) {
       revealed.current = true;
@@ -74,7 +90,6 @@ export function World(props: {
     }
   }, 1);
 
-  const drawingRef = useRef(0);
   const api = useMemo<WorldApi>(
     () => ({ engine, tier, settings, drawingRef }),
     [engine, tier, settings],
@@ -85,7 +100,12 @@ export function World(props: {
       <SceneSlots />
       {/* Tier 1 keeps the DOM courier: no model download (a debug canvas mounts at tier 1). */}
       {tier >= COURIER.minTier ? (
-        <WebglCourier journey={journey} tier={tier} particles={settings.scene5Particles} />
+        <WebglCourier
+          journey={journey}
+          tier={tier}
+          particles={settings.scene5Particles}
+          pulse={pulse}
+        />
       ) : null}
     </WorldContext.Provider>
   );

@@ -32,9 +32,8 @@ export const STATIONS: readonly { id: DockId; form: Form }[] = [
 const FORM = new Map(STATIONS.map((s) => [s.id, s.form]));
 const ORDER = new Map(STATIONS.map((s, i) => [s.id, i]));
 
-/** An empty DOM box the courier docks in, measured in document px with its stage in flow. */
-export interface Dock {
-  id: DockId;
+/** A box in document px, measured with its stage in flow. */
+export interface Box {
   left: number;
   top: number;
   width: number;
@@ -44,6 +43,11 @@ export interface Dock {
    * `top - pin.start`); null for a box that scrolls with the page.
    */
   pin: { start: number; end: number } | null;
+}
+
+/** An empty DOM box the courier docks in. */
+export interface Dock extends Box {
+  id: DockId;
 }
 
 export interface Viewport {
@@ -78,6 +82,8 @@ export interface Pose {
   travel: number;
   /** The dock the courier travels toward, null at a dock. */
   to: DockId | null;
+  /** 0..1: the courier fades out wherever it would sit under text or a control (0 there). */
+  opacity: number;
 }
 
 /** A travel spans at least this share of the viewport height in scroll. */
@@ -159,8 +165,8 @@ const backOut = (t: number): number => {
   return 1 + (s + 1) * u * u * u + s * u * u;
 };
 
-/** The dock's viewport top at scroll `y` (stuck while its stage is pinned). */
-export function viewportTop(dock: Dock, y: number): number {
+/** The box's viewport top at scroll `y` (stuck while its stage is pinned). */
+export function viewportTop(dock: Box, y: number): number {
   const { pin } = dock;
   if (pin === null || y <= pin.start) return dock.top - y;
   if (y <= pin.end) return dock.top - pin.start;
@@ -307,13 +313,10 @@ export const NO_POSE: Pose = {
   local: 0,
   travel: 0,
   to: null,
+  opacity: 0,
 };
 
-/**
- * The courier's pose for one frame. `tier` 0 has no courier. Pure: the same scroll position,
- * docks and viewport give the same pose, scrolling down or up.
- */
-export function courierPose(
+function placePose(
   scrollY: number,
   docks: readonly Dock[],
   viewport: Viewport,
@@ -349,6 +352,7 @@ export function courierPose(
       local,
       travel: 0,
       to: null,
+      opacity: 1,
     };
   }
 
@@ -407,7 +411,47 @@ export function courierPose(
     local: 0,
     travel: t,
     to: b.dock.id,
+    opacity: 1,
   };
+}
+
+/** The share of the courier's box its form fills (the box holds the turn and the shadow). */
+export const FORM_SHARE = 0.8;
+/** Within this distance of text or a control the courier fades, to nothing where it touches. */
+export const FADE_PX = 28;
+
+/**
+ * 0..1 how clear of the page's text and controls the courier's form is at scroll `y`: 0 where its
+ * box touches one (it fades out there and back in beyond), 1 from FADE_PX away.
+ */
+export function clearance(pose: Pose, obstacles: readonly Box[], y: number): number {
+  const half = (pose.scale * FORM_SHARE) / 2;
+  let distance = Infinity;
+  for (const o of obstacles) {
+    const top = viewportTop(o, y);
+    const dy = Math.max(top - (pose.y + half), pose.y - half - (top + o.height), 0);
+    if (dy >= FADE_PX) continue;
+    const dx = Math.max(o.left - (pose.x + half), pose.x - half - (o.left + o.width), 0);
+    distance = Math.min(distance, Math.hypot(dx, dy));
+    if (distance === 0) return 0;
+  }
+  return smoothstep(clamp01(distance / FADE_PX));
+}
+/**
+ * The courier's pose for one frame. `tier` 0 has no courier. `obstacles` are the page's text and
+ * controls (docks.ts measureObstacles): the courier never shows under them, it fades out over
+ * them and back. Pure: the same scroll position, docks, viewport and obstacles give the same
+ * pose, scrolling down or up.
+ */
+export function courierPose(
+  scrollY: number,
+  docks: readonly Dock[],
+  viewport: Viewport,
+  tier: number,
+  obstacles: readonly Box[] = [],
+): Pose {
+  const pose = placePose(scrollY, docks, viewport, tier);
+  return pose.hidden ? pose : { ...pose, opacity: clearance(pose, obstacles, scrollY) };
 }
 
 /** 0..1 how far the tooth has seated into the arch (its crown turns to the camera); 0 for the mark. */

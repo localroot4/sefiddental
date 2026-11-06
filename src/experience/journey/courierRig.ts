@@ -149,6 +149,8 @@ function createGlaze(): { material: MeshPhysicalMaterial; rim: { value: Color } 
     metalness: 0,
     clearcoat: 1,
     clearcoatRoughness: 0.08,
+    // Always in the transparent pass: the courier fades out over text (pose.opacity).
+    transparent: true,
   });
   material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
     shader.uniforms.uRim = rim;
@@ -231,6 +233,7 @@ export function createCourierRig(
   tooth.scale.setScalar(toothScale);
   spin.add(tooth);
   const enamel = createEnamel({ color: '#F3ECDF', sss: 0.26 });
+  enamel.material.transparent = true;
   const solid = new Mesh(geometry.molar, enamel.material);
   tooth.add(solid);
   const wireMaterial = new MeshBasicMaterial({
@@ -320,7 +323,10 @@ export function createCourierRig(
       tooth.position.y = -(centre + (CROWN_Y - centre) * seat) * toothScale;
       spin.rotation.y = pose.rotation + turn + idle * 0.12 * Math.sin(time * 0.45);
       holder.position.y = idle * 0.02 * Math.sin((time / 6) * Math.PI * 2);
-      studio.shadow.visible = !isTooth || seat < 0.5;
+      const fade = pose.opacity;
+      glaze.opacity = fade;
+      enamel.material.opacity = fade;
+      studio.shadow.visible = (!isTooth || seat < 0.5) && fade > 0.99;
       if (isTooth) {
         if (nextLevel !== level) {
           const { refine, character } = levelBlend(nextLevel);
@@ -332,9 +338,9 @@ export function createCourierRig(
         enamel.uniforms.uDissolve.value = pose.smile;
         solid.visible = beats.build > 0.001;
         wire.visible = beats.wire > 0.005;
-        wireMaterial.opacity = 0.42 * beats.wire;
+        wireMaterial.opacity = 0.42 * beats.wire * fade;
         points.visible = beats.points > 0.005;
-        pointUniforms.uOpacity.value = beats.points;
+        pointUniforms.uOpacity.value = beats.points * fade;
         pointUniforms.uScan.value = beats.scan;
         pointUniforms.uTime.value = time;
         // About 3 px points on a 200 px tooth, in proportion elsewhere.

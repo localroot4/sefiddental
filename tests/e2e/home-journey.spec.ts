@@ -20,6 +20,8 @@ interface Pose {
   hidden: boolean;
   smile: number;
   arch: number;
+  /** 0..1: the courier fades out wherever its box would sit under text. */
+  opacity?: number;
 }
 interface Hold {
   id: string;
@@ -132,6 +134,7 @@ test.describe('desktop, WebGL courier', () => {
       await scrollToY(page, stop.y);
       const pose = await probe<Pose>(page, 'pose');
       expect(pose.dock, stop.name).toBe(stop.dock);
+      if (stop.dock !== 'footer') expect(pose.opacity, `${stop.name}: whole at its dock`).toBe(1);
       if (stop.dock === 'footer') {
         expect(pose.hidden, 'the playground has the mark').toBe(true);
         continue;
@@ -192,18 +195,27 @@ test.describe('desktop, WebGL courier', () => {
     }
   });
 
-  test('T-JN4 no text, control or field under the courier at a dock; in travel it stays under the text', async ({
+  test('T-JN4 no text, control or field under the shown courier, at a dock or anywhere in travel', async ({
     page,
   }) => {
+    test.setTimeout(480_000);
     const holds = await open(page, 'tier=2');
-    for (const stop of stops(holds)) {
+    const samples = stops(holds).filter((s) => s.dock !== null);
+    // Ten positions through every travel, its ends excluded.
+    holds.forEach((h, i) => {
+      const next = holds[i + 1];
+      if (!next) return;
+      for (let k = 1; k <= 10; k += 1) {
+        const y = h.end + ((next.start - h.end) * k) / 11;
+        samples.push({ name: `${h.id}->${next.id} ${k}/10`, y, dock: null });
+      }
+    });
+    for (const stop of samples) {
       await scrollToY(page, stop.y);
       const pose = await probe<Pose>(page, 'pose');
-      if (pose.hidden) continue;
-      const under = await underCourier(page, pose);
-      if (stop.dock !== null) {
-        expect(under, `at dock ${stop.name}`).toEqual({ text: [], controls: [] });
-      }
+      // A courier faded out over text paints nothing there.
+      if (pose.hidden || (pose.opacity ?? 1) <= 0.02) continue;
+      expect(await underCourier(page, pose), stop.name).toEqual({ text: [], controls: [] });
     }
     // The layers the courier draws in paint below every section of `.site`: z-index -1, with no
     // stacking context between them and `.site` (so text passed over in travel stays on top).
@@ -253,9 +265,17 @@ test.describe('desktop, WebGL courier', () => {
     );
     await page.waitForTimeout(1500);
     const before = (await part.boundingBox())!;
-    await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+    // Hover, press, then small moves a frame apart (as T-BF4): WebKit delivered the press and the
+    // release of one 8-step move but no move Draggable saw in between (CI run 111).
+    const at = { x: before.x + before.width / 2, y: before.y + before.height / 2 };
+    await page.mouse.move(at.x, at.y);
+    await page.waitForTimeout(100);
     await page.mouse.down();
-    await page.mouse.move(before.x - 160, before.y - 60, { steps: 8 });
+    await page.waitForTimeout(100);
+    for (let i = 1; i <= 12; i += 1) {
+      await page.mouse.move(at.x - 14 * i, at.y - 5 * i);
+      await page.waitForTimeout(40);
+    }
     await page.mouse.up();
     await expect
       .poll(async () => Math.abs((await part.boundingBox())!.x - before.x), { timeout: 10_000 })

@@ -12,9 +12,10 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 
-import { addAfterEffect, useThree } from '@react-three/fiber';
+import { addAfterEffect, addEffect, useThree } from '@react-three/fiber';
 import type { BufferGeometry, Camera, Scene, WebGLRenderer } from 'three';
 
+import type { Pulse } from '../canvas/pulse';
 import { MODELS } from '../world/assets';
 import { brandGeometry } from '../world/brandGeometry';
 import { pageLeaving, useMolar, useRigLifetime } from '../scenes/webgl/hooks';
@@ -24,7 +25,7 @@ import { workflowBeats } from './beats';
 import { COURIER } from './courier';
 import { BOX_GROW, createCourierRig, type CourierRig } from './courierRig';
 import type { Journey } from './driver';
-import { archFrame, idleAmount, viewportTop } from './pose';
+import { archFrame, viewportTop } from './pose';
 
 /** The WebGL courier draws from this tier; tier 1 keeps the DOM courier. */
 export const WEBGL_COURIER_TIER = COURIER.minTier;
@@ -57,8 +58,9 @@ export function WebglCourier(props: {
   journey: Journey | null;
   tier: 1 | 2 | 3;
   particles: number;
+  pulse: Pulse;
 }): null {
-  const { journey, tier, particles } = props;
+  const { journey, tier, particles, pulse } = props;
   const get = useThree((state) => state.get);
   const molar = useMolar();
   const [mark, setMark] = useState<BufferGeometry | null>(null);
@@ -107,9 +109,27 @@ export function WebglCourier(props: {
     canvas.addEventListener('webglcontextlost', onLost);
     canvas.addEventListener('webglcontextrestored', onRestored);
     const choices = document.querySelector('[data-scene="restoration"] [data-choices]');
+    const target = (dock: string | null): number =>
+      dock === 'restoration' ? levelFromChoice(choices?.getAttribute('data-choice') ?? null) : 0;
+
+    // Before the World decides: a frame only when what the courier shows changed (the pose, the
+    // level easing to a chip, the canvas still fading in). No idle motion: at rest the canvas
+    // keeps its last frame and the ticker sleeps.
+    let signature = '';
+    const offAsk = addEffect(() => {
+      const p = journey.pose();
+      const next = [p.x, p.y, p.scale, p.rotation, p.arch, p.smile, p.opacity, p.local]
+        .map((v) => v.toFixed(2))
+        .concat(p.form, String(p.hidden), String(target(p.dock)))
+        .join('|');
+      if (next !== signature || Math.abs(level - target(p.dock)) > 0.001 || !shown) {
+        signature = next;
+        pulse.request();
+      }
+    });
 
     const off = addAfterEffect((time) => {
-      if (lost) return;
+      if (lost || !pulse.rendered()) return;
       const { gl, size } = get();
       const dt = last < 0 ? 0 : Math.min(0.1, Math.max(0, time - last));
       last = time;
@@ -136,23 +156,20 @@ export function WebglCourier(props: {
         );
       }
 
-      if (!pose.hidden) {
+      if (!pose.hidden && pose.opacity > 0.005) {
         const atRestoration = pose.dock === 'restoration';
-        const target = atRestoration
-          ? levelFromChoice(choices?.getAttribute('data-choice') ?? null)
-          : 0;
-        level = damp(level, target, dt, LEVEL_TAU);
+        level = damp(level, target(pose.dock), dt, LEVEL_TAU);
         const settle = atRestoration
           ? ramp(pose.local, 0, 0.12) * (1 - ramp(pose.local, 0.88, 1))
           : 0;
         const side = pose.scale * BOX_GROW;
         rig.update({
           pose,
-          time,
+          time: 0,
           level: Math.round(level * 1000) / 1000,
-          turn: settle * turntableYaw(level, pose.local, time),
+          turn: settle * turntableYaw(level, pose.local, 0),
           beats: workflowBeats(pose.dock === 'workflow' ? pose.local : null),
-          idle: idleAmount(pose),
+          idle: 0,
           pixels: pose.scale * gl.getPixelRatio(),
         });
         drawPass(
@@ -176,11 +193,12 @@ export function WebglCourier(props: {
     });
     return () => {
       off();
+      offAsk();
       canvas.removeEventListener('webglcontextlost', onLost);
       canvas.removeEventListener('webglcontextrestored', onRestored);
       journey.setWebgl(false);
     };
-  }, [journey, rig, tier, get]);
+  }, [journey, rig, tier, get, pulse]);
 
   return null;
 }
