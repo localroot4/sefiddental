@@ -170,6 +170,8 @@ test('T-AG1 section 1: the first sign-in sets up the code; later sign-ins ask fo
   await page.waitForURL((url) => url.pathname.replace(/\/$/, '') === ADMIN_ROUTE);
   const today = page.getByRole('region', { name: adminText('admin.today.heading') });
   await expect(today).toBeVisible();
+  // Every panel revealed, no skeleton left (the widgets stream in after the page).
+  await expect(page.locator('[aria-busy="true"]')).toHaveCount(0);
   await shot(page, 'dashboard', today);
 
   // Steps 7 to 9: every later sign-in (two POSTs).
