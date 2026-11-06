@@ -60,13 +60,14 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
     </div>
   );
   // D2 of the journey (docs/experience/journey.md): the courier's empty box beside the mark,
-  // toward the heading from 744 px; absolute, so the header keeps its height.
+  // at its end side on phones and toward the heading from 1024 px (from 744 px to 1024 px the
+  // heading's lead reaches the mark: no box); absolute, so the header keeps its height.
   const action = (
     <div className="relative w-fit">
       <div
         data-dock="services"
         aria-hidden="true"
-        className="absolute bottom-0 start-[calc(100%+1.5rem)] h-16 w-24 md:start-auto md:end-[calc(100%+2rem)] md:h-24 md:w-32 lg:h-32 lg:w-[10rem]"
+        className="absolute bottom-0 start-[calc(100%+1.5rem)] h-16 w-24 md:hidden lg:start-auto lg:end-[calc(100%+2rem)] lg:block lg:h-32 lg:w-[10rem]"
       />
       {mark}
     </div>

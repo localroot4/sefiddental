@@ -68,8 +68,10 @@ export function WebglCourier(props: {
       (geometry) => {
         if (live) setMark(geometry);
       },
-      (error: unknown) =>
-        console.error('[journey] mark.glb failed to load; the DOM courier stays.', error),
+      // A load the unmount cut short (a navigation away) is not an error.
+      (error: unknown) => {
+        if (live) console.error('[journey] mark.glb failed to load; the DOM courier stays.', error);
+      },
     );
     return () => {
       live = false;

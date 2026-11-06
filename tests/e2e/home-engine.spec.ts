@@ -509,7 +509,8 @@ test('T-EN4h a first visit in auto mode whose probe answers before the engine ch
   await engineCreated(page);
   await frames(page);
   await frames(page);
-  await page.unroute(/\.js(\?|$)/);
+  // A chunk still in its handler (the journey layer loads with the engine) finishes first.
+  await page.unrouteAll({ behavior: 'wait' });
   // The pins arrived with the engine; the place was read in the document without them.
   await expect(page.locator('html[data-pins]')).toHaveCount(1);
   expect(Math.abs((await voicesTop()) - landed)).toBeLessThanOrEqual(2);

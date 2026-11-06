@@ -113,7 +113,7 @@ A tier change mid-page switches courier type at the current pose, with no jump.
   covers the viewport), so the courier rises into view as the photo scrolls away. The intro's
   SVG mark is not handed over at the same box.
 - Docks per width: from 1024 px all eight (D4 only on the pinned diagonal, tiers 2 and 3);
-  from 744 px D2, D3, D5, D8; under 744 px D2 (beside the services mark), D3, D5, D8. A dock
+  from 744 px to 1023 px D3, D5, D8; under 744 px D2 (beside the services mark), D3, D5, D8. A dock
   that is not rendered is skipped.
 - In travel the courier passes under text (never over it): the text stays on top, but its
   contrast drops while the courier is behind it. At every dock the box holds no text.

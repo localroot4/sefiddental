@@ -15,8 +15,11 @@ export function useMolar(): BufferGeometry | null {
       (loaded) => {
         if (current) setGeometry(loaded);
       },
-      (error: unknown) =>
-        console.error('[experience] molar.glb failed to load; the DOM art stays.', error),
+      // A load the unmount cut short (a navigation away) is not an error.
+      (error: unknown) => {
+        if (current)
+          console.error('[experience] molar.glb failed to load; the DOM art stays.', error);
+      },
     );
     return () => {
       current = false;
