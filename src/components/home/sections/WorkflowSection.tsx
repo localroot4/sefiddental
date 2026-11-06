@@ -67,10 +67,12 @@ export function WorkflowSection(props: { items: Step[]; copy?: Copy }) {
   return (
     <HomeSection scene="workflow" section="workflow" family="G" copy={props.copy ?? null}>
       <div className={STAGE} data-workflow-stage="">
+        {/* D4 of the journey (docs/experience/journey.md): on the pinned diagonal only, the free
+            strip at the start side beside the centred step, where the tooth shows the beats. */}
         <div
-          className="pointer-events-none absolute inset-0"
-          data-world-slot="workflow"
+          data-dock="workflow"
           aria-hidden="true"
+          className="pointer-events-none absolute start-[2%] top-[58%] hidden h-[32%] w-[calc((100%-min(28rem,40vw))/2-8%)] lg:[[data-pins]_&]:block"
         />
         <span className={LINE} data-workflow-line="" aria-hidden="true" />
         <ol className={PATH} data-workflow-path="">

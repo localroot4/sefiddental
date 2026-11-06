@@ -18,6 +18,7 @@ export function DentistsSection(props: { doctors: HomeDoctor[]; copy: Copy }) {
   if (props.doctors.length === 0) return null;
   return (
     <HomeSection
+      dock="dentists"
       scene="dentists"
       section="dentists"
       family="F"

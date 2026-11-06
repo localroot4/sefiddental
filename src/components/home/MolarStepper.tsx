@@ -14,9 +14,9 @@
 // writes opacity and transform inline and leaves the attribute off. The slot is decorative and
 // the world slot phase 8 replaces with the 3D molar where the tier gives it the canvas: the layers
 // hide while the slot is live (`data-world-live`, scenes/webgl/pass.ts) and return with it.
-const CROWN =
+export const CROWN =
   'M52 118C40 106 28 90 28 72c0-20 12-32 26-32 10 0 17 6 24 11 7-8 14-15 22-15s15 7 22 15c7-5 14-11 24-11 14 0 26 12 26 32 0 18-12 34-24 46-18 8-78 8-96 0z';
-const ROOTS =
+export const ROOTS =
   'M56 110c-4 40-8 86-2 112 3 10 14 11 17 1 7-27 15-57 29-71 14 14 22 44 29 71 3 10 14 9 17-1 6-26 2-72-2-112z';
 
 /** The enamel per level (theme tokens: the light and dark values come from design/tokens.css). */
@@ -46,6 +46,7 @@ export function MolarStepper(props: { className?: string }) {
   return (
     <div
       data-world-slot="molar"
+      data-dock="restoration"
       aria-hidden="true"
       className={`grid w-[10rem] md:w-[12rem] lg:w-[8rem] xl:w-[12rem] ${props.className ?? ''}`}
     >

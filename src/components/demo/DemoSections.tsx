@@ -60,6 +60,7 @@ export function DemoCasesSection(props: { copy: Copy }) {
 export function DemoDentistsSection(props: { copy: Copy }) {
   return (
     <HomeSection
+      dock="dentists"
       section="dentists"
       family="F"
       copy={headingOnly(props.copy)}

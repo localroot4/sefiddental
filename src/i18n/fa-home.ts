@@ -91,6 +91,7 @@ export const HOME_MESSAGES = {
   'home.voices.consent': 'با رضایت کتبی بیمار منتشر شده است.',
   'home.journey.guide': 'راهنمای اولین مراجعه',
   'home.faq.aside': 'سؤال دیگری دارید؟',
+  'home.smile.photo': 'عکس ۳:۲ از لبخند یک بیمار از نزدیک (بینی تا چانه)، با رضایت کتبی بیمار',
   'home.booking.map': 'تصویر ثابت نقشهٔ محل کلینیک، ۴:۳، با نشانی ورودی',
   // Phase 7 (one block per lane; the strings come from the lane briefs).
   // INTRO: the overlay's only focusable element.

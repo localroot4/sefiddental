@@ -50,6 +50,7 @@ export function BookingSection(props: { clinic: Clinic; hours: ClinicHours }) {
                 text-free, from 1024 px; shorter than the form column, so it adds no height. */}
             <div
               data-world-slot="booking-mark"
+              data-dock="booking"
               aria-hidden="true"
               className="hidden aspect-square w-[12rem] justify-self-center lg:block"
             />

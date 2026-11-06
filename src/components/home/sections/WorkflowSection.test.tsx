@@ -34,7 +34,10 @@ describe('home scene 5 workflow section (D2, lanes WORKFLOW)', () => {
     expect(html).toContain('data-scene="workflow"');
     expect(html).toContain('data-home-section="workflow"');
     expect(html).toContain('data-family="G"');
-    expect(html).toContain('data-world-slot="workflow"');
+    // The journey's D4 box (empty, decorative), on the pinned diagonal only.
+    expect(html).toMatch(
+      /<div data-dock="workflow" aria-hidden="true" class="[^"]*hidden[^"]*"><\/div>/,
+    );
     expect(html).toContain('روش دیجیتال');
     const steps = html.match(/<li [^>]*data-workflow-step=""[^>]*>/g) ?? [];
     expect(steps).toHaveLength(4);

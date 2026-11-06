@@ -196,6 +196,14 @@ export function HomeHero(props: {
           <div className="mx-auto w-full max-w-content px-gutter py-6">
             <FactsRow facts={props.facts} label={t('home.trust.label')} />
           </div>
+          {/* D1 of the journey (docs/experience/journey.md): the courier's first dock, an empty
+              box at the end side under the facts, from 1024 px only. */}
+          <div
+            aria-hidden="true"
+            className="hidden w-full max-w-content px-gutter lg:mx-auto lg:block"
+          >
+            <div data-dock="hero" className="ms-auto h-[9rem] w-[min(18rem,24vw)]" />
+          </div>
         </div>
       ) : null}
     </section>

@@ -23,6 +23,7 @@ import { JourneySection } from '@/components/home/sections/JourneySection';
 import { PlaygroundSection } from '@/components/home/sections/PlaygroundSection';
 import { RestorationSection } from '@/components/home/sections/RestorationSection';
 import { ServicesSection } from '@/components/home/sections/ServicesSection';
+import { SmileBand } from '@/components/home/sections/SmileBand';
 import { VoicesSection } from '@/components/home/sections/VoicesSection';
 import { WorkflowSection } from '@/components/home/sections/WorkflowSection';
 import { getHomeData, getHomePage } from '@/components/home/homeData';
@@ -134,6 +135,7 @@ export default async function HomePage() {
             copy={sectionCopy(page, 'workflow')}
           />
         )}
+        <SmileBand />
         {data.demo.cases ? (
           <DemoCasesSection copy={sectionCopy(page, 'compare')} />
         ) : (

@@ -59,6 +59,18 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
       ))}
     </div>
   );
+  // D2 of the journey (docs/experience/journey.md): the courier's empty box beside the mark,
+  // toward the heading from 744 px; absolute, so the header keeps its height.
+  const action = (
+    <div className="relative w-fit">
+      <div
+        data-dock="services"
+        aria-hidden="true"
+        className="absolute bottom-0 start-[calc(100%+1.5rem)] h-16 w-24 md:start-auto md:end-[calc(100%+2rem)] md:h-24 md:w-32 lg:h-32 lg:w-[10rem]"
+      />
+      {mark}
+    </div>
+  );
   return (
     <div data-scene="services" data-home-section="services" data-family="C">
       <Section labelledBy={props.copy ? id : undefined}>
@@ -71,11 +83,11 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
               id={id}
               title={props.copy.heading}
               lead={props.copy.intro ? ltr(props.copy.intro) : undefined}
-              action={mark}
+              action={action}
               className="lg:[[data-pins]_&]:mb-6"
             />
           ) : (
-            <div className="mb-8 md:mb-12">{mark}</div>
+            <div className="mb-8 md:mb-12">{action}</div>
           )}
           <div data-rail="" className="-mx-gutter lg:mx-0 lg:[[data-pins]_&]:overflow-x-clip">
             <div

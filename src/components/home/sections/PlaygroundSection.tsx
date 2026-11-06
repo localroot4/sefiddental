@@ -74,6 +74,8 @@ export function PlaygroundSection() {
             <div
               key={part}
               data-playground-part={part}
+              // D8 of the journey: the courier lands on the mark's home box and hands over.
+              data-dock={part === 'mark' ? 'footer' : undefined}
               className={cx(
                 'absolute grid touch-none place-items-center select-none',
                 part === 'mark' ? 'text-brand' : 'text-ink',

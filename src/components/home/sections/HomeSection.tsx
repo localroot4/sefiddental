@@ -53,10 +53,15 @@ export function HomeSection(props: {
   split?: boolean;
   /** The whole section is a pinned stage for this many viewport heights (`PinRoom`). */
   pin?: 1 | 2;
+  /**
+   * A journey dock in the header row (docs/experience/journey.md): an empty box at the end side,
+   * clear of the action, from 1024 px; absolute, so the header keeps its height.
+   */
+  dock?: 'dentists';
   children: ReactNode;
 }) {
   const id = `home-${props.section}-title`;
-  const header = props.copy ? (
+  const heading = props.copy ? (
     <SectionHeader
       id={id}
       title={props.copy.heading}
@@ -65,6 +70,19 @@ export function HomeSection(props: {
       className={props.split ? 'lg:mb-0 lg:self-start' : undefined}
     />
   ) : null;
+  const header =
+    heading && props.dock ? (
+      <div className="relative">
+        {heading}
+        <div
+          data-dock={props.dock}
+          aria-hidden="true"
+          className="absolute end-[9rem] top-0 hidden h-[min(8rem,100%)] w-[min(13rem,22%)] lg:block"
+        />
+      </div>
+    ) : (
+      heading
+    );
   return (
     <div data-scene={props.scene} data-home-section={props.section} data-family={props.family}>
       <Section
