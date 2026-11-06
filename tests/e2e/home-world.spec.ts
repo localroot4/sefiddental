@@ -1,9 +1,9 @@
-// The WebGL world of phase 8 (lane WORLD: scenes 1-2 exit, 3 backdrop, 9-10 warm light and the
-// booking mark): three.js loads only after `load` and only at the first scroll, the canvas shows
-// nothing before its first frame and draws nothing while the hero photo covers the viewport, the
-// Draco decoder runs in a same-origin worker under the page CSP, the booking stage turns
-// transparent only while the world paints it, and a lost context recovers without a reload.
-// Desktop only: under 1024 px the world draws no mark, backdrop or booking stage.
+// The WebGL world of phase 8, as the journey left it (docs/experience/journey.md): three.js loads
+// only after `load` and only at the first scroll, the canvas shows nothing before its first frame
+// and draws nothing while the hero photo covers the viewport, the Draco decoder runs in a
+// same-origin worker under the page CSP, the booking and footer stages turn transparent only
+// while the journey layer paints them, and a lost context hands the courier to the DOM and back
+// without a reload. Desktop rows (the journey's own rows are home-journey.spec.ts).
 import { expect, test, type Page } from '@playwright/test';
 
 import { watchConsoleErrors } from '../helpers/console';
@@ -78,7 +78,7 @@ test('T-WD1 three.js waits for the first scroll after load; the decoder runs in 
     .toEqual(
       expect.arrayContaining([
         '200 /brand/3d/mark.glb',
-        '200 /brand/3d/diamond.glb',
+        '200 /brand/3d/molar.glb',
         '200 /brand/3d/draco/draco_decoder.wasm',
         '200 /brand/3d/draco/draco-worker.js',
       ]),
@@ -106,7 +106,7 @@ test('T-WD2 no frame while the photo covers the viewport under the header; frame
   expect((await snapshot(page)).gate).toBe('open');
 });
 
-test('T-WD3 the booking stage is transparent only while the world paints its mark, and a lost context recovers without a reload', async ({
+test('T-WD3 the booking and footer stages are transparent only while the journey layer paints them, and a lost context hands the courier to the DOM and back without a reload', async ({
   page,
 }) => {
   await needsWebgl2(page);
@@ -114,12 +114,40 @@ test('T-WD3 the booking stage is transparent only while the world paints its mar
   await page.waitForLoadState('load');
   await expect(page.locator('[data-experience-layer]')).toHaveCount(1, { timeout: 20_000 });
   const html = page.locator('html');
-  await expect(html).not.toHaveAttribute('data-world-stage');
-  await scrollTo(page, 'booking', 0.1);
-  await expect(html).toHaveAttribute('data-world-stage', '', { timeout: 30_000 });
   const stage = page.locator('[data-home-section="booking"] > section');
+  const band = page.locator('[data-band="booking"]');
+  await expect(html).toHaveAttribute('data-world-stage', '', { timeout: 30_000 });
+  await scrollTo(page, 'booking', 0.1);
   await expect(stage).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(page.locator('[data-scene="footer"]')).toHaveCSS(
+    'background-color',
+    'rgba(0, 0, 0, 0)',
+  );
+  // The band under the stage paints the stage's own colour, over the stage's box.
+  const [bandColor, stageBox, bandBox] = await Promise.all([
+    band.evaluate((el) => getComputedStyle(el).backgroundColor),
+    stage.boundingBox(),
+    band.boundingBox(),
+  ]);
+  const warmSoft = await page.evaluate(() => {
+    const probe = document.createElement('div');
+    probe.className = 'bg-warm-soft';
+    document.body.append(probe);
+    const color = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return color;
+  });
+  expect(bandColor).toBe(warmSoft);
+  expect(Math.abs((bandBox?.y ?? 0) - (stageBox?.y ?? 1))).toBeLessThan(2);
+  expect(Math.abs((bandBox?.height ?? 0) - (stageBox?.height ?? 1))).toBeLessThan(2);
 
+  const webgl = () =>
+    page.evaluate(() =>
+      (window as unknown as { __sefidJourney: { webgl(): boolean } }).__sefidJourney.webgl(),
+    );
+  const domCourier = page.locator('[data-courier]');
+  await expect.poll(webgl, { timeout: 60_000 }).toBe(true);
+  await expect(domCourier).toBeHidden();
   const lose = await page.evaluate(() => {
     const canvas = document.querySelector('canvas');
     const ext = canvas?.getContext('webgl2')?.getExtension('WEBGL_lose_context');
@@ -128,10 +156,11 @@ test('T-WD3 the booking stage is transparent only while the world paints its mar
     return ext !== null && ext !== undefined;
   });
   expect(lose).toBe(true);
-  // Lost: no frames, and the stage is opaque again (nothing paints it).
+  // Lost: no frames; the DOM courier carries on at the same pose, the stages stay painted.
   await expect.poll(async () => (await snapshot(page)).gate).toBe('lost');
-  await expect(html).not.toHaveAttribute('data-world-stage');
-  await expect(stage).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect.poll(webgl).toBe(false);
+  await expect(domCourier).toBeVisible();
+  await expect(html).toHaveAttribute('data-world-stage', '');
 
   await page.evaluate(() =>
     (window as unknown as { __lose: { restoreContext(): void } }).__lose.restoreContext(),
@@ -141,23 +170,6 @@ test('T-WD3 the booking stage is transparent only while the world paints its mar
   await expect
     .poll(async () => (await snapshot(page)).framesRendered, { timeout: 15_000 })
     .toBeGreaterThan(before + 5);
-  await expect(html).toHaveAttribute('data-world-stage', '', { timeout: 15_000 });
-});
-
-test('T-WD4 scenes two away are disposed: a full scroll back to the top frees the booking models', async ({
-  page,
-}) => {
-  await needsWebgl2(page);
-  await page.goto('/?tier=2&debug=1');
-  await page.waitForLoadState('load');
-  await expect(page.locator('[data-experience-layer]')).toHaveCount(1, { timeout: 20_000 });
-  await scrollTo(page, 'booking', 0.1);
-  await expect(page.locator('html')).toHaveAttribute('data-world-stage', '', { timeout: 30_000 });
-  const atBooking = (await snapshot(page)).memory.geometries ?? 0;
-  await scrollTo(page, 'workflow');
-  // The booking stage closes as its scene unmounts, and the GPU holds fewer geometries.
-  await expect(page.locator('html')).not.toHaveAttribute('data-world-stage');
-  await expect
-    .poll(async () => (await snapshot(page)).memory.geometries ?? Infinity, { timeout: 15_000 })
-    .toBeLessThan(atBooking);
+  await expect.poll(webgl, { timeout: 15_000 }).toBe(true);
+  await expect(domCourier).toBeHidden();
 });
