@@ -71,8 +71,11 @@ tall.
 ## 3. Payload surfaces the theme changes
 
 - Primary buttons: brand fill (Payload's disabled state is untouched).
-- Fields: a 3:1 border (WCAG 1.4.11; Payload's line colour is 1.3:1), a brand ring on focus; error
-  states keep Payload's red border.
+- Fields: a 3:1 border (WCAG 1.4.11; Payload's line colour is 1.3:1), a brand ring on focus. The
+  states are excluded on the control itself (`:not(.error *, .date-time-field--has-error *,
+  :disabled, [readonly])`), because these unlayered rules beat every Payload rule: a field in error
+  keeps Payload's red border at any depth inside rows, groups and arrays (T-AD42), and disabled
+  and read-only controls keep Payload's look.
 - Navigation: a tinted rail, group headings in small muted type, 44 px links on a rounded pill,
   the current view's link on brand-soft with a 3 px brand bar at its inline start.
 - Breadcrumb links in brand-strong.
@@ -121,8 +124,13 @@ States of every panel:
 The trend is one query: `payload.find` on bookings with `select: { createdAt: true }`,
 `createdAt >= ` Tehran midnight six days ago (indexed: `bookings_created_at_idx`), real requests
 only (the same filter as the counts), `pagination: false`, capped at 2 000 rows, access overridden
-after `isVerifiedStaff`, as the other widgets do. Days are bucketed in Asia/Tehran in
-`trendDays`.
+after `isVerifiedStaff`, as the other widgets do (DB6 holds the gate). A read that fills the cap
+shows «نامشخص», never a low count. Days are bucketed in Asia/Tehran in `trendDays`, from the same
+`now` as the header's date.
+
+The panels reveal a moment after the load event (React streams them into hidden containers
+first), so e2e rows that read the dashboard wait for no skeleton and no hidden panel
+(`dashboardSettled` in `tests/e2e/admin.spec.ts`).
 
 ## 5. Measured contrast
 
@@ -148,10 +156,12 @@ WCAG 2.2 ratios, computed from the token values with the sRGB relative luminance
 ## 6. Verified
 
 - Unit: `src/admin/dashboard.test.ts` (greeting by the Tehran clock, seven Tehran days, the one
-  capped query, quick actions per role); DOM: `dashboard.test.tsx` DB13 (trend states). Each
+  capped query, a full cap as unknown, quick actions per role); DOM: `dashboard.test.tsx` DB6 (the
+  trend's gate) and DB13 (trend states). Each
   was seen failing once against broken code.
 - e2e (`admin` project): T-AD41 (greeting and date, four KPI tiles, the trend, quick actions by
-  role, axe on the trend, no sideways scroll and 44 px quick actions at 390 px) beside the
+  role, axe on the trend, no sideways scroll and 44 px quick actions at 390 px) and T-AD42 (an
+  empty required field inside an array keeps Payload's red border) beside the
   existing dashboard rows T-AD9, T-AD16, T-AD18, T-AD21, T-AD27, T-AD33 and T-AD34.
 - Screenshots in `docs/qa/admin-ui/`: the dashboard and the sign-in page at 390, 820 and 1440 px,
   light and dark, on the e2e database with a week of sample requests.
