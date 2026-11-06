@@ -131,9 +131,24 @@ async function pixelContrast(page: Page, target: Locator): Promise<Contrast> {
     const color = style.color;
     const range = document.createRange();
     range.selectNodeContents(el);
-    // A form field's value has no text node to select: its own box holds the text.
+    // A form field's value has no text node to select: its content box (inside the border and
+    // the padding, where the value and the placeholder are drawn) holds the text.
+    const contentBox = (): DOMRect => {
+      const r = el.getBoundingClientRect();
+      const px = (name: string) => parseFloat(style.getPropertyValue(name)) || 0;
+      const left = px('border-left-width') + px('padding-left');
+      const top = px('border-top-width') + px('padding-top');
+      const right = px('border-right-width') + px('padding-right');
+      const bottom = px('border-bottom-width') + px('padding-bottom');
+      return new DOMRect(
+        r.left + left,
+        r.top + top,
+        r.width - left - right,
+        r.height - top - bottom,
+      );
+    };
     const textLines = [...range.getClientRects()].filter((r) => r.width > 0 && r.height > 0);
-    const lines = textLines.length > 0 ? textLines : [el.getBoundingClientRect()];
+    const lines = textLines.length > 0 ? textLines : [contentBox()];
     const left = Math.max(Math.min(...lines.map((r) => r.left)), 0);
     const top = Math.max(Math.min(...lines.map((r) => r.top)), 0);
     const right = Math.min(Math.max(...lines.map((r) => r.right)), window.innerWidth);
