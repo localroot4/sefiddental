@@ -6,6 +6,22 @@ import type { BufferGeometry } from 'three';
 import { loadMolar } from './molar';
 import { isDark, token, watchTheme } from './pass';
 
+let leaving = false;
+if (typeof window !== 'undefined') {
+  window.addEventListener('pagehide', () => {
+    leaving = true;
+  });
+  window.addEventListener('pageshow', () => {
+    leaving = false;
+  });
+}
+
+/**
+ * A document navigation away is under way: the browser aborts the model fetches, which is not
+ * an error worth reporting.
+ */
+export const pageLeaving = (): boolean => leaving;
+
 /** The shared molar geometry once it has loaded; null before and after a failed load. */
 export function useMolar(): BufferGeometry | null {
   const [geometry, setGeometry] = useState<BufferGeometry | null>(null);
@@ -15,9 +31,9 @@ export function useMolar(): BufferGeometry | null {
       (loaded) => {
         if (current) setGeometry(loaded);
       },
-      // A load the unmount cut short (a navigation away) is not an error.
+      // A load the unmount or a navigation away cut short is not an error.
       (error: unknown) => {
-        if (current)
+        if (current && !leaving)
           console.error('[experience] molar.glb failed to load; the DOM art stays.', error);
       },
     );

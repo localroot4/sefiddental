@@ -17,7 +17,7 @@ import type { BufferGeometry, Camera, Scene, WebGLRenderer } from 'three';
 
 import { MODELS } from '../world/assets';
 import { brandGeometry } from '../world/brandGeometry';
-import { useMolar, useRigLifetime } from '../scenes/webgl/hooks';
+import { pageLeaving, useMolar, useRigLifetime } from '../scenes/webgl/hooks';
 import { damp, levelFromChoice, passViewport, ramp, turntableYaw } from '../scenes/webgl/math';
 
 import { workflowBeats } from './beats';
@@ -68,9 +68,10 @@ export function WebglCourier(props: {
       (geometry) => {
         if (live) setMark(geometry);
       },
-      // A load the unmount cut short (a navigation away) is not an error.
+      // A load the unmount or a navigation away cut short is not an error.
       (error: unknown) => {
-        if (live) console.error('[journey] mark.glb failed to load; the DOM courier stays.', error);
+        if (live && !pageLeaving())
+          console.error('[journey] mark.glb failed to load; the DOM courier stays.', error);
       },
     );
     return () => {
