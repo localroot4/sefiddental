@@ -1,11 +1,13 @@
 'use client';
 
 /**
- * The journey layer (docs/experience/journey.md sections 4 to 6): one fixed, `aria-hidden`,
- * `pointer-events: none` layer under the page text, inside `.site` (z-index -1, after the warm
- * layer), that hosts the journey driver (driver.ts) and draws what WebGL does not: the bands that
- * paint the booking and footer stages' own colours while those stages are transparent (so the
- * courier shows over them and every text pair keeps its contrast), and the DOM courier of tier 1
+ * The journey layer (docs/experience/journey.md sections 4 to 6): it hosts the journey driver
+ * (driver.ts) and draws what WebGL does not, under the page text inside `.site` (z-index -1,
+ * after the warm layer), `aria-hidden` and without pointer events. The bands that paint the
+ * booking and footer stages' own colours while those stages are transparent (so the courier
+ * shows over them and every text pair keeps its contrast) are absolute boxes in `.site`'s own
+ * coordinates, so they scroll natively with their stages; one fixed layer holds the DOM courier
+ * of tier 1
  * (and the fallback at tiers 2 and 3 until, or whenever, the WebGL courier does not draw): the
  * inline SVG mark and tooth, moved by the pose with transforms only. The whip turns the spin box
  * edge-on and swaps the two forms; the smile station draws the arch as an SVG. The breath is a
@@ -77,23 +79,24 @@ export default function JourneyLayer(props: {
 
   useEffect(() => {
     applyStyle(layer.current, LAYER);
-    const heights: Partial<Record<BandId, number>> = {};
     let lastLevel = -1;
+    let placed: Frame['bands'] | null = null;
     const render = ({ pose, scrollY, bands: measured, docks, webgl }: Frame): void => {
-      for (const id of ['booking', 'footer'] as const) {
-        const el = bands.current[id];
-        const band = measured.find((b) => b.id === id);
-        if (!el) continue;
-        if (band === undefined) {
-          el.style.setProperty('visibility', 'hidden');
-          continue;
-        }
-        el.style.setProperty('visibility', 'visible');
-        if (heights[id] !== band.height) {
+      // The bands scroll with the page (document coordinates in `.site`): written only when a
+      // measure moved them, never per frame, so a native fling never slides them.
+      if (measured !== placed) {
+        placed = measured;
+        const site = bands.current.booking?.parentElement?.offsetParent;
+        const siteTop = site ? site.getBoundingClientRect().top + window.scrollY : 0;
+        for (const id of ['booking', 'footer'] as const) {
+          const el = bands.current[id];
+          const band = measured.find((b) => b.id === id);
+          if (!el) continue;
+          el.style.setProperty('visibility', band ? 'visible' : 'hidden');
+          if (!band) continue;
+          el.style.setProperty('top', `${band.top - siteTop}px`);
           el.style.setProperty('height', `${band.height}px`);
-          heights[id] = band.height;
         }
-        el.style.setProperty('transform', `translate3d(0, ${band.top - scrollY}px, 0)`);
       }
 
       const box = courier.current;
@@ -169,86 +172,94 @@ export default function JourneyLayer(props: {
 
   const slotAngle = deg(footprintAngle(SLOT.yaw));
   return (
-    <div ref={layer} data-courier-layer="" aria-hidden="true">
-      <div
-        ref={(el) => {
-          bands.current.booking = el;
-        }}
-        data-band="booking"
-        className="invisible absolute inset-x-0 top-0 bg-warm-soft"
-      />
-      <div
-        ref={(el) => {
-          bands.current.footer = el;
-        }}
-        data-band="footer"
-        className="invisible absolute inset-x-0 top-0 bg-surface-sunken"
-      />
-      <svg
-        ref={arch}
-        data-courier-arch=""
-        viewBox="-0.5 -0.5 1 1"
-        className="invisible absolute top-0 left-0 size-[100px] origin-top-left overflow-visible"
-      >
-        {TEETH.map((t, i) => {
-          if (i === ARCH_SLOT) return null;
-          const p = projectArch(t);
-          return (
-            <g key={i} transform={`translate(${p.u} ${p.v}) rotate(${deg(footprintAngle(t.yaw))})`}>
-              <Crown width={t.width} className="fill-surface-raised stroke-brand/60" />
-            </g>
-          );
-        })}
-      </svg>
-      <div
-        ref={courier}
-        data-courier=""
-        className="invisible absolute top-0 left-0 size-[100px] origin-top-left [perspective:420px]"
-      >
-        <div data-courier-breathe="" className="size-full">
-          <div ref={spin} className="relative size-full [transform-style:preserve-3d]">
-            <svg
-              ref={mark}
-              data-form="mark"
-              viewBox="0 0 168.03 207.3"
-              className="absolute inset-0 m-auto h-[92%] w-auto fill-brand [backface-visibility:hidden]"
-            >
-              <use href="#lockup-mark" width="168.03" height="207.3" />
-            </svg>
-            <svg
-              ref={tooth}
-              data-form="tooth"
-              viewBox="0 0 200 240"
-              className="absolute inset-0 m-auto h-full w-auto opacity-0"
-            >
-              {MOLAR_LEVELS.map(({ level, fill }, i) => (
-                <g
-                  key={level}
-                  ref={(el) => {
-                    levels.current[i] = el;
-                  }}
-                  strokeWidth="2.5"
-                  strokeLinejoin="round"
-                  className={`stroke-brand transition-opacity duration-(--dur-4) ${fill} ${i === 0 ? '' : 'opacity-0'}`}
-                >
-                  <path d={ROOTS} />
-                  <path d={CROWN} />
-                </g>
-              ))}
-            </svg>
-            <svg
-              ref={crown}
-              data-form="crown"
-              viewBox="-0.5 -0.5 1 1"
-              className="absolute inset-0 size-full overflow-visible opacity-0"
-            >
-              <g transform={`rotate(${slotAngle})`}>
-                <Crown width={CROWN_SHARE} className="fill-surface-raised stroke-brand" />
+    <>
+      {/* In `.site`'s own coordinates (its containing block), under every section. */}
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-1">
+        <div
+          ref={(el) => {
+            bands.current.booking = el;
+          }}
+          data-band="booking"
+          className="invisible absolute inset-x-0 top-0 bg-warm-soft"
+        />
+        <div
+          ref={(el) => {
+            bands.current.footer = el;
+          }}
+          data-band="footer"
+          className="invisible absolute inset-x-0 top-0 bg-surface-sunken"
+        />
+      </div>
+      <div ref={layer} data-courier-layer="" aria-hidden="true">
+        <svg
+          ref={arch}
+          data-courier-arch=""
+          viewBox="-0.5 -0.5 1 1"
+          className="invisible absolute top-0 left-0 size-[100px] origin-top-left overflow-visible"
+        >
+          {TEETH.map((t, i) => {
+            if (i === ARCH_SLOT) return null;
+            const p = projectArch(t);
+            return (
+              <g
+                key={i}
+                transform={`translate(${p.u} ${p.v}) rotate(${deg(footprintAngle(t.yaw))})`}
+              >
+                <Crown width={t.width} className="fill-surface-raised stroke-brand/60" />
               </g>
-            </svg>
+            );
+          })}
+        </svg>
+        <div
+          ref={courier}
+          data-courier=""
+          className="invisible absolute top-0 left-0 size-[100px] origin-top-left [perspective:420px]"
+        >
+          <div data-courier-breathe="" className="size-full">
+            <div ref={spin} className="relative size-full [transform-style:preserve-3d]">
+              <svg
+                ref={mark}
+                data-form="mark"
+                viewBox="0 0 168.03 207.3"
+                className="absolute inset-0 m-auto h-[92%] w-auto fill-brand [backface-visibility:hidden]"
+              >
+                <use href="#lockup-mark" width="168.03" height="207.3" />
+              </svg>
+              <svg
+                ref={tooth}
+                data-form="tooth"
+                viewBox="0 0 200 240"
+                className="absolute inset-0 m-auto h-full w-auto opacity-0"
+              >
+                {MOLAR_LEVELS.map(({ level, fill }, i) => (
+                  <g
+                    key={level}
+                    ref={(el) => {
+                      levels.current[i] = el;
+                    }}
+                    strokeWidth="2.5"
+                    strokeLinejoin="round"
+                    className={`stroke-brand transition-opacity duration-(--dur-4) ${fill} ${i === 0 ? '' : 'opacity-0'}`}
+                  >
+                    <path d={ROOTS} />
+                    <path d={CROWN} />
+                  </g>
+                ))}
+              </svg>
+              <svg
+                ref={crown}
+                data-form="crown"
+                viewBox="-0.5 -0.5 1 1"
+                className="absolute inset-0 size-full overflow-visible opacity-0"
+              >
+                <g transform={`rotate(${slotAngle})`}>
+                  <Crown width={CROWN_SHARE} className="fill-surface-raised stroke-brand" />
+                </g>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
