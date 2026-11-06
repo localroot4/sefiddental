@@ -265,9 +265,17 @@ test.describe('desktop, WebGL courier', () => {
     );
     await page.waitForTimeout(1500);
     const before = (await part.boundingBox())!;
-    await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
+    // Hover, press, then small moves a frame apart (as T-BF4): WebKit delivered the press and the
+    // release of one 8-step move but no move Draggable saw in between (CI run 111).
+    const at = { x: before.x + before.width / 2, y: before.y + before.height / 2 };
+    await page.mouse.move(at.x, at.y);
+    await page.waitForTimeout(100);
     await page.mouse.down();
-    await page.mouse.move(before.x - 160, before.y - 60, { steps: 8 });
+    await page.waitForTimeout(100);
+    for (let i = 1; i <= 12; i += 1) {
+      await page.mouse.move(at.x - 14 * i, at.y - 5 * i);
+      await page.waitForTimeout(40);
+    }
     await page.mouse.up();
     await expect
       .poll(async () => Math.abs((await part.boundingBox())!.x - before.x), { timeout: 10_000 })
