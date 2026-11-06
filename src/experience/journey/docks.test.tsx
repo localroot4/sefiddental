@@ -90,6 +90,25 @@ describe('measureDocks', () => {
     expect(measureDocks()[0]).toEqual(measured);
   });
 
+  it('DK4 a dock moved by a transform (the thrown footer part) is measured at its home', () => {
+    document.body.innerHTML = `
+      <div id="field" style="position: relative">
+        <div data-dock="footer" style="transform: translate(-160px, -60px)"></div>
+      </div>`;
+    const field = document.getElementById('field')!;
+    const part = document.querySelector<HTMLElement>('[data-dock]')!;
+    scrollTo(1000);
+    place(field, { top: 200, left: 40, w: 1200, h: 440 });
+    // Home: 1100 px in and 300 px down the field; drawn 160 px left and 60 px up of it.
+    place(part, { top: 200 + 300 - 60, left: 40 + 1100 - 160, w: 96, h: 120 });
+    Object.defineProperty(part, 'offsetParent', { configurable: true, value: field });
+    Object.defineProperty(part, 'offsetLeft', { configurable: true, value: 1100 });
+    Object.defineProperty(part, 'offsetTop', { configurable: true, value: 300 });
+    expect(measureDocks()).toEqual([
+      { id: 'footer', left: 1140, top: 1500, width: 96, height: 120, pin: null },
+    ]);
+  });
+
   it('DK3 the viewport is the client width, the window height and the scroll range', () => {
     Object.defineProperty(document.documentElement, 'scrollHeight', {
       configurable: true,

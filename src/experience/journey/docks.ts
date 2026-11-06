@@ -21,6 +21,25 @@ function stickyStage(el: HTMLElement): HTMLElement | null {
   return null;
 }
 
+/**
+ * The box at its home in the viewport: a dock moved by a transform (the footer's mark part while
+ * it is thrown, dragged or dropped) is read from its offset parent and its layout offsets, so a
+ * remeasure mid-throw still finds the box where the part rests.
+ */
+function homeRect(el: HTMLElement): { left: number; top: number; width: number; height: number } {
+  const rect = el.getBoundingClientRect();
+  const parent = el.offsetParent;
+  const transform = getComputedStyle(el).transform;
+  if (parent === null || transform === '' || transform === 'none') return rect;
+  const base = parent.getBoundingClientRect();
+  return {
+    left: base.left + parent.clientLeft + el.offsetLeft,
+    top: base.top + parent.clientTop + el.offsetTop,
+    width: rect.width,
+    height: rect.height,
+  };
+}
+
 /** `--nav-h` in px: the sticky stages stick under the header. */
 function navHeight(): number {
   return parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-h')) || 0;
@@ -35,7 +54,7 @@ export function measureDocks(root: ParentNode = document): Dock[] {
   for (const el of root.querySelectorAll<HTMLElement>('[data-dock]')) {
     const id = el.dataset.dock;
     if (!isDockId(id) || el.getClientRects().length === 0) continue;
-    const rect = el.getBoundingClientRect();
+    const rect = homeRect(el);
     if (!(rect.width > 0 && rect.height > 0)) continue;
     let top = rect.top + sy;
     let pin: Dock['pin'] = null;
