@@ -16,6 +16,7 @@ import { cond, listHref, tabHref } from '@/admin/bookings/tabs';
 import { CALENDAR_PATH } from '@/admin/calendar';
 import { t } from '@/i18n/fa';
 import { adminText } from '@/i18n/fa-admin';
+import { formatJalali } from '@/lib/jalali';
 import { ADMIN_ROUTE, buildPath } from '@/lib/paths';
 import { persianSlug } from '@/lib/persianSlug';
 import { toPersianDigits } from '@/lib/persianText';
@@ -927,6 +928,65 @@ test('T-AD27 dashboard order: requests, calendar, SEO health; content gaps for a
   await adminAs(page, 'editor');
   await expect(page.getByRole('region', { name: adminText('admin.seo.heading') })).toBeVisible();
   await expect(page.getByRole('region', { name: adminText('admin.gaps.heading') })).toHaveCount(0);
+});
+
+test('T-AD41 the dashboard view: greeting and date, four KPI tiles, the week, quick actions by role', async ({
+  browser,
+  page,
+}) => {
+  const actionHrefs = () =>
+    page
+      .getByRole('navigation', { name: adminText('admin.home.actions') })
+      .getByRole('link')
+      .evaluateAll((links) => links.map((a) => a.getAttribute('href')?.split('?')[0] ?? ''));
+  for (const role of ['admin', 'editor'] as const) {
+    await adminAs(page, role);
+    const hello = page.getByRole('heading', { level: 1 });
+    await expect(hello, role).toContainText('بخیر');
+    await expect(page.locator('h1 + p time'), role).toHaveText(
+      formatJalali(new Date(), 'EEEE d MMMM yyyy'),
+    );
+    const today = page.getByRole('region', { name: adminText('admin.today.heading') });
+    await expect(today.locator('ul > li'), role).toHaveCount(4);
+    await expect(
+      page.getByRole('region', { name: adminText('admin.trend.heading') }),
+      role,
+    ).toBeVisible();
+    // Payload's collection cards stay under the panels.
+    await expect(page.locator('#card-bookings'), role).toBeVisible();
+    const hrefs = await actionHrefs();
+    expect(hrefs, role).toEqual(
+      expect.arrayContaining([
+        `${ADMIN_ROUTE}/collections/bookings`,
+        `${ADMIN_ROUTE}/collections/articles/create`,
+        CALENDAR_PATH,
+      ]),
+    );
+    expect(hrefs.includes(`${ADMIN_ROUTE}/system-status`), role).toBe(role === 'admin');
+  }
+  await expectNoA11yViolations(page, { include: 'section[aria-labelledby="bookings-trend"]' });
+
+  // Phones: no sideways scroll, and every quick action is a 44 px target.
+  const context = await browser.newContext({
+    ...VIEWPORTS.phone,
+    baseURL: APP_ORIGIN,
+    locale: 'fa-IR',
+    timezoneId: 'Asia/Tehran',
+  });
+  const phone = await context.newPage();
+  await restoreSession(phone, 'admin');
+  await phone.goto(ADMIN_ROUTE);
+  await expect(phone.getByRole('region', { name: adminText('admin.today.heading') })).toBeVisible();
+  expect(
+    await phone.evaluate(() => document.documentElement.scrollWidth - window.innerWidth),
+  ).toBeLessThanOrEqual(0);
+  const heights = await phone
+    .getByRole('navigation', { name: adminText('admin.home.actions') })
+    .getByRole('link')
+    .evaluateAll((links) => links.map((a) => a.getBoundingClientRect().height));
+  expect(heights.length).toBe(4);
+  for (const h of heights) expect(h).toBeGreaterThanOrEqual(44);
+  await context.close();
 });
 
 test('T-AD31 an editor adds a case: two photos, written consent, publish (admin guide)', async ({

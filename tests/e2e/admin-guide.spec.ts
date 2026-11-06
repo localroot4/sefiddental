@@ -327,7 +327,8 @@ test('T-AG7 section 8: the status view, with the manager account', async ({ page
   await as(page, 'manager');
   // A new account starts with the menu closed.
   await page.getByRole('button', { name: 'باز کردن منو' }).click();
-  await page.getByRole('link', { name: 'وضعیت سیستم', exact: true }).click();
+  // The navigation's link: the dashboard's quick actions carry one with the same name.
+  await page.locator('.nav').getByRole('link', { name: 'وضعیت سیستم', exact: true }).click();
   await page.waitForURL(new RegExp(`${ADMIN_ROUTE}/system-status`));
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('وضعیت سیستم');
   const config = page.locator('section[aria-labelledby="status-config"] dl > div');
