@@ -93,10 +93,12 @@ export function WebglCourier(props: {
     }
     const canvas = get().gl.domElement;
     let lost = false;
+    let shown = false;
     let last = -1;
     let level = 0;
     const onLost = (): void => {
       lost = true;
+      shown = false;
       journey.setWebgl(false);
     };
     const onRestored = (): void => {
@@ -161,7 +163,16 @@ export function WebglCourier(props: {
           rig.camera,
         );
       }
-      journey.setWebgl(true);
+      // The DOM courier stays until the canvas has faded in (the World reveals it on its first
+      // frame, and hides it at once on a theme switch), so the handover never blinks: the
+      // computed opacity is read only until then.
+      const visible =
+        canvas.style.opacity === '1' &&
+        (shown || parseFloat(getComputedStyle(canvas).opacity) >= 0.99);
+      if (visible !== shown) {
+        shown = visible;
+        journey.setWebgl(visible);
+      }
     });
     return () => {
       off();
