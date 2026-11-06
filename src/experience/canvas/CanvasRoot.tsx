@@ -25,6 +25,7 @@ import { World } from '../world/World';
 
 import { ContextLoss } from './ContextLoss';
 import { FrameDriver } from './FrameDriver';
+import { createPulse } from './pulse';
 import { MonitorProbe } from './MonitorProbe';
 import { StressScene } from './StressScene';
 import { TierDpr } from './TierDpr';
@@ -73,6 +74,7 @@ export function CanvasRoot(props: CanvasRootProps): React.JSX.Element {
   }));
   const base = settings.pixelRatio ?? 1;
 
+  const [pulse] = useState(createPulse);
   const onMonitorStep = useCallback(() => stepDown('monitor'), [stepDown]);
   const onRepeatedLoss = useCallback(() => stepDown('context-loss'), [stepDown]);
   const onCreated = useCallback((state: RootState) => runtime.setR3f(state.get), [runtime]);
@@ -93,7 +95,7 @@ export function CanvasRoot(props: CanvasRootProps): React.JSX.Element {
         fallback={null}
       >
         <TierDpr base={base} />
-        <FrameDriver engine={engine} runtime={runtime} />
+        <FrameDriver engine={engine} runtime={runtime} pulse={pulse} />
         {mode === 'auto' && (
           <MonitorProbe
             key={tier}
@@ -109,7 +111,7 @@ export function CanvasRoot(props: CanvasRootProps): React.JSX.Element {
         {stress > 0 ? (
           <StressScene loops={stress} />
         ) : (
-          <World tier={tier} settings={settings} engine={engine} journey={journey} />
+          <World tier={tier} settings={settings} engine={engine} journey={journey} pulse={pulse} />
         )}
       </Canvas>
     </div>
