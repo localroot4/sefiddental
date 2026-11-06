@@ -242,7 +242,15 @@ test.describe('desktop, WebGL courier', () => {
     await expect(part).not.toHaveAttribute('data-courier-away');
     await expect(part).toBeVisible();
     expect((await probe<Pose>(page, 'pose')).hidden).toBe(true);
-    // The playground runs as in phase 7: the part follows a drag.
+    // The playground runs as in phase 7: the part follows a drag. At the page's end it is still
+    // handed over, and clear of the debug overlay in the bottom corner.
+    await scrollToY(page, 1e6);
+    expect((await probe<Pose>(page, 'pose')).hidden).toBe(true);
+    await page.evaluate(() =>
+      document
+        .querySelector<HTMLElement>('[data-dev-overlay]')
+        ?.style.setProperty('display', 'none'),
+    );
     await page.waitForTimeout(1500);
     const before = (await part.boundingBox())!;
     await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
