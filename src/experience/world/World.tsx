@@ -16,6 +16,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import type { TierSettings } from '@/lib/qualityTier';
 
 import type { ScrollEngine } from '../engine/scrollEngine';
+import { COURIER } from '../journey/courier';
 import type { Journey } from '../journey/driver';
 import { WebglCourier } from '../journey/WebglCourier';
 
@@ -82,7 +83,10 @@ export function World(props: {
   return (
     <WorldContext.Provider value={api}>
       <SceneSlots />
-      <WebglCourier journey={journey} tier={tier} particles={settings.scene5Particles} />
+      {/* Tier 1 keeps the DOM courier: no model download (a debug canvas mounts at tier 1). */}
+      {tier >= COURIER.minTier ? (
+        <WebglCourier journey={journey} tier={tier} particles={settings.scene5Particles} />
+      ) : null}
     </WorldContext.Provider>
   );
 }
