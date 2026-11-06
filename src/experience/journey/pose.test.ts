@@ -115,8 +115,17 @@ describe('courierPose: docks', () => {
     expect(at(VIEW.maxScroll).hidden).toBe(true);
     expect(at(VIEW.maxScroll).dock).toBe('footer');
     expect(at(last.start - 1).hidden).toBe(false);
-    // The footer box lies past the scroll range: its hold is clamped, so the hand-off is reachable.
+    // The hand-off is reachable: it comes before the end of the scroll range.
     expect(last.start).toBeLessThanOrEqual(VIEW.maxScroll);
+  });
+
+  it('J4b the courier lands on the footer box as soon as the box is in view, not at mid-screen', () => {
+    const docks = page();
+    const footer = docks.find((d) => d.id === 'footer')!;
+    const land = holdRanges(docks, VIEW).at(-1)!.start;
+    // The box's bottom at 92 % of the viewport height: the reader can take the mark there.
+    expect(land).toBeCloseTo(footer.top + footer.height - 0.92 * VIEW.height, 5);
+    expect(courierPose(land + 1, docks, VIEW, 2).hidden).toBe(true);
   });
 
   it('J5 absent docks (no box at this width) are skipped; no dock or tier 0 means no courier', () => {

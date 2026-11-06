@@ -90,6 +90,8 @@ const HOLD_VH = 0.5;
 const SMILE_HOLD_VH = 0.9;
 /** No hold is shorter than this share of the viewport height (unless the scroll range ends). */
 const MIN_HOLD_VH = 0.2;
+/** The courier lands on the footer box once the box's bottom is this far down the viewport. */
+const FOOTER_LAND_VH = 0.92;
 /** The form fills this share of its dock's shorter side. */
 const FILL = 0.86;
 /** The courier is this much smaller at the middle of a travel (it reads as distance). */
@@ -185,6 +187,11 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
     .sort((a, b) => (ORDER.get(a.id) ?? 0) - (ORDER.get(b.id) ?? 0))
     .map((dock): Hold => {
       if (dock.pin) return { dock, start: clampY(dock.pin.start), end: clampY(dock.pin.end) };
+      // The footer hands the mark over as soon as its box is in view: the reader can take it.
+      if (dock.id === 'footer') {
+        const land = clampY(dock.top + dock.height - FOOTER_LAND_VH * viewport.height);
+        return { dock, start: land, end: land };
+      }
       const centre = dock.top + dock.height / 2 - viewport.height / 2;
       const half = ((dock.id === 'smile' ? SMILE_HOLD_VH : HOLD_VH) * viewport.height) / 2;
       return { dock, start: clampY(centre - half), end: clampY(centre + half) };
