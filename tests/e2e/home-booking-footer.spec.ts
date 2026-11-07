@@ -451,6 +451,65 @@ test('T-BF4 drop on enter, mouse drag and throw inside the field, home 6 s after
   expect(errors().filter((line) => !line.includes('/api/events'))).toEqual([]);
 });
 
+test('T-BF10 a released part falls in the first frames: a still release and a sideways throw', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  await page.goto('/?tier=1');
+  await page.waitForLoadState('load');
+  await scrollToStage(page);
+  await dropSettled(page);
+  await expect.poll(() => draggableParts(page)).toBe(6);
+  // The bar (part 1): the courier owns the mark's landing.
+  const bar = page.locator(PARTS).nth(1);
+  // y of the bar in every frame after the release, with the release time.
+  const record = () =>
+    bar.evaluate((el) => {
+      const w = window as unknown as { __fall: { up: number; frames: [number, number][] } };
+      w.__fall = { up: -1, frames: [] };
+      const y = () => new DOMMatrix(getComputedStyle(el).transform).m42;
+      window.addEventListener('pointerup', () => (w.__fall.up = performance.now()), {
+        once: true,
+        capture: true,
+      });
+      const tick = (): void => {
+        w.__fall.frames.push([performance.now(), y()]);
+        if (w.__fall.frames.length < 600) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+  const firstFall = () =>
+    page.evaluate(() => {
+      const { up, frames } = (
+        window as unknown as { __fall: { up: number; frames: [number, number][] } }
+      ).__fall;
+      const at = frames.filter(([t]) => t >= up);
+      const y0 = at[0]?.[1] ?? 0;
+      const moved = at.find(([, y]) => y > y0 + 0.5);
+      return moved ? moved[0] - up : Infinity;
+    });
+  for (const [name, dx] of [
+    ['still', 0],
+    ['sideways throw', -160],
+  ] as const) {
+    const box = (await bar.boundingBox())!;
+    const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.down();
+    // Up 150 px, held still; then (for the throw) a fast move sideways right before the release.
+    await page.mouse.move(at.x, at.y - 150, { steps: 6 });
+    await page.waitForTimeout(dx === 0 ? 300 : 0);
+    if (dx !== 0) await page.mouse.move(at.x + dx, at.y - 150, { steps: 2 });
+    await record();
+    await page.mouse.up();
+    await page.waitForTimeout(400);
+    expect(await firstFall(), `${name}: ms from the release to the first frame lower`).toBeLessThan(
+      50,
+    );
+    await settled(page, 1);
+  }
+});
+
 test.describe('390 px touch', () => {
   test('T-BF5 a touch drag moves a part; the parts rest on the inline-end half and a swipe on the inline-start half scrolls the page', async ({
     page,
