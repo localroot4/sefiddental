@@ -456,12 +456,13 @@ test('T-BF4 drop on enter, mouse drag and throw inside the field, home 6 s after
 
 /**
  * T-BF10: the bar (part 1; the courier owns the mark's landing) is dragged up 150 px and released
- * held still, then after a fast sideways flick; each time it is lower within 50 ms of the release,
+ * held still, then after a fast sideways flick; each time it is lower by the third frame after the release,
  * ends inside the field, and the flick carries it on in x. With the mouse or a touch (CDP).
  */
 async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> {
   await page.goto('/?tier=1');
   await page.waitForLoadState('load');
+  await needsWebgl2(page);
   await scrollToStage(page);
   await dropSettled(page);
   await expect.poll(() => draggableParts(page)).toBe(6);
@@ -510,8 +511,10 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
       ).__fall;
       const at = frames.filter(([t]) => t >= up);
       const y0 = at[0]?.[1] ?? 0;
-      const moved = at.find(([, y]) => y > y0 + 0.5);
-      return moved ? moved[0] - up : Infinity;
+      // Frames, not milliseconds: a headless WebKit or Firefox on the CI runner paints every 60
+      // to 140 ms (CI run 42377118771), so a time bound measures the runner, not the fall.
+      const moved = at.findIndex(([, y]) => y > y0 + 0.5);
+      return moved < 0 ? Infinity : moved;
     });
   for (const name of ['still', 'sideways throw'] as const) {
     const box = (await bar.boundingBox())!;
@@ -533,9 +536,12 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
     await pointer.up();
     const released = await translation(page, 1);
     await page.waitForTimeout(400);
-    expect(await firstFall(), `${name}: ms from the release to the first frame lower`).toBeLessThan(
-      50,
-    );
+    // Lower by the third frame after the release (the release may land after that frame's
+    // animation tick); the throw-then-fall build first rose for about 13 frames (215 ms).
+    expect(
+      await firstFall(),
+      `${name}: frames from the release to the first frame lower`,
+    ).toBeLessThan(3);
     const rest = await settled(page, 1);
     const field = (await page.locator(FIELD).boundingBox())!;
     expect(inside((await bar.boundingBox())!, field), `${name}: inside the field`).toBe(true);
