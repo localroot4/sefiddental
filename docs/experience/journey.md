@@ -39,6 +39,14 @@ over the scroll between them.
 | D7 | `booking` | The empty slot under the hours | mark | Breathes beside the form (phase 8 booking stage rules stay: the stage is transparent only while the courier paints there) |
 | D8 | `footer` | The footer playground's mark home | mark | Falls into the footer field and hands over to the playground (section 4) |
 
+Docks per width (a dock that is not rendered is skipped):
+
+| Width | Docks |
+|---|---|
+| From 1024 px | All eight. D4 is the pinned diagonal's strip at tiers 2-3 with pins; otherwise the empty box at the end of the workflow header row |
+| 744-1023 px (tablets in portrait) | D2, D3, D4 (header box), D5, D6, D7 (under the hours, closing the stacked column), D8. No D1: under 1024 px the hero is the full photo and the courier cannot draw over it |
+| Under 744 px (phones) | D2, D3, D5, D8 |
+
 Travel between docks: a cubic path from one dock's centre to the next, eased
 (`power2.inOut` on the scroll between them), with a small arc toward the page's
 middle and a turn of at most 180 degrees. Scale follows the dock size. Speed is
@@ -67,11 +75,19 @@ parts in 3D later; not in this step.
 
 | Case | Courier |
 |---|---|
-| Tier 2-3, any width | WebGL courier, all eight docks; at narrow widths the docks are the phone layout's empty boxes |
-| Tier 1 (desktop or phone) | DOM courier: the same pose function moves an inline SVG of the mark and the tooth (two layers, the whip swaps them); D5 shows the arch as an SVG and the smile photo |
+| Tier 2-3, any width | WebGL courier at the docks of section 2 for the width |
+| Tier 1 (desktop, tablet or phone) | DOM courier: the same pose function moves an inline SVG of the mark and the tooth (two layers, the whip swaps them), shaded as porcelain (enamel gradient, glaze, sheen, contact shadow), centred on the pose; D5 shows the arch as an SVG, centred on its dock, and the smile photo |
 | Tier 0, reduced motion, Save-Data, no JS | No courier. Each section shows its phase 7 static art; the footer is static |
 
 A tier change mid-page switches courier type at the current pose, with no jump.
+
+Tablets follow the width rules, not a device list: a touch screen under 1024 px gets the phone
+layout's rules for pins (none) and the tablet docks above; from 1024 px the desktop ones. A GPU
+that the benchmark data does not know (detect-gpu `FALLBACK`, as for Adreno 7xx, Mali-G615 and
+Apple GPU) is classified by its renderer name (`fallbackTier` in `src/lib/qualityTier.ts`, mirrored
+in the inline pins script): Adreno 640 and newer, Mali-G76 and newer (Mali-G610 and newer in the
+three-digit series), Immortalis and Apple GPU get tier 2; any other unknown GPU stays tier 1.
+`?tier=` still overrides.
 
 ## 6. Budgets and gates
 
@@ -112,8 +128,9 @@ A tier change mid-page switches courier type at the current pose, with no jump.
   over the photo (it is under the page, and the render gate draws nothing while the photo
   covers the viewport), so the courier rises into view as the photo scrolls away. The intro's
   SVG mark is not handed over at the same box.
-- Docks per width: from 1024 px all eight (D4 only on the pinned diagonal, tiers 2 and 3);
-  under 1024 px D2, D3, D5, D8. A dock that is not rendered is skipped.
+- Docks per width: section 2. Tablets (744-1023 px) got D4, D6 and D7 on 2026-11-07
+  (branch `p9-tablet`); before that the band had only D2, D3, D5, D8 and the courier was gone
+  for long stretches. Tablet evidence: `docs/qa/tablet/` (`capture.mjs`).
 - D2 is the services SVG mark's own box: at tiers 1 to 3 the mark hides while the journey runs
   (the courier stands in for it, so one mark shows), and tier 0 keeps the SVG mark and its
   icon morph.
