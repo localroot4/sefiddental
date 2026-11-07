@@ -88,22 +88,17 @@ test('T-WD1 three.js waits for the first scroll after load; the decoder runs in 
   expect(errors().filter((line) => !line.includes('/api/events'))).toEqual([]);
 });
 
-test('T-WD2 no frame while the photo covers the viewport under the header; frames once it leaves', async ({
+test('T-WD2 the hero is not a render cover: the canvas draws the courier on the hero photo from the first view', async ({
   page,
 }) => {
   await needsWebgl2(page);
   await page.goto('/?tier=2&debug=1');
   await page.waitForLoadState('load');
   await expect(page.locator('[data-experience-layer]')).toHaveCount(1, { timeout: 20_000 });
-  await page.waitForTimeout(1500);
-  const covered = await snapshot(page);
-  expect(covered.gate).toBe('covered');
-  expect(covered.framesRendered).toBe(0);
-  // The canvas has drawn nothing yet, so it shows nothing (no black or stale flash).
-  expect(await canvasOpacity(page)).toBe('0');
-  await page.evaluate(() => window.scrollTo({ top: 1, behavior: 'instant' }));
+  // The courier waits on the hero photo (D1, docs/experience/journey.md): the gate is open and
+  // frames are drawn without a scroll.
+  await expect.poll(async () => (await snapshot(page)).gate, { timeout: 20_000 }).toBe('open');
   await expect.poll(async () => (await snapshot(page)).framesRendered).toBeGreaterThan(0);
-  expect((await snapshot(page)).gate).toBe('open');
 });
 
 test('T-WD3 the booking and footer stages are transparent only while the journey layer paints them, and a lost context hands the courier to the DOM and back without a reload', async ({

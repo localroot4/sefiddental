@@ -26,10 +26,10 @@ const SLIDE =
   'group-data-[choice=2]/tiers:-translate-x-full group-data-[choice=3]/tiers:-translate-x-[200%] group-data-[choice=4]/tiers:-translate-x-[300%] ltr:group-data-[choice=2]/tiers:translate-x-full ltr:group-data-[choice=3]/tiers:translate-x-[200%]';
 // The track's columns and the indicator's width per number of levels (static classes).
 const SEGMENTS: Record<number, { cols: string; width: string }> = {
-  1: { cols: 'grid-cols-1', width: 'w-[calc(100%-0.5rem)]' },
-  2: { cols: 'grid-cols-2', width: 'w-[calc((100%-0.5rem)/2)]' },
-  3: { cols: 'grid-cols-3', width: 'w-[calc((100%-0.5rem)/3)]' },
-  4: { cols: 'grid-cols-4', width: 'w-[calc((100%-0.5rem)/4)]' },
+  1: { cols: 'grid-cols-1', width: 'w-[calc(100%-6px)]' },
+  2: { cols: 'grid-cols-2', width: 'w-[calc((100%-6px)/2)]' },
+  3: { cols: 'grid-cols-3', width: 'w-[calc((100%-6px)/3)]' },
+  4: { cols: 'grid-cols-4', width: 'w-[calc((100%-6px)/4)]' },
 };
 // Pinned (html[data-pins] from 1024 px): every panel sits in one grid cell and the unchosen ones
 // are only invisible, so the sticky stage keeps one height whatever the scroll checks. A height
@@ -85,17 +85,17 @@ export function RestorationSection(props: {
               {/* A segmented control: the same radio group, one track, and an indicator that
                   slides under the chosen level (none until one is chosen, F24). */}
               <div
-                className={`relative grid max-w-[26rem] rounded-pill border border-line bg-surface-sunken p-1 ${SEGMENTS[tiers.length]?.cols ?? ''}`}
+                className={`relative grid max-w-[26rem] rounded-pill bg-surface-sunken p-[3px] ring-1 ring-line ring-inset ${SEGMENTS[tiers.length]?.cols ?? ''}`}
               >
                 <span
                   aria-hidden="true"
-                  className={`pointer-events-none absolute inset-y-1 start-1 rounded-pill bg-surface-raised opacity-0 shadow-raised ring-1 ring-brand/40 transition-[translate,opacity] duration-(--dur-3) ease-out motion-reduce:transition-none group-data-choice/tiers:opacity-100 ${SLIDE} ${SEGMENTS[tiers.length]?.width ?? ''}`}
+                  className={`pointer-events-none absolute inset-y-[3px] start-[3px] rounded-pill bg-surface-raised opacity-0 shadow-raised ring-1 ring-brand/40 transition-[translate,opacity] duration-(--dur-3) ease-out motion-reduce:transition-none group-data-choice/tiers:opacity-100 ${SLIDE} ${SEGMENTS[tiers.length]?.width ?? ''}`}
                 />
                 {tiers.map((tier) => (
                   <label
                     key={tier.key}
                     data-choice-item=""
-                    className="group/seg relative flex min-h-target cursor-pointer items-center justify-center rounded-pill px-3"
+                    className="group/seg relative flex min-h-target cursor-pointer lg:min-h-[2.5rem] items-center justify-center rounded-pill px-3"
                   >
                     <input
                       type="radio"
@@ -103,7 +103,7 @@ export function RestorationSection(props: {
                       value={tier.key}
                       className="peer absolute inset-0 m-0 size-full cursor-pointer rounded-[inherit] opacity-0"
                     />
-                    <span className="relative text-small font-medium text-ink-muted transition-colors duration-(--dur-2) group-hover/seg:text-ink peer-checked:font-semibold peer-checked:text-brand-strong">
+                    <span className="text-small font-medium text-ink-muted transition-colors duration-(--dur-2) group-hover/seg:text-ink peer-checked:font-semibold peer-checked:text-brand-strong">
                       {ltr(tier.name)}
                     </span>
                     <span

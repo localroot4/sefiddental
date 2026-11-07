@@ -7,7 +7,7 @@
  * The model: each dock has a hold range of scroll in which the courier rides with the dock's box;
  * between two holds it travels on an eased cubic from one box's centre to the next. A pinned dock
  * (inside a sticky stage) holds for the whole pin; any other dock holds while its centre crosses
- * the middle half of the viewport. A travel spans at least 60 vh of scroll: neighbouring holds
+ * the middle half of the viewport. A travel spans at least 45 vh of scroll: neighbouring holds
  * give up their ends until it does.
  */
 import { ARCH_PHOTO } from '@/lib/archPhoto';
@@ -109,7 +109,7 @@ export interface Pose {
 }
 
 /** A travel spans at least this share of the viewport height in scroll. */
-export const MIN_TRAVEL_VH = 0.6;
+export const MIN_TRAVEL_VH = 0.45;
 /**
  * An unpinned dock holds while its centre is within this share of the viewport's middle; the
  * smile station holds longer, for the seat, the pull-back and the dissolve.
@@ -281,7 +281,7 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
       // Never past the scroll where the dock reaches the header: a shorter travel, not a hold
       // pushed under it (docks close together on a tablet).
       const cap = Math.min(top, limits.get(b.dock) ?? top);
-      b.start = Math.max(b.start, Math.min(cap, b.start + need));
+      b.start = Math.max(b.start, Math.min(cap - keep, b.start + need));
       b.end = Math.min(top, Math.max(b.end, b.start + keep));
     }
     if (b.start < a.end) b.start = a.end;

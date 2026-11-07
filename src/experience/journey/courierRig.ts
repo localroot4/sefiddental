@@ -23,6 +23,7 @@ import {
   Quaternion,
   Scene,
   ShaderMaterial,
+  type Texture,
   Vector3,
   type WebGLProgramParametersWithUniforms,
 } from 'three';
@@ -146,8 +147,14 @@ const POINTS_FRAGMENT = /* glsl */ `
  * two softboxes in the reflection and a light rim, no environment map. The orthographic view sees
  * a flat face in one colour, so the falloff and the streak follow the view-space position.
  */
-function createGlaze(): { material: MeshPhysicalMaterial; rim: { value: Color } } {
+function createGlaze(): {
+  material: MeshPhysicalMaterial;
+  rim: { value: Color };
+  sweep: { value: number };
+} {
   const rim = { value: new Color('#CFF5F1') };
+  // The idle light sweep across the glaze: the streak's offset (off the form at both ends).
+  const sweep = { value: 0 };
   const material = new MeshPhysicalMaterial({
     roughness: 0.24,
     metalness: 0,
@@ -158,8 +165,9 @@ function createGlaze(): { material: MeshPhysicalMaterial; rim: { value: Color } 
   });
   material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
     shader.uniforms.uRim = rim;
+    shader.uniforms.uSweep = sweep;
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uRim;')
+      .replace('#include <common>', '#include <common>\nuniform vec3 uRim;\nuniform float uSweep;')
       .replace(
         '#include <opaque_fragment>',
         `{
@@ -169,15 +177,15 @@ function createGlaze(): { material: MeshPhysicalMaterial; rim: { value: Color } 
   float boxes = smoothstep(0.35, 0.9, r.y) * 0.55 + smoothstep(0.55, 0.95, r.x) * smoothstep(-0.3, 0.5, r.y) * 0.35;
   float fresnel = 0.04 + 0.96 * pow(1.0 - facing, 4.0);
   outgoingLight *= 0.8 + 0.34 * smoothstep(-0.55, 0.55, mv.y);
-  float streak = exp(-pow((mv.x * 0.62 + mv.y * 0.78 - 0.12) / 0.2, 2.0)) * facing;
+  float streak = exp(-pow((mv.x * 0.62 + mv.y * 0.78 - 0.12 - uSweep) / 0.2, 2.0)) * facing;
   outgoingLight += vec3(boxes) * (0.25 + fresnel) + vec3(0.16 * streak);
   outgoingLight += uRim * pow(1.0 - facing, 3.0) * 0.3;
 }
 #include <opaque_fragment>`,
       );
   };
-  material.customProgramCacheKey = () => 'sefid-glaze-2';
-  return { material, rim };
+  material.customProgramCacheKey = () => 'sefid-glaze-3';
+  return { material, rim, sweep };
 }
 
 export interface CourierFrame {
@@ -216,6 +224,11 @@ export interface CourierRig {
     offsetY?: number;
   }): void;
   setTheme(dark: boolean, brand: string): void;
+  /**
+   * A studio environment (a PMREM of a room, built at runtime by the caller from the renderer):
+   * real reflections in the glaze and the enamel's clearcoat. Null takes it away.
+   */
+  setEnvironment(env: Texture | null): void;
   dispose(): DisposeCount;
 }
 
@@ -241,7 +254,7 @@ export function createCourierRig(
   tilt.add(spin);
   scene.add(holder);
 
-  const { material: glaze, rim } = createGlaze();
+  const { material: glaze, rim, sweep } = createGlaze();
   const mark = new Mesh(geometry.mark, glaze);
   mark.scale.setScalar(MARK_FILL / MARK_HEIGHT);
   spin.add(mark);
@@ -358,6 +371,8 @@ export function createCourierRig(
       tooth.position.y = -(centre + (CROWN_Y - centre) * seat) * toothScale;
       spin.rotation.y = pose.rotation + turn + idle * 0.12 * Math.sin(time * 0.45);
       holder.position.y = idle * 0.02 * Math.sin((time / 6) * Math.PI * 2);
+      // Every 7 s a light passes across the glaze while the mark idles at a dock.
+      sweep.value = idle > 0 ? (((time / 7) % 1) * 2 - 1) * 1.6 * idle : 0;
       const fade = pose.opacity;
       glaze.opacity = fade;
       enamel.material.opacity = fade;
@@ -397,6 +412,14 @@ export function createCourierRig(
         archCamera.updateProjectionMatrix();
       }
       archEnamel.uniforms.uDissolve.value = dissolve;
+    },
+    setEnvironment(env) {
+      scene.environment = env;
+      archScene.environment = env;
+      // A soft studio: the reflections carry the form, the fake softboxes stay as the accent.
+      glaze.envMapIntensity = 0.55;
+      enamel.material.envMapIntensity = 0.45;
+      archEnamel.material.envMapIntensity = 0.45;
     },
     setTheme(dark, brand) {
       studio.setTheme(dark);

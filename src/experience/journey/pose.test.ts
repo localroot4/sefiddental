@@ -146,7 +146,7 @@ describe('courierPose: docks', () => {
 });
 
 describe('courierPose: travel', () => {
-  it('J6 every travel spans at least 60 vh of scroll, and holds never overlap', () => {
+  it('J6 every travel spans at least 45 vh of scroll, and holds never overlap', () => {
     const holds = holdsOf();
     for (let i = 1; i < holds.length; i += 1) {
       expect(holds[i]!.start - holds[i - 1]!.end).toBeGreaterThanOrEqual(

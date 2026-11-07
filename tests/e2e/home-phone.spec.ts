@@ -393,6 +393,8 @@ for (const tier of [0, 1, 2] as const) {
   }, testInfo) => {
     phoneOnly(testInfo);
     test.skip(browserName !== 'chromium', CDP_ONLY);
+    // The page is longer since the arch band holds the reader for 1.2 screens (D5).
+    test.setTimeout(90_000);
     await recordClsAll(page);
     await page.goto(`/?tier=${tier}`);
     if (tier === 0) await page.waitForLoadState('load');

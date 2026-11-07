@@ -233,8 +233,11 @@ test('T-WF3 390 touch: a vertical timeline, no spacer; ?tier=1 scrubs a Rise on 
   const stage = page.locator('[data-workflow-stage]');
   const steps = page.locator('[data-workflow-step]');
   await expect(steps).toHaveCount(4);
-  await expect(page.locator('[data-pin-room]')).toHaveCount(3);
-  for (const room of await page.locator('[data-pin-room]').all()) await expect(room).toBeHidden();
+  // The three pinned stages' rooms hide without pins; the arch band's room (D5) is in flow at
+  // every width.
+  const pinRooms = page.locator('[data-pin-room]:not([data-smile-band] *)');
+  await expect(pinRooms).toHaveCount(3);
+  for (const room of await pinRooms.all()) await expect(room).toBeHidden();
   // The steps stay in one column (the vertical list, no absolute placement).
   const lefts = await steps.evaluateAll((els) =>
     els.map((el) => Math.round(el.getBoundingClientRect().left)),
@@ -304,8 +307,11 @@ test('T-WF3 390 touch: a vertical timeline, no spacer; ?tier=1 scrubs a Rise on 
   await page.goto('/?tier=0');
   await page.waitForLoadState('load');
   await expect(page.locator('html')).toHaveAttribute('data-tier', '0');
-  await expect(page.locator('[data-pin-room]')).toHaveCount(3);
-  for (const room of await page.locator('[data-pin-room]').all()) await expect(room).toBeHidden();
+  // The three pinned stages' rooms hide without pins; the arch band's room (D5) is in flow at
+  // every width.
+  const rooms = page.locator('[data-pin-room]:not([data-smile-band] *)');
+  await expect(rooms).toHaveCount(3);
+  for (const room of await rooms.all()) await expect(room).toBeHidden();
   await expect(page.locator('[data-scrub]')).toHaveCount(0);
   const rest = await page
     .locator('[data-workflow-step] h3, [data-workflow-step] h3 + p')

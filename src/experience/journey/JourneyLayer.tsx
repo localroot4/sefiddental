@@ -84,6 +84,13 @@ function Paint() {
           <stop offset="0.42" stopColor="#FFFFFF" stopOpacity="0.35" />
           <stop offset="0.55" stopColor="#FFFFFF" stopOpacity="0" />
         </linearGradient>
+        {/* The bevel: a light edge on the upper start side, a dark one opposite. */}
+        <linearGradient id="courier-bevel" x1="0.1" y1="0" x2="0.9" y2="1">
+          <stop offset="0" stopColor="#E9FFFC" stopOpacity="0.85" />
+          <stop offset="0.45" stopColor="#E9FFFC" stopOpacity="0" />
+          <stop offset="0.6" stopColor="#022E2B" stopOpacity="0" />
+          <stop offset="1" stopColor="#022E2B" stopOpacity="0.55" />
+        </linearGradient>
         <radialGradient id="courier-shadow">
           <stop offset="0" stopColor="#000000" stopOpacity="0.22" />
           <stop offset="1" stopColor="#000000" stopOpacity="0" />
@@ -351,6 +358,15 @@ export default function JourneyLayer(props: {
               >
                 <use href="#lockup-mark" width="168.03" height="207.3" fill="url(#courier-glaze)" />
                 <use href="#lockup-mark" width="168.03" height="207.3" fill="url(#courier-sheen)" />
+                <use
+                  href="#lockup-mark"
+                  width="168.03"
+                  height="207.3"
+                  fill="none"
+                  stroke="url(#courier-bevel)"
+                  strokeWidth="5"
+                  strokeLinejoin="round"
+                />
               </svg>
               <svg
                 ref={tooth}

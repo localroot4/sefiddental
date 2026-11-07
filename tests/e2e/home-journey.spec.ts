@@ -7,6 +7,8 @@
 // DOM courier (tier 1). Software rendering is slow here: the waits are generous, never the asserts.
 import { expect, test, type Page } from '@playwright/test';
 
+import { ARCH_PHOTO } from '@/lib/archPhoto';
+
 import { skipIntro } from '../helpers/intro';
 import { needsWebgl2 } from '../helpers/webgl';
 
@@ -218,12 +220,14 @@ test.describe('desktop, WebGL courier', () => {
     for (const stop of samples) {
       await scrollToY(page, stop.y);
       const pose = await probe<Pose>(page, 'pose');
-      // A courier faded out over text paints nothing there.
-      if (pose.hidden || (pose.opacity ?? 1) <= 0.02) continue;
+      if (pose.hidden) continue;
+      // Whole wherever it shows: it keeps to the clear lanes, it never fades (route.ts).
+      expect(pose.opacity ?? 1, stop.name).toBeGreaterThan(0.95);
       expect(await underCourier(page, pose), stop.name).toEqual({ text: [], controls: [] });
     }
-    // The layers the courier draws in paint below every section of `.site`: z-index -1, with no
-    // stacking context between them and `.site` (so text passed over in travel stays on top).
+    // The layers the courier draws in paint above the sections' boxes of `.site` and below the
+    // header, the sticky bar and the hero's cards: z-index 1, with no stacking context between
+    // them and `.site`.
     const stacking = await page.evaluate(() =>
       ['[data-courier-layer]', '[data-experience-layer]'].map((sel) => {
         const layer = document.querySelector(sel)!;
@@ -241,8 +245,8 @@ test.describe('desktop, WebGL courier', () => {
       }),
     );
     expect(stacking).toEqual([
-      { z: '-1', chain: [] },
-      { z: '-1', chain: [] },
+      { z: '1', chain: [] },
+      { z: '1', chain: [] },
     ]);
   });
 
@@ -368,7 +372,14 @@ test.describe('phone, DOM courier', () => {
         three.push(response.url());
     });
     const holds = await open(page, 'tier=1');
-    expect(holds.map((h) => h.id)).toEqual(['services', 'restoration', 'smile', 'footer']);
+    // D1 is in the hero's 4:5 photo band when the hero has one (the client preview).
+    expect(holds.map((h) => h.id).filter((id) => id !== 'hero')).toEqual([
+      'services',
+      'restoration',
+      'smile',
+      'dentists',
+      'footer',
+    ]);
     await expect(page.locator('[data-scene="services"] [data-mark]')).toBeHidden();
     for (const stop of stops(holds)) {
       await scrollToY(page, stop.y);
@@ -400,11 +411,12 @@ test.describe('tablet, DOM courier', () => {
     test.setTimeout(180_000);
   });
 
-  test('T-JN11 tablet portrait: the courier docks at every tablet station, clear of text', async ({
+  test('T-JN11 tablet portrait: the courier docks at all eight stations, clear of text', async ({
     page,
   }) => {
     const holds = await open(page, 'tier=1');
     expect(holds.map((h) => h.id)).toEqual([
+      'hero',
       'services',
       'restoration',
       'workflow',
@@ -474,6 +486,8 @@ test.describe('tablet, DOM courier', () => {
     const arch = await centre('[data-courier-arch]');
     const box = await centre('[data-dock="smile"]');
     expect(Math.abs(arch.x - box.x), 'arch x').toBeLessThan(2);
-    expect(Math.abs(arch.y - box.y), 'arch y').toBeLessThan(2);
+    // The arch's middle is where the occlusal photo has it (src/lib/archPhoto.ts).
+    const middle = box.y + (ARCH_PHOTO.centre.v - 0.5) * box.h;
+    expect(Math.abs(arch.y - middle), 'arch y').toBeLessThan(2);
   });
 });
