@@ -7,7 +7,7 @@ import type { TierSettings } from '@/lib/qualityTier';
 import type { ScrollEngine } from '../../engine/scrollEngine';
 import type { SceneContext } from '../types';
 
-import scene, { boundsOf, floorY, playgroundRuns } from './footer';
+import scene, { boundsOf, fallSegments, floorY, GRAVITY, playgroundRuns } from './footer';
 
 /** The brief's number, written here so a drift in the module shows. */
 const HOME_AFTER_MS = 6000;
@@ -20,7 +20,7 @@ interface FakeDraggable {
   kill: ReturnType<typeof vi.fn>;
 }
 type Callbacks = Record<
-  'onPressInit' | 'onPress' | 'onRelease' | 'onThrowComplete',
+  'onPressInit' | 'onPress' | 'onRelease' | 'onDrag',
   (this: FakeDraggable) => void
 >;
 
@@ -157,6 +157,40 @@ describe('boundsOf', () => {
   });
 });
 
+describe('fallSegments', () => {
+  const at = (segs: ReturnType<typeof fallSegments>, y0: number, t: number): number => {
+    // The first segment's position after t seconds, as gsap eases it.
+    const s = segs[0]!;
+    const u = Math.min(1, t / s.duration);
+    const e = s.ease === 'power1.in' ? u * u : 1 - (1 - u) * (1 - u);
+    return y0 + (s.y - y0) * e;
+  };
+
+  it('a still release falls from the first frame, accelerating, then bounces lower each time', () => {
+    const segs = fallSegments(20, 0, 300, -100);
+    expect(segs[0]).toMatchObject({ y: 300, ease: 'power1.in' });
+    expect(segs[0]!.duration).toBeCloseTo(Math.sqrt((2 * 280) / GRAVITY), 6);
+    // Under gravity: 1/2 g t^2 down after one frame, and faster in the second.
+    expect(at(segs, 20, 0.05) - 20).toBeCloseTo(0.5 * GRAVITY * 0.05 ** 2, 0);
+    expect(at(segs, 20, 0.1) - at(segs, 20, 0.05)).toBeGreaterThan(at(segs, 20, 0.05) - 20);
+    const ups = segs.filter((x) => x.ease === 'power1.out').map((x) => 300 - x.y);
+    expect(ups.length).toBeGreaterThan(0);
+    for (let i = 1; i < ups.length; i += 1) expect(ups[i]).toBeLessThan(ups[i - 1]!);
+    expect(segs.at(-1)!.y).toBe(300);
+  });
+
+  it('an upward throw rises, slows to the top and falls with no pause; the field top bounds it', () => {
+    const segs = fallSegments(200, -1200, 300, -100);
+    const apex = 200 - 1200 ** 2 / (2 * GRAVITY);
+    expect(segs[0]).toMatchObject({ ease: 'power1.out' });
+    expect(segs[0]!.y).toBeCloseTo(Math.max(-100, apex), 6);
+    expect(segs[1]).toMatchObject({ y: 300, ease: 'power1.in' });
+    expect(fallSegments(200, -5000, 300, -100)[0]!.y).toBe(-100);
+    // At the floor already: nothing to fall.
+    expect(fallSegments(300, 0, 300, -100)).toEqual([]);
+  });
+});
+
 describe('playgroundRuns', () => {
   it('runs for the DOM and the 3D setting, never static or under reduced motion', () => {
     expect(playgroundRuns({ footerPlayground: 'dom' }, false)).toBe(true);
@@ -234,7 +268,7 @@ describe('footer scene', () => {
     expect(gsap.getTweensOf(parts)).toEqual([]);
   });
 
-  it('a throw that ends above the floor bounces down to it; one at the floor arms the timer', async () => {
+  it('a release above the floor falls and bounces down to it; one at the floor arms the timer', async () => {
     const timeout = vi.spyOn(window, 'setTimeout');
     const cleanup = scene.setup(ctx());
     near!();
@@ -244,17 +278,50 @@ describe('footer scene', () => {
     Object.defineProperty(mark.target, 'offsetTop', { value: 100, configurable: true });
     Object.defineProperty(mark.target, 'offsetHeight', { value: 50, configurable: true });
     gsap.set(mark.target, { y: 20 });
-    mocks.vars!.onThrowComplete.call(mark);
-    const [fall] = gsap.getTweensOf(mark.target);
-    expect(fall).toBeDefined();
-    expect(fall!.vars.y).toBe(150);
+    mocks.vars!.onRelease.call(mark);
+    const fall = gsap.getTweensOf(mark.target);
+    expect(fall.length).toBeGreaterThan(0);
+    // It ends on the floor.
+    for (const t of fall) t.progress(1);
+    expect(Number(gsap.getProperty(mark.target, 'y'))).toBe(150);
     expect(timeout).not.toHaveBeenCalledWith(expect.any(Function), HOME_AFTER_MS);
 
     gsap.killTweensOf(mark.target);
     gsap.set(mark.target, { y: 150 });
-    mocks.vars!.onThrowComplete.call(mark);
+    mocks.vars!.onRelease.call(mark);
     expect(gsap.getTweensOf(mark.target)).toEqual([]);
     expect(timeout).toHaveBeenLastCalledWith(expect.any(Function), HOME_AFTER_MS);
+    (cleanup as () => void)();
+  });
+
+  it('a release falls at once: a sideways throw carries its speed in x and falls in the same frame', async () => {
+    const cleanup = scene.setup(ctx());
+    near!();
+    await settled();
+    Object.defineProperty(field, 'clientHeight', { value: 300, configurable: true });
+    Object.defineProperty(field, 'clientWidth', { value: 1000, configurable: true });
+    const mark = mocks.instances[0]!;
+    Object.defineProperty(mark.target, 'offsetTop', { value: 100, configurable: true });
+    Object.defineProperty(mark.target, 'offsetHeight', { value: 50, configurable: true });
+    Object.defineProperty(mark.target, 'offsetLeft', { value: 400, configurable: true });
+    Object.defineProperty(mark.target, 'offsetWidth', { value: 96, configurable: true });
+    // A drag sideways at speed: the last samples move 30 px each 16 ms in x.
+    const now = vi.spyOn(performance, 'now');
+    for (let i = 0; i < 5; i += 1) {
+      now.mockReturnValue(1000 + i * 16);
+      gsap.set(mark.target, { x: i * 30, y: 20 });
+      mocks.vars!.onDrag?.call(mark);
+    }
+    // The real Draggable reports a throw on such a release; the fall must not wait for it.
+    mark.isThrowing = true;
+    mocks.vars!.onRelease.call(mark);
+    now.mockRestore();
+    const tweens = gsap.getTweensOf(mark.target);
+    expect(tweens.length).toBeGreaterThan(0);
+    // 50 ms on: lower than at the release, and further along in x.
+    for (const t of tweens) t.time(0.05);
+    expect(Number(gsap.getProperty(mark.target, 'y'))).toBeGreaterThan(20);
+    expect(Number(gsap.getProperty(mark.target, 'x'))).toBeGreaterThan(120);
     (cleanup as () => void)();
   });
 
@@ -276,7 +343,7 @@ describe('footer scene', () => {
     mocks.vars!.onPress.call(mark);
     mark.isPressed = true;
     // Another part lands on the floor (the drop's end goes the same way) under the press.
-    mocks.vars!.onThrowComplete.call(bar);
+    mocks.vars!.onRelease.call(bar);
     expect(timeout).not.toHaveBeenCalledWith(expect.any(Function), HOME_AFTER_MS);
 
     mark.isPressed = false;

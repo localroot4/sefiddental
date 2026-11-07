@@ -2,8 +2,9 @@
  * Scene 11, the footer playground (phase 7 report D9, D12, D15; prototype 0e). Motivation: the
  * brand plays with the reader at the end, and comes home on its own. At tiers 1 to 3 the six
  * lockup parts drop from the header line into the field when the stage enters (`bounce.out`,
- * one stagger), the reader drags and throws them with Draggable and InertiaPlugin inside the
- * field, a throw ends with a bounce on the field's floor, and 6 s after the last interaction
+ * one stagger), the reader drags and throws them with Draggable inside the field, a release
+ * falls at once under gravity with the throw's speed (fallSegments) and bounces on the field's
+ * floor, and 6 s after the last interaction
  * they drift home (`expo.out`); «پخش دوباره» replays the drop (the keyboard path). Transform
  * only: the pressed part rises through a class that sets `z-index`, once per press (D12), and
  * `will-change` is set on press and cleared when its throw completes. Tier 0, reduced motion and
@@ -59,6 +60,49 @@ export function boundsOf(
     minY: -part.offsetTop,
     maxY: floorY(field, part),
   };
+}
+
+/** Gravity of the playground (px/s²): a part dropped from the field's height lands in ~0.45 s. */
+export const GRAVITY = 4200;
+/** Each bounce rises this share of the fall above it; under 3 px it is not drawn. */
+const BOUNCES = [0.2, 0.05] as const;
+
+export interface FallSegment {
+  y: number;
+  duration: number;
+  ease: 'power1.in' | 'power1.out';
+}
+
+/**
+ * The way a released part moves in y under gravity (the owner: «it hangs a second before it
+ * falls»): from `y` with the release velocity `vy` (px/s, down positive), up to its apex if thrown
+ * upward (a quadratic slow-down, never above `top`), then down to `floor` speeding up (½ g t²),
+ * then a couple of smaller bounces. Quadratic eases are the exact motion under constant gravity.
+ */
+export function fallSegments(y: number, vy: number, floor: number, top: number): FallSegment[] {
+  const segs: FallSegment[] = [];
+  let at = y;
+  if (vy < 0) {
+    const apex = Math.max(top, at - (vy * vy) / (2 * GRAVITY));
+    if (at - apex > 0.5) {
+      segs.push({ y: apex, duration: Math.sqrt((2 * (at - apex)) / GRAVITY), ease: 'power1.out' });
+      at = apex;
+    }
+  }
+  const height = floor - at;
+  if (height <= 1) return segs;
+  // A downward release keeps its speed: the time to the floor is shorter than from rest.
+  const v0 = Math.max(0, vy);
+  const fall = (-v0 + Math.sqrt(v0 * v0 + 2 * GRAVITY * height)) / GRAVITY;
+  segs.push({ y: floor, duration: fall, ease: 'power1.in' });
+  for (const share of BOUNCES) {
+    const rise = height * share;
+    if (rise < 3) break;
+    const t = Math.sqrt((2 * rise) / GRAVITY);
+    segs.push({ y: floor - rise, duration: t, ease: 'power1.out' });
+    segs.push({ y: floor, duration: t, ease: 'power1.in' });
+  }
+  return segs;
 }
 
 /** DOM physics at tiers 1 to 3 ('3d' renders as DOM in phase 7); never under reduced motion. */
@@ -138,26 +182,49 @@ const scene: DomScene = {
       gsap.set(part, { x: 0, y: 0 });
     };
     for (const part of parts) part.addEventListener(LIFTOFF_EVENT, onLiftoff);
+    // The pointer's last samples per part, for the release velocity (px/s).
+    const samples = new Map<HTMLElement, { t: number; x: number; y: number }[]>();
+    const velocity = (part: HTMLElement): { vx: number; vy: number } => {
+      const list = samples.get(part) ?? [];
+      samples.delete(part);
+      const last = list.at(-1);
+      const first = list.find((p) => last !== undefined && last.t - p.t <= 100);
+      if (!last || !first || last.t - first.t < 8) return { vx: 0, vy: 0 };
+      const dt = (last.t - first.t) / 1000;
+      return { vx: (last.x - first.x) / dt, vy: (last.y - first.y) / dt };
+    };
+    // On release the part falls at once under gravity, carrying its throw sideways (a decaying
+    // x inside the field) and upward (it rises, slows and falls); no throw is played first.
     const settle = (part: HTMLElement): void => {
-      part.style.removeProperty('will-change');
-      const floor = floorY(field, part);
+      const { vx, vy } = velocity(part);
+      const bounds = boundsOf(field, part);
+      const x = Number(gsap.getProperty(part, 'x'));
       const y = Number(gsap.getProperty(part, 'y'));
-      if (y < floor - 2) {
-        gsap.to(part, {
-          y: floor,
-          ease: 'bounce.out',
-          duration: 0.5 + (floor - y) / 900,
-          onComplete: armHome,
-        });
-      } else armHome();
+      const segs = fallSegments(y, vy, bounds.maxY, bounds.minY);
+      if (segs.length === 0) {
+        part.style.removeProperty('will-change');
+        armHome();
+        return;
+      }
+      const fall = gsap.timeline({
+        onComplete: () => {
+          part.style.removeProperty('will-change');
+          armHome();
+        },
+      });
+      for (const seg of segs) fall.to(part, seg);
+      const xEnd = Math.min(bounds.maxX, Math.max(bounds.minX, x + vx * 0.3));
+      if (Math.abs(xEnd - x) > 0.5) {
+        fall.to(part, { x: xEnd, duration: fall.duration(), ease: 'power2.out' }, 0);
+      }
     };
     const create = (Draggable: DraggableClass): void => {
       if (gone) return;
       drags = Draggable.create(parts, {
         type: 'x,y',
-        inertia: true,
+        // No InertiaPlugin throw: the release starts the fall under gravity at once (settle).
+        inertia: false,
         edgeResistance: 0.75,
-        throwResistance: 2200,
         zIndexBoost: false,
         // Before the press is measured: the bounds of this part, fresh after any resize.
         onPressInit(this: DraggableInstance) {
@@ -172,11 +239,18 @@ const scene: DomScene = {
           raised = part;
           part.style.willChange = 'transform';
         },
-        onRelease(this: DraggableInstance) {
-          // A click or a tap without a drag: no throw follows, so the timer arms here.
-          if (!this.isThrowing) settle(this.target as HTMLElement);
+        onDrag(this: DraggableInstance) {
+          const part = this.target as HTMLElement;
+          const list = samples.get(part) ?? [];
+          list.push({
+            t: performance.now(),
+            x: Number(gsap.getProperty(part, 'x')),
+            y: Number(gsap.getProperty(part, 'y')),
+          });
+          if (list.length > 6) list.shift();
+          samples.set(part, list);
         },
-        onThrowComplete(this: DraggableInstance) {
+        onRelease(this: DraggableInstance) {
           settle(this.target as HTMLElement);
         },
       });
