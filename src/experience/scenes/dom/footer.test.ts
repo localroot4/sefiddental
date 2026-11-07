@@ -339,6 +339,34 @@ describe('footer scene', () => {
     (cleanup as () => void)();
   });
 
+  it('a flick that reaches the page as one move (touch coalescing) still carries its speed in x', async () => {
+    const cleanup = scene.setup(ctx());
+    near!();
+    await settled();
+    Object.defineProperty(field, 'clientHeight', { value: 300, configurable: true });
+    Object.defineProperty(field, 'clientWidth', { value: 1000, configurable: true });
+    const mark = mocks.instances[0]!;
+    Object.defineProperty(mark.target, 'offsetTop', { value: 100, configurable: true });
+    Object.defineProperty(mark.target, 'offsetHeight', { value: 50, configurable: true });
+    Object.defineProperty(mark.target, 'offsetLeft', { value: 400, configurable: true });
+    Object.defineProperty(mark.target, 'offsetWidth', { value: 96, configurable: true });
+    const now = vi.spyOn(performance, 'now');
+    // Held at x 0 (its last sample 150 ms back), then the whole flick lands as one move 4 ms
+    // before the release (CI run 42377118771, T-BF10b on a tablet: carried 0 px).
+    now.mockReturnValue(1000);
+    gsap.set(mark.target, { x: 0, y: 20 });
+    mocks.vars!.onDrag?.call(mark);
+    now.mockReturnValue(1146);
+    gsap.set(mark.target, { x: 160, y: 20 });
+    mocks.vars!.onDrag?.call(mark);
+    now.mockReturnValue(1150);
+    mocks.vars!.onRelease.call(mark);
+    now.mockRestore();
+    for (const t of gsap.getTweensOf(mark.target)) t.time(0.2);
+    expect(Number(gsap.getProperty(mark.target, 'x'))).toBeGreaterThan(170);
+    (cleanup as () => void)();
+  });
+
   it('a part held still before the release drops straight down, its earlier drag forgotten', async () => {
     const cleanup = scene.setup(ctx());
     near!();

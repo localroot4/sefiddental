@@ -203,11 +203,16 @@ const scene: DomScene = {
     // The pointer's last samples per part, for the release velocity (px/s).
     const samples = new Map<HTMLElement, { t: number; x: number; y: number }[]>();
     // The release velocity: from the oldest sample of the last 100 ms to where the part is now. A
-    // part held still before the release has no recent sample, so it simply drops.
+    // part held still before the release has no recent sample, so it simply drops. A flick that
+    // arrives as one coalesced move (touch) leaves a single sample just before the release: it is
+    // measured from the sample before it, if that one is under 250 ms old.
     const velocity = (part: HTMLElement): { vx: number; vy: number } => {
       const now = performance.now();
-      const first = (samples.get(part) ?? []).find((p) => now - p.t <= 100);
+      const list = samples.get(part) ?? [];
       samples.delete(part);
+      let i = list.findIndex((p) => now - p.t <= 100);
+      if (i > 0 && now - list[i]!.t < 16 && now - list[i - 1]!.t <= 250) i -= 1;
+      const first = list[i];
       if (!first || now - first.t < 8) return { vx: 0, vy: 0 };
       const dt = (now - first.t) / 1000;
       return {
