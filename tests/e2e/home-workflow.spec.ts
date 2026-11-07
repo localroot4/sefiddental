@@ -337,8 +337,11 @@ test('T-WF4 the scene is one section between restoration and compare, with its j
   );
   expect(labels).toContain('workflow');
   // The courier's D4 box (docs/experience/journey.md) replaced the scene's own world slot; the
-  // journey's smile band (no scene id) follows the section.
-  await expect(page.locator('[data-scene="workflow"] [data-dock="workflow"]')).toHaveCount(1);
+  // journey's smile band (no scene id) follows the section. One box shows: the pinned diagonal's
+  // strip, or the header-row box without pins.
+  await expect(page.locator('[data-scene="workflow"] [data-dock="workflow"]:visible')).toHaveCount(
+    1,
+  );
   expect(
     await page
       .locator('[data-scene="workflow"]')

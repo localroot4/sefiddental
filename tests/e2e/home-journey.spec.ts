@@ -140,9 +140,14 @@ test.describe('desktop, WebGL courier', () => {
         continue;
       }
       if (stop.dock === 'smile') continue;
-      const box = await page
-        .locator(`[data-dock="${stop.dock}"]`)
-        .evaluate((el) => el.getBoundingClientRect().toJSON() as DOMRect);
+      // The rendered box (the workflow dock has a header and a pinned-stage variant).
+      const box = await page.locator(`[data-dock="${stop.dock}"]`).evaluateAll(
+        (els) =>
+          els
+            .find((el) => el.getClientRects().length > 0)!
+            .getBoundingClientRect()
+            .toJSON() as DOMRect,
+      );
       expect(Math.abs(pose.x - (box.left + box.width / 2)), stop.name).toBeLessThan(2);
       expect(Math.abs(pose.y - (box.top + box.height / 2)), stop.name).toBeLessThan(2);
       expect(pose.scale, stop.name).toBeLessThanOrEqual(Math.min(box.width, box.height) + 1);
