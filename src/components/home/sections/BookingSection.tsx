@@ -48,12 +48,14 @@ export function BookingSection(props: { clinic: Clinic; hours: ClinicHours }) {
             <HoursTable hours={props.hours} note={hoursTableNote(props.hours)} />
             {/* The courier's D7 box (docs/experience/journey.md): empty, text-free, from 744 px.
                 From 1024 px it is shorter than the form column, so it adds no height; on a
-                tablet it closes the stacked column under the hours. */}
+                tablet it closes the stacked column under the hours. No courier comes under
+                reduced motion or at tier 0, so there it collapses (the server HTML keeps it:
+                most visits run the journey, and the section is far below the first screen). */}
             <div
               data-world-slot="booking-mark"
               data-dock="booking"
               aria-hidden="true"
-              className="hidden aspect-square w-[12rem] justify-self-center md:block"
+              className="hidden aspect-square w-[12rem] justify-self-center md:block motion-reduce:hidden [html[data-tier='0']_&]:hidden"
             />
           </div>
         </div>

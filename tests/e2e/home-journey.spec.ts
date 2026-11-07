@@ -427,6 +427,21 @@ test.describe('tablet, DOM courier', () => {
     }
   });
 
+  test('T-JN12 tablet: the empty D7 box collapses where no courier comes (tier 0, reduced motion)', async ({
+    page,
+  }) => {
+    const d7 = page.locator('[data-dock="booking"]');
+    await page.goto('/?tier=1');
+    await expect(page.locator('html')).toHaveAttribute('data-tier', '1');
+    await expect(d7).toBeVisible();
+    await page.goto('/?tier=0');
+    await expect(page.locator('html')).toHaveAttribute('data-tier', '0');
+    await expect(d7).toBeHidden();
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.goto('/');
+    await expect(d7).toBeHidden();
+  });
+
   test('T-JN10 tier 1 tablet: the DOM courier and its arch sit centred on the pose, in their boxes', async ({
     page,
   }) => {
@@ -434,7 +449,7 @@ test.describe('tablet, DOM courier', () => {
     const centre = (sel: string) =>
       page.locator(sel).evaluate((el) => {
         const r = el.getBoundingClientRect();
-        return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width };
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width, h: r.height };
       });
     for (const id of ['services', 'restoration']) {
       const h = holds.find((x) => x.id === id)!;
@@ -445,10 +460,12 @@ test.describe('tablet, DOM courier', () => {
       expect(Math.abs(dom.x - pose.x), `${id} x`).toBeLessThan(2);
       expect(Math.abs(dom.y - pose.y), `${id} y`).toBeLessThan(2);
       expect(Math.abs(dom.w - pose.scale), `${id} size`).toBeLessThan(2);
-      // The restoration slot carries the scrubbed settle, so the courier is inside its box, not on
-      // the box's resting centre.
+      // On its box's centre; the restoration slot carries the scrubbed settle, so there the
+      // courier is inside its box, not on the box's resting centre.
       const box = await centre(`[data-dock="${id}"]`);
-      expect(Math.abs(dom.x - box.x), `${id} in its box`).toBeLessThan(box.w / 2);
+      const slack = id === 'restoration' ? { x: box.w / 2, y: box.h / 2 } : { x: 2, y: 2 };
+      expect(Math.abs(dom.x - box.x), `${id} x in its box`).toBeLessThan(slack.x);
+      expect(Math.abs(dom.y - box.y), `${id} y in its box`).toBeLessThan(slack.y);
     }
     // The SVG arch is centred on the smile box while it shows.
     const smile = holds.find((x) => x.id === 'smile')!;
