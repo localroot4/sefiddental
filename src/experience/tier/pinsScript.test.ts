@@ -20,7 +20,7 @@ interface Case {
 
 const RTX = 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11 vs_5_0 ps_5_0, D3D11)';
 const cache = (o: Record<string, unknown>) =>
-  JSON.stringify({ v: '5.0.70', renderer: RTX, tier: 2, type: 'BENCHMARK', fps: 90, ...o });
+  JSON.stringify({ v: '5.0.70-2', renderer: RTX, tier: 2, type: 'BENCHMARK', fps: 90, ...o });
 /** `sefid-gpu` values: none, valid ones of each kind, and ones gpuCache rejects. */
 const GPUS = [
   null,

@@ -8,7 +8,8 @@ import * as z from 'zod/mini';
 import type { GpuResult } from '@/lib/qualityTier';
 
 /** detect-gpu version whose benchmark data produced the cached tier (freeze section 9). */
-export const DETECT_GPU_VERSION = '5.0.70';
+// '-2': entries cached before a failed benchmark load was told apart from "loaded, not listed" (p9-tablet) are dropped.
+export const DETECT_GPU_VERSION = '5.0.70-2';
 
 const gpuCacheSchema = z.object({
   v: z.literal(DETECT_GPU_VERSION),

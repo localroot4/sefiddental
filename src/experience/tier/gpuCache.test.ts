@@ -26,13 +26,13 @@ describe('gpu cache', () => {
     expect(parseGpuCache('null', null)).toBeNull();
     expect(
       parseGpuCache(
-        JSON.stringify({ v: '5.0.70', renderer: RENDERER, tier: '3', type: 'BENCHMARK' }),
+        JSON.stringify({ v: '5.0.70-2', renderer: RENDERER, tier: '3', type: 'BENCHMARK' }),
         null,
       ),
     ).toBeNull();
     expect(
       parseGpuCache(
-        JSON.stringify({ v: '5.0.70', renderer: RENDERER, tier: 3, type: 'FAST' }),
+        JSON.stringify({ v: '5.0.70-2', renderer: RENDERER, tier: 3, type: 'FAST' }),
         null,
       ),
     ).toBeNull();

@@ -191,7 +191,12 @@ describe('tier store: hydration (synchronous tier)', () => {
       local: { 'sefid-gpu': serializeGpuCache(SWIFTSHADER, benchmark3) },
     });
     expect(software.state()).toMatchObject({ tier: 0, reason: 'software-renderer' });
-    for (const raw of ['{', '[]', serializeGpuCache(RTX, benchmark3).replace('5.0.70', '5.0.1')]) {
+    for (const raw of [
+      '{',
+      '[]',
+      serializeGpuCache(RTX, benchmark3).replace('5.0.70', '5.0.1'),
+      serializeGpuCache(RTX, benchmark3).replace('5.0.70-2', '5.0.70'),
+    ]) {
       expect(started({ local: { 'sefid-gpu': raw } }).state()).toMatchObject({ tier: 1 });
     }
   });
@@ -205,11 +210,11 @@ describe('tier store: hydration (synchronous tier)', () => {
       '5',
       serializeGpuCache(RTX, benchmark3),
       serializeGpuCache(RTX, { tier: 1, type: 'FALLBACK' }),
-      JSON.stringify({ v: '5.0.70', renderer: RTX, tier: 2, type: 'BENCHMARK' }),
-      JSON.stringify({ v: '5.0.70', renderer: RTX, tier: 2, type: 'BENCHMARK', fps: '9' }),
-      JSON.stringify({ v: '5.0.70', renderer: RTX, tier: '2', type: 'BENCHMARK' }),
-      JSON.stringify({ v: '5.0.70', renderer: 7, tier: 2, type: 'BENCHMARK' }),
-      JSON.stringify({ v: '5.0.70', renderer: RTX, tier: 2, type: 'GPU' }),
+      JSON.stringify({ v: '5.0.70-2', renderer: RTX, tier: 2, type: 'BENCHMARK' }),
+      JSON.stringify({ v: '5.0.70-2', renderer: RTX, tier: 2, type: 'BENCHMARK', fps: '9' }),
+      JSON.stringify({ v: '5.0.70-2', renderer: RTX, tier: '2', type: 'BENCHMARK' }),
+      JSON.stringify({ v: '5.0.70-2', renderer: 7, tier: 2, type: 'BENCHMARK' }),
+      JSON.stringify({ v: '5.0.70-2', renderer: RTX, tier: 2, type: 'GPU' }),
       JSON.stringify({ v: '5.0.71', renderer: RTX, tier: 2, type: 'BENCHMARK' }),
     ];
     for (const raw of raws) {

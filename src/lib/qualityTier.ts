@@ -108,7 +108,7 @@ export const LIGHT_FLOOR_KEY = 'sefid-light';
 export const LIGHT_FLOOR_MS = 14 * 24 * 60 * 60 * 1000;
 /** localStorage, TierOverride as a string. */
 export const QUALITY_STORAGE_KEY = 'sefid-quality';
-/** localStorage, { v: '5.0.70', renderer, tier, type, fps }. */
+/** localStorage, { v: '5.0.70-2', renderer, tier, type, fps }. */
 export const GPU_CACHE_KEY = 'sefid-gpu';
 /** sessionStorage, the lowest tier the monitor reached. */
 export const TIER_CAP_SESSION_KEY = 'sefid-tier-cap';

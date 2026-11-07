@@ -214,7 +214,7 @@ const GPU_TYPES: ReadonlySet<unknown> = new Set([
 
 /**
  * The cached detect-gpu answer (`sefid-gpu`) for the synchronous tier at hydration, by gpuCache's
- * rules (version 5.0.70, a string renderer, a number tier, a known type, fps a number or null)
+ * rules (version 5.0.70-2, a string renderer, a number tier, a known type, fps a number or null)
  * without its zod parser, which stays out of the home initial JS. The renderer is checked by the
  * probe after `load`. The inline pins latch (pinsScript.ts) applies the same rules; PS1 holds them
  * equal.
@@ -224,7 +224,7 @@ export function hydrationGpu(raw: string | null): { renderer: string; gpu: GpuRe
     const o = JSON.parse(raw ?? 'null') as Record<string, unknown> | null;
     if (o === null || typeof o !== 'object' || Array.isArray(o)) return null;
     const { v, renderer, tier, type, fps } = o;
-    if (v !== '5.0.70' || typeof renderer !== 'string' || typeof tier !== 'number') return null;
+    if (v !== '5.0.70-2' || typeof renderer !== 'string' || typeof tier !== 'number') return null;
     if (!GPU_TYPES.has(type) || (fps != null && typeof fps !== 'number')) return null;
     return { renderer, gpu: { tier, type: type as GpuResult['type'] } };
   } catch {
