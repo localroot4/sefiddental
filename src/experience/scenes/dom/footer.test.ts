@@ -314,6 +314,7 @@ describe('footer scene', () => {
     }
     // The real Draggable reports a throw on such a release; the fall must not wait for it.
     mark.isThrowing = true;
+    now.mockReturnValue(1080);
     mocks.vars!.onRelease.call(mark);
     now.mockRestore();
     const tweens = gsap.getTweensOf(mark.target);
@@ -322,6 +323,30 @@ describe('footer scene', () => {
     for (const t of tweens) t.time(0.05);
     expect(Number(gsap.getProperty(mark.target, 'y'))).toBeGreaterThan(20);
     expect(Number(gsap.getProperty(mark.target, 'x'))).toBeGreaterThan(120);
+    (cleanup as () => void)();
+  });
+
+  it('a part held still before the release drops straight down, its earlier drag forgotten', async () => {
+    const cleanup = scene.setup(ctx());
+    near!();
+    await settled();
+    Object.defineProperty(field, 'clientHeight', { value: 300, configurable: true });
+    const mark = mocks.instances[0]!;
+    Object.defineProperty(mark.target, 'offsetTop', { value: 100, configurable: true });
+    Object.defineProperty(mark.target, 'offsetHeight', { value: 50, configurable: true });
+    const now = vi.spyOn(performance, 'now');
+    // A fast drag up, then 300 ms still before the release.
+    for (let i = 0; i < 5; i += 1) {
+      now.mockReturnValue(1000 + i * 16);
+      gsap.set(mark.target, { y: -i * 40 });
+      mocks.vars!.onDrag?.call(mark);
+    }
+    now.mockReturnValue(1400);
+    mocks.vars!.onRelease.call(mark);
+    now.mockRestore();
+    const y0 = Number(gsap.getProperty(mark.target, 'y'));
+    for (const t of gsap.getTweensOf(mark.target)) t.time(0.05);
+    expect(Number(gsap.getProperty(mark.target, 'y'))).toBeGreaterThan(y0);
     (cleanup as () => void)();
   });
 

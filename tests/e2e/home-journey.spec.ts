@@ -413,8 +413,10 @@ test.describe('tablet, DOM courier', () => {
       expect(Math.abs(dom.x - pose.x), `${id} x`).toBeLessThan(2);
       expect(Math.abs(dom.y - pose.y), `${id} y`).toBeLessThan(2);
       expect(Math.abs(dom.w - pose.scale), `${id} size`).toBeLessThan(2);
+      // The restoration slot carries the scrubbed settle, so the courier is inside its box, not on
+      // the box's resting centre.
       const box = await centre(`[data-dock="${id}"]`);
-      expect(Math.abs(dom.x - box.x), `${id} in its box`).toBeLessThan(2);
+      expect(Math.abs(dom.x - box.x), `${id} in its box`).toBeLessThan(box.w / 2);
     }
     // The SVG arch is centred on the smile box while it shows.
     const smile = holds.find((x) => x.id === 'smile')!;

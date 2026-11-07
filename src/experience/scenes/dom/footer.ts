@@ -184,14 +184,18 @@ const scene: DomScene = {
     for (const part of parts) part.addEventListener(LIFTOFF_EVENT, onLiftoff);
     // The pointer's last samples per part, for the release velocity (px/s).
     const samples = new Map<HTMLElement, { t: number; x: number; y: number }[]>();
+    // The release velocity: from the oldest sample of the last 100 ms to where the part is now. A
+    // part held still before the release has no recent sample, so it simply drops.
     const velocity = (part: HTMLElement): { vx: number; vy: number } => {
-      const list = samples.get(part) ?? [];
+      const now = performance.now();
+      const first = (samples.get(part) ?? []).find((p) => now - p.t <= 100);
       samples.delete(part);
-      const last = list.at(-1);
-      const first = list.find((p) => last !== undefined && last.t - p.t <= 100);
-      if (!last || !first || last.t - first.t < 8) return { vx: 0, vy: 0 };
-      const dt = (last.t - first.t) / 1000;
-      return { vx: (last.x - first.x) / dt, vy: (last.y - first.y) / dt };
+      if (!first || now - first.t < 8) return { vx: 0, vy: 0 };
+      const dt = (now - first.t) / 1000;
+      return {
+        vx: (Number(gsap.getProperty(part, 'x')) - first.x) / dt,
+        vy: (Number(gsap.getProperty(part, 'y')) - first.y) / dt,
+      };
     };
     // On release the part falls at once under gravity, carrying its throw sideways (a decaying
     // x inside the field) and upward (it rises, slows and falls); no throw is played first.

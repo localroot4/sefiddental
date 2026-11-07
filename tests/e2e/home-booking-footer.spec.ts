@@ -496,10 +496,14 @@ test('T-BF10 a released part falls in the first frames: a still release and a si
     const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     await page.mouse.move(at.x, at.y);
     await page.mouse.down();
-    // Up 150 px, held still; then (for the throw) a fast move sideways right before the release.
+    // Up 150 px and held still; then (for the throw) a fast flick sideways over a few frames
+    // right before the release.
     await page.mouse.move(at.x, at.y - 150, { steps: 6 });
-    await page.waitForTimeout(dx === 0 ? 300 : 0);
-    if (dx !== 0) await page.mouse.move(at.x + dx, at.y - 150, { steps: 2 });
+    await page.waitForTimeout(dx === 0 ? 300 : 150);
+    for (let i = 1; dx !== 0 && i <= 4; i += 1) {
+      await page.mouse.move(at.x + (dx * i) / 4, at.y - 150);
+      await page.waitForTimeout(16);
+    }
     await record();
     await page.mouse.up();
     await page.waitForTimeout(400);
