@@ -13,7 +13,7 @@ this file in the same commit.
 | Database | PostgreSQL (Payload Postgres adapter) on a PaaS or a VPS; Payload's SQLite adapter on cPanel paths (C2) | The data model is identical; the adapter is an environment setting, and the confirmed hosting path (section 2) sets it |
 | Styling | Tailwind CSS 4.3.3 with `@theme` tokens from `design/tokens.css`; CSS modules for complex scenes | one token file, no ad-hoc colors |
 | UI motion | CSS transitions on transform and opacity with the motion tokens of `design/tokens.css`; native `<dialog>`, `<details>` and the Popover API | no motion library (phase 4: the JavaScript headroom, 10 KiB on content pages and 19.5 KiB on home, leaves no room for one); zero motion under `prefers-reduced-motion` |
-| Scroll engine | GSAP 3.15.0 (ScrollTrigger, Flip, MorphSVG, Draggable, InertiaPlugin) plus Lenis 1.3.26 | one master timeline per page; see `docs/experience-direction.md` |
+| Scroll engine | GSAP 3.15.0 (ScrollTrigger, Flip, MorphSVG, Draggable) plus Lenis 1.3.26 | one master timeline per page; see `docs/experience-direction.md` |
 | WebGL | three.js r186 (0.186.1), `@react-three/fiber` 9.8.1, `@react-three/drei` 10.7.9, `@react-three/postprocessing`; WebGL 2 with WebGL 1 fallback for tier 1 | KTX2 textures, Draco glTF, one `<Canvas>` fixed behind the page |
 | Quality tiers | `detect-gpu` 5.0.70 plus an in-house frame-time monitor (`src/experience/tier/frameMonitor.ts`: under 55 fps for 2 s drops one tier) and a per-tier DPR cap (`TierDpr.tsx`, not drei's `AdaptiveDpr`) | tiers 0-3 per `docs/experience-direction.md` section 3 |
 | Fonts | Vazirmatn and Estedad via `next/font/local`, subsets, swap | preloaded |

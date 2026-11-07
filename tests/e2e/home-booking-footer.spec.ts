@@ -30,7 +30,9 @@ const PARTS = `${STAGE} [data-playground-part]`;
 const REPLAY = `${STAGE} [data-playground-replay]`;
 const CARD = '[data-scene="booking"] [data-booking-card]';
 const BOOKING = '/رزرو-نوبت';
-/** Draggable + InertiaPlugin, gzip transfer (report, plan section 5). */
+/** A string only the Draggable library's code holds (its registration warning). */
+const DRAGGABLE_NEEDLE = 'registerPlugin(Draggable)';
+/** The Draggable chunk, gzip transfer (report, plan section 5). */
 const DRAGGABLE_LIMIT_KIB = 16;
 /** The parts go home this long after the last interaction, plus the brief's tolerance. */
 const HOME_AFTER_MS = 6000;
@@ -332,8 +334,9 @@ test('T-BF3 the Draggable chunk loads only once the footer is within one viewpor
 }, testInfo) => {
   only(testInfo, 'desktop-light');
   await needsWebgl2(page);
-  // The plugin chunk alone names InertiaPlugin (the debug overlay chunk names Draggable).
-  const scripts = watchScripts(page, 'InertiaPlugin');
+  // Draggable's own warning text is in the plugin chunk alone (the debug overlay chunk names
+  // Draggable).
+  const scripts = watchScripts(page, DRAGGABLE_NEEDLE);
   await page.goto('/?tier=1');
   await page.waitForLoadState('load');
   await page.waitForTimeout(2500);
@@ -451,17 +454,39 @@ test('T-BF4 drop on enter, mouse drag and throw inside the field, home 6 s after
   expect(errors().filter((line) => !line.includes('/api/events'))).toEqual([]);
 });
 
-test('T-BF10 a released part falls in the first frames: a still release and a sideways throw', async ({
-  page,
-}, testInfo) => {
-  only(testInfo, 'desktop-light');
+/**
+ * T-BF10: the bar (part 1; the courier owns the mark's landing) is dragged up 150 px and released
+ * held still, then after a fast sideways flick; each time it is lower within 50 ms of the release,
+ * ends inside the field, and the flick carries it on in x. With the mouse or a touch (CDP).
+ */
+async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> {
   await page.goto('/?tier=1');
   await page.waitForLoadState('load');
   await scrollToStage(page);
   await dropSettled(page);
   await expect.poll(() => draggableParts(page)).toBe(6);
-  // The bar (part 1): the courier owns the mark's landing.
   const bar = page.locator(PARTS).nth(1);
+  const cdp = input === 'touch' ? await page.context().newCDPSession(page) : null;
+  const pointer = {
+    down: (x: number, y: number) =>
+      cdp
+        ? cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [{ x, y, id: 1 }],
+          })
+        : page.mouse.move(x, y).then(() => page.mouse.down()),
+    move: (x: number, y: number) =>
+      cdp
+        ? cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchMove',
+            touchPoints: [{ x, y, id: 1 }],
+          })
+        : page.mouse.move(x, y),
+    up: () =>
+      cdp
+        ? cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+        : page.mouse.up(),
+  };
   // y of the bar in every frame after the release, with the release time.
   const record = () =>
     bar.evaluate((el) => {
@@ -488,30 +513,50 @@ test('T-BF10 a released part falls in the first frames: a still release and a si
       const moved = at.find(([, y]) => y > y0 + 0.5);
       return moved ? moved[0] - up : Infinity;
     });
-  for (const [name, dx] of [
-    ['still', 0],
-    ['sideways throw', -160],
-  ] as const) {
+  for (const name of ['still', 'sideways throw'] as const) {
     const box = (await bar.boundingBox())!;
     const at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
-    await page.mouse.move(at.x, at.y);
-    await page.mouse.down();
+    // The flick goes toward the field's middle, so the field's edge does not stop it.
+    const middle = (await page.locator(FIELD).boundingBox())!;
+    const toward = at.x < middle.x + middle.width / 2 ? 1 : -1;
+    const dx = name === 'still' ? 0 : 160 * toward;
+    await pointer.down(at.x, at.y);
     // Up 150 px and held still; then (for the throw) a fast flick sideways over a few frames
     // right before the release.
-    await page.mouse.move(at.x, at.y - 150, { steps: 6 });
+    for (let i = 1; i <= 6; i += 1) await pointer.move(at.x, at.y - 25 * i);
     await page.waitForTimeout(dx === 0 ? 300 : 150);
     for (let i = 1; dx !== 0 && i <= 4; i += 1) {
-      await page.mouse.move(at.x + (dx * i) / 4, at.y - 150);
+      await pointer.move(at.x + (dx * i) / 4, at.y - 150);
       await page.waitForTimeout(16);
     }
     await record();
-    await page.mouse.up();
+    await pointer.up();
+    const released = await translation(page, 1);
     await page.waitForTimeout(400);
     expect(await firstFall(), `${name}: ms from the release to the first frame lower`).toBeLessThan(
       50,
     );
-    await settled(page, 1);
+    const rest = await settled(page, 1);
+    const field = (await page.locator(FIELD).boundingBox())!;
+    expect(inside((await bar.boundingBox())!, field), `${name}: inside the field`).toBe(true);
+    if (dx !== 0) {
+      expect((rest.x - released.x) * toward, `${name}: carried on in x`).toBeGreaterThan(10);
+    }
   }
+  await cdp?.detach();
+}
+
+test('T-BF10 a released part falls in the first frames: a still release and a sideways throw', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-light');
+  await fallsAtOnce(page, 'mouse');
+});
+
+test('T-BF10b the same with a finger on a tablet', async ({ page, browserName }, testInfo) => {
+  only(testInfo, 'tablet-light');
+  test.skip(browserName !== 'chromium', CDP_ONLY);
+  await fallsAtOnce(page, 'touch');
 });
 
 test.describe('390 px touch', () => {

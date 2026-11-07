@@ -46,7 +46,7 @@ function watchScriptSizes(page: Page): Map<string, number> {
   return sizes;
 }
 
-/** The plugin chunks of phase 7 (MorphSVG for scene 3, Draggable and Inertia for scene 11). */
+/** The plugin chunks of phase 7 (MorphSVG for scene 3, Draggable for scene 11). */
 const PLUGIN_NEEDLES = ['MorphSVG', 'Draggable'] as const;
 
 /** The engine chunk (gsap core, ScrollTrigger, Lenis, the DOM scene modules): at most this. */

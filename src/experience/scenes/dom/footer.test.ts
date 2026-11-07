@@ -189,6 +189,19 @@ describe('fallSegments', () => {
     // At the floor already: nothing to fall.
     expect(fallSegments(300, 0, 300, -100)).toEqual([]);
   });
+
+  it('a downward throw starts falling at its own speed, then speeds up under gravity', () => {
+    const [seg] = fallSegments(20, 1500, 300, -100);
+    const ease = seg!.ease as (u: number) => number;
+    expect(typeof ease).toBe('function');
+    expect(ease(0)).toBe(0);
+    expect(ease(1)).toBeCloseTo(1, 9);
+    // Speed at the release (px/s): the ease's slope at 0 over the fall's time.
+    const speed = (u: number) => ((ease(u + 1e-6) - ease(u)) / 1e-6) * (280 / seg!.duration);
+    expect(speed(0)).toBeCloseTo(1500, 0);
+    // At the floor: the speed of a fall from 1500 px/s through 280 px.
+    expect(speed(1 - 1e-6)).toBeCloseTo(Math.sqrt(1500 ** 2 + 2 * GRAVITY * 280), -1);
+  });
 });
 
 describe('playgroundRuns', () => {
@@ -347,6 +360,75 @@ describe('footer scene', () => {
     const y0 = Number(gsap.getProperty(mark.target, 'y'));
     for (const t of gsap.getTweensOf(mark.target)) t.time(0.05);
     expect(Number(gsap.getProperty(mark.target, 'y'))).toBeGreaterThan(y0);
+    (cleanup as () => void)();
+  });
+
+  /** The mark, 50 px tall at 100 px in a 1000x300 field, released at `y` after a drag. */
+  const throwMark = (y: number, dx: number) => {
+    Object.defineProperty(field, 'clientHeight', { value: 300, configurable: true });
+    Object.defineProperty(field, 'clientWidth', { value: 1000, configurable: true });
+    const mark = mocks.instances[0]!;
+    Object.defineProperty(mark.target, 'offsetTop', { value: 100, configurable: true });
+    Object.defineProperty(mark.target, 'offsetHeight', { value: 50, configurable: true });
+    Object.defineProperty(mark.target, 'offsetLeft', { value: 400, configurable: true });
+    Object.defineProperty(mark.target, 'offsetWidth', { value: 96, configurable: true });
+    const now = vi.spyOn(performance, 'now');
+    mocks.vars!.onPress.call(mark);
+    for (let i = 0; i < 5; i += 1) {
+      now.mockReturnValue(1000 + i * 16);
+      gsap.set(mark.target, { x: i * dx, y });
+      mocks.vars!.onDrag?.call(mark);
+    }
+    now.mockReturnValue(1080);
+    mocks.vars!.onRelease.call(mark);
+    now.mockRestore();
+    return mark;
+  };
+  /** A few real gsap ticks. */
+  const ticks = () => new Promise((resolve) => setTimeout(resolve, 120));
+
+  it('a sideways throw along the floor slides on in x, slowing, instead of stopping dead', async () => {
+    const cleanup = scene.setup(ctx());
+    near!();
+    await settled();
+    const mark = throwMark(150, 30);
+    const tweens = gsap.getTweensOf(mark.target);
+    expect(tweens.length).toBeGreaterThan(0);
+    for (const t of tweens) t.time(0.05);
+    const x1 = Number(gsap.getProperty(mark.target, 'x'));
+    expect(x1).toBeGreaterThan(120);
+    for (const t of tweens) t.time(0.1);
+    const x2 = Number(gsap.getProperty(mark.target, 'x'));
+    // Slowing: the second 50 ms covers less than the first.
+    expect(x2 - x1).toBeLessThan(x1 - 120);
+    expect(Number(gsap.getProperty(mark.target, 'y'))).toBe(150);
+    (cleanup as () => void)();
+  });
+
+  it('an unmount during a fall leaves no way home and no tween behind', async () => {
+    const timeout = vi.spyOn(window, 'setTimeout');
+    const cleanup = scene.setup(ctx());
+    near!();
+    await settled();
+    throwMark(20, 0);
+    (cleanup as () => void)();
+    await ticks();
+    expect(timeout).not.toHaveBeenCalledWith(expect.any(Function), HOME_AFTER_MS);
+    expect(gsap.getTweensOf(parts)).toEqual([]);
+  });
+
+  it('a press during a fall stops it: no way home armed, will-change kept for the drag', async () => {
+    const timeout = vi.spyOn(window, 'setTimeout');
+    const cleanup = scene.setup(ctx());
+    near!();
+    await settled();
+    const mark = throwMark(20, 0);
+    mocks.vars!.onPress.call(mark);
+    mark.isPressed = true;
+    await ticks();
+    expect(timeout).not.toHaveBeenCalledWith(expect.any(Function), HOME_AFTER_MS);
+    expect(mark.target.style.willChange).toBe('transform');
+    expect(gsap.getTweensOf(mark.target)).toEqual([]);
     (cleanup as () => void)();
   });
 

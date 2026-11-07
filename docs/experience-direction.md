@@ -137,8 +137,8 @@ template (`/qa/not-found`). Details: `docs/brief.md` section 7.
   scroll-driven motion only.
 - Scroll velocity drives secondary motion (particles, grain intensity, the
   mark's wobble), clamped so fast scrolling never looks broken.
-- The footer playground: GSAP Draggable with InertiaPlugin for drag and
-  throw; simple bounds and a floor; collisions between parts are optional
+- The footer playground: GSAP Draggable for drag and throw, the release
+  falling under the scene's own gravity (no InertiaPlugin); simple bounds and a floor; collisions between parts are optional
   (tier 3 only); parts return home after 6 seconds of inactivity; keyboard
   users get a «پخش دوباره» button instead; touch targets stay 44 px.
 - Page transitions: the mark morphs between routes with the View Transitions

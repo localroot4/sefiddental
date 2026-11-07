@@ -7,7 +7,7 @@
  * floor, and 6 s after the last interaction
  * they drift home (`expo.out`); «پخش دوباره» replays the drop (the keyboard path). Transform
  * only: the pressed part rises through a class that sets `z-index`, once per press (D12), and
- * `will-change` is set on press and cleared when its throw completes. Tier 0, reduced motion and
+ * `will-change` is set on press and cleared when its fall completes. Tier 0, reduced motion and
  * a static playground setting run nothing and load no chunk.
  *
  * Cleanup: the Draggables are created after the lazy chunk resolved, outside the engine's
@@ -64,13 +64,16 @@ export function boundsOf(
 
 /** Gravity of the playground (px/s²): a part dropped from the field's height lands in ~0.45 s. */
 export const GRAVITY = 4200;
+/** A sideways throw slides at least this long (s), also along the floor (friction, power2.out). */
+const SLIDE_S = 0.4;
 /** Each bounce rises this share of the fall above it; under 3 px it is not drawn. */
 const BOUNCES = [0.2, 0.05] as const;
 
 export interface FallSegment {
   y: number;
   duration: number;
-  ease: 'power1.in' | 'power1.out';
+  /** A downward release's own fall: from its speed, speeding up under gravity. */
+  ease: 'power1.in' | 'power1.out' | ((progress: number) => number);
 }
 
 /**
@@ -91,10 +94,16 @@ export function fallSegments(y: number, vy: number, floor: number, top: number):
   }
   const height = floor - at;
   if (height <= 1) return segs;
-  // A downward release keeps its speed: the time to the floor is shorter than from rest.
+  // A downward release keeps its speed: y = v0 t + ½ g t², as a share of the height over the
+  // fall's time, starts at v0 (power1.in is the same motion from rest).
   const v0 = Math.max(0, vy);
   const fall = (-v0 + Math.sqrt(v0 * v0 + 2 * GRAVITY * height)) / GRAVITY;
-  segs.push({ y: floor, duration: fall, ease: 'power1.in' });
+  const lead = (v0 * fall) / height;
+  segs.push({
+    y: floor,
+    duration: fall,
+    ease: v0 > 0 ? (u: number) => lead * u + (1 - lead) * u * u : 'power1.in',
+  });
   for (const share of BOUNCES) {
     const rise = height * share;
     if (rise < 3) break;
@@ -139,9 +148,17 @@ const scene: DomScene = {
       window.clearTimeout(homeTimer);
       homeTimer = 0;
     };
+    // A released part's fall, one timeline per part. Killed as a whole: a timeline whose tweens
+    // alone are killed still completes on the next tick (gsap 3.15) and would arm the way home.
+    const falls = new Map<HTMLElement, gsap.core.Timeline>();
+    const stopFall = (part: HTMLElement): void => {
+      falls.get(part)?.kill();
+      falls.delete(part);
+    };
     // Not `killTweensOf(parts)`: before its first render a staggered tween ignores a kill by
     // target (gsap 3.15), and the drop or the way home may be that young when it must go.
     const killAll = (): void => {
+      for (const part of parts) stopFall(part);
       for (const tween of gsap.getTweensOf(parts)) tween.kill();
     };
     const goHome = (): void => {
@@ -152,7 +169,7 @@ const scene: DomScene = {
     // press, and the way home must never write x/y against the pointer; that press re-arms it.
     const armHome = (): void => {
       clearHomeTimer();
-      if (drags.some((drag) => drag.isPressed)) return;
+      if (gone || drags.some((drag) => drag.isPressed)) return;
       homeTimer = window.setTimeout(goHome, HOME_AFTER_MS);
     };
     // The journey's courier delivers the mark (docs/experience/journey.md section 4): while it
@@ -178,6 +195,7 @@ const scene: DomScene = {
     // The courier lifts off the mark's box: the part, wherever it was thrown, waits at home.
     const onLiftoff = (event: Event): void => {
       const part = event.currentTarget as HTMLElement;
+      stopFall(part);
       for (const tween of gsap.getTweensOf(part)) tween.kill();
       gsap.set(part, { x: 0, y: 0 });
     };
@@ -198,29 +216,33 @@ const scene: DomScene = {
       };
     };
     // On release the part falls at once under gravity, carrying its throw sideways (a decaying
-    // x inside the field) and upward (it rises, slows and falls); no throw is played first.
+    // x inside the field, which also slides a part thrown along the floor) and upward (it rises,
+    // slows and falls); no throw is played first.
     const settle = (part: HTMLElement): void => {
+      stopFall(part);
       const { vx, vy } = velocity(part);
       const bounds = boundsOf(field, part);
       const x = Number(gsap.getProperty(part, 'x'));
       const y = Number(gsap.getProperty(part, 'y'));
-      const segs = fallSegments(y, vy, bounds.maxY, bounds.minY);
-      if (segs.length === 0) {
+      const done = (): void => {
+        falls.delete(part);
         part.style.removeProperty('will-change');
         armHome();
-        return;
-      }
-      const fall = gsap.timeline({
-        onComplete: () => {
-          part.style.removeProperty('will-change');
-          armHome();
-        },
-      });
-      for (const seg of segs) fall.to(part, seg);
+      };
+      const fall = gsap.timeline({ paused: true, onComplete: done });
+      for (const seg of fallSegments(y, vy, bounds.maxY, bounds.minY)) fall.to(part, seg);
       const xEnd = Math.min(bounds.maxX, Math.max(bounds.minX, x + vx * 0.3));
       if (Math.abs(xEnd - x) > 0.5) {
-        fall.to(part, { x: xEnd, duration: fall.duration(), ease: 'power2.out' }, 0);
+        const slide = Math.max(fall.duration(), SLIDE_S);
+        fall.to(part, { x: xEnd, duration: slide, ease: 'power2.out' }, 0);
       }
+      if (fall.duration() === 0) {
+        fall.kill();
+        done();
+        return;
+      }
+      falls.set(part, fall);
+      fall.play();
     };
     const create = (Draggable: DraggableClass): void => {
       if (gone) return;
@@ -237,6 +259,7 @@ const scene: DomScene = {
         onPress(this: DraggableInstance) {
           const part = this.target as HTMLElement;
           clearHomeTimer();
+          stopFall(part);
           gsap.killTweensOf(part);
           raised?.classList.remove(RAISED_CLASS);
           part.classList.add(RAISED_CLASS);

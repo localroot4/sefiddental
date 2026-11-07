@@ -35,8 +35,9 @@ test('T-T02 tier 0: the footer playground is static, «پخش دوباره» hid
   const draggable: string[] = [];
   page.on('response', async (response) => {
     if (response.request().resourceType() !== 'script') return;
-    // The plugin chunk alone names InertiaPlugin (T-EX5 and check-bundle read Draggable).
-    if ((await response.text().catch(() => '')).includes('InertiaPlugin'))
+    // Draggable's own warning text is in the plugin chunk alone (T-EX5 and check-bundle read
+    // Draggable, which the debug overlay chunk names too).
+    if ((await response.text().catch(() => '')).includes('registerPlugin(Draggable)'))
       draggable.push(response.url());
   });
   await page.goto('/?tier=3');
