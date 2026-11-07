@@ -278,7 +278,10 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
     // Docks too close or out of order to make room: the next hold moves later, so the travel
     // still spans its minimum (up to the end of the scroll range), never a cut.
     if (need > 0) {
-      b.start = Math.min(top, b.start + need);
+      // Never past the scroll where the dock reaches the header: a shorter travel, not a hold
+      // pushed under it (docks close together on a tablet).
+      const cap = Math.min(top, limits.get(b.dock) ?? top);
+      b.start = Math.max(b.start, Math.min(cap, b.start + need));
       b.end = Math.min(top, Math.max(b.end, b.start + keep));
     }
     if (b.start < a.end) b.start = a.end;

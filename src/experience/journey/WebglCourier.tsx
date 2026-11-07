@@ -19,7 +19,7 @@ import type { Pulse } from '../canvas/pulse';
 import { MODELS } from '../world/assets';
 import { brandGeometry } from '../world/brandGeometry';
 import { pageLeaving, useMolar, useRigLifetime } from '../scenes/webgl/hooks';
-import { damp, levelFromChoice, passViewport, ramp, turntableYaw } from '../scenes/webgl/math';
+import { damp, levelFromChoice, passViewport, ramp } from '../scenes/webgl/math';
 
 import { workflowBeats } from './beats';
 import { COURIER } from './courier';
@@ -29,8 +29,8 @@ import { archFrame, viewportTop } from './pose';
 
 /** The WebGL courier draws from this tier; tier 1 keeps the DOM courier. */
 export const WEBGL_COURIER_TIER = COURIER.minTier;
-/** Seconds: a level change reads as one turn, close to the SVG crossfade (--dur-4). */
-const LEVEL_TAU = 0.3;
+/** Seconds: a level change eases in about 0.55 s, damped, never overshooting. */
+const LEVEL_TAU = 0.18;
 
 function drawPass(
   gl: WebGLRenderer,
@@ -189,7 +189,10 @@ export function WebglCourier(props: {
           stretch: [shown.sx, shown.sy],
           time: 0,
           level: Math.round(level * 1000) / 1000,
-          turn: settle * turntableYaw(level, pose.local, 0),
+          // D3: no turn between the levels (the owner: «one left, one right»); the tooth eases
+          // into a three-quarter top view, its chewing surface the subject of the shot.
+          turn: 0,
+          view: settle,
           beats: workflowBeats(pose.dock === 'workflow' ? pose.local : null),
           idle: 0,
           pixels: pose.scale * gl.getPixelRatio(),

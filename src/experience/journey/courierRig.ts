@@ -49,6 +49,8 @@ const CROWN_WIDTH = 1.03;
 const TOOTH_TILT = 0.42;
 /** Seated, its chewing surface faces the reader, as the arch's teeth do (the occlusal view). */
 const SEAT_TILT = Math.PI / 2;
+/** At D3 a three-quarter top view: the restoration on the chewing surface leads the shot. */
+const D3_TILT = 1.05;
 
 /** A small deterministic PRNG (mulberry32): the same cloud on every visit and in screenshots. */
 export function mulberry32(seed: number): () => number {
@@ -189,6 +191,8 @@ export interface CourierFrame {
   level: number;
   /** The turntable's extra turn at the restoration dock (radians). */
   turn: number;
+  /** 0..1 into the three-quarter top view at the restoration dock. */
+  view?: number;
   beats: Beats;
   /** 0..1 of the idle motion (pose.ts idleAmount). */
   idle: number;
@@ -328,7 +332,18 @@ export function createCourierRig(
     scene,
     camera,
     arch: { scene: archScene, camera: archCamera },
-    update({ pose, time, level: nextLevel, turn, beats, idle, pixels, lean = 0, stretch }) {
+    update({
+      pose,
+      time,
+      level: nextLevel,
+      turn,
+      beats,
+      idle,
+      pixels,
+      lean = 0,
+      stretch,
+      view = 0,
+    }) {
       holder.rotation.z = lean;
       holder.scale.set(stretch?.[0] ?? 1, stretch?.[1] ?? 1, 1);
       const isTooth = pose.form === 'tooth';
@@ -336,7 +351,9 @@ export function createCourierRig(
       tooth.visible = isTooth;
       // Near the arch the tooth turns its crown to the camera and pivots on it, as it seats.
       const seat = seatAmount(pose);
-      tilt.rotation.x = isTooth ? TOOTH_TILT + (SEAT_TILT - TOOTH_TILT) * seat : 0;
+      tilt.rotation.x = isTooth
+        ? TOOTH_TILT + (SEAT_TILT - TOOTH_TILT) * seat + (D3_TILT - TOOTH_TILT) * view
+        : 0;
       const centre = (MOLAR_Y.min + MOLAR_Y.max) / 2;
       tooth.position.y = -(centre + (CROWN_Y - centre) * seat) * toothScale;
       spin.rotation.y = pose.rotation + turn + idle * 0.12 * Math.sin(time * 0.45);
