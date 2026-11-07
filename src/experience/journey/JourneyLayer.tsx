@@ -31,7 +31,6 @@ import {
   holdRanges,
   idleAmount,
   seatAmount,
-  viewportTop,
 } from './pose';
 
 /** The courier's box before its scale (px). */
