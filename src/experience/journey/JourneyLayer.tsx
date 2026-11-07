@@ -24,14 +24,7 @@ import { levelFromChoice } from '../scenes/webgl/math';
 import { ARCH_SLOT, archLayout, footprintAngle, projectArch } from './arch';
 import { COURIER_Z } from './attrs';
 import { createJourney, type BandId, type Frame, type EngineTicks, type Journey } from './driver';
-import {
-  archFrame,
-  CROWN_SHARE,
-  domSpin,
-  holdRanges,
-  idleAmount,
-  seatAmount,
-} from './pose';
+import { archFrame, CROWN_SHARE, domSpin, holdRanges, idleAmount, seatAmount } from './pose';
 
 /** The courier's box before its scale (px). */
 const BOX = 100;
