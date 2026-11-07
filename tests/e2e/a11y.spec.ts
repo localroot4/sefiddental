@@ -116,6 +116,13 @@ const luminance = (r: number, g: number, b: number) => {
 
 async function pixelContrast(page: Page, target: Locator): Promise<Contrast> {
   await target.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
+  // The journey's courier paints above the sections' boxes but never over a glyph or a control
+  // (its lanes, T-CA1): it is left out of the capture, which reads the text element's whole box.
+  await page.evaluate(() =>
+    document
+      .querySelectorAll<HTMLElement>('[data-courier-layer], [data-experience-layer]')
+      .forEach((el) => el.style.setProperty('visibility', 'hidden', 'important')),
+  );
   // The loaded images are decoded before the capture (an undecoded image paints nothing); a lazy
   // image that never loads would never settle its decode.
   await page.evaluate(() =>
@@ -189,6 +196,11 @@ async function pixelContrast(page: Page, target: Locator): Promise<Contrast> {
     const back = luminance(br, bg, bb);
     worst = Math.min(worst, (Math.max(text, back) + 0.05) / (Math.min(text, back) + 0.05));
   }
+  await page.evaluate(() =>
+    document
+      .querySelectorAll<HTMLElement>('[data-courier-layer], [data-experience-layer]')
+      .forEach((el) => el.style.removeProperty('visibility')),
+  );
   return { label: info.label, ratio: worst, required: info.large ? 3 : 4.5 };
 }
 
@@ -299,6 +311,8 @@ async function revealsAtRest(page: Page): Promise<void> {
 
 for (const tier of HOME_SCAN_TIERS) {
   test(`T-A11Y home at ?tier=${tier}, at load and after a full scroll`, async ({ page }) => {
+    // Two scans of a page that the arch band (D5) made 1.2 screens longer.
+    test.setTimeout(90_000);
     await openHome(page, tier);
     await expectAccessible(page, { offscreenReveals: tier > 0 });
     // Down the page most of a viewport at a time, so every reveal and pinned scene runs.

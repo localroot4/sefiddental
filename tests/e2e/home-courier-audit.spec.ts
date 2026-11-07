@@ -63,7 +63,7 @@ function check(): Omit<Sample, 'y'> | null {
     r.top < box.b &&
     r.bottom > box.t;
   for (const el of document.querySelectorAll(
-    'a[href], button, input, select, textarea, [role="button"]',
+    'a[href], button, input, select, textarea, summary, [role="button"]',
   )) {
     if (shown(el) && [...el.getClientRects()].some(hit)) {
       problems.push(`over a control «${(el.textContent ?? el.tagName).trim().slice(0, 24)}»`);

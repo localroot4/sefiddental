@@ -86,7 +86,7 @@ export function measureDocks(root: ParentNode = document): Dock[] {
 }
 
 /** What the courier never covers: the controls and fields, and every line of shown text. */
-const CONTROLS = 'a[href], button, input, select, textarea, [role="button"]';
+const CONTROLS = 'a[href], button, input, select, textarea, summary, [role="button"]';
 /**
  * On a container painted above the courier's layer (the hero's cards): the courier goes round
  * each of its children's boxes whole.

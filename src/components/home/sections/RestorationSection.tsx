@@ -95,7 +95,7 @@ export function RestorationSection(props: {
                   <label
                     key={tier.key}
                     data-choice-item=""
-                    className="group/seg relative flex min-h-target cursor-pointer lg:min-h-[2.5rem] items-center justify-center rounded-pill px-3"
+                    className="group/seg relative flex min-h-target cursor-pointer items-center justify-center rounded-pill px-3 transition-[background-color] duration-(--dur-2) data-checked:bg-surface-raised data-checked:delay-(--dur-3) motion-reduce:transition-none lg:min-h-[2.5rem]"
                   >
                     <input
                       type="radio"
@@ -103,7 +103,7 @@ export function RestorationSection(props: {
                       value={tier.key}
                       className="peer absolute inset-0 m-0 size-full cursor-pointer rounded-[inherit] opacity-0"
                     />
-                    <span className="text-small font-medium text-ink-muted transition-colors duration-(--dur-2) group-hover/seg:text-ink peer-checked:font-semibold peer-checked:text-brand-strong">
+                    <span className="text-small font-medium text-ink transition-colors duration-(--dur-2) peer-checked:font-semibold peer-checked:text-brand-strong">
                       {ltr(tier.name)}
                     </span>
                     <span
