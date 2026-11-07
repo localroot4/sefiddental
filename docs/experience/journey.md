@@ -82,12 +82,24 @@ parts in 3D later; not in this step.
 A tier change mid-page switches courier type at the current pose, with no jump.
 
 Tablets follow the width rules, not a device list: a touch screen under 1024 px gets the phone
-layout's rules for pins (none) and the tablet docks above; from 1024 px the desktop ones. A GPU
-that the benchmark data does not know (detect-gpu `FALLBACK`, as for Adreno 7xx, Mali-G615 and
-Apple GPU) is classified by its renderer name (`fallbackTier` in `src/lib/qualityTier.ts`, mirrored
-in the inline pins script): Adreno 640 and newer, Mali-G76 and newer (Mali-G610 and newer in the
-three-digit series), Immortalis and Apple GPU get tier 2; any other unknown GPU stays tier 1.
-`?tier=` still overrides.
+layout's rules for pins (none) and the tablet docks above; from 1024 px the desktop ones.
+
+A GPU without a benchmark row (detect-gpu `FALLBACK`) is classified by its renderer name
+(`fallbackTier` in `src/lib/qualityTier.ts`, mirrored in the inline pins script). `FALLBACK`
+here means "the data loaded and does not list this GPU" (or detect-gpu has no file for its
+vendor, as for Immortalis). A load that failed (the coarse-pointer gate's abort at load + 1500
+ms, a 404, bad JSON, a network error) is not `FALLBACK`: `gpuProbe.ts` reports no GPU answer
+(tier 1) and caches nothing, so the next visit measures again. The 5.0.70 data stops before the
+2024 mobile GPUs (the Xiaomi Pad 7's Adreno 732 is not listed), so these get tier 2, never 3:
+
+| Renderer | Tier 2 from | Why |
+|---|---|---|
+| Adreno | 640-699, 720-799, every 8xx | The listed 640/650/660 rows run the courier; the 702 and 710 are budget parts (the data lists the 702 at 18 fps) |
+| Mali-G | G76 and up; G610 and up in the three-digit series | G76 is the first listed Mali-G with headroom (about 31 fps on 1080p phones; the device-memory cap and the monitor catch the rest); G52/G57 stay at 1 |
+| Immortalis | all | Arm's ray-tracing flagship line (G715 and later) |
+| `Apple GPU` | all | Safari masks every Apple GPU with this name, so the name cannot tell an A8 iPad from an M4; no memory API exists there. A weak one drops through the frame monitor (auto mode) |
+
+Anything else unlisted stays tier 1. `?tier=` still overrides.
 
 ## 6. Budgets and gates
 

@@ -145,16 +145,23 @@ export function isPhoneMode(inputs: Pick<TierInputs, 'viewport' | 'finePointer'>
 }
 
 /**
- * The tier of a GPU detect-gpu has no benchmark row for (FALLBACK, its default 1). Its 5.0.70
- * data stops before the 2024 mobile GPUs, so a capable tablet or phone fell to tier 1 and the DOM
- * courier: the Xiaomi Pad 7's Adreno 732, a Dimensity Mali-G615, and every iPad, whose renderer
- * Safari masks as «Apple GPU» (measured, docs/qa/tablet). Recent families get tier 2, never 3
- * (no frame rate is known); anything older or unknown keeps 1, so a weak phone stays safe.
+ * The tier of a GPU detect-gpu has no benchmark row for (FALLBACK, its default 1): the data loaded
+ * and does not list it, or detect-gpu has no file for its vendor (Immortalis). A load that failed
+ * never reaches here (gpuProbe.ts reports it as `gpu: null`). Its 5.0.70 data stops before the
+ * 2024 mobile GPUs, so a capable tablet or phone fell to tier 1 and the DOM courier: the Xiaomi
+ * Pad 7's Adreno 732, a Dimensity Mali-G615, and every iPad, whose renderer Safari masks as «Apple
+ * GPU» (measured, docs/qa/tablet). Tier 2, never 3 (no frame rate is known), for: Adreno 640 and
+ * up in the 6 series, 720 and up in the 7 series (not the 702/710 budget parts), every 8 series;
+ * Immortalis; Mali-G76 and up, G610 and up in the three-digit series; «Apple GPU» (an old iPad or
+ * Mac behind that name is left to the frame-rate monitor). Anything else keeps 1.
  */
 export function fallbackTier(renderer: string | null): Tier {
   const text = renderer ?? '';
   const adreno = /adreno[^\d]*(\d{3})/i.exec(text);
-  if (adreno) return Number(adreno[1]) >= 640 ? 2 : 1;
+  if (adreno) {
+    const n = Number(adreno[1]);
+    return n >= 720 || (n >= 640 && n < 700) ? 2 : 1;
+  }
   if (/immortalis/i.test(text)) return 2;
   const mali = /mali-g(\d+)/i.exec(text);
   if (mali) {

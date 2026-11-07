@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { Tier } from '@/lib/qualityTier';
+import { fallbackTier, type Tier } from '@/lib/qualityTier';
 
 import { PINS_SCRIPT } from './pinsScript';
 import { createTierStore, type TierEnv } from './tierStore';
@@ -136,6 +136,40 @@ describe('the inline pins latch (F2, F3)', () => {
     expect(pinned).toBeGreaterThan(10);
     // 6912 cases: about 2 s alone, past 5 s on a loaded host or under coverage.
   }, 30_000);
+
+  it('PS4 the inline unlisted-GPU rule is fallbackTier, renderer by renderer', () => {
+    const src = /function f\(r\)\{.*?\?2:1\}(?=s=)/.exec(PINS_SCRIPT)?.[0];
+    expect(src).toBeDefined();
+    const f = new Function(`return ${src}`)() as (r: string) => number;
+    for (const r of [
+      'Adreno (TM) 506',
+      'Adreno (TM) 610',
+      'Adreno (TM) 630',
+      'Adreno (TM) 640',
+      'Adreno (TM) 650',
+      'Adreno (TM) 702',
+      'Adreno (TM) 710',
+      'Adreno (TM) 720',
+      'Adreno (TM) 732',
+      'ANGLE (Qualcomm, Adreno (TM) 735, OpenGL ES 3.2)',
+      'Adreno (TM) 830',
+      'Mali-G52 MC2',
+      'Mali-G57 MC2',
+      'Mali-G76 MP10',
+      'Mali-G610 MC6',
+      'Mali-G615 MC6',
+      'Mali-G720-Immortalis MC12',
+      'Immortalis-G925',
+      'Mali-T830',
+      'PowerVR Rogue GE8320',
+      'Apple GPU',
+      ' Apple GPU ',
+      'Some New GPU',
+      '',
+    ]) {
+      expect(f(r), r).toBe(fallbackTier(r));
+    }
+  });
 
   it('PS2 blocked storage reads as empty and never throws', () => {
     vi.spyOn(window, 'localStorage', 'get').mockImplementation(() => {

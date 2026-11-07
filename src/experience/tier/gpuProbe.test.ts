@@ -202,7 +202,10 @@ describe('probeGpu', () => {
       'fetch',
       vi.fn((url: string, init?: RequestInit) => {
         fetches.push({ url, signal: init?.signal ?? undefined });
-        return Promise.resolve({ json: () => Promise.resolve(['5.0.70', ['a', 'b', 'c', 0, []]]) });
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve(['5.0.70', ['a', 'b', 'c', 0, []]]),
+        });
       }),
     );
     const gate = new AbortController();
@@ -219,6 +222,82 @@ describe('probeGpu', () => {
     expect(fetches).toEqual([{ url: '/detect-gpu/benchmarks/m-adreno.json', signal: gate.signal }]);
     expect(result.gpu).toEqual({ tier: 1, type: 'FALLBACK' });
     expect(store.set).not.toHaveBeenCalled();
+  });
+});
+
+describe('probeGpu, benchmark data that does not load', () => {
+  const ADRENO = 'Adreno (TM) 732';
+  /** detect-gpu as it is: a rejected file reads as no row, so the answer is FALLBACK. */
+  const detectGpu = () =>
+    getGPUTier.mockImplementation(
+      async (o: { override: { loadBenchmarks: (f: string) => Promise<unknown[]> } }) => {
+        try {
+          await o.override.loadBenchmarks('m-adreno.json');
+        } catch {
+          return { tier: 1, type: 'FALLBACK' };
+        }
+        return { tier: 1, type: 'FALLBACK' };
+      },
+    );
+  const failedLoad = {
+    webgl2: true,
+    renderer: ADRENO,
+    gpu: null,
+    workerOnly: false,
+    gpuNull: 'failed',
+    gpuError: 'benchmark-load',
+  };
+
+  it.each([
+    ['a 404', () => Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve([]) })],
+    [
+      'bad JSON',
+      () => Promise.resolve({ ok: true, json: () => Promise.reject(new SyntaxError('json')) }),
+    ],
+    ['a network error', () => Promise.reject(new TypeError('Failed to fetch'))],
+  ])('GP12 %s gives no GPU answer and caches nothing', async (_name, reply) => {
+    installWorker({ renderer: ADRENO });
+    installCanvas(ADRENO);
+    vi.stubGlobal('fetch', vi.fn(reply));
+    detectGpu();
+    const store = storage();
+    const result = await probeGpu({ benchmark: () => true, storage: store });
+    expect(result).toEqual(failedLoad);
+    expect(store.set).not.toHaveBeenCalled();
+  });
+
+  it('GP13 the gate abort during the fetch gives no GPU answer either', async () => {
+    installWorker({ renderer: ADRENO });
+    installCanvas(ADRENO);
+    const gate = new AbortController();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, init?: RequestInit) => {
+        gate.abort();
+        return init?.signal?.aborted
+          ? Promise.reject(new DOMException('aborted', 'AbortError'))
+          : Promise.resolve({ ok: true, json: () => Promise.resolve(['5.0.70']) });
+      }),
+    );
+    detectGpu();
+    const store = storage();
+    const result = await probeGpu({ benchmark: () => true, storage: store, signal: gate.signal });
+    expect(result).toEqual(failedLoad);
+    expect(store.set).not.toHaveBeenCalled();
+  });
+
+  it('GP14 data that loaded without the GPU is FALLBACK, and cached', async () => {
+    installWorker({ renderer: ADRENO });
+    installCanvas(ADRENO);
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve(['5.0.70']) })),
+    );
+    detectGpu();
+    const store = storage();
+    const result = await probeGpu({ benchmark: () => true, storage: store });
+    expect(result.gpu).toEqual({ tier: 1, type: 'FALLBACK' });
+    expect(store.set).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -208,6 +208,9 @@ describe('qualityTier GPUs the benchmark data does not list (FALLBACK)', () => {
     // detect-gpu 5.0.70 has no row for these (measured): the Xiaomi Pad 7's Adreno 732, a
     // Dimensity Mali-G615, and an iPad, whose renderer Safari masks as «Apple GPU».
     for (const renderer of [
+      'Adreno (TM) 640',
+      'Adreno (TM) 650',
+      'Adreno (TM) 720',
       'Adreno (TM) 732',
       'ANGLE (Qualcomm, Adreno (TM) 735, OpenGL ES 3.2)',
       'Adreno (TM) 830',
@@ -220,6 +223,10 @@ describe('qualityTier GPUs the benchmark data does not list (FALLBACK)', () => {
     }
     for (const renderer of [
       'Adreno (TM) 619',
+      'Adreno (TM) 630',
+      // The 7 series' budget parts: the data lists the 702 at 18 fps.
+      'Adreno (TM) 702',
+      'Adreno (TM) 710',
       'Adreno (TM) 506',
       'Mali-G52 MC2',
       'Mali-G57 MC2',
@@ -241,7 +248,7 @@ describe('qualityTier GPUs the benchmark data does not list (FALLBACK)', () => {
       gpu: { tier: 1, type: 'FALLBACK', isMobile: true, gpu: 'adreno (tm) 732 ()' },
     };
     expect(selectTier(pad)).toMatchObject({ tier: 2, reason: 'gpu-benchmark' });
-    // A 4 GB device keeps its memory cap; an unlisted old GPU stays at 1.
+    // A 2 GB device in phone mode is tier 0; an unlisted old GPU stays at 1.
     expect(selectTier({ ...pad, deviceMemory: 2 }).tier).toBe(0);
     expect(selectTier({ ...pad, renderer: 'Adreno (TM) 610' }).tier).toBe(1);
   });

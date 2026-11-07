@@ -93,11 +93,12 @@ export function webgl2OnMainThread(): boolean {
 
 /**
  * detect-gpu's own benchmark loader plus the gate's signal (an aborted fetch rejects, and
- * detect-gpu reads a rejected file as no match: FALLBACK). The self-hosted data is synced from the
- * pinned package, so its version line needs no check.
+ * detect-gpu reads a rejected file as no match: FALLBACK, so probeGpu notes the rejection). The
+ * self-hosted data is synced from the pinned package, so its version line needs no check.
  */
 async function loadBenchmarks(file: string, signal?: AbortSignal): Promise<ModelEntry[]> {
   const response = await fetch(`${GPU_BENCHMARKS_URL}/${file}`, { signal });
+  if (!response.ok) throw new Error(`GPU benchmark ${file}: HTTP ${response.status}`);
   const data = (await response.json()) as ModelEntry[];
   data.shift(); // the data version line
   return data;
@@ -138,13 +139,26 @@ export async function probeGpu(opts: {
     if (gl === null) return NO_WEBGL2;
     const { getGPUTier } = await import('detect-gpu');
     const { signal } = opts;
+    let loadFailed = false;
     const result = await getGPUTier({
       glContext: gl,
       benchmarksURL: GPU_BENCHMARKS_URL,
       desktopTiers: DETECT_GPU_TIERS.desktop,
       mobileTiers: DETECT_GPU_TIERS.mobile,
-      override: { loadBenchmarks: (file) => loadBenchmarks(file, signal) },
+      override: {
+        loadBenchmarks: (file) =>
+          loadBenchmarks(file, signal).catch((error: unknown) => {
+            loadFailed = true;
+            throw error;
+          }),
+      },
     });
+    // A FALLBACK because the data did not load (the gate's abort, a 404, bad JSON) says nothing
+    // about the GPU: no tier from it (qualityTier's fallbackTier is for "loaded, not listed"),
+    // and nothing cached, so the next visit measures again.
+    if (result.type === 'FALLBACK' && loadFailed) {
+      return { ...found(null, 'failed'), gpuError: 'benchmark-load' };
+    }
     const gpu: GpuResult = { tier: result.tier, type: result.type };
     if (typeof result.fps === 'number') gpu.fps = result.fps;
     if (typeof result.isMobile === 'boolean') gpu.isMobile = result.isMobile;
