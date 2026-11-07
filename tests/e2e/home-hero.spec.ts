@@ -22,14 +22,36 @@ function translateY(page: Page, selector: string): Promise<number> {
   });
 }
 
-/** The engine recorded its creation measure (tier 1 or more, three frames after `load`). */
+/**
+ * The engine recorded its creation measure (tier 1 or more, three frames after `load`). Outside
+ * Chromium a run whose browser makes no WebGL 2 context latches tier 0 whatever `?tier` says
+ * (D-Q3), so no engine comes: headless Firefox on the CI runner gets one only some of the time
+ * (helpers/webgl.ts, CI run 113: «بدون جلوه · دستگاه» on the failed try). That run is skipped
+ * there, as needsWebgl2 does; Chromium always waits, so a lost GPU path there still fails.
+ */
 async function waitForEngine(page: Page): Promise<void> {
   await page.waitForLoadState('load');
+  const chromium = page.context().browser()?.browserType().name() === 'chromium';
+  let state = 'pending';
   await expect
-    .poll(() => page.evaluate(() => performance.getEntriesByName('sefid:engine-init').length), {
-      timeout: 15_000,
-    })
-    .toBeGreaterThan(0);
+    .poll(
+      async () => {
+        state = await page.evaluate(() =>
+          performance.getEntriesByName('sefid:engine-init').length > 0
+            ? 'engine'
+            : document.documentElement.getAttribute('data-tier-reason') === 'no-webgl2'
+              ? 'no-webgl2'
+              : 'pending',
+        );
+        return state === 'engine' || (!chromium && state === 'no-webgl2');
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(true);
+  test.skip(
+    state === 'no-webgl2',
+    'this browser made no WebGL 2 context: tier 0, no engine (D-Q3)',
+  );
 }
 
 async function scrollTo(page: Page, y: number): Promise<void> {
