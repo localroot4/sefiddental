@@ -74,11 +74,11 @@ Tier 0, reduced motion, Save-Data and no WebGL 2 get no canvas, as in phase 7.
 
 ## Open
 
-- The owner allowed the preview deploy with CI red on the GPU-less runner
-  (2026-11-06): `allow_red_ci` in `server.yml` also accepts the Chromium e2e
-  step and the coverage step, preview only. Take them out once CI is green: the
-  WebGL scene components (`src/experience/scenes/webgl/*.tsx`) have no unit
-  tests, and the Chromium e2e times out under SwiftShader.
+- Closed 2026-11-07: CI run 42319407394 on `ccd9256` was green in every job
+  (the journey replaced the WebGL scenes), so the phase 8 widening of
+  `allow_red_ci` was taken back out of `server.yml`; it again accepts only a red
+  Lighthouse step. Server run 42327906777 deployed `ccd9256` to the preview
+  with CI green.
 
 - Frame rates on real phones and laptops (owner's check list).
 - T-EN4g and the tier 2 keyboard walk depend on runner speed without a GPU.

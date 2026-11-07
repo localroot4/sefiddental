@@ -48,7 +48,7 @@ on:
         type: boolean
         default: false
       allow_red_ci:
-        description: 'deploy, preview only: deploy although CI is red, when the newest CI run on main failed only in Lighthouse, Chromium e2e or coverage and no app file changed since'
+        description: 'deploy, preview only: deploy although CI is red, when the newest CI run on main failed only in Lighthouse and no app file changed since'
         type: boolean
         default: false
   push:
@@ -165,11 +165,6 @@ jobs:
         run: |
           # The owner's exception for the preview (phase 7, 2026-10-28): a red Lighthouse gate does
           # not hold back the preview, a failed build, test or e2e step still does.
-          # Widened by the owner for phase 8 (2026-11-06): the GPU-less runner draws the WebGL
-          # world on SwiftShader at about 9 fps, so the Chromium e2e step times out and the
-          # coverage step misses its experience threshold. Firefox and WebKit e2e, lint, types,
-          # build and Postgres integration must still pass. Take the e2e and coverage steps
-          # out of the pattern below once CI is green again (docs/reports/phase-08.md, Open).
           if [ "$ALLOW_RED_CI" = true ]; then
             if [ "$PHASE" != preview ]; then
               echo "::error::allow_red_ci deploys the preview only; PHASE is $PHASE."
@@ -180,16 +175,14 @@ jobs:
             sha="$(jq -r '.head_sha // ""' <<<"$run")"
             same="$(gh api "repos/$GITHUB_REPOSITORY/compare/$sha...$GITHUB_SHA" --jq '
               if (.status == "ahead" or .status == "identical")
-                and all(.files[]; .filename | test("^(deploy/vps/|docs/|\\.github/workflows/server\\.yml$)"))
+                and all(.files[]; .filename | test("^(deploy/vps/|\\.github/workflows/server\\.yml$)"))
               then "ok" else "no" end')"
             failed="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" --jq '[.jobs[].steps[] | select(.conclusion == "failure") | .name] | join(", ")')"
-            other="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$id/jobs" --jq '[.jobs[].steps[] | select(.conclusion == "failure") | .name
-              | select(test("^(Lighthouse CI, light and dark|End-to-end tests on the standalone server|Run npm run test:coverage)$") | not)] | join(", ")')"
-            if [ "$same" = ok ] && [ -n "$failed" ] && [ -z "$other" ]; then
-              echo "::warning::Preview deploy with CI red only in: $failed (run $id on $sha)."
+            if [ "$same" = ok ] && [ "$failed" = "Lighthouse CI, light and dark" ]; then
+              echo "::warning::Preview deploy with CI red only in Lighthouse (run $id on $sha)."
               exit 0
             fi
-            echo "::error::allow_red_ci needs the newest CI run on main ($sha) to fail only in Lighthouse, Chromium e2e or coverage, with only deploy/vps/, docs/ or server.yml changed since; failed steps: ${failed:-none}; same: $same."
+            echo "::error::allow_red_ci needs the newest CI run on main ($sha) to fail only in Lighthouse, with only deploy/vps/ or server.yml changed since; failed steps: ${failed:-none}; same: $same."
             exit 1
           fi
           runs="repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA"
