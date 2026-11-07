@@ -153,3 +153,26 @@ Anything else unlisted stays tier 1. `?tier=` still overrides.
   instanced call. No shadow map at any tier.
 - D5 photo: `smile-*` (Pexels, Daniel Xavier) on the client preview only; elsewhere the
   labelled placeholder (gaps row 65).
+
+## 9. D5 occlusal arch photo (owner decision, 2026-11-07)
+
+The smile portrait at D5 is replaced by the upper dental arch seen from straight below (an
+occlusal view): a U-shaped arch, incisors at the top, molars at the bottom, symmetric, with the
+palate between. The 3D arch is shown from the same angle, the tooth seats into its first-molar
+slot, and the arch cross-fades into the photo, registered to it.
+
+Photo needed (the owner provides it; a placeholder render ships until then):
+
+- Portrait 4:5, at least 2400x3000, the arch centred and filling about 80 % of the width, sharp
+  edge to edge, even ring-flash light, healthy natural teeth with fine fissure detail, no text,
+  labels, instruments or mirror edges, a dark or black surround.
+- Files: `public/demo-photos/arch-occlusal-{640,1280}.{avif,webp}` and the alignment numbers in
+  its manifest (arch centre, width, incisor and first-molar points).
+- Stock search terms: "maxillary occlusal view intraoral photograph", "upper dental arch occlusal
+  photo", "healthy maxillary arch top view".
+- Image-generator prompt: «Ultra high-resolution clinical intraoral occlusal photograph of a
+  healthy adult upper dental arch, viewed straight from below as through an occlusal mirror, the
+  full arch from second molar to second molar, perfectly symmetric, natural ivory-white teeth
+  with realistic enamel translucency and fine occlusal fissures, healthy pink palate with soft
+  rugae, soft even ring-flash lighting, pure black surround, no text, no labels, no instruments,
+  no mirror edges, sharp focus edge to edge, medical photography, 8K, portrait 4:5.»
