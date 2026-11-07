@@ -42,8 +42,51 @@ const LAYER = {
 
 const deg = (rad: number): number => (rad * 180) / Math.PI;
 
+/** The porcelain's edge: a warm shade, not an outline in the brand colour. */
+const PORCELAIN_EDGE = '#C8B391';
+
+/**
+ * Shared paint of the DOM courier (tier 1 and the fallback): porcelain lit from the upper start
+ * side for the tooth and the arch's crowns, a glazed teal for the mark, and a soft contact shadow,
+ * so the SVG forms read as objects, not line drawings.
+ */
+function Paint() {
+  return (
+    <svg aria-hidden="true" width="0" height="0" className="absolute">
+      <defs>
+        <linearGradient id="courier-enamel" x1="0.15" y1="0" x2="0.85" y2="1">
+          <stop offset="0" stopColor="#FFFDF8" />
+          <stop offset="0.5" stopColor="#F2E9DA" />
+          <stop offset="1" stopColor="#D5C3A6" />
+        </linearGradient>
+        <radialGradient id="courier-crown" cx="0.38" cy="0.32" r="0.75">
+          <stop offset="0" stopColor="#FFFFFF" />
+          <stop offset="0.55" stopColor="#F1E8D9" />
+          <stop offset="1" stopColor="#CDB99A" />
+        </radialGradient>
+        <linearGradient id="courier-glaze" x1="0.1" y1="0" x2="0.9" y2="1">
+          <stop offset="0" stopColor="#3CC4B8" />
+          <stop offset="0.45" stopColor="#0A8A80" />
+          <stop offset="1" stopColor="#04524C" />
+        </linearGradient>
+        <linearGradient id="courier-sheen" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0.25" stopColor="#FFFFFF" stopOpacity="0" />
+          <stop offset="0.42" stopColor="#FFFFFF" stopOpacity="0.35" />
+          <stop offset="0.55" stopColor="#FFFFFF" stopOpacity="0" />
+        </linearGradient>
+        <radialGradient id="courier-shadow">
+          <stop offset="0" stopColor="#000000" stopOpacity="0.22" />
+          <stop offset="1" stopColor="#000000" stopOpacity="0" />
+        </radialGradient>
+      </defs>
+    </svg>
+  );
+}
+
+const LEVEL_NAMES = MOLAR_LEVELS.map((l) => l.level);
+
 /** One crown seen from above, in arch units, at the origin. */
-function Crown(props: { width: number; className?: string }) {
+function Crown(props: { width: number }) {
   const h = props.width * CROWN_RATIO;
   return (
     <rect
@@ -52,8 +95,9 @@ function Crown(props: { width: number; className?: string }) {
       width={props.width}
       height={h}
       rx={props.width * 0.38}
-      strokeWidth={0.006}
-      className={props.className ?? 'fill-surface-raised stroke-brand'}
+      fill="url(#courier-crown)"
+      stroke={PORCELAIN_EDGE}
+      strokeWidth={0.004}
     />
   );
 }
@@ -74,6 +118,7 @@ export default function JourneyLayer(props: {
   const mark = useRef<SVGSVGElement>(null);
   const tooth = useRef<SVGSVGElement>(null);
   const crown = useRef<SVGSVGElement>(null);
+  const shadow = useRef<SVGSVGElement>(null);
   const arch = useRef<SVGSVGElement>(null);
   const levels = useRef<(SVGGElement | null)[]>([]);
 
@@ -121,6 +166,7 @@ export default function JourneyLayer(props: {
         const seat = seatAmount(pose);
         tooth.current?.style.setProperty('opacity', String(isTooth ? fade * (1 - seat) : 0));
         crown.current?.style.setProperty('opacity', String(isTooth ? fade * seat : 0));
+        shadow.current?.style.setProperty('opacity', String(fade * (1 - seat)));
         // The chips' level at the restoration dock, plain everywhere else.
         const level =
           pose.dock === 'restoration'
@@ -196,6 +242,7 @@ export default function JourneyLayer(props: {
         />
       </div>
       <div ref={layer} data-courier-layer="" aria-hidden="true">
+        <Paint />
         <svg
           ref={arch}
           data-courier-arch=""
@@ -210,7 +257,7 @@ export default function JourneyLayer(props: {
                 key={i}
                 transform={`translate(${p.u} ${p.v}) rotate(${deg(footprintAngle(t.yaw))})`}
               >
-                <Crown width={t.width} className="fill-surface-raised stroke-brand/60" />
+                <Crown width={t.width} />
               </g>
             );
           })}
@@ -223,12 +270,20 @@ export default function JourneyLayer(props: {
           <div data-courier-breathe="" className="size-full">
             <div ref={spin} className="relative size-full [transform-style:preserve-3d]">
               <svg
+                ref={shadow}
+                viewBox="0 0 100 100"
+                className="absolute inset-0 size-full overflow-visible"
+              >
+                <ellipse cx="50" cy="97" rx="34" ry="5" fill="url(#courier-shadow)" />
+              </svg>
+              <svg
                 ref={mark}
                 data-form="mark"
                 viewBox="0 0 168.03 207.3"
-                className="absolute inset-0 m-auto h-[92%] w-auto fill-brand [backface-visibility:hidden]"
+                className="absolute inset-0 m-auto h-[92%] w-auto [backface-visibility:hidden]"
               >
-                <use href="#lockup-mark" width="168.03" height="207.3" />
+                <use href="#lockup-mark" width="168.03" height="207.3" fill="url(#courier-glaze)" />
+                <use href="#lockup-mark" width="168.03" height="207.3" fill="url(#courier-sheen)" />
               </svg>
               <svg
                 ref={tooth}
@@ -236,18 +291,30 @@ export default function JourneyLayer(props: {
                 viewBox="0 0 200 240"
                 className="absolute inset-0 m-auto h-full w-auto opacity-0"
               >
-                {MOLAR_LEVELS.map(({ level, fill }, i) => (
+                <g fill="url(#courier-enamel)" stroke={PORCELAIN_EDGE} strokeWidth="1.5">
+                  <path d={ROOTS} />
+                  <path d={CROWN} />
+                </g>
+                {/* The levels over the porcelain: VIP a glaze sheen, CIP the warm neck and the
+                    stained grooves (the restoration chips choose, at its dock only). */}
+                {LEVEL_NAMES.map((level, i) => (
                   <g
                     key={level}
                     ref={(el) => {
                       levels.current[i] = el;
                     }}
-                    strokeWidth="2.5"
-                    strokeLinejoin="round"
-                    className={`stroke-brand transition-opacity duration-(--dur-4) ${fill} ${i === 0 ? '' : 'opacity-0'}`}
+                    fill="none"
+                    className={`transition-opacity duration-(--dur-4) ${i === 0 ? '' : 'opacity-0'}`}
                   >
-                    <path d={ROOTS} />
-                    <path d={CROWN} />
+                    {i >= 1 ? (
+                      <ellipse cx="82" cy="62" rx="34" ry="14" fill="#FFFFFF" opacity="0.55" />
+                    ) : null}
+                    {i === 2 ? (
+                      <g strokeLinecap="round" className="stroke-warm">
+                        <path d="M56 113c20 8 68 8 88 0" strokeOpacity="0.5" strokeWidth="9" />
+                        <path d="M78 51c2 9 6 15 12 18m32-18c-2 9-6 15-12 18" strokeWidth="2.2" />
+                      </g>
+                    ) : null}
                   </g>
                 ))}
               </svg>
@@ -258,7 +325,7 @@ export default function JourneyLayer(props: {
                 className="absolute inset-0 size-full overflow-visible opacity-0"
               >
                 <g transform={`rotate(${slotAngle})`}>
-                  <Crown width={CROWN_SHARE} className="fill-surface-raised stroke-brand" />
+                  <Crown width={CROWN_SHARE} />
                 </g>
               </svg>
             </div>
