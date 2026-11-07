@@ -23,7 +23,7 @@ const PANEL = [
 // The segmented control's indicator under the chosen level, by its position (RTL: the start is
 // the right, so later levels move it left).
 const SLIDE =
-  'group-data-[choice=2]/tiers:-translate-x-full group-data-[choice=3]/tiers:-translate-x-[200%] group-data-[choice=4]/tiers:-translate-x-[300%] ltr:group-data-[choice=2]/tiers:translate-x-full ltr:group-data-[choice=3]/tiers:translate-x-[200%]';
+  'group-data-[choice=2]/tiers:-translate-x-full group-data-[choice=3]/tiers:-translate-x-[200%] group-data-[choice=4]/tiers:-translate-x-[300%] ltr:group-data-[choice=2]/tiers:translate-x-full ltr:group-data-[choice=3]/tiers:translate-x-[200%] ltr:group-data-[choice=4]/tiers:translate-x-[300%]';
 // The track's columns and the indicator's width per number of levels (static classes).
 const SEGMENTS: Record<number, { cols: string; width: string }> = {
   1: { cols: 'grid-cols-1', width: 'w-[calc(100%-6px)]' },
@@ -97,7 +97,7 @@ export function RestorationSection(props: {
                 {tiers.map((tier) => (
                   <label
                     key={tier.key}
-                    className="relative flex min-h-target cursor-pointer rounded-pill lg:min-h-[2.5rem]"
+                    className="relative flex min-h-target cursor-pointer rounded-pill"
                   >
                     <input
                       type="radio"
@@ -107,7 +107,7 @@ export function RestorationSection(props: {
                     />
                     {/* The segment's face: the text on its own surface, which the chosen level
                         raises (no box behind the text, so every contrast check reads it). */}
-                    <span className="pointer-events-none flex flex-1 items-center justify-center rounded-pill px-3 text-small font-medium text-ink transition-[background-color,box-shadow,color] duration-(--dur-2) peer-checked:bg-surface-raised peer-checked:font-semibold peer-checked:text-brand-strong peer-checked:shadow-raised motion-reduce:transition-none">
+                    <span className="pointer-events-none flex flex-1 items-center justify-center rounded-pill px-3 text-small font-medium text-ink transition-[background-color,box-shadow,color] duration-(--dur-2) peer-checked:bg-surface-raised peer-checked:font-semibold peer-checked:text-brand-strong peer-checked:shadow-raised peer-checked:ring-1 peer-checked:ring-brand/50 peer-checked:ring-inset motion-reduce:transition-none forced-colors:peer-checked:outline-2 forced-colors:peer-checked:-outline-offset-2 forced-colors:peer-checked:outline-[Highlight] forced-colors:peer-checked:outline-solid">
                       {ltr(tier.name)}
                     </span>
                     <span
@@ -119,7 +119,7 @@ export function RestorationSection(props: {
               </div>
               {/* What the levels differ in, before a chip is chosen (the brief's tier facts). One
                   caption line at 1024 px, so the pinned stage still fits a 768 px viewport. */}
-              <p id="home-tiers-note" className="mt-2 text-caption text-ink-muted">
+              <p id="home-tiers-note" className="mt-[0.25rem] text-caption text-ink-muted">
                 {ltr(t('home.restoration.levels'))}
               </p>
             </fieldset>

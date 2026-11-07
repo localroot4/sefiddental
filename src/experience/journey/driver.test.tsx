@@ -131,6 +131,33 @@ describe('journey driver', () => {
     journey.destroy();
   });
 
+  it('DR9 no scroll tick plans a lane: the planning runs only in idle slots', () => {
+    const idle: ((d: { timeRemaining(): number }) => void)[] = [];
+    vi.stubGlobal('requestIdleCallback', (cb: (d: { timeRemaining(): number }) => void) => {
+      idle.push(cb);
+      return idle.length;
+    });
+    vi.stubGlobal('cancelIdleCallback', () => {});
+    const { journey } = start();
+    const lanes = journey.lanes()!;
+    const before = lanes.stats();
+    // A long scroll through every travel, ticking, with no idle slot run.
+    for (let y = 0; y <= 6000; y += 150) {
+      layout(y);
+      triggers.created[0]!.onUpdate();
+      runTicks(2);
+    }
+    expect(lanes.stats()).toEqual(before);
+    expect(before.planned).toBe(0);
+    // An idle slot plans; the next tick only reads what it planned.
+    while (idle.length > 0) idle.shift()!({ timeRemaining: () => 50 });
+    expect(lanes.stats().planned).toBeGreaterThan(0);
+    const planned = lanes.stats();
+    runTicks(3);
+    expect(lanes.stats()).toEqual(planned);
+    journey.destroy();
+  });
+
   it('DR3 the footer hand-off: the part shows once the courier lands, and goes home when it lifts off', () => {
     const { journey } = start();
     const part = document.querySelector<HTMLElement>('[data-dock="footer"]')!;

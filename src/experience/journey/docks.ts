@@ -71,6 +71,30 @@ function placeInFlow(
   return { left: rect.left + window.scrollX, top, width: rect.width, height: rect.height, pin };
 }
 
+/**
+ * A rect inside an element drawn with a scale `a` and a translation about its transform origin,
+ * taken back to where it is at rest: p' = O + a (p - O) + t, so p = O + (p' - t - O) / a. O is the
+ * origin (`origin`, from the element's own corner) in the untransformed box, whose corner sits at
+ * drawn - t - origin (a - 1).
+ */
+export function atRest(
+  r: { left: number; top: number; right: number; bottom: number },
+  drawn: { left: number; top: number },
+  m: { a: number; e: number; f: number },
+  origin: { x: number; y: number },
+): { left: number; top: number; right: number; bottom: number } {
+  const a = m.a || 1;
+  const ox = drawn.left - m.e - origin.x * (1 - a) + origin.x;
+  const oy = drawn.top - m.f - origin.y * (1 - a) + origin.y;
+  const back = (v: number, o: number, t: number): number => o + (v - t - o) / a;
+  return {
+    left: back(r.left, ox, m.e),
+    right: back(r.right, ox, m.e),
+    top: back(r.top, oy, m.f),
+    bottom: back(r.bottom, oy, m.f),
+  };
+}
+
 /** Every rendered `[data-dock]` box under `root`, in document px. */
 export function measureDocks(root: ParentNode = document): Dock[] {
   const docks: Dock[] = [];
@@ -126,17 +150,16 @@ export function measureObstacles(root: Element): Box[] {
     // A scroll-scrubbed entrance (`[data-scrub]`: a rise, a slide, a settle) may be mid-way now:
     // the box is taken where the element comes to rest, its transform undone.
     const scrub = el.closest<HTMLElement>('[data-scrub]');
-    const m = scrub ? new DOMMatrixReadOnly(getComputedStyle(scrub).transform) : null;
-    if (m && !m.isIdentity) {
-      const k = 1 / (m.a || 1);
-      const cx = (left + right) / 2 - m.e;
-      const cy = (top + bottom) / 2 - m.f;
-      const hw = ((right - left) * k) / 2;
-      const hh = ((bottom - top) * k) / 2;
-      left = cx - hw;
-      right = cx + hw;
-      top = cy - hh;
-      bottom = cy + hh;
+    const style = scrub ? getComputedStyle(scrub) : null;
+    const m = style ? new DOMMatrixReadOnly(style.transform) : null;
+    if (scrub && style && m && !m.isIdentity) {
+      const [ox = 0, oy = 0] = style.transformOrigin.split(' ').map(parseFloat);
+      ({ left, top, right, bottom } = atRest(
+        { left, top, right, bottom },
+        scrub.getBoundingClientRect(),
+        m,
+        { x: ox, y: oy },
+      ));
     }
     out.push(placeInFlow(el, { left, top, width: right - left, height: bottom - top }, nav));
   };

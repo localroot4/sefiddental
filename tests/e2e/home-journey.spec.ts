@@ -372,8 +372,11 @@ test.describe('phone, DOM courier', () => {
         three.push(response.url());
     });
     const holds = await open(page, 'tier=1');
-    // D1 is in the hero's 4:5 photo band when the hero has one (the client preview).
-    expect(holds.map((h) => h.id).filter((id) => id !== 'hero')).toEqual([
+    // D1 is in the hero's 4:5 photo band whenever the hero shows one (a real photo, or the
+    // client preview); without the band there is no box for it.
+    const band = await page.locator('[data-hero-photo]').isVisible();
+    expect(holds.map((h) => h.id)).toEqual([
+      ...(band ? ['hero'] : []),
       'services',
       'restoration',
       'smile',

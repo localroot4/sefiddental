@@ -158,3 +158,31 @@ describe('measureDocks', () => {
     });
   });
 });
+
+describe('a scrubbed entrance measured at rest', () => {
+  it('DK9 a text in a box scaled 0.94 about its centre and lifted 12 px comes back to its place', async () => {
+    const { atRest } = await import('./docks');
+    // The box at rest: 100..300 x 50..250, its origin its centre (100, 100 from its corner).
+    const a = 0.94;
+    const t = { e: 0, f: 12 };
+    const origin = { x: 100, y: 100 };
+    const draw = (x: number, y: number) => ({
+      x: 200 + a * (x - 200) + t.e,
+      y: 150 + a * (y - 150) + t.f,
+    });
+    const corner = draw(100, 50);
+    const text = { left: 120, top: 200, right: 280, bottom: 230 };
+    const tl = draw(text.left, text.top);
+    const br = draw(text.right, text.bottom);
+    const back = atRest(
+      { left: tl.x, top: tl.y, right: br.x, bottom: br.y },
+      { left: corner.x, top: corner.y },
+      { a, ...t },
+      origin,
+    );
+    expect(back.left).toBeCloseTo(text.left, 6);
+    expect(back.top).toBeCloseTo(text.top, 6);
+    expect(back.right).toBeCloseTo(text.right, 6);
+    expect(back.bottom).toBeCloseTo(text.bottom, 6);
+  });
+});

@@ -117,18 +117,17 @@ const luminance = (r: number, g: number, b: number) => {
 async function pixelContrast(page: Page, target: Locator): Promise<Contrast> {
   await target.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
   // The journey's courier paints above the sections' boxes but never over a glyph or a control
-  // (its lanes): it is left out of the capture, which reads the text element's whole box. The
-  // guard against occlusion is tests/e2e/home-courier-audit.spec.ts (T-CA1, T-CA2). Opacity, not
-  // visibility: the driver writes `visibility: visible` on the DOM courier itself, which a hidden
-  // layer does not override, so it stayed in the capture beside the judged text.
-  const hidden = await page.evaluate(() => {
-    const layers = document.querySelectorAll<HTMLElement>(
-      '[data-courier-layer], [data-experience-layer]',
-    );
-    layers.forEach((el) => el.style.setProperty('opacity', '0', 'important'));
-    return [...layers].every((el) => getComputedStyle(el).opacity === '0');
+  // (its lanes): it is switched off for the capture, which reads the text element's whole box.
+  // The guard against occlusion is tests/e2e/home-courier-audit.spec.ts (T-CA1 to T-CA3). Only
+  // the courier: every other WebGL scene still draws (`html[data-courier-off]`, its DOM layer at
+  // opacity 0 and the WebGL courier's passes skipped).
+  const hidden = await page.evaluate(async () => {
+    document.documentElement.setAttribute('data-courier-off', '');
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    const layer = document.querySelector('[data-courier-layer]');
+    return layer === null || getComputedStyle(layer).opacity === '0';
   });
-  expect(hidden, 'the courier layers are out of the capture').toBe(true);
+  expect(hidden, 'the courier is out of the capture').toBe(true);
   // The loaded images are decoded before the capture (an undecoded image paints nothing); a lazy
   // image that never loads would never settle its decode.
   await page.evaluate(() =>
@@ -202,11 +201,7 @@ async function pixelContrast(page: Page, target: Locator): Promise<Contrast> {
     const back = luminance(br, bg, bb);
     worst = Math.min(worst, (Math.max(text, back) + 0.05) / (Math.min(text, back) + 0.05));
   }
-  await page.evaluate(() =>
-    document
-      .querySelectorAll<HTMLElement>('[data-courier-layer], [data-experience-layer]')
-      .forEach((el) => el.style.removeProperty('opacity')),
-  );
+  await page.evaluate(() => document.documentElement.removeAttribute('data-courier-off'));
   return { label: info.label, ratio: worst, required: info.large ? 3 : 4.5 };
 }
 

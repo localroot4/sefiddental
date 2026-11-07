@@ -14,11 +14,18 @@ const OMEGA = 24;
 const REST_PX = 0.05;
 const REST_SPEED = 1;
 /** Lean (radians) per px/s of sideways speed, and its limit. */
-const LEAN = 0.00012;
-const MAX_LEAN = 0.16;
+const LEAN = 0.00008;
+const MAX_LEAN = 0.06;
 /** Squash per px/s of vertical speed, and its limit. */
-const SQUASH = 0.00005;
-const MAX_SQUASH = 0.07;
+const SQUASH = 0.00003;
+const MAX_SQUASH = 0.03;
+/**
+ * The shown place never trails the pose by more than this (px): the lanes keep LANE_MARGIN
+ * (route.ts) round the form, and the lean, the squash and the whip's stretch take the rest.
+ */
+export const MAX_LAG = 8;
+/** The whip's stretch across the spin, at its middle. */
+const STRETCH = 0.05;
 /** A move of more than this share of the viewport height in one frame is taken at once. */
 const JUMP_VH = 0.5;
 
@@ -64,6 +71,11 @@ export function createFollow(): Follow {
   const s: Channel = { at: 0, v: 0 };
   let primed = false;
   let rest = true;
+  let primedAt = false;
+  let lastX = 0;
+  let lastY = 0;
+  let speedX = 0;
+  let speedY = 0;
   const snap = (pose: Pose): void => {
     x.at = pose.x;
     y.at = pose.y;
@@ -74,30 +86,55 @@ export function createFollow(): Follow {
   };
   return {
     step(pose, dt, viewportHeight) {
+      // The lean and the squash read the pose's own speed (the spring may be held at MAX_LAG).
+      const vx = dt > 0 && primedAt ? (pose.x - lastX) / Math.min(dt, 0.05) : 0;
+      const vy = dt > 0 && primedAt ? (pose.y - lastY) / Math.min(dt, 0.05) : 0;
+      lastX = pose.x;
+      lastY = pose.y;
+      primedAt = true;
+      speedX += (vx - speedX) * 0.3;
+      speedY += (vy - speedY) * 0.3;
       const jump =
         Math.abs(pose.x - x.at) + Math.abs(pose.y - y.at) > JUMP_VH * Math.max(1, viewportHeight);
       if (!primed || jump || pose.hidden || dt <= 0) {
         primed = true;
         snap(pose);
+        if (jump || pose.hidden) {
+          speedX = 0;
+          speedY = 0;
+        }
       } else {
         const step = Math.min(dt, 0.05);
         spring(x, pose.x, step);
         spring(y, pose.y, step);
         spring(s, pose.scale, step);
+        // Held within MAX_LAG of the pose: the drawn form stays inside its lane mid-scroll.
+        const dx = x.at - pose.x;
+        const dy = y.at - pose.y;
+        const lag = Math.hypot(dx, dy);
+        if (lag > MAX_LAG) {
+          x.at = pose.x + (dx * MAX_LAG) / lag;
+          y.at = pose.y + (dy * MAX_LAG) / lag;
+          // Held at the edge, it carries no momentum past the pose (no overshoot).
+          x.v = 0;
+          y.v = 0;
+        }
+        s.at = Math.max(pose.scale * 0.9, Math.min(pose.scale * 1.1, s.at));
       }
       rest =
         Math.abs(x.at - pose.x) < REST_PX &&
         Math.abs(y.at - pose.y) < REST_PX &&
         Math.abs(s.at - pose.scale) < REST_PX &&
-        Math.abs(x.v) + Math.abs(y.v) < REST_SPEED;
+        Math.abs(x.v) + Math.abs(y.v) < REST_SPEED &&
+        Math.abs(speedX) + Math.abs(speedY) < REST_SPEED;
       if (rest) {
         snap(pose);
         if (pose.whip === 0) return { x: pose.x, y: pose.y, scale: pose.scale, ...AT_REST };
       }
-      const lean = Math.max(-MAX_LEAN, Math.min(MAX_LEAN, -x.v * LEAN));
-      const squash = Math.min(MAX_SQUASH, Math.abs(y.v) * SQUASH);
+      const lean = Math.max(-MAX_LEAN, Math.min(MAX_LEAN, -speedX * LEAN));
+      const squash = Math.min(MAX_SQUASH, Math.abs(speedY) * SQUASH);
       // The whip stretches the form across its spin: a motion-blur feel.
-      const stretch = 0.08 * Math.sin(Math.PI * pose.whip);
+      const stretch = STRETCH * Math.sin(Math.PI * pose.whip);
       return {
         x: x.at,
         y: y.at,

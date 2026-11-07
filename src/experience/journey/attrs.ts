@@ -14,3 +14,5 @@ export const HERE_ATTR = 'data-courier-here';
  * sticky bar. The courier's lanes keep it off every text and control (route.ts).
  */
 export const COURIER_Z = '1';
+/** On `html`: the courier draws nothing (a check of the page's own pixels; globals.css). */
+export const COURIER_OFF_ATTR = 'data-courier-off';

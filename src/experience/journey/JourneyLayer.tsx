@@ -267,6 +267,9 @@ export default function JourneyLayer(props: {
           })),
         webgl: journey.webgl,
         measure: journey.measure,
+        // Where the courier is drawn this frame (the pose with its spring, lean and squash).
+        shown: journey.shown,
+        planStats: () => journey.lanes()?.stats() ?? null,
       };
     }
     return () => {

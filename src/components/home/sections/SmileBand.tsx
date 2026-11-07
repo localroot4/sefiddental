@@ -9,13 +9,12 @@ const srcSet = (ext: 'avif' | 'webp'): string =>
 /**
  * The arch band, station D5 of the journey (docs/experience/journey.md sections 2 and 9): between
  * the digital workflow and the before/after pair. The courier tooth seats into the empty first
- * molar of a full upper arch seen from below (`data-dock="smile"`), the camera pulls back, and
- * the 3D arch cross-fades into the occlusal photo, registered to it (src/lib/archPhoto.ts); the
+ * molar of a full upper arch seen from below (`data-dock="smile"`), the camera pulls back, and the
+ * 3D arch cross-fades into the occlusal photo, registered to it (src/lib/archPhoto.ts); the
  * courier drives the photo's opacity (`data-smile-photo`) at tiers 1 to 3. Tier 0, reduced motion
- * and no JavaScript show the photo as it is. The client preview (DEMO_CONTENT) shows the photo
- * files, today an in-house 3D render standing in until the clinic's photo arrives (labelled
- * under it); elsewhere the slot is the labelled brand placeholder. Decorative band: no heading,
- * no landmark; the dock holds no text.
+ * and no JavaScript show the photo as it is. The client preview (DEMO_CONTENT) shows the owner's
+ * photo; elsewhere the slot is the labelled brand placeholder. Decorative band: no heading, no
+ * landmark; the dock holds no text.
  */
 export function SmileBand() {
   const demo = onPreview();

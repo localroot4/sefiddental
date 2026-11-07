@@ -18,6 +18,7 @@ import {
   type BufferGeometry,
   type Camera,
   type Scene,
+  type Texture,
   type WebGLRenderer,
 } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -30,6 +31,7 @@ import { damp, levelFromChoice, passViewport, ramp } from '../scenes/webgl/math'
 
 import { workflowBeats } from './beats';
 import { COURIER } from './courier';
+import { COURIER_OFF_ATTR } from './attrs';
 import { BOX_GROW, createCourierRig, type CourierRig } from './courierRig';
 import type { Journey } from './driver';
 import { archFrame, idleAmount, smoothstep, viewportTop } from './pose';
@@ -102,15 +104,25 @@ export function WebglCourier(props: {
   useEffect(() => {
     if (rig === null) return;
     const { gl } = get();
-    const pmrem = new PMREMGenerator(gl);
-    const room = new RoomEnvironment();
-    const env = pmrem.fromScene(room, 0.04).texture;
-    room.dispose();
-    pmrem.dispose();
-    rig.setEnvironment(env);
+    let env: Texture | null = null;
+    const build = (): void => {
+      env?.dispose();
+      const pmrem = new PMREMGenerator(gl);
+      const room = new RoomEnvironment();
+      env = pmrem.fromScene(room, 0.04).texture;
+      room.dispose();
+      pmrem.dispose();
+      rig.setEnvironment(env);
+    };
+    build();
+    // A lost context takes the PMREM's render target with it: built again on restore (else the
+    // glaze reflects black).
+    const canvas = gl.domElement;
+    canvas.addEventListener('webglcontextrestored', build);
     return () => {
+      canvas.removeEventListener('webglcontextrestored', build);
       rig.setEnvironment(null);
-      env.dispose();
+      env?.dispose();
     };
   }, [rig, get]);
 
@@ -168,7 +180,12 @@ export function WebglCourier(props: {
         p.presence,
       ]
         .map((v) => v.toFixed(2))
-        .concat(p.form, String(p.hidden), String(target(p.dock)))
+        .concat(
+          p.form,
+          String(p.hidden),
+          String(target(p.dock)),
+          String(document.documentElement.hasAttribute(COURIER_OFF_ATTR)),
+        )
         .join('|');
       if (next !== signature || Math.abs(level - target(p.dock)) > 0.001 || !shown) {
         if (next !== signature) quietSince = performance.now();
@@ -187,8 +204,10 @@ export function WebglCourier(props: {
       const pose = journey.pose();
       const scrollY = window.scrollY;
 
+      // A check of the page's own pixels switches the courier off (COURIER_OFF_ATTR).
+      const off = document.documentElement.hasAttribute(COURIER_OFF_ATTR);
       const smile = journey.docks().find((d) => d.id === 'smile');
-      if (smile && pose.dock === 'smile' && pose.arch > 0 && pose.smile < 1) {
+      if (!off && smile && pose.dock === 'smile' && pose.arch > 0 && pose.smile < 1) {
         const frame = archFrame(smile, scrollY, pose.local);
         const top = viewportTop(smile, scrollY);
         rig.updateArch({
@@ -209,7 +228,7 @@ export function WebglCourier(props: {
         );
       }
 
-      if (!pose.hidden && pose.opacity > 0.005 && pose.presence > 0.005) {
+      if (!off && !pose.hidden && pose.opacity > 0.005 && pose.presence > 0.005) {
         const atRestoration = pose.dock === 'restoration';
         level = damp(level, target(pose.dock), dt, LEVEL_TAU);
         const settle = atRestoration

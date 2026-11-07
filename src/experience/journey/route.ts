@@ -35,15 +35,22 @@ export interface Route {
 /** The share of the courier's box its form fills (pose.ts FORM_SHARE). */
 const FORM = 0.8;
 /** Clear space kept around the form (px). */
-export const LANE_MARGIN = 8;
+// The drawn form's growth past the pose (motion.ts: MAX_LAG, the lean, the squash and the whip's
+// stretch, about 13 % of half the form) stays inside it.
+export const LANE_MARGIN = 18;
 /** At most this many scroll px between two samples. */
-const STEP_PX = 12;
-const MAX_SAMPLES = 360;
+const STEP_PX = 16;
+const MAX_SAMPLES = 160;
 /** Shares of the eased path's size the courier may shrink to. */
 const SIZES = [1, 0.74, 0.54, 0.4] as const;
 /** At least this share of a place's box is on screen (a place may peek in from a side). */
 const ON_SCREEN = 0.6;
 const BLOCKED = 1e6;
+/**
+ * The search window round the eased path: this many grid rows above and below it, every column
+ * (a lane may lie across the screen, or off a side).
+ */
+const WINDOW_ROWS = 3;
 
 /** An index of the boxes by document top, for the ones on screen at one scroll position. */
 interface Index {
@@ -118,7 +125,15 @@ function clear(
   return true;
 }
 
-export function planRoute(opts: {
+/** Plans a route at once (tests; the driver steps `routeSteps` in idle time instead). */
+export function planRoute(opts: RouteInput): Route {
+  const steps = routeSteps(opts);
+  let r = steps.next();
+  while (!r.done) r = steps.next();
+  return r.value;
+}
+
+export interface RouteInput {
   y0: number;
   y1: number;
   /** The travel's own eased path at progress 0..1 (its ends are the docks' poses). */
@@ -127,7 +142,13 @@ export function planRoute(opts: {
   viewport: Viewport;
   /** The smallest side the courier may shrink to (px). */
   min: number;
-}): Route {
+}
+
+/**
+ * The planning in steps: it yields every few samples, so the driver spreads one travel over idle
+ * slots and no task runs long (a phone is several times slower than a desktop).
+ */
+export function* routeSteps(opts: RouteInput): Generator<void, Route> {
   const { y0, y1, base, viewport: vp, min } = opts;
   const n = Math.max(2, Math.min(MAX_SAMPLES, Math.ceil((y1 - y0) / STEP_PX)));
   const index = indexBoxes(opts.obstacles);
@@ -150,22 +171,31 @@ export function planRoute(opts: {
   const ps = new Float64Array((n + 1) * nodes);
   const cost = new Float64Array((n + 1) * nodes);
   const free = new Uint8Array((n + 1) * nodes);
+  // Only places within a few rows of the eased path are searched: a lane is a detour, not a tour
+  // of the screen, and the search stays small enough for idle time.
+  const act = new Uint8Array((n + 1) * nodes);
+  const actives: number[][] = Array.from({ length: n + 1 }, () => []);
   const from = new Int32Array((n + 1) * nodes).fill(-1);
   const bases: { x: number; y: number; s: number }[] = [];
   const rectsAt: Float64Array[] = [];
 
   for (let k = 0; k <= n; k += 1) {
+    if (k % 16 === 15) yield;
     const b = base(k / n, at(k));
     bases.push(b);
     const rects = onScreen(index, at(k), vp.height);
     rectsAt.push(rects);
     const o = k * nodes;
+    const baseRow = Math.floor(b.y / cellH);
     for (let si = 0; si < SIZES.length; si += 1) {
       const s = Math.max(min, b.s * SIZES[si]!);
       const half = (s * FORM) / 2 + LANE_MARGIN;
       for (let r = 0; r < rows; r += 1) {
+        if (Math.abs(r - baseRow) > WINDOW_ROWS) continue;
         for (let c = 0; c < xs; c += 1) {
           const i = o + (si * rows + r) * xs + c;
+          act[i] = 1;
+          actives[k]!.push(i - o);
           const off = c === OFF_L || c === OFF_R;
           const x =
             c === OFF_L
@@ -243,11 +273,13 @@ export function planRoute(opts: {
   cost[grid] = 0;
   const reach = Math.max(cellW, cellH) * 1.05 + (min * FORM) / 2 + LANE_MARGIN + 2;
   for (let k = 1; k <= n; k += 1) {
+    if (k % 8 === 0) yield;
     const o = k * nodes;
     const p = (k - 1) * nodes;
     const last = k === n;
     for (let j = 0; j <= grid; j += 1) {
       if (last && j !== grid) continue;
+      if (j !== grid && !act[o + j]) continue;
       const jo = o + j;
       const own = nodeCost(jo, k);
       let best = Infinity;
@@ -270,7 +302,8 @@ export function planRoute(opts: {
         arg = i;
       };
       if (j === grid) {
-        for (let i = 0; i <= grid; i += 1) consider(i);
+        for (const i of actives[k - 1]!) consider(i);
+        consider(grid);
       } else {
         const si = Math.floor(j / (rows * xs));
         const r = Math.floor((j % (rows * xs)) / xs);
@@ -326,8 +359,10 @@ export function planRoute(opts: {
   }));
 
   // Smooth the corners where the smoother place is still clear.
-  for (let pass = 0; pass < 6; pass += 1) {
+  for (let pass = 0; pass < 3; pass += 1) {
+    yield;
     for (let k = 1; k < n; k += 1) {
+      if (k % 32 === 0) yield;
       const a = samples[k - 1]!;
       const b = samples[k]!;
       const c = samples[k + 1]!;

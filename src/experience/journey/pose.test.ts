@@ -16,11 +16,13 @@ import {
   seatAmount,
   MIN_TRAVEL_VH,
   NO_POSE,
+  prepareLanes,
   STATIONS,
   viewportTop,
   type Box,
   type Dock,
   type DockId,
+  type Lanes,
   type Pose,
   type Viewport,
 } from './pose';
@@ -429,13 +431,22 @@ describe('seat and spin', () => {
   });
 });
 
+/** The largest step of the courier per 2 scrolled px in a lane (measured 8.6 px; route.ts). */
+const STEP_BOUND = 12;
+
 describe('never under text: the lanes', () => {
   /** A paragraph between the dentists and the booking docks, with a clear start-side gutter. */
   const text: Box = { left: 260, top: 10_900, width: 1180, height: 60, pin: null };
   const viewOf = { ...VIEW, insetTop: 72 };
   const docks = page();
   const textOnly = [text];
-  const withText = (y: number, boxes: Box[] = textOnly) => courierPose(y, docks, viewOf, 2, boxes);
+  const planned = new Map<Box[], Lanes>();
+  const lanesFor = (boxes: Box[]): Lanes => {
+    if (!planned.has(boxes)) planned.set(boxes, prepareLanes(docks, viewOf, boxes).all());
+    return planned.get(boxes)!;
+  };
+  const withText = (y: number, boxes: Box[] = textOnly) =>
+    courierPose(y, docks, viewOf, 2, lanesFor(boxes));
   const touches = (pose: Pose, box: Box, y: number): boolean => {
     const half = (pose.scale * FORM_SHARE) / 2;
     const top = viewportTop(box, y);
@@ -461,8 +472,9 @@ describe('never under text: the lanes', () => {
         72,
       );
       expect(pose.y + (pose.scale * FORM_SHARE) / 2).toBeLessThan(viewOf.height);
-      // No jump: a few px per scrolled px at most.
-      expect(Math.hypot(pose.x - prev.x, pose.y - prev.y), `step at ${y}`).toBeLessThan(40);
+      // No jump: the lane moves at most one grid cell a sample (12 px of scroll), so about 9 px
+      // per scrolled 2 px with the page's own pace on top.
+      expect(Math.hypot(pose.x - prev.x, pose.y - prev.y), `step at ${y}`).toBeLessThan(STEP_BOUND);
       if (Math.abs(pose.x - courierPose(y, docks, viewOf, 2).x) > 1) moved += 1;
       expect(withText(y)).toEqual(pose);
       prev = pose;
@@ -519,6 +531,8 @@ describe('arch layout', () => {
       expect(a.yaw).toBeCloseTo(-b.yaw, 9);
       expect(a.z).toBeGreaterThanOrEqual(-1e-9);
       expect(a.z).toBeLessThanOrEqual(ARCH_DEPTH + 1e-9);
+      // In order across the arch, one end to the other (the glint runs along this order).
+      if (i > 0) expect(a.x).toBeGreaterThan(teeth[i - 1]!.x);
     }
     const slot = teeth[ARCH_SLOT]!;
     expect(slot.x).toBeGreaterThan(0.25);

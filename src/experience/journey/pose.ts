@@ -13,7 +13,7 @@
 import { ARCH_PHOTO } from '@/lib/archPhoto';
 
 import { ARCH_SLOT, archLayout, projectArch } from './arch';
-import { placeOn, planRoute, type Route } from './route';
+import { placeOn, routeSteps, type Route } from './route';
 
 export type DockId =
   'hero' | 'services' | 'restoration' | 'workflow' | 'smile' | 'dentists' | 'booking' | 'footer';
@@ -488,7 +488,8 @@ function placePose(
     rotation =
       rotation * (1 - Math.sin(Math.PI * whip)) + Math.PI * whip - (whip < 0.5 ? 0 : Math.PI);
   }
-  const place = lanes ? placeOn(lanes(a, b, path), y) : { ...path.at(t, y), o: 1 };
+  const route = lanes?.route(a, b) ?? null;
+  const place = route ? placeOn(route, y) : { ...path.at(t, y), o: 1 };
 
   return {
     x: place.x,
@@ -574,55 +575,133 @@ function travelPath(a: Hold, b: Hold, viewport: Viewport): Path {
 const LANE_MIN_SHARE = 0.4;
 const LANE_MIN_PX = 28;
 
-type Lanes = (a: Hold, b: Hold, path: Path) => Route;
-
-/** The routes of one measure (docks, obstacles, viewport), planned once per travel. */
-function lanesFor(obstacles: readonly Box[], viewport: Viewport): Lanes {
-  const routes = new Map<string, Route>();
-  return (a, b, path) => {
-    const key = `${a.dock.id}>${b.dock.id}:${a.end}:${b.start}`;
-    let route = routes.get(key);
-    if (route === undefined) {
-      route = planRoute({
-        y0: a.end,
-        y1: b.start,
-        base: (t, y) => path.at(t, y),
-        obstacles,
-        viewport,
-        min: Math.max(LANE_MIN_PX, LANE_MIN_SHARE * Math.min(path.from.scale, path.to.scale)),
-      });
-      routes.set(key, route);
-    }
-    return route;
-  };
+/**
+ * The travels' lanes of one measure, planned ahead, off the scroll tick (route.ts): `next()`
+ * plans one travel (the driver calls it in idle time, the travel nearest the reader first), and
+ * a travel uses its lane once `use()` let it in, never in the middle of that travel, so the
+ * courier never jumps to a lane; until then it keeps the eased path. Routes are kept across
+ * measures by the travel's own inputs (its docks' places, the obstacles, the width, the height
+ * in 96 px steps), so a toolbar that resizes the viewport plans nothing again.
+ */
+export interface Lanes {
+  /**
+   * Plans on, the travel nearest `near` (a scroll position) first, while `time()` (ms left in the
+   * idle slot) lasts; false when nothing is left to plan.
+   */
+  next(near?: number, time?: () => number): boolean;
+  /** Lets in every planned lane whose travel is not under way at scroll `y`. */
+  use(y: number): void;
+  /** Plans and lets in every lane now (tests, a still page). */
+  all(): Lanes;
+  /** Milliseconds spent planning, and the travels planned. */
+  stats(): { ms: number; planned: number; pending: number };
+  route(a: Hold, b: Hold): Route | null;
 }
 
-/** The last measure's lanes: the driver passes the same arrays until it measures again. */
-let memo: { obstacles: readonly Box[]; viewport: Viewport; lanes: Lanes } | null = null;
-function lanesOf(obstacles: readonly Box[], viewport: Viewport): Lanes {
-  if (memo === null || memo.obstacles !== obstacles || memo.viewport !== viewport) {
-    memo = { obstacles, viewport, lanes: lanesFor(obstacles, viewport) };
-  }
-  return memo.lanes;
+const ROUTES = new Map<string, Route>();
+const ROUTES_KEPT = 48;
+
+const roughHash = (boxes: readonly Box[]): number => {
+  let h = boxes.length;
+  for (const b of boxes)
+    h = (h * 31 + Math.round(b.left + 3 * b.top + 5 * b.width + 7 * b.height)) | 0;
+  return h;
+};
+
+export function prepareLanes(
+  docks: readonly Dock[],
+  viewport: Viewport,
+  obstacles: readonly Box[],
+): Lanes {
+  const holds = holdRanges(docks, viewport);
+  const scope = `${Math.round(viewport.width)}|${Math.round(viewport.height / 96)}|${viewport.insetTop ?? 0}|${viewport.insetBottom ?? 0}|${roughHash(obstacles)}`;
+  const travels = holds.slice(1).map((b, i) => {
+    const a = holds[i]!;
+    const key = `${scope}|${a.dock.id}>${b.dock.id}|${Math.round(a.end / 8)}|${Math.round(b.start / 8)}|${roughHash([a.dock, b.dock])}`;
+    return { a, b, key };
+  });
+  const live = new Set<string>();
+  let current: { key: string; steps: Generator<void, Route> } | null = null;
+  let ms = 0;
+  let planned = 0;
+  const pending = () => travels.filter((t) => !ROUTES.has(t.key));
+  const lanes: Lanes = {
+    next(near = 0, time = () => Infinity) {
+      do {
+        if (current === null) {
+          const left = pending();
+          if (left.length === 0) return false;
+          left.sort(
+            (p, q) =>
+              Math.abs((p.a.end + p.b.start) / 2 - near) -
+              Math.abs((q.a.end + q.b.start) / 2 - near),
+          );
+          const { a, b, key } = left[0]!;
+          const path = travelPath(a, b, viewport);
+          current = {
+            key,
+            steps: routeSteps({
+              y0: a.end,
+              y1: b.start,
+              base: (t, y) => path.at(t, y),
+              obstacles,
+              viewport,
+              min: Math.max(LANE_MIN_PX, LANE_MIN_SHARE * Math.min(path.from.scale, path.to.scale)),
+            }),
+          };
+        }
+        const started = performance.now();
+        const r = current.steps.next();
+        ms += performance.now() - started;
+        if (r.done) {
+          ROUTES.set(current.key, r.value);
+          if (ROUTES.size > ROUTES_KEPT) ROUTES.delete(ROUTES.keys().next().value!);
+          planned += 1;
+          current = null;
+        }
+      } while (time() > 4);
+      return current !== null || pending().length > 0;
+    },
+    use(y) {
+      for (const t of travels) {
+        if (live.has(t.key) || !ROUTES.has(t.key)) continue;
+        // Not while the courier is on that travel: it would leave the eased path in one frame.
+        if (y > t.a.end && y < t.b.start) continue;
+        live.add(t.key);
+      }
+    },
+    all() {
+      while (lanes.next(0, () => Infinity) && pending().length + (current ? 1 : 0) > 0);
+      for (const t of travels) if (ROUTES.has(t.key)) live.add(t.key);
+      return lanes;
+    },
+    stats: () => ({ ms, planned, pending: pending().length }),
+    route(a, b) {
+      const t = travels.find((x) => x.a.dock.id === a.dock.id && x.b.dock.id === b.dock.id);
+      if (!t || !live.has(t.key)) return null;
+      return ROUTES.get(t.key) ?? null;
+    },
+  };
+  return lanes;
 }
 
 /** The share of the courier's box its form fills (the box holds the turn and the shadow). */
 export const FORM_SHARE = 0.8;
 
 /**
- * The courier's pose for one frame. `tier` 0 has no courier. `obstacles` are the page's text,
- * controls and the boxes painted above the courier (docks.ts measureObstacles): a travel goes
- * through the clear lanes between them (route.ts), never over them. Pure: the same scroll
- * position, docks, viewport and obstacles give the same pose, scrolling down or up.
+ * The courier's pose for one frame. `tier` 0 has no courier. `lanes` are the travels' lanes round
+ * the page's text, controls and the boxes painted above the courier (prepareLanes, planned ahead
+ * off the tick): a travel whose lane is in goes through it, never over them. Pure: the same scroll
+ * position, docks, viewport and lanes give the same pose, scrolling down or up.
  */
 export function courierPose(
   scrollY: number,
   docks: readonly Dock[],
   viewport: Viewport,
   tier: number,
-  obstacles: readonly Box[] | null = null,
+  lanes: Lanes | null = null,
 ): Pose {
-  return placePose(scrollY, docks, viewport, tier, obstacles ? lanesOf(obstacles, viewport) : null);
+  return placePose(scrollY, docks, viewport, tier, lanes);
 }
 
 /** 0..1 how far the tooth has seated into the arch (its crown turns to the camera); 0 for the mark. */

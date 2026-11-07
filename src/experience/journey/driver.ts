@@ -19,7 +19,9 @@ import { measureDocks, measureObstacles, measureViewport } from './docks';
 import { createFollow, type Shown } from './motion';
 import {
   courierPose,
+  prepareLanes,
   photoDim,
+  type Lanes,
   sweepAmount,
   type Box,
   type Dock,
@@ -67,6 +69,8 @@ export interface Journey {
   pose(): Pose;
   /** The place the courier shows at in the last frame the driver applied (motion.ts). */
   shown(): Shown;
+  /** The lanes of the last measure (planned in idle time). */
+  lanes(): Lanes | null;
   docks(): readonly Dock[];
   viewport(): Viewport;
   /** The WebGL courier has drawn (true) or stopped drawing (false). */
@@ -101,6 +105,8 @@ export function createJourney(opts: {
   const html = document.documentElement;
   let docks: Dock[] = [];
   let obstacles: Box[] = [];
+  let lanes: Lanes | null = null;
+  let planning = 0;
   let bands: Band[] = [];
   let viewport: Viewport = { width: 0, height: 0, maxScroll: 0 };
   let webgl = false;
@@ -117,11 +123,35 @@ export function createJourney(opts: {
   servicesMark?.setAttribute(HERE_ATTR, '');
   html.setAttribute(STAGE_ATTR, '');
 
+  // The lanes are planned in idle time after a measure, the travel nearest the reader first;
+  // never in a scroll tick (route.ts costs tens of ms a travel). Until a travel's lane is in, it
+  // keeps its eased path.
+  const idle = (cb: (deadline: { timeRemaining(): number }) => void): number =>
+    typeof requestIdleCallback === 'function'
+      ? requestIdleCallback(cb, { timeout: 500 })
+      : window.setTimeout(() => cb({ timeRemaining: () => 8 }), 32);
+  const unidle = (id: number): void => {
+    if (typeof cancelIdleCallback === 'function') cancelIdleCallback(id);
+    else window.clearTimeout(id);
+  };
+  const plan = (deadline: { timeRemaining(): number }): void => {
+    planning = 0;
+    if (destroyed || lanes === null) return;
+    // A few samples of a travel at least, more while the idle slot lasts.
+    const more = lanes.next(window.scrollY, () => deadline.timeRemaining());
+    lanes.use(window.scrollY);
+    follow();
+    if (more) planning = idle(plan);
+  };
   const measure = (): void => {
     docks = measureDocks(root);
     obstacles = measureObstacles(root);
     bands = measureBands(root);
     viewport = measureViewport();
+    lanes = prepareLanes(docks, viewport, obstacles);
+    lanes.use(window.scrollY);
+    if (planning !== 0) unidle(planning);
+    planning = idle(plan);
   };
 
   const spring = createFollow();
@@ -131,7 +161,8 @@ export function createJourney(opts: {
   let away: boolean | null = null;
   const apply = (dt = 0): void => {
     const scrollY = window.scrollY;
-    const pose = courierPose(scrollY, docks, viewport, tier, obstacles);
+    lanes?.use(scrollY);
+    const pose = courierPose(scrollY, docks, viewport, tier, lanes);
     shown = spring.step(pose, dt, viewport.height);
     const dim = Math.round(photoDim(pose) * 1000) / 1000;
     const opacity = `${Math.round(pose.smile * 1000) / 1000}|${dim}`;
@@ -203,7 +234,8 @@ export function createJourney(opts: {
 
   return {
     tier,
-    pose: () => courierPose(window.scrollY, docks, viewport, tier, obstacles),
+    pose: () => courierPose(window.scrollY, docks, viewport, tier, lanes),
+    lanes: () => lanes,
     shown: () => shown,
     docks: () => docks,
     viewport: () => viewport,
@@ -219,6 +251,7 @@ export function createJourney(opts: {
       off?.();
       off = null;
       if (frame !== 0) cancelAnimationFrame(frame);
+      if (planning !== 0) unidle(planning);
       observer.disconnect();
       window.removeEventListener('resize', schedule);
       scroll.kill();

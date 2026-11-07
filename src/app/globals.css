@@ -393,3 +393,10 @@
   background-position-x: calc(150% - var(--at) * 200%);
   mask-image: linear-gradient(to bottom, #000, transparent 34%);
 }
+
+/* A switch for checks that judge the page's own pixels (the a11y contrast judge): the courier's
+   DOM layer paints nothing, and the WebGL courier skips its passes (WebglCourier.tsx); every other
+   WebGL scene still draws. */
+[data-courier-off] [data-courier-layer] {
+  opacity: 0;
+}

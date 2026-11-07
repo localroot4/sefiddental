@@ -53,3 +53,26 @@ describe('secondary motion', () => {
     expect(Math.abs(shown.x - 300)).toBeLessThan(1);
   });
 });
+
+describe('the drawn form stays in its lane', () => {
+  it('M4 at any speed the shown place trails the pose by MAX_LAG at most, and grows under LANE_MARGIN', async () => {
+    const { MAX_LAG } = await import('./motion');
+    const { LANE_MARGIN } = await import('./route');
+    const follow = createFollow();
+    let y = 400;
+    follow.step(pose(500, y, 150), 1 / 60, 900);
+    for (let i = 0; i < 120; i += 1) {
+      // 1200 px/s of scroll the courier rides, and sideways at 900 px/s.
+      y += 20;
+      const target = pose(500 + i * 15, y % 900, 150);
+      const shown = follow.step({ ...target, whip: (i % 30) / 30 }, 1 / 60, 900);
+      const lag = Math.hypot(shown.x - target.x, shown.y - target.y);
+      expect(lag).toBeLessThanOrEqual(MAX_LAG + 1e-9);
+      // The drawn box's half against the pose's: the lean turns it, the squash and stretch scale.
+      const half = (shown.scale * 0.8) / 2;
+      const turned = half * (Math.abs(Math.cos(shown.tilt)) + Math.abs(Math.sin(shown.tilt)));
+      const grown = turned * Math.max(shown.sx, shown.sy) + lag - (target.scale * 0.8) / 2;
+      expect(grown).toBeLessThan(LANE_MARGIN);
+    }
+  });
+});
