@@ -395,6 +395,33 @@ test.describe('tablet, DOM courier', () => {
     test.setTimeout(180_000);
   });
 
+  test('T-JN11 tablet portrait: the courier docks at every tablet station, clear of text', async ({
+    page,
+  }) => {
+    const holds = await open(page, 'tier=1');
+    expect(holds.map((h) => h.id)).toEqual([
+      'services',
+      'restoration',
+      'workflow',
+      'smile',
+      'dentists',
+      'booking',
+      'footer',
+    ]);
+    for (const stop of stops(holds)) {
+      if (stop.dock === null) continue;
+      await scrollToY(page, stop.y);
+      const pose = await probe<Pose>(page, 'pose');
+      expect(pose.dock, stop.name).toBe(stop.dock);
+      // At the footer the courier hands over to the footer's own mark.
+      expect(pose.hidden, `${stop.name} shown`).toBe(stop.dock === 'footer');
+      expect(await underCourier(page, pose), `at dock ${stop.name}`).toEqual({
+        text: [],
+        controls: [],
+      });
+    }
+  });
+
   test('T-JN10 tier 1 tablet: the DOM courier and its arch sit centred on the pose, in their boxes', async ({
     page,
   }) => {

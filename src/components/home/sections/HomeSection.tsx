@@ -35,6 +35,16 @@ export function PinRoom(props: { vh: 1 | 2 }) {
   );
 }
 
+/**
+ * The header-row docks: the dentists' clear of the «همهٔ پزشکان» link; the workflow's at the end
+ * edge (no action there), only while the stage is not the pinned diagonal, which has its own.
+ */
+const HEADER_DOCK = {
+  dentists: 'absolute end-[9rem] top-0 hidden h-[min(8rem,100%)] w-[min(13rem,22%)] md:block',
+  workflow:
+    'absolute end-0 top-0 hidden h-[min(8rem,100%)] w-[min(13rem,24%)] md:block lg:[[data-pins]_&]:hidden',
+} as const;
+
 export const media = (value: number | Media | null | undefined): Media | null =>
   typeof value === 'object' && value !== null ? value : null;
 
@@ -55,9 +65,9 @@ export function HomeSection(props: {
   pin?: 1 | 2;
   /**
    * A journey dock in the header row (docs/experience/journey.md): an empty box at the end side,
-   * clear of the action, from 1024 px; absolute, so the header keeps its height.
+   * clear of the action, from 744 px (tablets too); absolute, so the header keeps its height.
    */
-  dock?: 'dentists';
+  dock?: keyof typeof HEADER_DOCK;
   children: ReactNode;
 }) {
   const id = `home-${props.section}-title`;
@@ -74,11 +84,7 @@ export function HomeSection(props: {
     heading && props.dock ? (
       <div className="relative">
         {heading}
-        <div
-          data-dock={props.dock}
-          aria-hidden="true"
-          className="absolute end-[9rem] top-0 hidden h-[min(8rem,100%)] w-[min(13rem,22%)] lg:block"
-        />
+        <div data-dock={props.dock} aria-hidden="true" className={HEADER_DOCK[props.dock]} />
       </div>
     ) : (
       heading

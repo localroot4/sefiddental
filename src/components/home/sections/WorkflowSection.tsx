@@ -65,7 +65,13 @@ export function WorkflowSection(props: { items: Step[]; copy?: Copy }) {
   const items = props.items.slice(0, PLACE.length);
   if (items.length === 0) return null;
   return (
-    <HomeSection scene="workflow" section="workflow" family="G" copy={props.copy ?? null}>
+    <HomeSection
+      scene="workflow"
+      section="workflow"
+      family="G"
+      copy={props.copy ?? null}
+      dock="workflow"
+    >
       <div className={STAGE} data-workflow-stage="">
         {/* D4 of the journey (docs/experience/journey.md): on the pinned diagonal only, the free
             strip at the start side beside the centred step, where the tooth shows the beats. */}

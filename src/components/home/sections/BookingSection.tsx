@@ -46,13 +46,14 @@ export function BookingSection(props: { clinic: Clinic; hours: ClinicHours }) {
               <span>{props.clinic.address.fullFa}</span>
             </p>
             <HoursTable hours={props.hours} note={hoursTableNote(props.hours)} />
-            {/* The idle mark's place beside the form (phase 8, scenes/webgl/booking.tsx): empty,
-                text-free, from 1024 px; shorter than the form column, so it adds no height. */}
+            {/* The courier's D7 box (docs/experience/journey.md): empty, text-free, from 744 px.
+                From 1024 px it is shorter than the form column, so it adds no height; on a
+                tablet it closes the stacked column under the hours. */}
             <div
               data-world-slot="booking-mark"
               data-dock="booking"
               aria-hidden="true"
-              className="hidden aspect-square w-[12rem] justify-self-center lg:block"
+              className="hidden aspect-square w-[12rem] justify-self-center md:block"
             />
           </div>
         </div>
