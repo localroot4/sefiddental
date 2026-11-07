@@ -388,3 +388,41 @@ test.describe('phone, DOM courier', () => {
     expect(overflow).toBeLessThanOrEqual(0);
   });
 });
+
+test.describe('tablet, DOM courier', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(testInfo.project.name !== 'tablet-light', 'tablet journey rows run in tablet-light');
+    test.setTimeout(180_000);
+  });
+
+  test('T-JN10 tier 1 tablet: the DOM courier and its arch sit centred on the pose, in their boxes', async ({
+    page,
+  }) => {
+    const holds = await open(page, 'tier=1');
+    const centre = (sel: string) =>
+      page.locator(sel).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: r.width };
+      });
+    for (const id of ['services', 'restoration']) {
+      const h = holds.find((x) => x.id === id)!;
+      await scrollToY(page, (h.start + h.end) / 2);
+      const pose = await probe<Pose>(page, 'pose');
+      expect(pose.dock, id).toBe(id);
+      const dom = await centre('[data-courier]');
+      expect(Math.abs(dom.x - pose.x), `${id} x`).toBeLessThan(2);
+      expect(Math.abs(dom.y - pose.y), `${id} y`).toBeLessThan(2);
+      expect(Math.abs(dom.w - pose.scale), `${id} size`).toBeLessThan(2);
+      const box = await centre(`[data-dock="${id}"]`);
+      expect(Math.abs(dom.x - box.x), `${id} in its box`).toBeLessThan(2);
+    }
+    // The SVG arch is centred on the smile box while it shows.
+    const smile = holds.find((x) => x.id === 'smile')!;
+    await scrollToY(page, smile.start + (smile.end - smile.start) * 0.3);
+    expect((await probe<Pose>(page, 'pose')).dock).toBe('smile');
+    const arch = await centre('[data-courier-arch]');
+    const box = await centre('[data-dock="smile"]');
+    expect(Math.abs(arch.x - box.x), 'arch x').toBeLessThan(2);
+    expect(Math.abs(arch.y - box.y), 'arch y').toBeLessThan(2);
+  });
+});

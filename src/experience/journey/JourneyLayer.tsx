@@ -104,10 +104,11 @@ export default function JourneyLayer(props: {
       box?.style.setProperty('visibility', show ? 'visible' : 'hidden');
       // The breath pauses while the DOM courier is hidden.
       if (box && box.hasAttribute('data-shown') !== show) box.toggleAttribute('data-shown', show);
+      // Scaled about its top-left corner: that corner sits half the scaled size off the centre.
       if (box && show) {
         box.style.setProperty(
           'transform',
-          `translate3d(${pose.x - BOX / 2}px, ${pose.y - BOX / 2}px, 0) scale(${pose.scale / BOX})`,
+          `translate3d(${pose.x - pose.scale / 2}px, ${pose.y - pose.scale / 2}px, 0) scale(${pose.scale / BOX})`,
         );
         box.style.setProperty('--breathe', String(idleAmount(pose)));
         // Over text the courier fades out (pose.ts clearance), so no line ever sits on it.
@@ -146,7 +147,7 @@ export default function JourneyLayer(props: {
         const frame = archFrame(smileDock, scrollY, pose.local);
         svg.style.setProperty(
           'transform',
-          `translate3d(${frame.cx - BOX / 2}px, ${frame.cy - BOX / 2}px, 0) scale(${frame.width / BOX})`,
+          `translate3d(${frame.cx - frame.width / 2}px, ${frame.cy - frame.width / 2}px, 0) scale(${frame.width / BOX})`,
         );
         svg.style.setProperty('opacity', String(pose.arch * (1 - pose.smile)));
       }
