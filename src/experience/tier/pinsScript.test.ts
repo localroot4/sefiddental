@@ -29,6 +29,11 @@ const GPUS = [
   cache({ tier: 2.7 }),
   cache({ renderer: 'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader)' }),
   cache({ type: 'FALLBACK', tier: 1 }),
+  // GPUs the benchmark data does not list (qualityTier fallbackTier): recent ones are tier 2.
+  cache({ type: 'FALLBACK', tier: 1, renderer: 'Adreno (TM) 732' }),
+  cache({ type: 'FALLBACK', tier: 1, renderer: 'Apple GPU' }),
+  cache({ type: 'FALLBACK', tier: 1, renderer: 'Mali-G615 MC6' }),
+  cache({ type: 'FALLBACK', tier: 1, renderer: 'Adreno (TM) 610' }),
   cache({ type: 'BLOCKLISTED', tier: 0 }),
   cache({ v: '5.0.69' }),
   cache({ fps: '90' }),

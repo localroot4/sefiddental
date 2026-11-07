@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   CPU_BLOCKING_MS,
   DETECT_GPU_TIERS,
+  fallbackTier,
   isPhoneMode,
   isSoftwareRenderer,
   monitorStep,
@@ -199,6 +200,50 @@ describe('qualityTier table Q', () => {
         null,
       ].map(isSoftwareRenderer),
     ).toEqual([true, true, true, false, false]);
+  });
+});
+
+describe('qualityTier GPUs the benchmark data does not list (FALLBACK)', () => {
+  it('Q40 a recent tablet or phone GPU gets tier 2; an old or unknown one keeps tier 1', () => {
+    // detect-gpu 5.0.70 has no row for these (measured): the Xiaomi Pad 7's Adreno 732, a
+    // Dimensity Mali-G615, and an iPad, whose renderer Safari masks as «Apple GPU».
+    for (const renderer of [
+      'Adreno (TM) 732',
+      'ANGLE (Qualcomm, Adreno (TM) 735, OpenGL ES 3.2)',
+      'Adreno (TM) 830',
+      'Mali-G615 MC6',
+      'Mali-G720-Immortalis MC12',
+      'Immortalis-G925',
+      'Apple GPU',
+    ]) {
+      expect(fallbackTier(renderer), renderer).toBe(2);
+    }
+    for (const renderer of [
+      'Adreno (TM) 619',
+      'Adreno (TM) 506',
+      'Mali-G52 MC2',
+      'Mali-G57 MC2',
+      'Mali-T830',
+      'PowerVR Rogue GE8320',
+      'Some New GPU',
+      null,
+    ]) {
+      expect(fallbackTier(renderer), String(renderer)).toBe(1);
+    }
+  });
+
+  it('Q41 the Xiaomi Pad 7 in portrait (phone mode, Adreno 732 FALLBACK, 8 GB) is tier 2', () => {
+    const pad: TierInputs = {
+      ...BASE,
+      viewport: { width: 854, height: 1280, dpr: 2.5 },
+      finePointer: false,
+      renderer: 'Adreno (TM) 732',
+      gpu: { tier: 1, type: 'FALLBACK', isMobile: true, gpu: 'adreno (tm) 732 ()' },
+    };
+    expect(selectTier(pad)).toMatchObject({ tier: 2, reason: 'gpu-benchmark' });
+    // A 4 GB device keeps its memory cap; an unlisted old GPU stays at 1.
+    expect(selectTier({ ...pad, deviceMemory: 2 }).tier).toBe(0);
+    expect(selectTier({ ...pad, renderer: 'Adreno (TM) 610' }).tier).toBe(1);
   });
 });
 

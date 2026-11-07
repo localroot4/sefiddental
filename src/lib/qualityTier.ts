@@ -144,6 +144,26 @@ export function isPhoneMode(inputs: Pick<TierInputs, 'viewport' | 'finePointer'>
   return !inputs.finePointer && inputs.viewport.width < PIN_MIN_WIDTH;
 }
 
+/**
+ * The tier of a GPU detect-gpu has no benchmark row for (FALLBACK, its default 1). Its 5.0.70
+ * data stops before the 2024 mobile GPUs, so a capable tablet or phone fell to tier 1 and the DOM
+ * courier: the Xiaomi Pad 7's Adreno 732, a Dimensity Mali-G615, and every iPad, whose renderer
+ * Safari masks as «Apple GPU» (measured, docs/qa/tablet). Recent families get tier 2, never 3
+ * (no frame rate is known); anything older or unknown keeps 1, so a weak phone stays safe.
+ */
+export function fallbackTier(renderer: string | null): Tier {
+  const text = renderer ?? '';
+  const adreno = /adreno[^\d]*(\d{3})/i.exec(text);
+  if (adreno) return Number(adreno[1]) >= 640 ? 2 : 1;
+  if (/immortalis/i.test(text)) return 2;
+  const mali = /mali-g(\d+)/i.exec(text);
+  if (mali) {
+    const n = Number(mali[1]);
+    return (n >= 100 ? n >= 610 : n >= 76) ? 2 : 1;
+  }
+  return /^apple gpu$/i.test(text.trim()) ? 2 : 1;
+}
+
 function detect(inputs: TierInputs): { tier: Tier; reason: TierReason } {
   // Save-Data first (phone spec 1.2, class D before W): the visitor's own setting names the reason,
   // so the light notice, which explains only the device's decisions, stays closed.
@@ -165,7 +185,7 @@ function detect(inputs: TierInputs): { tier: Tier; reason: TierReason } {
   let tier: Tier;
   if (gpu === null) tier = 1;
   else if (gpu.type === 'BENCHMARK') tier = clampTier(gpu.tier);
-  else if (gpu.type === 'FALLBACK') tier = 1;
+  else if (gpu.type === 'FALLBACK') tier = fallbackTier(inputs.renderer);
   else tier = 0;
 
   // Device memory caps (decision D-Q2); the API is absent in Safari and Firefox: no cap.
