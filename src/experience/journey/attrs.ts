@@ -8,3 +8,9 @@ export const AWAY_ATTR = 'data-courier-away';
 export const LIFTOFF_EVENT = 'sefid:courier-liftoff';
 /** On the services mark while the courier stands in for it (D2 is the mark's own box). */
 export const HERE_ATTR = 'data-courier-here';
+/**
+ * The courier's layers (the canvas and the DOM courier) in `.site`'s stacking context: above the
+ * sections' own boxes, below the hero's cards (`[data-above-courier]`, z 2), the header and the
+ * sticky bar. The courier's lanes keep it off every text and control (route.ts).
+ */
+export const COURIER_Z = '1';

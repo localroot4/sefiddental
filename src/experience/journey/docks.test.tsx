@@ -153,6 +153,8 @@ describe('measureDocks', () => {
       width: 1425,
       height: window.innerHeight,
       maxScroll: 5000 - window.innerHeight,
+      insetTop: 0,
+      insetBottom: 0,
     });
   });
 });

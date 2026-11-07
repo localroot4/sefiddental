@@ -118,7 +118,23 @@ export function WebglCourier(props: {
     let signature = '';
     const offAsk = addEffect(() => {
       const p = journey.pose();
-      const next = [p.x, p.y, p.scale, p.rotation, p.arch, p.smile, p.opacity, p.local]
+      const sh = journey.shown();
+      const next = [
+        sh.x,
+        sh.y,
+        sh.scale,
+        sh.tilt,
+        sh.sx,
+        p.x,
+        p.y,
+        p.scale,
+        p.rotation,
+        p.arch,
+        p.smile,
+        p.opacity,
+        p.local,
+        p.presence,
+      ]
         .map((v) => v.toFixed(2))
         .concat(p.form, String(p.hidden), String(target(p.dock)))
         .join('|');
@@ -144,6 +160,8 @@ export function WebglCourier(props: {
           width: smile.width,
           height: smile.height,
           archWidth: frame.width,
+          offsetX: frame.cx - (smile.left + smile.width / 2),
+          offsetY: frame.cy - (top + smile.height / 2),
           // It appears out of the dissolve and leaves into it, as the smile photo comes in.
           dissolve: Math.max(1 - pose.arch, pose.smile),
         });
@@ -156,15 +174,19 @@ export function WebglCourier(props: {
         );
       }
 
-      if (!pose.hidden && pose.opacity > 0.005) {
+      if (!pose.hidden && pose.opacity > 0.005 && pose.presence > 0.005) {
         const atRestoration = pose.dock === 'restoration';
         level = damp(level, target(pose.dock), dt, LEVEL_TAU);
         const settle = atRestoration
           ? ramp(pose.local, 0, 0.12) * (1 - ramp(pose.local, 0.88, 1))
           : 0;
-        const side = pose.scale * BOX_GROW;
+        // The shown place: the pose with its spring, lean and squash (motion.ts).
+        const shown = journey.shown();
+        const side = shown.scale * BOX_GROW;
         rig.update({
           pose,
+          lean: shown.tilt,
+          stretch: [shown.sx, shown.sy],
           time: 0,
           level: Math.round(level * 1000) / 1000,
           turn: settle * turntableYaw(level, pose.local, 0),
@@ -175,7 +197,7 @@ export function WebglCourier(props: {
         drawPass(
           gl,
           size,
-          { left: pose.x - side / 2, top: pose.y - side / 2, width: side, height: side },
+          { left: shown.x - side / 2, top: shown.y - side / 2, width: side, height: side },
           rig.scene,
           rig.camera,
         );

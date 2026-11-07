@@ -279,6 +279,11 @@
 [data-world-slot='compare'][data-world-live] figure > div:first-child > div {
   visibility: hidden;
 }
+/* The canvas paints above the sections (the courier's layer, journey/attrs.ts COURIER_Z): the
+   labels and the divider stay above the wipe it draws (the range input is z-10 already). */
+[data-world-slot='compare'][data-world-live] figure > div:first-child > span {
+  z-index: 2;
+}
 
 /* The scroll engine's settle (phone spec D25): while `data-settling` is on the experience root
    (one --dur-3 window after the engine starts and when it goes), the targets it scrubs ease to
@@ -357,4 +362,34 @@
     translate: 0 calc(3px * var(--breathe, 1));
     scale: calc(1 + 0.015 * var(--breathe, 1));
   }
+}
+
+/* D6 of the journey (docs/experience/journey.md): as the courier's mark arrives at the dentists'
+   heading, a soft teal light sweeps across the cards' portraits from the left, on their top edge
+   only (away from the faces' eyes and from every text); the driver writes --sweep 0..1. */
+[data-home-section='dentists'] [data-portrait] {
+  position: relative;
+  --at: calc(var(--sweep, 0) * 1.7 - var(--d, 0));
+}
+[data-home-section='dentists'] [role='region'] > :nth-last-child(2) [data-portrait] {
+  --d: 0.35;
+}
+[data-home-section='dentists'] [role='region'] > :nth-last-child(3) [data-portrait] {
+  --d: 0.7;
+}
+[data-home-section='dentists'] [data-portrait]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+      100deg,
+      transparent 40%,
+      color-mix(in oklab, var(--color-brand) 34%, transparent) 50%,
+      transparent 60%
+    )
+    no-repeat;
+  background-size: 300% 100%;
+  background-position-x: calc(150% - var(--at) * 200%);
+  mask-image: linear-gradient(to bottom, #000, transparent 34%);
 }

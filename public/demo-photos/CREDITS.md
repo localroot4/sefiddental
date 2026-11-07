@@ -35,7 +35,6 @@ AVIF (quality 50) and WebP (quality 72) at the widths of
 | `workflow-design-*`           | workflow step 2                                                | <https://www.pexels.com/photo/unrecognizable-specialist-working-on-computer-in-modern-dental-clinic-7788368/> | Ivan Babydov                    | 0.5, 0.5                                                              |
 | `workflow-make-*`             | workflow step 3                                                | <https://www.pexels.com/photo/crop-unrecognizable-dentist-making-dental-implant-in-laboratory-7788493/>       | Ivan Babydov                    | 0.5, 0.5                                                              |
 | `workflow-smile-*`            | workflow step 4                                                | <https://www.pexels.com/photo/portrait-photo-of-woman-smiling-3791554/> (original)                            | Andrea Piacquadio               | 0.45, 0.66; 2.8                                                       |
-| `smile-*`                     | home smile band (journey D5)                                   | <https://www.pexels.com/photo/1239291/> (original)                                                            | Daniel Xavier                   | 0.47, 0.61; 5                                                         |
 | `dentist-1-*`                 | demo dentist 1                                                 | <https://www.pexels.com/photo/portrait-of-doctor-15752232/> (original)                                        | Yasin Aydın                     | 0.5, 0.32; 1.3                                                        |
 | `dentist-2-*`                 | demo dentist 2                                                 | <https://www.pexels.com/photo/smiling-doctor-with-file-15641079/>                                             | Tran Nhu Tuan                   | 0.5, 0.3                                                              |
 | `dentist-3-*`                 | demo dentist 3                                                 | <https://www.pexels.com/photo/middle-aged-doctor-in-white-apron-5531446/>                                     | Kevin Steven Ortega Eliett      | 0.5, 0.35                                                             |
@@ -43,11 +42,11 @@ AVIF (quality 50) and WebP (quality 72) at the widths of
 | `voice-2-*`                   | patient voice poster 2                                         | <https://www.pexels.com/photo/woman-s-face-3402510/>                                                          | cottonbro studio                | 0.6, 0.5; 2                                                           |
 | `voice-3-*`                   | patient voice poster 3                                         | <https://www.pexels.com/photo/portrait-of-a-smiling-man-12871449/> (original)                                 | Andreas Ellegaard (Skildring)   | 0.5, 0.62; 3                                                          |
 
-`smile-*` was downloaded on 2026-11-06 (the original size); its photographer comes
-from the file's own XMP creator field, as the Pexels page was not reachable from
-the build host. It shows only the smile (nose to chin), as the voice posters do.
-The owner checked the page and the photographer on 2026-11-06. Every demo photo is
-to be replaced one by one with the clinic's own commissioned images.
+`arch-occlusal-*` (the home arch band, journey D5) is not a photo: it is the
+project's own 3D arch (molar.glb, design/brand/3d) rendered in-house at the
+occlusal angle, standing in until the clinic's occlusal photo arrives (its
+alignment numbers are in src/lib/archPhoto.ts). Every demo photo is to be
+replaced one by one with the clinic's own commissioned images.
 
 Not filled on purpose: the before/after pair (two stock photos would claim a
 treatment result), the address and wayfinding photos and the static map (a

@@ -95,19 +95,16 @@ export function HomeHero(props: {
   return (
     <section
       data-scene="hero"
-      data-experience-cover=""
       data-home-section="hero"
       data-family="M"
       aria-labelledby="hero-h1"
-      className="relative isolate grid grid-cols-1 overflow-hidden bg-surface-sunken md:block lg:bg-transparent"
+      className="relative grid grid-cols-1 overflow-hidden bg-surface-sunken md:block lg:bg-transparent"
     >
-      {/* From 1024 px this box, not the section, is the render gate's cover: the section also
-          holds the transparent world window under the photo (the innermost rendered cover wins). */}
-      <div
-        data-experience-cover=""
-        className="contents lg:relative lg:isolate lg:block lg:overflow-clip lg:bg-surface-sunken"
-      >
-        <div className="relative col-start-1 row-start-1 mx-auto grid min-h-[calc(100svh-65px)] w-full max-w-content content-start gap-4 px-gutter pt-2 pb-8 md:min-h-0 md:grid-cols-[minmax(0,1fr)_minmax(0,21rem)] md:content-center md:items-center md:gap-8 md:py-12 lg:min-h-[min(calc(100svh-var(--nav-h)),52rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]">
+      <div className="contents lg:relative lg:block lg:overflow-clip lg:bg-surface-sunken">
+        <div
+          data-above-courier=""
+          className="relative z-[2] col-start-1 row-start-1 mx-auto grid min-h-[calc(100svh-65px)] w-full max-w-content content-start gap-4 px-gutter pt-2 pb-8 md:min-h-0 md:grid-cols-[minmax(0,1fr)_minmax(0,21rem)] md:content-center md:items-center md:gap-8 md:py-12 md:pb-[13rem] lg:min-h-[min(calc(100svh-var(--nav-h)),52rem)] lg:pb-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]"
+        >
           <div className="grid content-start gap-4 rounded-sheet bg-surface/88 p-6 xl:p-8">
             <h1
               id="hero-h1"
@@ -140,6 +137,14 @@ export function HomeHero(props: {
             instance="hero"
             className={`md:justify-self-end ${SETTLE} ${SETTLE_STEP[3]}`}
           />
+          {/* D1 of the journey (docs/experience/journey.md): the courier's first dock, on the
+              photo's floor under the gap between the two cards, from 744 px. Not one of the
+              cards: the courier paints above the photo and below them. */}
+          <div
+            data-dock="hero"
+            aria-hidden="true"
+            className="pointer-events-none absolute bottom-[2.5rem] hidden size-[8rem] end-[calc(var(--gutter)+21rem+1rem-4rem)] md:block lg:bottom-[clamp(1rem,5svh,3rem)] lg:size-[min(9rem,16svh)] lg:end-[calc(var(--gutter)+22rem+1.5rem-min(9rem,16svh)/2)] xl:end-[calc(var(--gutter)+26rem+1.5rem-min(9rem,16svh)/2)]"
+          />
           {captions ? (
             <p className={`hidden max-w-[34rem] md:col-span-2 md:block ${CAPTION}`}>
               <span className="font-semibold">{t('ui.placeholder.prefix')}</span>{' '}
@@ -150,7 +155,7 @@ export function HomeHero(props: {
         {props.intro}
         <div
           data-hero-photo=""
-          className={`relative -z-10 col-start-1 row-start-2 aspect-[4/5] max-md:overflow-clip md:absolute md:inset-0 md:aspect-auto ${band ? '' : 'max-md:hidden'}`}
+          className={`relative z-0 col-start-1 row-start-2 aspect-[4/5] max-md:overflow-clip md:absolute md:inset-0 md:aspect-auto ${band ? '' : 'max-md:hidden'}`}
         >
           <picture>
             <source media={WIDE} type="image/avif" srcSet={image.wide.avif} sizes="100vw" />
@@ -177,11 +182,19 @@ export function HomeHero(props: {
             </p>
           ) : null}
         </div>
+        {/* D1 under 744 px: in the 4:5 photo band under the form, above the trust band. */}
+        {band ? (
+          <div
+            data-dock="hero"
+            aria-hidden="true"
+            className="pointer-events-none col-start-1 row-start-2 mt-[14vw] size-[min(8rem,34vw)] self-start justify-self-center md:hidden"
+          />
+        ) : null}
         {heroRelief(props.relief, image) ? (
           <Icon
             name="mark"
             size="custom"
-            className="pointer-events-none absolute -z-10 -end-[10%] -top-[4%] hidden aspect-[168.1/207.5] h-auto w-[min(60vw,30rem)] text-surface-raised opacity-70 md:block lg:-end-[5%] lg:-top-[10%] lg:w-[min(38vw,36rem)]"
+            className="pointer-events-none absolute z-0 -end-[10%] -top-[4%] hidden aspect-[168.1/207.5] h-auto w-[min(60vw,30rem)] text-surface-raised opacity-70 md:block lg:-end-[5%] lg:-top-[10%] lg:w-[min(38vw,36rem)]"
           />
         ) : null}
       </div>
@@ -195,14 +208,6 @@ export function HomeHero(props: {
         >
           <div className="mx-auto w-full max-w-content px-gutter py-6">
             <FactsRow facts={props.facts} label={t('home.trust.label')} />
-          </div>
-          {/* D1 of the journey (docs/experience/journey.md): the courier's first dock, an empty
-              box at the end side under the facts, from 1024 px only. */}
-          <div
-            aria-hidden="true"
-            className="hidden w-full max-w-content px-gutter lg:mx-auto lg:block"
-          >
-            <div data-dock="hero" className="ms-auto h-[9rem] w-[min(18rem,24vw)]" />
           </div>
         </div>
       ) : null}

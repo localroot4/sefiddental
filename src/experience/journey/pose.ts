@@ -10,7 +10,10 @@
  * the middle half of the viewport. A travel spans at least 60 vh of scroll: neighbouring holds
  * give up their ends until it does.
  */
+import { ARCH_PHOTO } from '@/lib/archPhoto';
+
 import { ARCH_SLOT, archLayout, projectArch } from './arch';
+import { placeOn, planRoute, type Route } from './route';
 
 export type DockId =
   'hero' | 'services' | 'restoration' | 'workflow' | 'smile' | 'dentists' | 'booking' | 'footer';
@@ -55,6 +58,10 @@ export interface Viewport {
   height: number;
   /** The largest scrollY of the document. */
   maxScroll: number;
+  /** The sticky header's height: the courier never goes under it (px). */
+  insetTop?: number;
+  /** The sticky bar's height at the bottom (phones and tablets; px). */
+  insetBottom?: number;
 }
 
 export interface Pose {
@@ -72,6 +79,18 @@ export interface Pose {
   arch: number;
   /** 0..1 the arch dissolves into the smile photo (1 after the smile station). */
   smile: number;
+  /** 0..1 a light sweeps across the smile photo's teeth (0 outside the sweep). */
+  glint: number;
+  /**
+   * 0..1 the tooth condenses out of the glint and lifts off the photo toward the reader (1 after
+   * the smile station): the D5 hand-off.
+   */
+  lift: number;
+  /**
+   * 0..1 how much of the courier's form shows: it sinks into the smile with the arch and condenses
+   * back out of the glint (1 everywhere else).
+   */
+  presence: number;
   /** The footer playground has the mark (hand-off), or there is no courier. */
   hidden: boolean;
   /** The dock the courier holds at, null while it travels. */
@@ -82,7 +101,10 @@ export interface Pose {
   travel: number;
   /** The dock the courier travels toward, null at a dock. */
   to: DockId | null;
-  /** 0..1: the courier fades out wherever it would sit under text or a control (0 there). */
+  /**
+   * 1, except where a travel finds no clear lane of the minimum size: the courier fades there
+   * (route.ts, the last resort).
+   */
   opacity: number;
 }
 
@@ -98,6 +120,8 @@ const SMILE_HOLD_VH = 0.9;
 const MIN_HOLD_VH = 0.2;
 /** The courier lands on the footer box once the box's bottom is this far down the viewport. */
 const FOOTER_LAND_VH = 0.92;
+/** Clear space between a docked courier and the header or the sticky bar (px). */
+const BAR_MARGIN = 8;
 /** The form fills this share of its dock's shorter side. */
 const FILL = 0.86;
 /** The courier is this much smaller at the middle of a travel (it reads as distance). */
@@ -127,15 +151,24 @@ const BASE_YAW: Record<DockId, number> = {
 /** The services mark turns this far across the pin, as the track moves. */
 const SERVICES_TURN = 0.6;
 
-/** The smile station: arch fades in, tooth seats, camera pulls back, arch dissolves. */
+/**
+ * The smile station: the arch fades in, the tooth seats, the camera pulls back, the arch (and the
+ * seated tooth) dissolve into the smile photo; a light sweeps across the smile's teeth, and at the
+ * brightest tooth it condenses into the glazed tooth, which lifts off the photo toward the reader
+ * while the photo dims and settles back (the D5 hand-off; the travel then whips it into the mark).
+ */
 const SMILE = {
-  archIn: [0, 0.18],
-  seat: [0.04, 0.36],
-  pull: [0.36, 0.58],
-  dissolve: [0.56, 0.94],
+  archIn: [0, 0.16],
+  seat: [0.04, 0.3],
+  pull: [0.3, 0.46],
+  dissolve: [0.46, 0.66],
+  glint: [0.64, 0.86],
+  condense: [0.8, 0.9],
+  lift: [0.8, 1],
 } as const;
-/** The arch spans this share of the smile box's width (before the pull-back). */
-const ARCH_FILL = 0.84;
+/** The lifted tooth's size, as a share of the smile box's shorter side (at least its seated size). */
+const LIFT_SIZE = 0.26;
+/** The camera pulls back this share as the arch settles, to the photo's own framing. */
 const PULL_BACK = 0.16;
 /** The tooth starts this many of its own heights above the slot. */
 const SEAT_LIFT = 1.3;
@@ -188,6 +221,7 @@ export interface Hold {
 export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
   const top = Math.max(0, viewport.maxScroll - 1);
   const clampY = (y: number): number => Math.min(top, Math.max(0, y));
+  const limits = new Map<Dock, number>();
   const holds = docks
     .filter((d) => ORDER.has(d.id) && d.width > 0 && d.height > 0)
     .sort((a, b) => (ORDER.get(a.id) ?? 0) - (ORDER.get(b.id) ?? 0))
@@ -200,7 +234,22 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
       }
       const centre = dock.top + dock.height / 2 - viewport.height / 2;
       const half = ((dock.id === 'smile' ? SMILE_HOLD_VH : HOLD_VH) * viewport.height) / 2;
-      return { dock, start: clampY(centre - half), end: clampY(centre + half) };
+      // Riding with its dock, the courier stays clear of the header and the sticky bar: the
+      // hold ends before it reaches either (the smile's slot sits off the box's centre).
+      const reach =
+        (Math.min(dock.width, dock.height) * FILL) / 2 +
+        BAR_MARGIN +
+        (dock.id === 'smile' ? dock.height / 4 : 0);
+      const first =
+        dock.top + dock.height / 2 - (viewport.height - (viewport.insetBottom ?? 0) - reach);
+      const last = dock.top + dock.height / 2 - ((viewport.insetTop ?? 0) + reach);
+      // Not the smile: its sequence needs its whole hold.
+      if (dock.id !== 'smile') limits.set(dock, Math.max(last, centre));
+      return {
+        dock,
+        start: clampY(Math.max(centre - half, Math.min(first, centre))),
+        end: clampY(Math.min(centre + half, Math.max(last, centre))),
+      };
     });
   const min = MIN_TRAVEL_VH * viewport.height;
   // A hold keeps a short stretch of its own, so a station's sequence (the smile) never cuts.
@@ -235,20 +284,28 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
     if (b.start < a.end) b.start = a.end;
     if (b.end < b.start) b.end = b.start;
   }
+  // A hold the travels pushed late still ends before its dock reaches the header.
+  for (const h of holds) {
+    const limit = limits.get(h.dock);
+    if (limit !== undefined && h.end > limit) h.end = Math.max(h.start, clampY(limit));
+  }
   return holds;
 }
 
-/** Where the arch sits in the smile box at its own progress (pull-back included). */
+/**
+ * Where the arch sits in the smile box at its own progress: after the pull-back exactly where the
+ * occlusal photo's arch lies (src/lib/archPhoto.ts), so the cross-fade is registered.
+ */
 export function archFrame(
   dock: Dock,
   y: number,
   local: number,
 ): { cx: number; cy: number; width: number } {
-  const pull = 1 - PULL_BACK * smoothstep(span(local, SMILE.pull));
+  const pull = 1 - PULL_BACK * (1 - smoothstep(span(local, SMILE.pull)));
   return {
-    cx: dock.left + dock.width / 2,
-    cy: viewportTop(dock, y) + dock.height / 2,
-    width: dock.width * ARCH_FILL * pull,
+    cx: dock.left + ARCH_PHOTO.centre.u * dock.width,
+    cy: viewportTop(dock, y) + ARCH_PHOTO.centre.v * dock.height,
+    width: (ARCH_PHOTO.archWidth * dock.width) / pull,
   };
 }
 
@@ -266,6 +323,19 @@ interface Docked {
 function docked(dock: Dock, y: number, local: number): Docked {
   if (dock.id === 'smile') {
     const frame = archFrame(dock, y, local);
+    if (local >= SMILE.lift[0]) {
+      // Out of the glint at the first molar it seated in: from the seated crown to the lifted
+      // tooth, rising toward the reader.
+      const e = smoothstep(span(local, SMILE.lift));
+      const seated = (SLOT.width * frame.width) / CROWN_SHARE;
+      const size = Math.max(seated, LIFT_SIZE * Math.min(dock.width, dock.height));
+      return {
+        x: frame.cx + SLOT_AT.u * frame.width,
+        y: frame.cy + SLOT_AT.v * frame.width - 0.5 * size * e,
+        scale: mix(seated, size, e),
+        rotation: mix(SLOT.yaw, BASE_YAW.dentists, e),
+      };
+    }
     const crown = SLOT.width * frame.width;
     const scale = crown / CROWN_SHARE;
     const seat = backOut(span(local, SMILE.seat));
@@ -285,17 +355,45 @@ function docked(dock: Dock, y: number, local: number): Docked {
   };
 }
 
-/** The arch and the smile follow the smile station's own progress, before, during and after it. */
-function smileState(holds: readonly Hold[], y: number): { arch: number; smile: number } {
+interface SmileState {
+  arch: number;
+  smile: number;
+  glint: number;
+  lift: number;
+  presence: number;
+}
+
+/**
+ * A docked pose kept clear of the header and the sticky bar: a hold the travels pushed late (docks
+ * close together) would ride its dock under them, so the courier stops at their edge instead. Not
+ * the footer, which lands on its box.
+ */
+function inView(at: Docked, dock: Dock, viewport: Viewport): Docked {
+  if (dock.id === 'footer') return at;
+  const half = (at.scale * FORM_SHARE) / 2 + BAR_MARGIN;
+  const top = (viewport.insetTop ?? 0) + half;
+  const bottom = viewport.height - (viewport.insetBottom ?? 0) - half;
+  if (top > bottom) return at;
+  return at.y < top ? { ...at, y: top } : at.y > bottom ? { ...at, y: bottom } : at;
+}
+
+/** The arch, the smile and the hand-off follow the smile station's own progress, before, during and after it. */
+function smileState(holds: readonly Hold[], y: number): SmileState {
   const hold = holds.find((h) => h.dock.id === 'smile');
   // Without the station the photo simply shows.
-  if (hold === undefined) return { arch: 0, smile: 1 };
-  const local =
-    y <= hold.start ? 0 : y >= hold.end ? 1 : (y - hold.start) / (hold.end - hold.start);
-  if (y > hold.end) return { arch: 1, smile: 1 };
+  if (hold === undefined) return { arch: 0, smile: 1, glint: 0, lift: 1, presence: 1 };
+  if (y > hold.end) return { arch: 1, smile: 1, glint: 0, lift: 1, presence: 1 };
+  const local = y <= hold.start ? 0 : (y - hold.start) / Math.max(1e-6, hold.end - hold.start);
+  const glint = span(local, SMILE.glint);
   return {
     arch: smoothstep(span(local, SMILE.archIn)),
     smile: smoothstep(span(local, SMILE.dissolve)),
+    glint: glint > 0 && glint < 1 ? glint : 0,
+    lift: smoothstep(span(local, SMILE.lift)),
+    presence:
+      local < SMILE.condense[0]
+        ? 1 - smoothstep(span(local, SMILE.dissolve))
+        : smoothstep(span(local, SMILE.condense)),
   };
 }
 
@@ -308,6 +406,9 @@ export const NO_POSE: Pose = {
   whip: 0,
   arch: 0,
   smile: 1,
+  glint: 0,
+  lift: 1,
+  presence: 1,
   hidden: true,
   dock: null,
   local: 0,
@@ -321,12 +422,13 @@ function placePose(
   docks: readonly Dock[],
   viewport: Viewport,
   tier: number,
+  lanes: Lanes | null,
 ): Pose {
   if (tier < 1 || !Number.isFinite(scrollY)) return NO_POSE;
   const holds = holdRanges(docks, viewport);
   if (holds.length === 0) return NO_POSE;
   const y = scrollY;
-  const { arch, smile } = smileState(holds, y);
+  const station = smileState(holds, y);
 
   // At a dock: before the first hold the courier waits at the first dock, after the last at it.
   const atIndex = holds.findIndex(
@@ -340,13 +442,18 @@ function placePose(
         : y >= hold.end
           ? 1
           : 0;
-    const at = docked(hold.dock, y, local);
+    // Before the first hold it waits at its dock, below the fold at the top of a phone page.
+    const waiting = atIndex === 0 && y < hold.start;
+    const at = waiting
+      ? docked(hold.dock, y, local)
+      : inView(docked(hold.dock, y, local), hold.dock, viewport);
     return {
       ...at,
       form: FORM.get(hold.dock.id) ?? 'mark',
       whip: 0,
-      arch,
-      smile,
+      ...station,
+      // Only at the smile station does the form sink and condense.
+      presence: hold.dock.id === 'smile' ? station.presence : 1,
       hidden: hold.dock.id === 'footer',
       dock: hold.dock.id,
       local,
@@ -361,29 +468,11 @@ function placePose(
   const a = holds[next - 1]!;
   const b = holds[next]!;
   const t = clamp01((y - a.end) / (b.start - a.end));
-  const from = docked(a.dock, y, 1);
-  const to = docked(b.dock, y, 0);
+  const path = travelPath(a, b, viewport);
+  const e = easeInOut(t);
   const formA = FORM.get(a.dock.id) ?? 'mark';
   const formB = FORM.get(b.dock.id) ?? 'mark';
-
-  const footer = b.dock.id === 'footer';
-  // Into the footer the path ends 40 px above the box, and the rest is the drop.
-  const pathT = footer ? clamp01(t / (1 - DROP_SHARE)) : t;
-  const e = easeInOut(pathT);
-  const endY = footer ? to.y - FOOTER_DROP_PX : to.y;
-  const middle = viewport.width / 2;
-  const bend = ARC * (middle - (from.x + to.x) / 2);
-  const p1x = mix(from.x, to.x, 1 / 3) + bend;
-  const p2x = mix(from.x, to.x, 2 / 3) + bend;
-  const u = 1 - e;
-  let x = u * u * u * from.x + 3 * u * u * e * p1x + 3 * u * e * e * p2x + e * e * e * to.x;
-  let yy = mix(from.y, endY, e);
-  if (footer && t > 1 - DROP_SHARE) {
-    x = to.x;
-    yy = endY + FOOTER_DROP_PX * bounceOut((t - (1 - DROP_SHARE)) / DROP_SHARE);
-  }
-
-  let rotation = mix(from.rotation, to.rotation, e);
+  let rotation = mix(path.from.rotation, path.to.rotation, e);
   let form = formA;
   let whip = 0;
   if (formA !== formB) {
@@ -396,67 +485,146 @@ function placePose(
     rotation =
       rotation * (1 - Math.sin(Math.PI * whip)) + Math.PI * whip - (whip < 0.5 ? 0 : Math.PI);
   }
+  const place = lanes ? placeOn(lanes(a, b, path), y) : { ...path.at(t, y), o: 1 };
 
   return {
-    x,
-    y: yy,
-    scale: mix(from.scale, to.scale, e) * (1 - DIP * Math.sin(Math.PI * pathT)),
+    x: place.x,
+    y: place.y,
+    scale: place.s,
     rotation,
     form,
     whip,
-    arch,
-    smile,
+    ...station,
+    presence: 1,
     hidden: false,
     dock: null,
     local: 0,
     travel: t,
     to: b.dock.id,
-    opacity: 1,
+    opacity: place.o,
   };
+}
+
+interface Path {
+  from: Docked;
+  to: Docked;
+  /** The eased path at travel progress t and scroll y (viewport px). */
+  at(t: number, y: number): { x: number; y: number; s: number };
+}
+
+/** A travel rides with its docks for this much scroll at each end (share of the viewport). */
+const RIDE_VH = 0.25;
+
+/**
+ * The travel's own eased path (viewport px): it leaves riding with its dock, floats over the
+ * scrolling page between the two docks' poses where the travel leaves and reaches them (so it
+ * stays on screen), and rides with the next dock again as it arrives, so its speed never jumps. A
+ * cubic with an arc toward the page's middle and a dip in size half way; into the footer the last
+ * stretch is a 40 px drop with the bounce onto the box.
+ */
+function travelPath(a: Hold, b: Hold, viewport: Viewport): Path {
+  const from = inView(docked(a.dock, a.end, 1), a.dock, viewport);
+  const to = inView(docked(b.dock, b.start, 0), b.dock, viewport);
+  const footer = b.dock.id === 'footer';
+  const length = b.start - a.end;
+  const drop = footer ? Math.min(DROP_SHARE * length, RIDE_VH * viewport.height) : 0;
+  const ride = Math.min(RIDE_VH * viewport.height, (length - drop) / 3);
+  const middle = viewport.width / 2;
+  const bend = ARC * (middle - (from.x + to.x) / 2);
+  const p1x = mix(from.x, to.x, 1 / 3) + bend;
+  const p2x = mix(from.x, to.x, 2 / 3) + bend;
+  return {
+    from,
+    to,
+    at(t, y) {
+      // The ends ride with their docks, eased in and out of the float.
+      const leave = ride > 0 ? smoothstep(clamp01((y - a.end) / ride)) : 1;
+      const reach = ride > 0 ? smoothstep(clamp01((b.start - drop - y) / ride)) : 1;
+      const start = inView(docked(a.dock, y, 1), a.dock, viewport);
+      const end = inView(docked(b.dock, y, 0), b.dock, viewport);
+      const fx = mix(start.x, from.x, leave);
+      const fy = mix(start.y, from.y, leave);
+      const tx = mix(end.x, to.x, reach);
+      const ty = mix(end.y, to.y, reach) - (footer ? FOOTER_DROP_PX : 0);
+      // Into the footer the path ends 40 px above the box, and the rest is the drop.
+      const pathT = footer ? clamp01((y - a.end) / Math.max(1e-6, length - drop)) : t;
+      const e = easeInOut(pathT);
+      const u = 1 - e;
+      // The control points move with the ends.
+      let x =
+        u * u * u * fx +
+        3 * u * u * e * (p1x + fx - from.x) +
+        3 * u * e * e * (p2x + tx - to.x) +
+        e * e * e * tx;
+      let yy = mix(fy, ty, e);
+      if (footer && y > b.start - drop) {
+        const home = viewportTop(b.dock, y) + b.dock.height / 2;
+        x = b.dock.left + b.dock.width / 2;
+        yy = home - FOOTER_DROP_PX + FOOTER_DROP_PX * bounceOut((y - (b.start - drop)) / drop);
+      }
+      return { x, y: yy, s: mix(from.scale, to.scale, e) * (1 - DIP * Math.sin(Math.PI * pathT)) };
+    },
+  };
+}
+
+/** The courier shrinks in a narrow lane, to this share of its smaller dock size at least. */
+const LANE_MIN_SHARE = 0.4;
+const LANE_MIN_PX = 28;
+
+type Lanes = (a: Hold, b: Hold, path: Path) => Route;
+
+/** The routes of one measure (docks, obstacles, viewport), planned once per travel. */
+function lanesFor(obstacles: readonly Box[], viewport: Viewport): Lanes {
+  const routes = new Map<string, Route>();
+  return (a, b, path) => {
+    const key = `${a.dock.id}>${b.dock.id}:${a.end}:${b.start}`;
+    let route = routes.get(key);
+    if (route === undefined) {
+      route = planRoute({
+        y0: a.end,
+        y1: b.start,
+        base: (t, y) => path.at(t, y),
+        obstacles,
+        viewport,
+        min: Math.max(LANE_MIN_PX, LANE_MIN_SHARE * Math.min(path.from.scale, path.to.scale)),
+      });
+      routes.set(key, route);
+    }
+    return route;
+  };
+}
+
+/** The last measure's lanes: the driver passes the same arrays until it measures again. */
+let memo: { obstacles: readonly Box[]; viewport: Viewport; lanes: Lanes } | null = null;
+function lanesOf(obstacles: readonly Box[], viewport: Viewport): Lanes {
+  if (memo === null || memo.obstacles !== obstacles || memo.viewport !== viewport) {
+    memo = { obstacles, viewport, lanes: lanesFor(obstacles, viewport) };
+  }
+  return memo.lanes;
 }
 
 /** The share of the courier's box its form fills (the box holds the turn and the shadow). */
 export const FORM_SHARE = 0.8;
-/** Within this distance of text or a control the courier fades, to nothing where it touches. */
-export const FADE_PX = 28;
 
 /**
- * 0..1 how clear of the page's text and controls the courier's form is at scroll `y`: 0 where its
- * box touches one (it fades out there and back in beyond), 1 from FADE_PX away.
- */
-export function clearance(pose: Pose, obstacles: readonly Box[], y: number): number {
-  const half = (pose.scale * FORM_SHARE) / 2;
-  let distance = Infinity;
-  for (const o of obstacles) {
-    const top = viewportTop(o, y);
-    const dy = Math.max(top - (pose.y + half), pose.y - half - (top + o.height), 0);
-    if (dy >= FADE_PX) continue;
-    const dx = Math.max(o.left - (pose.x + half), pose.x - half - (o.left + o.width), 0);
-    distance = Math.min(distance, Math.hypot(dx, dy));
-    if (distance === 0) return 0;
-  }
-  return smoothstep(clamp01(distance / FADE_PX));
-}
-/**
- * The courier's pose for one frame. `tier` 0 has no courier. `obstacles` are the page's text and
- * controls (docks.ts measureObstacles): the courier never shows under them, it fades out over
- * them and back. Pure: the same scroll position, docks, viewport and obstacles give the same
- * pose, scrolling down or up.
+ * The courier's pose for one frame. `tier` 0 has no courier. `obstacles` are the page's text,
+ * controls and the boxes painted above the courier (docks.ts measureObstacles): a travel goes
+ * through the clear lanes between them (route.ts), never over them. Pure: the same scroll
+ * position, docks, viewport and obstacles give the same pose, scrolling down or up.
  */
 export function courierPose(
   scrollY: number,
   docks: readonly Dock[],
   viewport: Viewport,
   tier: number,
-  obstacles: readonly Box[] = [],
+  obstacles: readonly Box[] | null = null,
 ): Pose {
-  const pose = placePose(scrollY, docks, viewport, tier);
-  return pose.hidden ? pose : { ...pose, opacity: clearance(pose, obstacles, scrollY) };
+  return placePose(scrollY, docks, viewport, tier, obstacles ? lanesOf(obstacles, viewport) : null);
 }
 
 /** 0..1 how far the tooth has seated into the arch (its crown turns to the camera); 0 for the mark. */
 export function seatAmount(pose: Pose): number {
-  return pose.form === 'tooth' ? pose.arch : 0;
+  return pose.form === 'tooth' ? pose.arch * (1 - pose.lift) : 0;
 }
 
 /**
@@ -474,4 +642,25 @@ export function domSpin(pose: Pose): number {
 export function idleAmount(pose: Pose): number {
   if (pose.hidden || pose.dock === 'footer') return 0;
   return pose.to === 'footer' ? 1 - pose.travel : 1;
+}
+
+/**
+ * 0..1 how far the smile photo dims and settles back while the tooth lifts off it; it recovers as
+ * the tooth flies on to the dentists.
+ */
+export function photoDim(pose: Pose): number {
+  if (pose.dock === 'smile') return pose.lift;
+  if (pose.to === 'dentists' && pose.dock === null)
+    return 1 - smoothstep(clamp01(pose.travel / 0.4));
+  return 0;
+}
+
+/**
+ * 0..1 a soft teal light sweeps across the dentists' cards as the mark arrives at D6 (introducing
+ * the team); 0 elsewhere and once it has settled.
+ */
+export function sweepAmount(pose: Pose): number {
+  if (pose.to === 'dentists' && pose.dock === null) return span(pose.travel, [0.35, 1]);
+  if (pose.dock === 'dentists') return pose.local < 0.25 ? 1 : 0;
+  return 0;
 }

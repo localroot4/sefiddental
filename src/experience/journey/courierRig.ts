@@ -47,6 +47,8 @@ const CROWN_Y = 0.2;
 const CROWN_WIDTH = 1.03;
 /** The tooth's view from above before it nears the arch (the restoration rig's 0.6, flatter). */
 const TOOTH_TILT = 0.42;
+/** Seated, its chewing surface faces the reader, as the arch's teeth do (the occlusal view). */
+const SEAT_TILT = Math.PI / 2;
 
 /** A small deterministic PRNG (mulberry32): the same cloud on every visit and in screenshots. */
 export function mulberry32(seed: number): () => number {
@@ -178,6 +180,10 @@ function createGlaze(): { material: MeshPhysicalMaterial; rim: { value: Color } 
 
 export interface CourierFrame {
   pose: Pose;
+  /** Lean about the view axis from the courier's speed (radians; motion.ts). */
+  lean?: number;
+  /** Squash and stretch on x and y (1 at rest; motion.ts). */
+  stretch?: readonly [number, number];
   time: number;
   /** The restoration level position (0 plain, 1 VIP, 2 CIP), smoothed by the caller. */
   level: number;
@@ -196,7 +202,15 @@ export interface CourierRig {
   arch: { scene: Scene; camera: OrthographicCamera };
   update(frame: CourierFrame): void;
   /** `box` the arch pass box (px), `width` the arch's width in it (px), `dissolve` 0..1. */
-  updateArch(frame: { width: number; height: number; archWidth: number; dissolve: number }): void;
+  updateArch(frame: {
+    width: number;
+    height: number;
+    archWidth: number;
+    dissolve: number;
+    /** The arch's middle from the box's centre (px, y down). */
+    offsetX?: number;
+    offsetY?: number;
+  }): void;
   setTheme(dark: boolean, brand: string): void;
   dispose(): DisposeCount;
 }
@@ -289,14 +303,16 @@ export function createCourierRig(
   const m = new Matrix4();
   const q = new Quaternion();
   const up = new Vector3(0, 1, 0);
+  // An upper arch: each tooth upside down, its crown toward the reader of the occlusal view.
+  const flip = new Quaternion().setFromAxisAngle(new Vector3(0, 0, 1), Math.PI);
   let k = 0;
   teeth.forEach((t, i) => {
     if (i === ARCH_SLOT) return;
     const s = t.width / CROWN_WIDTH;
     m.compose(
-      new Vector3(t.x, -CROWN_Y * s, t.z - ARCH_DEPTH / 2),
-      q.setFromAxisAngle(up, t.yaw),
-      new Vector3(s, s, s),
+      new Vector3(t.x, CROWN_Y * s, t.z - ARCH_DEPTH / 2),
+      q.setFromAxisAngle(up, t.yaw).multiply(flip),
+      new Vector3(s, s, s * t.depth),
     );
     instances.setMatrixAt(k, m);
     k += 1;
@@ -312,13 +328,15 @@ export function createCourierRig(
     scene,
     camera,
     arch: { scene: archScene, camera: archCamera },
-    update({ pose, time, level: nextLevel, turn, beats, idle, pixels }) {
+    update({ pose, time, level: nextLevel, turn, beats, idle, pixels, lean = 0, stretch }) {
+      holder.rotation.z = lean;
+      holder.scale.set(stretch?.[0] ?? 1, stretch?.[1] ?? 1, 1);
       const isTooth = pose.form === 'tooth';
       mark.visible = !isTooth;
       tooth.visible = isTooth;
       // Near the arch the tooth turns its crown to the camera and pivots on it, as it seats.
       const seat = seatAmount(pose);
-      tilt.rotation.x = isTooth ? TOOTH_TILT + (ARCH_ELEVATION - TOOTH_TILT) * seat : 0;
+      tilt.rotation.x = isTooth ? TOOTH_TILT + (SEAT_TILT - TOOTH_TILT) * seat : 0;
       const centre = (MOLAR_Y.min + MOLAR_Y.max) / 2;
       tooth.position.y = -(centre + (CROWN_Y - centre) * seat) * toothScale;
       spin.rotation.y = pose.rotation + turn + idle * 0.12 * Math.sin(time * 0.45);
@@ -326,7 +344,7 @@ export function createCourierRig(
       const fade = pose.opacity;
       glaze.opacity = fade;
       enamel.material.opacity = fade;
-      studio.shadow.visible = (!isTooth || seat < 0.5) && fade > 0.99;
+      studio.shadow.visible = (!isTooth || seat < 0.5) && fade > 0.99 && pose.presence > 0.5;
       if (isTooth) {
         if (nextLevel !== level) {
           const { refine, character } = levelBlend(nextLevel);
@@ -335,7 +353,8 @@ export function createCourierRig(
         }
         enamel.uniforms.uBuild.value = beats.build;
         enamel.uniforms.uGlaze.value = beats.glaze;
-        enamel.uniforms.uDissolve.value = pose.smile;
+        // It sinks into the smile and condenses back out of the glint (pose.presence).
+        enamel.uniforms.uDissolve.value = 1 - pose.presence;
         solid.visible = beats.build > 0.001;
         wire.visible = beats.wire > 0.005;
         wireMaterial.opacity = 0.42 * beats.wire * fade;
@@ -348,14 +367,16 @@ export function createCourierRig(
       }
       studio.setWarm(beats.warm);
     },
-    updateArch({ width, height, archWidth, dissolve }) {
+    updateArch({ width, height, archWidth, dissolve, offsetX = 0, offsetY = 0 }) {
       const w = width / 2 / archWidth;
       const h = height / 2 / archWidth;
-      if (archCamera.right !== w || archCamera.top !== h) {
-        archCamera.left = -w;
-        archCamera.right = w;
-        archCamera.top = h;
-        archCamera.bottom = -h;
+      const ox = offsetX / archWidth;
+      const oy = offsetY / archWidth;
+      if (archCamera.right !== w - ox || archCamera.top !== h + oy) {
+        archCamera.left = -w - ox;
+        archCamera.right = w - ox;
+        archCamera.top = h + oy;
+        archCamera.bottom = -h + oy;
         archCamera.updateProjectionMatrix();
       }
       archEnamel.uniforms.uDissolve.value = dissolve;

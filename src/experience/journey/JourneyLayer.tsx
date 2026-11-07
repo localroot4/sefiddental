@@ -22,19 +22,29 @@ import { applyStyle } from '../core/applyStyle';
 import { levelFromChoice } from '../scenes/webgl/math';
 
 import { ARCH_SLOT, archLayout, footprintAngle, projectArch } from './arch';
+import { COURIER_Z } from './attrs';
 import { createJourney, type BandId, type Frame, type EngineTicks, type Journey } from './driver';
-import { archFrame, CROWN_SHARE, domSpin, holdRanges, idleAmount, seatAmount } from './pose';
+import {
+  archFrame,
+  CROWN_SHARE,
+  domSpin,
+  holdRanges,
+  idleAmount,
+  seatAmount,
+  viewportTop,
+} from './pose';
 
 /** The courier's box before its scale (px). */
 const BOX = 100;
 const TEETH = archLayout();
 const SLOT = TEETH[ARCH_SLOT]!;
+const SLOT_AT = projectArch(SLOT);
 const CROWN_RATIO = 0.82;
 
 const LAYER = {
   position: 'fixed',
   inset: '0',
-  'z-index': '-1',
+  'z-index': COURIER_Z,
   'pointer-events': 'none',
   contain: 'strict',
   overflow: 'hidden',
@@ -86,8 +96,8 @@ function Paint() {
 const LEVEL_NAMES = MOLAR_LEVELS.map((l) => l.level);
 
 /** One crown seen from above, in arch units, at the origin. */
-function Crown(props: { width: number }) {
-  const h = props.width * CROWN_RATIO;
+function Crown(props: { width: number; depth?: number }) {
+  const h = props.width * CROWN_RATIO * (props.depth ?? 1);
   return (
     <rect
       x={-props.width / 2}
@@ -120,13 +130,15 @@ export default function JourneyLayer(props: {
   const crown = useRef<SVGSVGElement>(null);
   const shadow = useRef<SVGSVGElement>(null);
   const arch = useRef<SVGSVGElement>(null);
+  const glint = useRef<HTMLDivElement>(null);
+  const spark = useRef<HTMLDivElement>(null);
   const levels = useRef<(SVGGElement | null)[]>([]);
 
   useEffect(() => {
     applyStyle(layer.current, LAYER);
     let lastLevel = -1;
     let placed: Frame['bands'] | null = null;
-    const render = ({ pose, scrollY, bands: measured, docks, webgl }: Frame): void => {
+    const render = ({ pose, shown, scrollY, bands: measured, docks, webgl }: Frame): void => {
       // The bands scroll with the page (document coordinates in `.site`): written only when a
       // measure moved them, never per frame, so a native fling never slides them.
       if (measured !== placed) {
@@ -151,18 +163,21 @@ export default function JourneyLayer(props: {
       if (box && box.hasAttribute('data-shown') !== show) box.toggleAttribute('data-shown', show);
       // Scaled about its top-left corner: that corner sits half the scaled size off the centre.
       if (box && show) {
+        // The shown place (the pose with its spring, lean and squash, motion.ts): scaled about the
+        // box's centre, then placed by its top-left corner.
+        const k = shown.scale / BOX;
         box.style.setProperty(
           'transform',
-          `translate3d(${pose.x - pose.scale / 2}px, ${pose.y - pose.scale / 2}px, 0) scale(${pose.scale / BOX})`,
+          `translate3d(${shown.x - BOX / 2}px, ${shown.y - BOX / 2}px, 0) rotate(${shown.tilt}rad) scale(${k * shown.sx}, ${k * shown.sy})`,
         );
         box.style.setProperty('--breathe', String(idleAmount(pose)));
-        // Over text the courier fades out (pose.ts clearance), so no line ever sits on it.
+        // 1 except where a travel has no lane at all (route.ts, the last resort).
         box.style.setProperty('opacity', String(Math.round(pose.opacity * 1000) / 1000));
         // Seated in the arch the tooth is a crown seen from above: its turn is the footprint's.
         spin.current?.style.setProperty('transform', `rotateY(${domSpin(pose)}rad)`);
         const isTooth = pose.form === 'tooth';
-        const fade = isTooth ? 1 - pose.smile : 1;
-        mark.current?.style.setProperty('opacity', isTooth ? '0' : '1');
+        const fade = pose.presence;
+        mark.current?.style.setProperty('opacity', isTooth ? '0' : String(fade));
         const seat = seatAmount(pose);
         tooth.current?.style.setProperty('opacity', String(isTooth ? fade * (1 - seat) : 0));
         crown.current?.style.setProperty('opacity', String(isTooth ? fade * seat : 0));
@@ -196,6 +211,47 @@ export default function JourneyLayer(props: {
           `translate3d(${frame.cx - frame.width / 2}px, ${frame.cy - frame.width / 2}px, 0) scale(${frame.width / BOX})`,
         );
         svg.style.setProperty('opacity', String(pose.arch * (1 - pose.smile)));
+      }
+
+      // The D5 hand-off (both tiers): a light runs along the arch's teeth on the photo, then
+      // condenses into a spark on the first molar, out of which the tooth lifts off.
+      const spot = glint.current;
+      const flash = spark.current;
+      const sparkOn = pose.dock === 'smile' ? Math.sin(Math.PI * Math.min(1, pose.lift * 1.6)) : 0;
+      const on = smileDock !== undefined && (pose.glint > 0 || sparkOn > 0.01);
+      spot?.style.setProperty('visibility', on && pose.glint > 0 ? 'visible' : 'hidden');
+      flash?.style.setProperty('visibility', on && sparkOn > 0.01 ? 'visible' : 'hidden');
+      if (on && smileDock) {
+        const frame = archFrame(smileDock, scrollY, 1);
+        const at = (p: { u: number; v: number }) => ({
+          x: frame.cx + p.u * frame.width,
+          y: frame.cy + p.v * frame.width,
+        });
+        const crown = SLOT.width * frame.width;
+        if (spot && pose.glint > 0) {
+          // Along the teeth, one end of the U to the other.
+          const f = pose.glint * (TEETH.length - 1);
+          const i = Math.min(TEETH.length - 2, Math.floor(f));
+          const a = at(projectArch(TEETH[i]!));
+          const b = at(projectArch(TEETH[i + 1]!));
+          const x = a.x + (b.x - a.x) * (f - i);
+          const y = a.y + (b.y - a.y) * (f - i);
+          const k = (crown * 1.8) / BOX;
+          spot.style.setProperty(
+            'transform',
+            `translate3d(${x - BOX / 2}px, ${y - BOX / 2}px, 0) scale(${k})`,
+          );
+          spot.style.setProperty('opacity', String(Math.sin(Math.PI * pose.glint)));
+        }
+        if (flash && sparkOn > 0.01) {
+          const p = at(SLOT_AT);
+          const k = (crown * 1.6 * sparkOn) / BOX;
+          flash.style.setProperty(
+            'transform',
+            `translate3d(${p.x - BOX / 2}px, ${p.y - BOX / 2}px, 0) scale(${k})`,
+          );
+          flash.style.setProperty('opacity', String(sparkOn));
+        }
       }
     };
     const journey = createJourney({ root, engine, tier, render });
@@ -257,15 +313,26 @@ export default function JourneyLayer(props: {
                 key={i}
                 transform={`translate(${p.u} ${p.v}) rotate(${deg(footprintAngle(t.yaw))})`}
               >
-                <Crown width={t.width} />
+                <Crown width={t.width} depth={t.depth} />
               </g>
             );
           })}
         </svg>
+        {/* The D5 glint: a soft light that runs along the teeth, and the spark on the molar. */}
+        <div
+          ref={glint}
+          data-courier-glint=""
+          className="invisible absolute top-0 left-0 size-[100px] origin-center rounded-full [background:radial-gradient(circle,rgb(255_255_255/0.7),rgb(207_245_241/0.28)_40%,transparent_70%)] mix-blend-screen"
+        />
+        <div
+          ref={spark}
+          data-courier-spark=""
+          className="invisible absolute top-0 left-0 size-[100px] origin-center rounded-full [background:radial-gradient(circle,rgb(255_255_255/0.95),rgb(207_245_241/0.5)_30%,transparent_68%)]"
+        />
         <div
           ref={courier}
           data-courier=""
-          className="invisible absolute top-0 left-0 size-[100px] origin-top-left [perspective:420px]"
+          className="invisible absolute top-0 left-0 size-[100px] origin-center [perspective:420px]"
         >
           <div data-courier-breathe="" className="size-full">
             <div ref={spin} className="relative size-full [transform-style:preserve-3d]">

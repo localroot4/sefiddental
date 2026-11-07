@@ -91,7 +91,10 @@ export const HOME_MESSAGES = {
   'home.voices.consent': 'با رضایت کتبی بیمار منتشر شده است.',
   'home.journey.guide': 'راهنمای اولین مراجعه',
   'home.faq.aside': 'سؤال دیگری دارید؟',
-  'home.smile.photo': 'عکس ۳:۲ از لبخند یک بیمار از نزدیک (بینی تا چانه)، با رضایت کتبی بیمار',
+  'home.smile.photo':
+    'عکس ۴:۵ از قوس دندان‌های فک بالا از نمای جونده (از پایین)، دندان‌های جلو در بالا، زمینهٔ تیره',
+  'home.smile.archAlt': 'قوس دندان‌های فک بالا از نمای جونده؛ تصویر نمایشی',
+  'home.smile.archPlaceholder': 'تصویر سه‌بعدی موقت؛ عکس واقعی قوس دندان به‌جای آن می‌آید.',
   'home.booking.map': 'تصویر ثابت نقشهٔ محل کلینیک، ۴:۳، با نشانی ورودی',
   // Phase 7 (one block per lane; the strings come from the lane briefs).
   // INTRO: the overlay's only focusable element.
