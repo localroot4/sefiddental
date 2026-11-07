@@ -440,7 +440,7 @@ const hardwareGpu = (page: Page, cachedTier: number | null) =>
       else {
         localStorage.setItem(
           'sefid-gpu',
-          JSON.stringify({ v: '5.0.70', renderer, tier, type: 'BENCHMARK', fps: 120 }),
+          JSON.stringify({ v: '5.0.70-2', renderer, tier, type: 'BENCHMARK', fps: 120 }),
         );
       }
     },
