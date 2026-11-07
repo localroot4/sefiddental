@@ -82,20 +82,22 @@ export function RestorationSection(props: {
           <div className="grid content-start gap-6">
             <fieldset className="min-w-0" aria-describedby="home-tiers-note">
               <legend className="sr-only">{t('home.restoration.legend')}</legend>
-              {/* A segmented control: the same radio group, one track, and an indicator that
-                  slides under the chosen level (none until one is chosen, F24). */}
+              {/* A segmented control: the same radio group, one track; the chosen level raises
+                  its own surface (its text's background, for every contrast check) and a brand
+                  bar slides under it, below the text (none until one is chosen, F24). */}
               <div
                 className={`relative grid max-w-[26rem] rounded-pill bg-surface-sunken p-[3px] ring-1 ring-line ring-inset ${SEGMENTS[tiers.length]?.cols ?? ''}`}
               >
                 <span
                   aria-hidden="true"
-                  className={`pointer-events-none absolute inset-y-[3px] start-[3px] rounded-pill bg-surface-raised opacity-0 shadow-raised ring-1 ring-brand/40 transition-[translate,opacity] duration-(--dur-3) ease-out motion-reduce:transition-none group-data-choice/tiers:opacity-100 ${SLIDE} ${SEGMENTS[tiers.length]?.width ?? ''}`}
-                />
+                  className={`pointer-events-none absolute start-[3px] bottom-[5px] h-[3px] px-[18%] opacity-0 transition-[translate,opacity] duration-(--dur-3) ease-out motion-reduce:transition-none group-data-choice/tiers:opacity-100 ${SLIDE} ${SEGMENTS[tiers.length]?.width ?? ''}`}
+                >
+                  <span className="block size-full rounded-full bg-brand" />
+                </span>
                 {tiers.map((tier) => (
                   <label
                     key={tier.key}
-                    data-choice-item=""
-                    className="group/seg relative flex min-h-target cursor-pointer items-center justify-center rounded-pill px-3 transition-[background-color] duration-(--dur-2) data-checked:bg-surface-raised data-checked:delay-(--dur-3) motion-reduce:transition-none lg:min-h-[2.5rem]"
+                    className="relative flex min-h-target cursor-pointer rounded-pill lg:min-h-[2.5rem]"
                   >
                     <input
                       type="radio"
@@ -103,7 +105,9 @@ export function RestorationSection(props: {
                       value={tier.key}
                       className="peer absolute inset-0 m-0 size-full cursor-pointer rounded-[inherit] opacity-0"
                     />
-                    <span className="text-small font-medium text-ink transition-colors duration-(--dur-2) peer-checked:font-semibold peer-checked:text-brand-strong">
+                    {/* The segment's face: the text on its own surface, which the chosen level
+                        raises (no box behind the text, so every contrast check reads it). */}
+                    <span className="pointer-events-none flex flex-1 items-center justify-center rounded-pill px-3 text-small font-medium text-ink transition-[background-color,box-shadow,color] duration-(--dur-2) peer-checked:bg-surface-raised peer-checked:font-semibold peer-checked:text-brand-strong peer-checked:shadow-raised motion-reduce:transition-none">
                       {ltr(tier.name)}
                     </span>
                     <span

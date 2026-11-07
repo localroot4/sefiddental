@@ -177,6 +177,10 @@ Anything else unlisted stays tier 1. `?tier=` still overrides.
   instanced call. No shadow map at any tier.
 - D5 photo: the owner's occlusal arch photo (`arch-occlusal-*`, section 9) on the
   client preview; elsewhere the labelled placeholder.
+- The arch band is a sticky stage with a 1.2-screen room at every tier, tier 0 and
+  reduced motion included (decided 2026-11-07): the page keeps one layout at every tier
+  (D24, no shift after hydration), so at tier 0 the photo simply holds while the page
+  scrolls on.
 
 ## 9. D5 occlusal arch photo (owner decision, 2026-11-07)
 

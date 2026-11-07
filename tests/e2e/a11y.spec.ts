@@ -117,12 +117,18 @@ const luminance = (r: number, g: number, b: number) => {
 async function pixelContrast(page: Page, target: Locator): Promise<Contrast> {
   await target.evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
   // The journey's courier paints above the sections' boxes but never over a glyph or a control
-  // (its lanes, T-CA1): it is left out of the capture, which reads the text element's whole box.
-  await page.evaluate(() =>
-    document
-      .querySelectorAll<HTMLElement>('[data-courier-layer], [data-experience-layer]')
-      .forEach((el) => el.style.setProperty('visibility', 'hidden', 'important')),
-  );
+  // (its lanes): it is left out of the capture, which reads the text element's whole box. The
+  // guard against occlusion is tests/e2e/home-courier-audit.spec.ts (T-CA1, T-CA2). Opacity, not
+  // visibility: the driver writes `visibility: visible` on the DOM courier itself, which a hidden
+  // layer does not override, so it stayed in the capture beside the judged text.
+  const hidden = await page.evaluate(() => {
+    const layers = document.querySelectorAll<HTMLElement>(
+      '[data-courier-layer], [data-experience-layer]',
+    );
+    layers.forEach((el) => el.style.setProperty('opacity', '0', 'important'));
+    return [...layers].every((el) => getComputedStyle(el).opacity === '0');
+  });
+  expect(hidden, 'the courier layers are out of the capture').toBe(true);
   // The loaded images are decoded before the capture (an undecoded image paints nothing); a lazy
   // image that never loads would never settle its decode.
   await page.evaluate(() =>
@@ -199,7 +205,7 @@ async function pixelContrast(page: Page, target: Locator): Promise<Contrast> {
   await page.evaluate(() =>
     document
       .querySelectorAll<HTMLElement>('[data-courier-layer], [data-experience-layer]')
-      .forEach((el) => el.style.removeProperty('visibility')),
+      .forEach((el) => el.style.removeProperty('opacity')),
   );
   return { label: info.label, ratio: worst, required: info.large ? 3 : 4.5 };
 }
