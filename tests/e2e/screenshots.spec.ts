@@ -140,9 +140,13 @@ for (const template of LIVE_SHAPE ? EMPTY_HUBS : TEMPLATES) {
       // A full down-and-up pass by touch takes over 30 s on a loaded host: triple the timeout
       // and let each pass fail inside it.
       test.slow();
+      // Desktop wheels three notches a step: the tier 2 home is 17 viewports long with its pins,
+      // and 80 px steps took about 40 s each way on the 2-core runner (CI runs 110 and 113, before
+      // and after the journey alike); every reveal and pin still runs on the way.
       const scroll = {
         drive: size(testInfo) === 'desktop' ? 'wheel' : 'touch',
         deadlineMs: 40_000,
+        stepPx: size(testInfo) === 'desktop' ? 240 : undefined,
       } as const;
       await page.waitForTimeout(1500);
       if (scroll.drive === 'wheel') await page.mouse.move(720, 450);
