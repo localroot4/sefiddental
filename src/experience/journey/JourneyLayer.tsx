@@ -196,7 +196,7 @@ export default function JourneyLayer(props: {
             g?.style.setProperty('opacity', i === level ? '1' : '0'),
           );
           // The top view replays its level's own animation (globals.css, courier-top).
-          top.current?.setAttribute('data-level', String(level));
+          top.current?.setAttribute('data-top-level', String(level));
           lastLevel = level;
         }
         // At D3 the tooth turns its chewing surface to the reader (the top view), in and out of
@@ -415,7 +415,7 @@ export default function JourneyLayer(props: {
               <svg
                 ref={top}
                 data-form="top"
-                data-level="0"
+                data-top-level="0"
                 viewBox="0 0 100 100"
                 className="courier-top absolute inset-0 m-auto size-[86%] overflow-visible opacity-0"
               >

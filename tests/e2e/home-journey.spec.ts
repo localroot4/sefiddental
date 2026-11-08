@@ -47,6 +47,17 @@ async function open(page: Page, query: string): Promise<Hold[]> {
   // Let fonts and lazy images settle the layout, then measure once more.
   await page.waitForTimeout(1500);
   await probe(page, 'measure');
+  // The lanes are planned in idle time (route.ts); measured again once they are, so every
+  // travel's lane is in before the rows read poses (a lane never comes in mid-travel).
+  await page.waitForFunction(
+    () =>
+      (
+        window as unknown as { __sefidJourney: { planStats(): { pending: number } | null } }
+      ).__sefidJourney.planStats()?.pending === 0,
+    null,
+    { timeout: 60_000 },
+  );
+  await probe(page, 'measure');
   return probe<Hold[]>(page, 'holds');
 }
 

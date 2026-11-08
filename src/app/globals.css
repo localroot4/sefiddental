@@ -410,40 +410,40 @@
 .courier-top .ct-cip {
   opacity: 0;
 }
-.courier-top[data-level='1'] .ct-plain,
-.courier-top[data-level='2'] .ct-plain {
+.courier-top[data-top-level='1'] .ct-plain,
+.courier-top[data-top-level='2'] .ct-plain {
   opacity: 0;
 }
-.courier-top[data-level='1'] .ct-vip,
-.courier-top[data-level='2'] .ct-cip {
+.courier-top[data-top-level='1'] .ct-vip,
+.courier-top[data-top-level='2'] .ct-cip {
   opacity: 1;
 }
 .courier-top [class^='ct-'] {
   transform-box: fill-box;
   transform-origin: center;
 }
-.courier-top[data-level='0'] .ct-outline {
+.courier-top[data-top-level='0'] .ct-outline {
   animation: ct-draw 500ms var(--ease-out) both;
 }
-.courier-top[data-level='0'] .ct-fill {
+.courier-top[data-top-level='0'] .ct-fill {
   animation: ct-fade 400ms var(--ease-out) 450ms both;
 }
-.courier-top[data-level='1'] .ct-inlay {
+.courier-top[data-top-level='1'] .ct-inlay {
   animation: ct-seat 700ms var(--ease-out) both;
 }
-.courier-top[data-level='1'] .ct-gloss {
+.courier-top[data-top-level='1'] .ct-gloss {
   animation: ct-sweep 900ms var(--ease-in-out) 650ms both;
 }
-.courier-top[data-level='2'] .ct-dentine {
+.courier-top[data-top-level='2'] .ct-dentine {
   animation: ct-fade 350ms var(--ease-out) both;
 }
-.courier-top[data-level='2'] .ct-enamel {
+.courier-top[data-top-level='2'] .ct-enamel {
   animation: ct-fade 450ms var(--ease-out) 300ms both;
 }
-.courier-top[data-level='2'] .ct-stain {
+.courier-top[data-top-level='2'] .ct-stain {
   animation: ct-draw 700ms var(--ease-out) 700ms both;
 }
-.courier-top[data-level='2'] .ct-shimmer {
+.courier-top[data-top-level='2'] .ct-shimmer {
   animation: ct-sweep 1600ms var(--ease-in-out) 1300ms both;
 }
 @keyframes ct-draw {
