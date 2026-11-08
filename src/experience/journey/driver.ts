@@ -128,7 +128,7 @@ export function createJourney(opts: {
   // keeps its eased path.
   const idle = (cb: (deadline: { timeRemaining(): number }) => void): number =>
     typeof requestIdleCallback === 'function'
-      ? requestIdleCallback(cb, { timeout: 500 })
+      ? requestIdleCallback(cb, { timeout: 120 })
       : window.setTimeout(() => cb({ timeRemaining: () => 8 }), 32);
   const unidle = (id: number): void => {
     if (typeof cancelIdleCallback === 'function') cancelIdleCallback(id);

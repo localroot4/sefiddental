@@ -127,6 +127,7 @@ export default function JourneyLayer(props: {
   const mark = useRef<SVGSVGElement>(null);
   const tooth = useRef<SVGSVGElement>(null);
   const crown = useRef<SVGSVGElement>(null);
+  const top = useRef<SVGSVGElement>(null);
   const shadow = useRef<SVGSVGElement>(null);
   const arch = useRef<SVGSVGElement>(null);
   const glint = useRef<HTMLDivElement>(null);
@@ -194,8 +195,21 @@ export default function JourneyLayer(props: {
           levels.current.forEach((g, i) =>
             g?.style.setProperty('opacity', i === level ? '1' : '0'),
           );
+          // The top view replays its level's own animation (globals.css, courier-top).
+          top.current?.setAttribute('data-level', String(level));
           lastLevel = level;
         }
+        // At D3 the tooth turns its chewing surface to the reader (the top view), in and out of
+        // the hold; the side view carries it there and away.
+        const topOn =
+          isTooth && pose.dock === 'restoration'
+            ? Math.min(1, pose.local / 0.12, (1 - pose.local) / 0.12)
+            : 0;
+        top.current?.style.setProperty('opacity', String(fade * topOn));
+        tooth.current?.style.setProperty(
+          'opacity',
+          String(isTooth ? fade * (1 - seat) * (1 - topOn) : 0),
+        );
       }
 
       const smileDock = docks.find((d) => d.id === 'smile');
@@ -395,6 +409,98 @@ export default function JourneyLayer(props: {
                     ) : null}
                   </g>
                 ))}
+              </svg>
+              {/* D3's top view: the crown's chewing surface and the level's restoration on it
+                  (globals.css courier-top: composite fill, seated inlay, layered ceramic). */}
+              <svg
+                ref={top}
+                data-form="top"
+                data-level="0"
+                viewBox="0 0 100 100"
+                className="courier-top absolute inset-0 m-auto size-[86%] overflow-visible opacity-0"
+              >
+                <path
+                  d="M50 8c14 0 22 4 29 10s13 16 13 30-3 24-10 31-17 13-32 13-25-6-32-13S8 63 8 48s6-24 13-30S36 8 50 8z"
+                  fill="url(#courier-crown)"
+                  stroke={PORCELAIN_EDGE}
+                  strokeWidth="1.2"
+                />
+                {/* The cusps and the central fissure of a molar seen from above. */}
+                <path
+                  d="M30 30q10 8 20 4 10 4 20-4M32 70q9-8 18-4 9-4 18 4M50 34v32"
+                  fill="none"
+                  stroke="#BFA98A"
+                  strokeOpacity="0.55"
+                  strokeWidth="1.6"
+                  strokeLinecap="round"
+                />
+                <g className="ct-plain">
+                  <path
+                    className="ct-outline"
+                    d="M38 40q12-6 24 0 6 10 0 20-12 6-24 0-6-10 0-20z"
+                    fill="none"
+                    stroke="#9A8670"
+                    strokeWidth="1.4"
+                    strokeDasharray="70"
+                  />
+                  <path
+                    className="ct-fill"
+                    d="M38 40q12-6 24 0 6 10 0 20-12 6-24 0-6-10 0-20z"
+                    fill="#E7DCCB"
+                    stroke="#B9A78F"
+                    strokeWidth="0.8"
+                  />
+                </g>
+                <g className="ct-vip">
+                  <path
+                    className="ct-inlay"
+                    d="M37 39l13-5 13 5 3 11-3 11-13 5-13-5-3-11z"
+                    fill="url(#courier-enamel)"
+                    stroke="#E9DFCF"
+                    strokeWidth="0.6"
+                  />
+                  <rect
+                    className="ct-gloss"
+                    x="20"
+                    y="20"
+                    width="12"
+                    height="60"
+                    fill="#FFFFFF"
+                    opacity="0"
+                  />
+                </g>
+                <g className="ct-cip">
+                  <path
+                    className="ct-dentine"
+                    d="M37 39l13-5 13 5 3 11-3 11-13 5-13-5-3-11z"
+                    fill="#EBD3B4"
+                  />
+                  <path
+                    className="ct-enamel"
+                    d="M37 39l13-5 13 5 3 11-3 11-13 5-13-5-3-11z"
+                    fill="#FFFDF8"
+                    fillOpacity="0.72"
+                  />
+                  <path
+                    className="ct-stain"
+                    d="M44 44q6 4 12 0M50 44v12M44 56q6-4 12 0"
+                    fill="none"
+                    stroke="#A06F3E"
+                    strokeOpacity="0.55"
+                    strokeWidth="0.9"
+                    strokeLinecap="round"
+                    strokeDasharray="40"
+                  />
+                  <rect
+                    className="ct-shimmer"
+                    x="20"
+                    y="20"
+                    width="10"
+                    height="60"
+                    fill="#FFFFFF"
+                    opacity="0"
+                  />
+                </g>
               </svg>
               <svg
                 ref={crown}

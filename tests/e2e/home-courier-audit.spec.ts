@@ -153,6 +153,16 @@ async function audit(page: Page, tier: 1 | 2): Promise<Sample[]> {
   await page.evaluate(() =>
     (window as unknown as { __sefidJourney: { measure(): void } }).__sefidJourney.measure(),
   );
+  // The lanes are planned in idle time after a measure (route.ts): the audit judges them planned.
+  await page.waitForFunction(
+    () =>
+      (
+        window as unknown as { __sefidJourney: { planStats(): { pending: number } | null } }
+      ).__sefidJourney.planStats()?.pending === 0,
+    null,
+    { timeout: 60_000 },
+  );
+
   // Where the courier is: every hold's middle and ten points through every travel, however short;
   // and the page every third of a screen.
   const positions = await page.evaluate(() => {
@@ -230,6 +240,15 @@ test.describe('courier audit', () => {
         );
       }
       await page.waitForTimeout(1500);
+      // The lanes are planned in idle time after a measure (route.ts): the audit judges them planned.
+      await page.waitForFunction(
+        () =>
+          (
+            window as unknown as { __sefidJourney: { planStats(): { pending: number } | null } }
+          ).__sefidJourney.planStats()?.pending === 0,
+        null,
+        { timeout: 60_000 },
+      );
       await page.mouse.move(200, 300);
       const max = await page.evaluate(() => document.documentElement.scrollHeight - innerHeight);
       const failing: Sample[] = [];

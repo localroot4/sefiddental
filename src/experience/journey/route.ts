@@ -50,7 +50,7 @@ const BLOCKED = 1e6;
  * The search window round the eased path: this many grid rows above and below it, every column
  * (a lane may lie across the screen, or off a side).
  */
-const WINDOW_ROWS = 3;
+const WINDOW_ROWS = 6;
 
 /** An index of the boxes by document top, for the ones on screen at one scroll position. */
 interface Index {
@@ -108,8 +108,9 @@ function clear(
   vp: Viewport,
   /** A point on the way: off screen or partly off is fine, only the part on screen counts. */
   passing = false,
+  margin = LANE_MARGIN,
 ): boolean {
-  const half = (s * FORM) / 2 + LANE_MARGIN;
+  const half = (s * FORM) / 2 + margin;
   if (passing && (x + half < 0 || x - half > vp.width)) return true;
   // Never under the header or the sticky bar; a side may be off screen (a place peeks in).
   if (y - half < (vp.insetTop ?? 0) || y + half > vp.height - (vp.insetBottom ?? 0)) return false;
@@ -165,6 +166,10 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
   const grid = xs * rows * SIZES.length;
   const nodes = grid + 1; // node `grid` is the eased path itself
   const at = (k: number): number => y0 + ((y1 - y0) * k) / n;
+  // Next to its docks the courier rides with them and does not trail (motion.ts): the margin
+  // there is the dock's own, growing to the full lane margin over the first and last samples.
+  const marginAt = (k: number): number =>
+    Math.max(2, LANE_MARGIN * Math.min(1, Math.min(k, n - k) / 4));
 
   const px = new Float64Array((n + 1) * nodes);
   const py = new Float64Array((n + 1) * nodes);
@@ -213,7 +218,7 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
           ps[i] = s;
           // Off screen nothing is covered: where no lane exists the courier leaves the frame at
           // a side and comes back (never a ghost over the text).
-          free[i] = off || clear(rects, x, y, s, vp) ? 1 : 0;
+          free[i] = off || clear(rects, x, y, s, vp, false, marginAt(k)) ? 1 : 0;
         }
       }
     }
@@ -222,7 +227,7 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
     py[e] = b.y;
     ps[e] = b.s;
     // The docks' own poses are always allowed: the courier leaves and reaches them exactly.
-    free[e] = k === 0 || k === n || clear(rects, b.x, b.y, b.s, vp) ? 1 : 0;
+    free[e] = k === 0 || k === n || clear(rects, b.x, b.y, b.s, vp, false, marginAt(k)) ? 1 : 0;
   }
 
   // Points on the way from sample k-1 to sample k, against the boxes as they are then (the page
@@ -238,16 +243,12 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
           ps[io]! + (ps[jo]! - ps[io]!) * f,
           vp,
           true,
+          marginAt(k),
         )
       )
         return false;
     }
     return true;
-  };
-  const side = (i: number): boolean => {
-    if (i >= grid) return false;
-    const c = i % xs;
-    return c === OFF_L || c === PEEK_L || c === PEEK_R || c === OFF_R;
   };
   const nodeCost = (i: number, k: number): number => {
     const b = bases[k]!;
@@ -291,8 +292,6 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
         const dy = Math.abs(py[jo]! - py[io]! - (bases[k]!.y - bases[k - 1]!.y));
         if (dx > reach || dy > reach) return;
         if (Math.abs(ps[jo]! - ps[io]!) > 0.3 * Math.max(ps[jo]!, ps[io]!)) return;
-        // Into and out of the sides only straight across.
-        if ((side(i) || side(j)) && i !== grid && j !== grid && py[io] !== py[jo]) return;
         const c = cost[io]! + moveCost(io, jo, k);
         if (c >= best) return;
         // The courier moves on a straight line between two samples while the page scrolls on
@@ -381,10 +380,11 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
             p.s + (q.s - p.s) * f,
             vp,
             true,
+            marginAt(kk),
           ),
         );
       if (
-        clear(rectsAt[k]!, next.x, next.y, next.s, vp) &&
+        clear(rectsAt[k]!, next.x, next.y, next.s, vp, false, marginAt(k)) &&
         way(a, next, k) &&
         way(next, c, k + 1)
       ) {
