@@ -145,6 +145,7 @@ export default function JourneyLayer(props: {
   useEffect(() => {
     applyStyle(layer.current, LAYER);
     let lastLevel = -1;
+    let topShown = false;
     let placed: Frame['bands'] | null = null;
     let led: boolean | null = null;
     const render = ({
@@ -241,6 +242,12 @@ export default function JourneyLayer(props: {
             ? Math.min(1, pose.local / 0.12, (1 - pose.local) / 0.12)
             : 0;
         top.current?.style.setProperty('opacity', String(fade * topOn));
+        // Coming in, the top view plays its level from the start (a chip replays it through
+        // `data-top-level`); otherwise it would have played, unseen, when the page loaded.
+        if (topOn > 0 && !topShown) {
+          for (const a of top.current?.getAnimations({ subtree: true }) ?? []) a.currentTime = 0;
+        }
+        topShown = topOn > 0;
         tooth.current?.style.setProperty(
           'opacity',
           String(isTooth ? fade * (1 - seat) * (1 - topOn) : 0),

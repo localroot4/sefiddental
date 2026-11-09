@@ -35,6 +35,7 @@ import { COURIER_OFF_ATTR } from './attrs';
 import { BOX_GROW, createCourierRig, type CourierRig } from './courierRig';
 import type { Journey } from './driver';
 import { archFrame, idleAmount, smoothstep, viewportTop } from './pose';
+import { RESTORE_S, restoreParts } from './restore';
 /** Seconds of idle float and turn at a dock after the last move (then the canvas sleeps). */
 const IDLE_S = 12;
 
@@ -136,6 +137,10 @@ export function WebglCourier(props: {
     let shown = false;
     let last = -1;
     let level = 0;
+    // D3's restoration plays from the moment its level shows: a chip, or the top view coming in.
+    let chosen = -1;
+    let chosenAt = 0;
+    let viewing = false;
     const onLost = (): void => {
       lost = true;
       shown = false;
@@ -187,7 +192,9 @@ export function WebglCourier(props: {
           String(document.documentElement.hasAttribute(COURIER_OFF_ATTR)),
         )
         .join('|');
-      if (next !== signature || Math.abs(level - target(p.dock)) > 0.001 || !shown) {
+      const playing =
+        p.dock === 'restoration' && (performance.now() - chosenAt) / 1000 < RESTORE_S + 0.1;
+      if (next !== signature || Math.abs(level - target(p.dock)) > 0.001 || !shown || playing) {
         if (next !== signature) quietSince = performance.now();
         signature = next;
         pulse.request();
@@ -237,6 +244,13 @@ export function WebglCourier(props: {
         // The shown place: the pose with its spring, lean and squash (motion.ts).
         const shown = journey.shown();
         const side = shown.scale * BOX_GROW;
+        const now = performance.now();
+        const chip = target(pose.dock);
+        if (settle > 0 && (!viewing || chip !== chosen)) {
+          chosen = chip;
+          chosenAt = now;
+        }
+        viewing = settle > 0;
         rig.update({
           pose,
           lean: shown.tilt,
@@ -247,6 +261,7 @@ export function WebglCourier(props: {
           // into a three-quarter top view, its chewing surface the subject of the shot.
           turn: 0,
           view: settle,
+          restore: viewing ? restoreParts(chosen as 0 | 1 | 2, (now - chosenAt) / 1000) : null,
           beats: workflowBeats(pose.dock === 'workflow' ? pose.local : null),
           idle: pose.dock !== null ? idleAmount(pose) * idleEnvelope() : 0,
           pixels: pose.scale * gl.getPixelRatio(),

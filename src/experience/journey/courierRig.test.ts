@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { SOLID, workflowBeats } from './beats';
 import { createCourierRig, mulberry32, sampleSurface } from './courierRig';
 import { courierPose, NO_POSE, type Pose } from './pose';
+import { restoreParts } from './restore';
 
 // Stand-ins for molar.glb (crown 1.03 wide, roots to y -1.03) and mark.glb (1 wide).
 const tooth = () => {
@@ -85,5 +86,28 @@ describe('courier rig', () => {
     for (let i = 0; i < 200; i += 1) {
       expect(box.containsPoint(new Vector3().fromArray(a, i * 3))).toBe(true);
     }
+  });
+
+  it("R5 D3: the level's restoration lies on the chewing surface in the top view only, as it plays", () => {
+    const rig = createCourierRig({ mark: mark(), molar: tooth() }, { particles: 10 });
+    const decal = rig.scene.getObjectByName('restoration')!;
+    const inlay = rig.scene.getObjectByName('inlay')!;
+    const tooth3 = pose({ form: 'tooth', dock: 'restoration', presence: 1 });
+    rig.update({ ...frame(tooth3), view: 1, restore: restoreParts(1, 0.574) });
+    expect(decal.visible).toBe(true);
+    expect(inlay.visible).toBe(true);
+    // The click: the inlay dips under its size as it seats.
+    expect(inlay.scale.x).toBeCloseTo(0.97, 3);
+    rig.update({ ...frame(tooth3), view: 1, restore: restoreParts(1, 0) });
+    expect(inlay.visible).toBe(false);
+    expect(inlay.position.y).toBeCloseTo(16, 5);
+    // Plain shows no inlay; out of the top view, or as the mark, nothing.
+    rig.update({ ...frame(tooth3), view: 1, restore: restoreParts(0, 1) });
+    expect(decal.visible).toBe(true);
+    expect(inlay.visible).toBe(false);
+    rig.update({ ...frame(tooth3), view: 0, restore: restoreParts(0, 1) });
+    expect(decal.visible).toBe(false);
+    rig.update({ ...frame(pose({ form: 'mark' })), view: 1, restore: restoreParts(0, 1) });
+    expect(decal.visible).toBe(false);
   });
 });

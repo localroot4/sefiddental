@@ -36,6 +36,8 @@ import { createStudio } from '../scenes/webgl/studio';
 import { ARCH_DEPTH, ARCH_ELEVATION, ARCH_SLOT, archLayout } from './arch';
 import type { Beats } from './beats';
 import { seatAmount, type Pose } from './pose';
+import type { RestoreParts } from './restore';
+import { createRestoreDecal } from './restoreDecal';
 
 /** The pass box is this much larger than the pose's scale: room for the turn and the shadow. */
 export const BOX_GROW = 1.5;
@@ -201,6 +203,8 @@ export interface CourierFrame {
   turn: number;
   /** 0..1 into the three-quarter top view at the restoration dock. */
   view?: number;
+  /** D3's restoration on the chewing surface this frame (restore.ts), shown with `view`. */
+  restore?: RestoreParts | null;
   beats: Beats;
   /** 0..1 of the idle motion (pose.ts idleAmount). */
   idle: number;
@@ -305,6 +309,9 @@ export function createCourierRig(
     }),
   );
   tooth.add(points);
+  // The top view's restoration (its 100-unit box: the crown's outline spans 84 units of it).
+  const decal = createRestoreDecal(CROWN_WIDTH / 84, MOLAR_Y.max - 0.04);
+  tooth.add(decal.group);
 
   // The arch: thirteen molars and the empty slot, in its own light.
   const archScene = new Scene();
@@ -356,6 +363,7 @@ export function createCourierRig(
       lean = 0,
       stretch,
       view = 0,
+      restore = null,
     }) {
       holder.rotation.z = lean;
       holder.scale.set(stretch?.[0] ?? 1, stretch?.[1] ?? 1, 1);
@@ -397,6 +405,7 @@ export function createCourierRig(
         // About 3 px points on a 200 px tooth, in proportion elsewhere.
         pointUniforms.uSize.value = Math.max(1.5, 0.016 * pixels);
       }
+      decal.update(isTooth ? restore : null, view * fade * pose.presence);
       studio.setWarm(beats.warm);
     },
     updateArch({ width, height, archWidth, dissolve, offsetX = 0, offsetY = 0 }) {

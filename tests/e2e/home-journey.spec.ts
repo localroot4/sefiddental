@@ -419,6 +419,57 @@ test.describe('phone, DOM courier', () => {
   });
 });
 
+/** The top view's CSS animations (globals.css courier-top), by part. */
+const topAnimations = (page: Page) =>
+  page.locator('[data-form="top"]').evaluate((svg) =>
+    svg.getAnimations({ subtree: true }).map((a) => ({
+      part: ((a as CSSAnimation).effect as KeyframeEffect).target?.getAttribute('class') ?? '',
+      state: a.playState,
+      at: Number(a.currentTime ?? 0),
+    })),
+  );
+
+test.describe('D3 top view, DOM courier', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(!['desktop-light', 'phone-light'].includes(testInfo.project.name), 'two widths');
+  });
+
+  test('T-JN13 tier 1: the top view plays its level as it comes in at D3, and again on each chip', async ({
+    page,
+  }) => {
+    const holds = await open(page, 'tier=1');
+    const hold = holds.find((h) => h.id === 'restoration')!;
+    await scrollToY(page, hold.start - 300);
+    await page.waitForTimeout(1500);
+    await scrollToY(page, (hold.start + hold.end) / 2);
+    const top = page.locator('[data-form="top"]');
+    expect(Number(await top.evaluate((el) => (el as SVGElement).style.opacity))).toBeGreaterThan(
+      0.9,
+    );
+    await expect(top).toHaveAttribute('data-top-level', '0');
+    // Coming in: the composite fill is still being laid, not finished since the page loaded.
+    const fill = (await topAnimations(page)).find((a) => a.part === 'ct-fill')!;
+    expect(fill.state, 'the fill plays on arrival').toBe('running');
+    // A chip: VIP's inlay seats now, CIP's layers after it.
+    for (const [name, level, part] of [
+      ['VIP', '1', 'ct-inlay'],
+      ['CIP', '2', 'ct-dentine'],
+    ] as const) {
+      await page
+        .locator('[data-scene="restoration"]')
+        .getByRole('radio', { name })
+        // The chips may sit off the phone's screen at the hold: the radio itself takes the click.
+        .dispatchEvent('click');
+      await expect(top).toHaveAttribute('data-top-level', level);
+      const played = (await topAnimations(page)).find((a) => a.part === part)!;
+      expect(played.state, `${name} plays`).toBe('running');
+    }
+    // Then everything holds still: no CSS animation runs at rest.
+    await page.waitForTimeout(3200);
+    expect((await topAnimations(page)).filter((a) => a.state === 'running')).toEqual([]);
+  });
+});
+
 test.describe('tablet, DOM courier', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'tablet-light', 'tablet journey rows run in tablet-light');
