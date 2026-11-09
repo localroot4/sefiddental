@@ -129,7 +129,12 @@ export function createJourney(opts: {
   const idle = (cb: (deadline: { timeRemaining(): number }) => void): number =>
     typeof requestIdleCallback === 'function'
       ? requestIdleCallback(cb, { timeout: 120 })
-      : window.setTimeout(() => cb({ timeRemaining: () => 8 }), 32);
+      : window.setTimeout(() => {
+          // WebKit has no idle callback: an 8 ms slot that really runs out (a constant would
+          // plan every travel in one long task).
+          const end = performance.now() + 8;
+          cb({ timeRemaining: () => Math.max(0, end - performance.now()) });
+        }, 32);
   const unidle = (id: number): void => {
     if (typeof cancelIdleCallback === 'function') cancelIdleCallback(id);
     else window.clearTimeout(id);
