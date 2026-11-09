@@ -38,7 +38,7 @@ over the scroll between them.
 
 | # | Dock | Section | Form at the dock | What happens while docked |
 |---|---|---|---|---|
-| D1 | `hero` | The hero photo's floor under the gap between the title card and the form card (from 744 px); under 744 px in the 4:5 photo band under the form | mark | Visible from the first view on the photo, above it and below the cards; slow float and turn, a light across the glaze; the first scroll takes it down from where it is |
+| D1 | `hero` | The hero photo's floor under the gap between the title card and the form card (from 744 px); under 744 px in the 4:5 photo band under the form | mark | Visible from the first view on the photo, above it and below the cards; slow float and turn, a light across the glaze; the first scroll takes it down from where it is. After the intro (tiers 1 to 3; never under reduced motion or at tier 0) it is born in the intro mark's hole, filling it exactly above the cards; once the overlay lifts it glides here in 600 ms on a critically damped spring and drops below the cards once clear of them. The canvas mounts only after the glide |
 | D2 | `services` | Services stage, above the track | mark | Turns a little per service as the track moves (the SVG icon morph stays the readable part) |
 | D3 | `restoration` | Restoration stage, the molar slot | tooth | The phase 8 restoration rig drives it: the three levels (filling, inlay, crown) |
 | D4 | `workflow` | Workflow diagonal | tooth | The beats on the tooth itself: point cloud, wireframe, solid, lit |

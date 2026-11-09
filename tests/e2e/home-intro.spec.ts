@@ -552,14 +552,6 @@ for (const tier of [1, 2] as const) {
     // Born while the overlay is up: the courier's mark (92 % of its box) fills the hole exactly,
     // above the cards.
     const born = frames.filter((f) => f.intro === 'playing' && f.hole !== null);
-    console.log(
-      'DBG',
-      testInfo.project.name,
-      frames.length,
-      Math.round(frames[0]?.t ?? -1),
-      Math.round(frames.at(-1)?.t ?? -1),
-      Math.round(end),
-    );
     expect(born.length, 'frames with the journey up under the overlay').toBeGreaterThan(0);
     for (const f of born) {
       expect(f.courier.shown, 'shown in the hole').toBe(true);
