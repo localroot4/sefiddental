@@ -476,3 +476,119 @@ test("T-IN11 the served page: a render-blocking expect link in <head> naming the
     description: `</head> ${head.length}, dialog ${dialog}, hero ${hero}, h1 ${h1}, script ${script} (UTF-16 offsets); hero to script ${span} B`,
   });
 });
+
+type HandoffFrame = {
+  t: number;
+  intro: string | null;
+  /** The intro mark's box (the frame's hole at its first scale), while the dialog is open. */
+  hole: { x: number; y: number; h: number } | null;
+  courier: { x: number; y: number; h: number; shown: boolean };
+  /** The shown place's distance from the pose (px). */
+  off: number;
+  lead: boolean;
+  z: string;
+  /** The courier's box overlaps a card it normally passes under. */
+  underCard: boolean;
+};
+
+for (const tier of [1, 2] as const) {
+  test(`T-IN12 ?tier=${tier}: the courier is born in the intro mark's hole, glides to D1 in about 600 ms once the overlay lifts, and drops under the cards only once clear of them`, async ({
+    page,
+  }, testInfo) => {
+    if (tier === 1) only(testInfo, 'phone-light', 'tablet-light', 'desktop-light');
+    else only(testInfo, 'desktop-light');
+    await page.addInitScript(() => {
+      const frames: HandoffFrame[] = [];
+      (window as unknown as { __handoff: HandoffFrame[] }).__handoff = frames;
+      const centre = (r: DOMRect) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+      const tick = (): void => {
+        const j = (
+          window as unknown as {
+            __sefidJourney?: {
+              pose(): { x: number; y: number };
+              shown(): { x: number; y: number };
+            };
+          }
+        ).__sefidJourney;
+        const box = document.querySelector('[data-courier]');
+        const layer = document.querySelector('[data-courier-layer]');
+        if (j && box && layer) {
+          const dialog = document.querySelector<HTMLDialogElement>('#intro');
+          const mark = dialog?.open ? dialog.querySelector('.i-m')?.getBoundingClientRect() : null;
+          const r = box.getBoundingClientRect();
+          const pose = j.pose();
+          const shown = j.shown();
+          frames.push({
+            t: performance.now(),
+            intro: document.documentElement.dataset.intro ?? null,
+            hole: mark ? { ...centre(mark), h: mark.height } : null,
+            courier: {
+              ...centre(r),
+              h: r.height,
+              shown: getComputedStyle(box).visibility === 'visible',
+            },
+            off: Math.hypot(shown.x - pose.x, shown.y - pose.y),
+            lead: layer.hasAttribute('data-courier-lead'),
+            z: getComputedStyle(layer).zIndex,
+            underCard: [
+              ...document.querySelectorAll('[data-above-courier] > :not([data-dock])'),
+            ].some((card) => {
+              const c = card.getBoundingClientRect();
+              return r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top;
+            }),
+          });
+        }
+        if (performance.now() < 6000) requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    await page.goto(`/?tier=${tier}&debug=1`);
+    await waitForEnd(page);
+    await page.waitForTimeout(1500);
+    const frames = await page.evaluate(
+      () => (window as unknown as { __handoff: HandoffFrame[] }).__handoff,
+    );
+    const end = (await marks(page)).end!;
+    // Born while the overlay is up: the courier's mark (92 % of its box) fills the hole exactly,
+    // above the cards.
+    const born = frames.filter((f) => f.intro === 'playing' && f.hole !== null);
+    console.log(
+      'DBG',
+      testInfo.project.name,
+      frames.length,
+      Math.round(frames[0]?.t ?? -1),
+      Math.round(frames.at(-1)?.t ?? -1),
+      Math.round(end),
+    );
+    expect(born.length, 'frames with the journey up under the overlay').toBeGreaterThan(0);
+    for (const f of born) {
+      expect(f.courier.shown, 'shown in the hole').toBe(true);
+      expect(Math.abs(f.courier.x - f.hole!.x), 'x on the hole').toBeLessThan(1);
+      expect(Math.abs(f.courier.y - f.hole!.y), 'y on the hole').toBeLessThan(1);
+      expect(Math.abs(f.courier.h * 0.92 - f.hole!.h), 'the mark fills the hole').toBeLessThan(1.5);
+      expect(f.lead, 'above everything').toBe(true);
+      expect(Number(f.z), 'above the cards (z 2)').toBeGreaterThan(2);
+    }
+    const hole = born.at(-1)!;
+    const start = frames.find((f) => f.t >= end)!;
+    expect(start.off, 'D1 is away from the hole').toBeGreaterThan(40);
+    // A glide, not a jump: still on its way 300 ms after the lift, on the pose by 700 ms.
+    const at = (ms: number) => frames.find((f) => f.t >= end + ms)!;
+    expect(at(300).off, 'mid-glide').toBeGreaterThan(1);
+    expect(at(300).off, 'mid-glide').toBeLessThan(start.off);
+    expect(at(700).off, 'landed on D1').toBeLessThan(0.5);
+    expect(
+      Math.hypot(start.courier.x - hole.courier.x, start.courier.y - hole.courier.y),
+    ).toBeLessThan(0.1 * start.off);
+    // Back on its own layer once landed, and never under a card while it leads.
+    const dropped = frames.findIndex((f) => f.t >= end && !f.lead);
+    expect(dropped, 'drops to its layer').toBeGreaterThan(0);
+    expect(frames[dropped]!.t - end, 'not before the glide ends').toBeGreaterThan(500);
+    for (const f of frames.slice(dropped)) {
+      expect(f.lead).toBe(false);
+      expect(f.z).toBe('1');
+    }
+    expect(frames.slice(dropped).every((f) => f.underCard === false || f.off < 0.5)).toBe(true);
+    expect(frames[dropped]!.underCard, 'clear of the cards when it drops').toBe(false);
+  });
+}

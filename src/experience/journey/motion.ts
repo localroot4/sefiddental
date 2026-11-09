@@ -29,6 +29,22 @@ const STRETCH = 0.05;
 /** A move of more than this share of the viewport height in one frame is taken at once. */
 const JUMP_VH = 0.5;
 
+/** The intro hand-off's glide from the intro mark's hole to D1 (s). */
+export const GLIDE_S = 0.6;
+/** The glide's spring (1/s): critically damped, about 99 % of the way at GLIDE_S. */
+const GLIDE_OMEGA = 12;
+const rise = (t: number): number => 1 - (1 + GLIDE_OMEGA * t) * Math.exp(-GLIDE_OMEGA * t);
+
+/**
+ * The share of the intro glide done `t` seconds after the overlay lifts: a critically damped
+ * spring's rise from rest, scaled to land exactly at GLIDE_S (MAX_LAG would hold the follow
+ * spring within 8 px of the pose, so the glide is its own curve).
+ */
+export function glide(t: number): number {
+  if (t >= GLIDE_S) return 1;
+  return t <= 0 ? 0 : rise(t) / rise(GLIDE_S);
+}
+
 export interface Shown {
   x: number;
   y: number;

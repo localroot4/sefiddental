@@ -14,9 +14,11 @@
  */
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
+import { subscribeIntro } from '../core/browserSignals';
+
 import { AWAY_ATTR, HERE_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
-import { measureDocks, measureObstacles, measureViewport } from './docks';
-import { createFollow, type Shown } from './motion';
+import { ABOVE_ATTR, measureDocks, measureObstacles, measureViewport } from './docks';
+import { createFollow, glide, type Shown } from './motion';
 import {
   courierPose,
   prepareLanes,
@@ -32,6 +34,8 @@ import {
 const LIVE_ATTR = 'data-world-live';
 /** Still frames before the driver lets go of the tick. */
 const STILL_FRAMES = 12;
+/** The courier's mark is this share of its box's height (JourneyLayer.tsx draws it so). */
+export const MARK_SHARE = 0.92;
 
 /** The stages the courier passes over whose own background the layer paints (section 6). */
 export const BANDS = [
@@ -61,6 +65,13 @@ export interface Frame {
   viewport: Viewport;
   /** The WebGL courier draws this frame: the DOM courier hides its own forms. */
   webgl: boolean;
+  /**
+   * The intro hand-off: 0 while the courier fills the intro mark's hole, rising to 1 over the
+   * glide to the pose; 1 without a hand-off. The breath and the turn come in with it.
+   */
+  born: number;
+  /** Above the cards: from the hole until the glide is over and the courier is clear of them. */
+  lead: boolean;
 }
 
 export interface Journey {
@@ -154,6 +165,40 @@ export function createJourney(opts: {
     planning = idle(plan);
   };
 
+  // The intro hand-off: born in the intro mark's hole while the overlay is up (the frame's hole
+  // at its first scale is exactly the mark's box), it glides to the pose once the overlay lifts.
+  // Only when the intro plays: never at tier 0 or under reduced motion.
+  let hole: { x: number; y: number; scale: number } | null = null;
+  /** 'hole' while the overlay is up, the glide's start (ms) after it, null without a hand-off. */
+  // The overlay itself, not isIntroDone(): its cap from navigation start would end the hole early
+  // on a page that started the intro late.
+  const playing = (): boolean => html.dataset.intro === 'playing';
+  let handoff: 'hole' | number | null = playing() ? 'hole' : null;
+  let lead = handoff !== null;
+  // The cards themselves, as the lanes see them (docks.ts measureObstacles).
+  const cards = [...root.querySelectorAll<HTMLElement>(`[${ABOVE_ATTR}] > :not([data-dock])`)];
+  const measureHole = (): void => {
+    const mark = document.querySelector('#intro[open] .i-m')?.getBoundingClientRect();
+    if (!mark || !(mark.height > 0)) return;
+    hole = {
+      x: mark.left + mark.width / 2,
+      y: mark.top + mark.height / 2,
+      scale: mark.height / MARK_SHARE,
+    };
+  };
+  const overCards = (at: Shown): boolean => {
+    const half = at.scale / 2;
+    return cards.some((card) => {
+      const c = card.getBoundingClientRect();
+      return (
+        at.x - half < c.right &&
+        at.x + half > c.left &&
+        at.y - half < c.bottom &&
+        at.y + half > c.top
+      );
+    });
+  };
+
   const spring = createFollow();
   let shown: Shown = { x: 0, y: 0, scale: 0, tilt: 0, sx: 1, sy: 1 };
   let lastOpacity = '';
@@ -164,6 +209,26 @@ export function createJourney(opts: {
     lanes?.use(scrollY);
     const pose = courierPose(scrollY, docks, viewport, tier, lanes);
     shown = spring.step(pose, dt, viewport.height);
+    let born = 1;
+    if (handoff !== null) {
+      born = handoff === 'hole' ? 0 : glide((performance.now() - handoff) / 1000);
+      if (born >= 1 || hole === null || pose.hidden) {
+        handoff = null;
+        born = 1;
+      } else {
+        const mix = (a: number, b: number): number => a + (b - a) * born;
+        shown = {
+          x: mix(hole.x, shown.x),
+          y: mix(hole.y, shown.y),
+          scale: mix(hole.scale, shown.scale),
+          tilt: shown.tilt * born,
+          sx: mix(1, shown.sx),
+          sy: mix(1, shown.sy),
+        };
+      }
+    }
+    // Back under the cards only once clear of them.
+    if (lead && handoff === null && !overCards(shown)) lead = false;
     const dim = Math.round(photoDim(pose) * 1000) / 1000;
     const opacity = `${Math.round(pose.smile * 1000) / 1000}|${dim}`;
     if (photo && opacity !== lastOpacity) {
@@ -186,7 +251,7 @@ export function createJourney(opts: {
       if (nextAway && away === false) part.dispatchEvent(new CustomEvent(LIFTOFF_EVENT));
       away = nextAway;
     }
-    render({ pose, shown, scrollY, docks, bands, viewport, webgl });
+    render({ pose, shown, scrollY, docks, bands, viewport, webgl, born, lead });
   };
 
   // Follow the tick while something moves; let go after a few still frames.
@@ -202,8 +267,9 @@ export function createJourney(opts: {
       else still = 0;
       lastY = y;
       apply(delta);
-      // Until the spring has landed on the pose (motion.ts), then the tick sleeps.
-      if (still >= STILL_FRAMES && spring.settled()) {
+      // Until the spring has landed on the pose (motion.ts) and the intro glide is over, then
+      // the tick sleeps.
+      if (still >= STILL_FRAMES && spring.settled() && handoff === null) {
         off?.();
         off = null;
       }
@@ -214,6 +280,7 @@ export function createJourney(opts: {
   const remeasure = (): void => {
     frame = 0;
     measure();
+    if (handoff === 'hole') measureHole();
     apply();
   };
   const schedule = (): void => {
@@ -230,6 +297,19 @@ export function createJourney(opts: {
   root.addEventListener('change', follow);
 
   measure();
+  if (handoff === 'hole') measureHole();
+  if (hole === null) {
+    handoff = null;
+    lead = false;
+  }
+  const unsubscribeIntro =
+    handoff === 'hole'
+      ? subscribeIntro(() => {
+          if (handoff !== 'hole' || playing()) return;
+          handoff = performance.now();
+          follow();
+        })
+      : null;
   apply();
 
   return {
@@ -248,6 +328,7 @@ export function createJourney(opts: {
     measure: remeasure,
     destroy() {
       destroyed = true;
+      unsubscribeIntro?.();
       off?.();
       off = null;
       if (frame !== 0) cancelAnimationFrame(frame);

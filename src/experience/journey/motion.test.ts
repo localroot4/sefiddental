@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createFollow } from './motion';
+import { createFollow, GLIDE_S, glide } from './motion';
 import { NO_POSE, type Pose } from './pose';
 
 const pose = (x: number, y: number, scale = 100): Pose => ({
@@ -74,5 +74,23 @@ describe('the drawn form stays in its lane', () => {
       const grown = turned * Math.max(shown.sx, shown.sy) + lag - (target.scale * 0.8) / 2;
       expect(grown).toBeLessThan(LANE_MARGIN);
     }
+  });
+
+  it("M5 the intro glide is the spring's own rise: from 0, never back, on 1 at GLIDE_S and after", () => {
+    expect(GLIDE_S).toBeCloseTo(0.6, 5);
+    expect(glide(0)).toBe(0);
+    expect(glide(-0.1)).toBe(0);
+    let last = 0;
+    for (let t = 0.01; t < GLIDE_S; t += 0.01) {
+      const e = glide(t);
+      expect(e).toBeGreaterThan(last);
+      expect(e).toBeLessThan(1);
+      last = e;
+    }
+    // Slow out of the hole (no velocity at the start), most of the way by half time.
+    expect(glide(0.02)).toBeLessThan(0.05);
+    expect(glide(GLIDE_S / 2)).toBeGreaterThan(0.7);
+    expect(glide(GLIDE_S)).toBe(1);
+    expect(glide(5)).toBe(1);
   });
 });

@@ -44,7 +44,8 @@ export function isIntroDone(): boolean {
   );
 }
 
-function subscribeIntro(onChange: () => void): () => void {
+/** Calls `onChange` when the intro may have ended (see isIntroDone); returns the unsubscribe. */
+export function subscribeIntro(onChange: () => void): () => void {
   document.addEventListener(INTRO_EVENT, onChange);
   const observer = new MutationObserver(onChange);
   observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-intro'] });

@@ -21,8 +21,15 @@ import { applyStyle } from '../core/applyStyle';
 import { levelFromChoice } from '../scenes/webgl/math';
 
 import { ARCH_SLOT, archLayout, footprintAngle, projectArch } from './arch';
-import { COURIER_Z } from './attrs';
-import { createJourney, type BandId, type Frame, type EngineTicks, type Journey } from './driver';
+import { COURIER_Z, LEAD_Z } from './attrs';
+import {
+  createJourney,
+  MARK_SHARE,
+  type BandId,
+  type Frame,
+  type EngineTicks,
+  type Journey,
+} from './driver';
 import { archFrame, CROWN_SHARE, domSpin, holdRanges, idleAmount, seatAmount } from './pose';
 
 /** The courier's box before its scale (px). */
@@ -139,7 +146,23 @@ export default function JourneyLayer(props: {
     applyStyle(layer.current, LAYER);
     let lastLevel = -1;
     let placed: Frame['bands'] | null = null;
-    const render = ({ pose, shown, scrollY, bands: measured, docks, webgl }: Frame): void => {
+    let led: boolean | null = null;
+    const render = ({
+      pose,
+      shown,
+      scrollY,
+      bands: measured,
+      docks,
+      webgl,
+      born,
+      lead,
+    }: Frame): void => {
+      // The intro hand-off: above the hero's cards from the intro mark's hole until clear of them.
+      if (lead !== led) {
+        led = lead;
+        layer.current?.toggleAttribute('data-courier-lead', lead);
+        layer.current?.style.setProperty('z-index', lead ? LEAD_Z : COURIER_Z);
+      }
       // The bands scroll with the page (document coordinates in `.site`): written only when a
       // measure moved them, never per frame, so a native fling never slides them.
       if (measured !== placed) {
@@ -177,14 +200,14 @@ export default function JourneyLayer(props: {
         // The breath moves the stage's HTML box about the courier, on the compositor (an animated
         // SVG element repaints on the main thread every frame, which starved the footer's drag
         // samples, T-BF10b).
-        breath?.style.setProperty('--breathe', String(idleAmount(pose)));
+        breath?.style.setProperty('--breathe', String(idleAmount(pose) * born));
         breath?.style.setProperty('--breathe-k', String(k));
         breath?.style.setProperty('transform-origin', `${shown.x}px ${shown.y}px`);
         // 1 except where a travel has no lane at all (route.ts, the last resort).
         box.style.setProperty('opacity', String(Math.round(pose.opacity * 1000) / 1000));
         // The turn about the vertical axis, seen flat: seated in the arch the tooth is a crown
         // seen from above, whose turn is the footprint's.
-        const turn = Math.cos(domSpin(pose));
+        const turn = Math.cos(domSpin(pose) * born);
         spin.current?.setAttribute('transform', `scale(${turn} 1)`);
         const isTooth = pose.form === 'tooth';
         const fade = pose.presence;
@@ -380,9 +403,9 @@ export default function JourneyLayer(props: {
                   data-form="mark"
                   viewBox="0 0 168.03 207.3"
                   x="-50"
-                  y="-46"
+                  y={-50 * MARK_SHARE}
                   width="100"
-                  height="92"
+                  height={100 * MARK_SHARE}
                 >
                   <use
                     href="#lockup-mark"
