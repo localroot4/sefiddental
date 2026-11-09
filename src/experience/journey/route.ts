@@ -51,6 +51,8 @@ const BLOCKED = 1e6;
  * (a lane may lie across the screen, or off a side).
  */
 const WINDOW_ROWS = 6;
+/** One planning step's time on this device before it gives the main thread back. */
+const SLICE_MS = 4;
 
 /** An index of the boxes by document top, for the ones on screen at one scroll position. */
 interface Index {
@@ -146,11 +148,19 @@ export interface RouteInput {
 }
 
 /**
- * The planning in steps: it yields every few samples, so the driver spreads one travel over idle
- * slots and no task runs long (a phone is several times slower than a desktop).
+ * The planning in steps: it yields every SLICE_MS, so the driver spreads one travel over idle slots
+ * and no task runs long (a phone is several times slower than a desktop).
  */
 export function* routeSteps(opts: RouteInput): Generator<void, Route> {
   const { y0, y1, base, viewport: vp, min } = opts;
+  // Steps end on time, not on a count: the work per sample differs several times along a travel.
+  let since = performance.now();
+  const due = (): boolean => {
+    const now = performance.now();
+    if (now - since < SLICE_MS) return false;
+    since = now;
+    return true;
+  };
   const n = Math.max(2, Math.min(MAX_SAMPLES, Math.ceil((y1 - y0) / STEP_PX)));
   const index = indexBoxes(opts.obstacles);
   const cols = Math.max(7, Math.min(24, Math.round(vp.width / 60)));
@@ -185,7 +195,7 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
   const rectsAt: Float64Array[] = [];
 
   for (let k = 0; k <= n; k += 1) {
-    if (k % 16 === 15) yield;
+    if (due()) yield;
     const b = base(k / n, at(k));
     bases.push(b);
     const rects = onScreen(index, at(k), vp.height);
@@ -274,7 +284,7 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
   cost[grid] = 0;
   const reach = Math.max(cellW, cellH) * 1.05 + (min * FORM) / 2 + LANE_MARGIN + 2;
   for (let k = 1; k <= n; k += 1) {
-    if (k % 8 === 0) yield;
+    if (due()) yield;
     const o = k * nodes;
     const p = (k - 1) * nodes;
     const last = k === n;
@@ -359,9 +369,8 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
 
   // Smooth the corners where the smoother place is still clear.
   for (let pass = 0; pass < 3; pass += 1) {
-    yield;
     for (let k = 1; k < n; k += 1) {
-      if (k % 32 === 0) yield;
+      if (due()) yield;
       const a = samples[k - 1]!;
       const b = samples[k]!;
       const c = samples[k + 1]!;
