@@ -523,6 +523,10 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
     const middle = (await page.locator(FIELD).boundingBox())!;
     const toward = at.x < middle.x + middle.width / 2 ? 1 : -1;
     const dx = name === 'still' ? 0 : 160 * toward;
+    // Recording starts before the drag: an evaluate between the flick and the release took over
+    // 100 ms in WebKit on the CI runner (run 124), so the release came after the throw's speed
+    // window, which a real flick does not.
+    await record();
     await pointer.down(at.x, at.y);
     // Up 150 px and held still; then (for the throw) a fast flick sideways over a few frames
     // right before the release.
@@ -532,7 +536,6 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
       await pointer.move(at.x + (dx * i) / 4, at.y - 150);
       await page.waitForTimeout(16);
     }
-    await record();
     await pointer.up();
     const released = await translation(page, 1);
     await page.waitForTimeout(400);
