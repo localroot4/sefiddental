@@ -14,6 +14,8 @@
  */
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
+import { introMarkBox } from '@/lib/intro/introMark';
+
 import { subscribeIntro } from '../core/browserSignals';
 
 import { AWAY_ATTR, HERE_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
@@ -36,6 +38,11 @@ const LIVE_ATTR = 'data-world-live';
 const STILL_FRAMES = 12;
 /** The courier's mark is this share of its box's height (JourneyLayer.tsx draws it so). */
 export const MARK_SHARE = 0.92;
+/**
+ * A journey that starts this soon after the intro (an engine that came late) still glides from the
+ * intro mark's place: the mark the reader just saw flies on to D1.
+ */
+const LATE_HANDOFF_MS = 800;
 
 /** The stages the courier passes over whose own background the layer paints (section 6). */
 export const BANDS = [
@@ -174,11 +181,16 @@ export function createJourney(opts: {
   // at its first scale is exactly the mark's box), it glides to the pose once the overlay lifts.
   // Only when the intro plays: never at tier 0 or under reduced motion.
   let hole: { x: number; y: number; scale: number } | null = null;
-  /** 'hole' while the overlay is up, the glide's start (ms) after it, null without a hand-off. */
   // The overlay itself, not isIntroDone(): its cap from navigation start would end the hole early
   // on a page that started the intro late.
   const playing = (): boolean => html.dataset.intro === 'playing';
-  let handoff: 'hole' | number | null = playing() ? 'hole' : null;
+  const ended = performance.getEntriesByName('intro:end')[0]?.startTime;
+  const late =
+    html.dataset.intro === 'done' &&
+    ended !== undefined &&
+    performance.now() - ended < LATE_HANDOFF_MS;
+  /** 'hole' while the overlay is up, the glide's time so far (s) after it, null without one. */
+  let handoff: 'hole' | number | null = playing() ? 'hole' : late ? 0 : null;
   let lead = handoff !== null;
   // The cards themselves, as the lanes see them (docks.ts measureObstacles).
   const cards = [...root.querySelectorAll<HTMLElement>(`[${ABOVE_ATTR}] > :not([data-dock])`)];
@@ -216,7 +228,9 @@ export function createJourney(opts: {
     shown = spring.step(pose, dt, viewport.height);
     let born = 1;
     if (handoff !== null) {
-      born = handoff === 'hole' ? 0 : glide((performance.now() - handoff) / 1000);
+      // Frame time, at most a 30 fps frame each: a long frame slows the glide, never skips it.
+      if (handoff !== 'hole') handoff += Math.min(dt, 1 / 30);
+      born = handoff === 'hole' ? 0 : glide(handoff);
       if (born >= 1 || hole === null || pose.hidden) {
         handoff = null;
         born = 1;
@@ -303,6 +317,11 @@ export function createJourney(opts: {
 
   measure();
   if (handoff === 'hole') measureHole();
+  else if (late) {
+    // The dialog is gone: the mark's place from the intro's own geometry (introMark.ts).
+    const mark = introMarkBox(window.innerWidth, window.innerHeight);
+    hole = { x: mark.x, y: mark.y, scale: mark.h / MARK_SHARE };
+  }
   if (hole === null) {
     handoff = null;
     lead = false;
@@ -311,10 +330,11 @@ export function createJourney(opts: {
     handoff === 'hole'
       ? subscribeIntro(() => {
           if (handoff !== 'hole' || playing()) return;
-          handoff = performance.now();
+          handoff = 0;
           follow();
         })
       : null;
+  if (late) follow();
   apply();
 
   return {

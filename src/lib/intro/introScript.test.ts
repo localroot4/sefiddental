@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { INTRO_MARK, introMarkBox } from '@/lib/intro/introMark';
 import { INTRO_CSS, INTRO_SCRIPT, INTRO_SCRIPT_SHA256 } from '@/lib/intro/introScript';
 
 type Mql = MediaQueryList & { fire: () => void };
@@ -301,5 +302,27 @@ describe('intro script: branches (D14, lane INTRO)', () => {
     vi.advanceTimersByTime(1300);
     expect(state()).toBe('done');
     expect(s.ended).toHaveBeenCalledOnce();
+  });
+});
+
+describe('intro mark place (introMark.ts)', () => {
+  it("IS11 the courier's late hand-off reads the same place and size as the stylesheet draws", () => {
+    expect(INTRO_CSS).toContain(
+      `.i-lk{position:absolute;left:${INTRO_MARK.x * 100}%;top:${INTRO_MARK.y * 100}%;`,
+    );
+    expect(INTRO_CSS).toContain(
+      `.i-m,.i-sl,.i-sr{left:-134.42px;top:-165.84px;width:268.85px;height:${INTRO_MARK.height}px}`,
+    );
+    expect(INTRO_CSS).toContain(`--k:${String(INTRO_MARK.scales[2][1]).slice(1)}}`);
+    expect(INTRO_CSS).toContain(`@media(min-width:744px){#intro{--k:.42}}`);
+    expect(INTRO_CSS).toContain(`@media(min-width:1280px){#intro{--k:.5}}`);
+    expect(INTRO_MARK.scales).toEqual([
+      [1280, 0.5],
+      [744, 0.42],
+      [0, 0.34],
+    ]);
+    expect(introMarkBox(1440, 900)).toEqual({ x: 720, y: 378, h: 331.68 * 0.5 });
+    expect(introMarkBox(820, 1180).h).toBeCloseTo(331.68 * 0.42, 6);
+    expect(introMarkBox(390, 844).h).toBeCloseTo(331.68 * 0.34, 6);
   });
 });

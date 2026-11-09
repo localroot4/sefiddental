@@ -226,4 +226,75 @@ describe('journey driver', () => {
     journey.setWebgl(true);
     expect(journey.webgl()).toBe(count);
   });
+
+  describe('the intro hand-off', () => {
+    afterEach(() => {
+      delete document.documentElement.dataset.intro;
+      performance.clearMarks('intro:end');
+    });
+
+    it("DR11 born in the intro mark's hole above the cards, it glides to the pose once the overlay lifts; a long frame slows the glide, never skips it", () => {
+      document.documentElement.dataset.intro = 'playing';
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        '<dialog id="intro" open><svg class="i-m"></svg></dialog>',
+      );
+      place(document.querySelector('#intro .i-m')!, 300, 166, 650, 134);
+      const { journey, last } = start();
+      expect(last()).toMatchObject({ lead: true, born: 0 });
+      expect(last().shown.x).toBeCloseTo(717, 6);
+      expect(last().shown.y).toBeCloseTo(383, 6);
+      expect(last().shown.scale).toBeCloseTo(166 / 0.92, 6);
+      // The overlay lifts.
+      document.documentElement.dataset.intro = 'done';
+      document.dispatchEvent(new CustomEvent('sefid:intro-end'));
+      expect(ticks).toHaveLength(1);
+      // One long frame (a busy main thread): a 30 fps step of the glide, not half a second.
+      for (const cb of [...ticks]) cb(0, 0.5);
+      expect(last().born).toBeGreaterThan(0);
+      expect(last().born).toBeLessThan(0.1);
+      runTicks(9);
+      const mid = last();
+      expect(mid.born).toBeGreaterThan(0.3);
+      expect(mid.born).toBeLessThan(1);
+      expect(mid.lead).toBe(true);
+      expect(Math.abs(mid.shown.x - mid.pose.x)).toBeGreaterThan(1);
+      runTicks(40);
+      expect(last()).toMatchObject({ lead: false, born: 1 });
+      expect(last().shown.x).toBeCloseTo(last().pose.x, 6);
+      // Then the tick sleeps again.
+      runTicks(20);
+      expect(ticks).toHaveLength(0);
+      journey.destroy();
+    });
+
+    it("DR12 a journey that comes up to 800 ms after the intro glides from the mark's place; later, or with no intro, none", () => {
+      const width = window.innerWidth;
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 913 });
+      document.documentElement.dataset.intro = 'done';
+      performance.mark('intro:end');
+      const late = start();
+      // 913 px: the lockup at .42 (introMark.ts), its mark at (50 %, 42 %) of the viewport.
+      expect(late.last()).toMatchObject({ lead: true, born: 0 });
+      expect(late.last().shown.x).toBeCloseTo(456.5, 6);
+      expect(late.last().shown.y).toBeCloseTo(0.42 * VIEW_H, 6);
+      expect(late.last().shown.scale).toBeCloseTo((331.68 * 0.42) / 0.92, 6);
+      expect(ticks).toHaveLength(1);
+      runTicks(40);
+      expect(late.last()).toMatchObject({ lead: false, born: 1 });
+      late.journey.destroy();
+      // Long after the intro, and with no intro at all: the courier starts on its pose.
+      const ended = performance.getEntriesByName('intro:end')[0]!.startTime;
+      const now = vi.spyOn(performance, 'now').mockReturnValue(ended + 2000);
+      const after = start();
+      expect(after.last()).toMatchObject({ lead: false, born: 1 });
+      after.journey.destroy();
+      now.mockRestore();
+      delete document.documentElement.dataset.intro;
+      const none = start();
+      expect(none.last()).toMatchObject({ lead: false, born: 1 });
+      none.journey.destroy();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    });
+  });
 });

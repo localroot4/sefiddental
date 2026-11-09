@@ -512,9 +512,16 @@ for (const tier of [1, 2] as const) {
         ).__sefidJourney;
         const box = document.querySelector('[data-courier]');
         const layer = document.querySelector('[data-courier-layer]');
+        const dialog = document.querySelector<HTMLDialogElement>('#intro');
+        const mark = dialog?.open ? dialog.querySelector('.i-m')?.getBoundingClientRect() : null;
+        // The intro mark's last place, journey or not (a late journey starts from it).
+        if (mark) {
+          (window as unknown as { __hole: HandoffFrame['hole'] }).__hole = {
+            ...centre(mark),
+            h: mark.height,
+          };
+        }
         if (j && box && layer) {
-          const dialog = document.querySelector<HTMLDialogElement>('#intro');
-          const mark = dialog?.open ? dialog.querySelector('.i-m')?.getBoundingClientRect() : null;
           const r = box.getBoundingClientRect();
           const pose = j.pose();
           const shown = j.shown();
@@ -549,33 +556,60 @@ for (const tier of [1, 2] as const) {
       () => (window as unknown as { __handoff: HandoffFrame[] }).__handoff,
     );
     const end = (await marks(page)).end!;
-    // Born while the overlay is up: the courier's mark (92 % of its box) fills the hole exactly,
-    // above the cards.
     const born = frames.filter((f) => f.intro === 'playing' && f.hole !== null);
-    expect(born.length, 'frames with the journey up under the overlay').toBeGreaterThan(0);
-    for (const f of born) {
-      expect(f.courier.shown, 'shown in the hole').toBe(true);
-      expect(Math.abs(f.courier.x - f.hole!.x), 'x on the hole').toBeLessThan(1);
-      expect(Math.abs(f.courier.y - f.hole!.y), 'y on the hole').toBeLessThan(1);
-      expect(Math.abs(f.courier.h * 0.92 - f.hole!.h), 'the mark fills the hole').toBeLessThan(1.5);
-      expect(f.lead, 'above everything').toBe(true);
-      expect(Number(f.z), 'above the cards (z 2)').toBeGreaterThan(2);
+    const lastHole = await page.evaluate(
+      () => (window as unknown as { __hole: HandoffFrame['hole'] }).__hole,
+    );
+    const first = frames[0]!;
+    // The glide starts at the lift, or for a journey that came up to 800 ms after it, at once from
+    // the intro mark's last place.
+    let from: number;
+    let hole: { x: number; y: number };
+    if (born.length > 0) {
+      // Born while the overlay is up: the courier's mark (92 % of its box) fills the hole exactly,
+      // above the cards.
+      for (const f of born) {
+        expect(f.courier.shown, 'shown in the hole').toBe(true);
+        expect(Math.abs(f.courier.x - f.hole!.x), 'x on the hole').toBeLessThan(1);
+        expect(Math.abs(f.courier.y - f.hole!.y), 'y on the hole').toBeLessThan(1);
+        expect(Math.abs(f.courier.h * 0.92 - f.hole!.h), 'the mark fills the hole').toBeLessThan(
+          1.5,
+        );
+        expect(f.lead, 'above everything').toBe(true);
+        expect(Number(f.z), 'above the cards (z 2)').toBeGreaterThan(2);
+      }
+      from = end;
+      hole = born.at(-1)!.courier;
+    } else if (first.t - end < 800) {
+      testInfo.annotations.push({ type: 'hand-off', description: "late: from the mark's place" });
+      expect(first.lead, 'above the cards from its first frame').toBe(true);
+      expect(Math.abs(first.courier.x - lastHole!.x), 'x on the mark').toBeLessThan(1.5);
+      expect(Math.abs(first.courier.y - lastHole!.y), 'y on the mark').toBeLessThan(1.5);
+      expect(Math.abs(first.courier.h * 0.92 - lastHole!.h), "the mark's size").toBeLessThan(1.5);
+      from = first.t;
+      hole = lastHole!;
+    } else {
+      // A phone's engine waits up to 1500 ms after load for its probe (phone spec D23), often past
+      // the intro: then no hand-off at all, and the courier keeps its own layer from the start.
+      expect(testInfo.project.name, 'only a phone may miss the hand-off').toMatch(/^phone/);
+      testInfo.annotations.push({ type: 'hand-off', description: 'none: the engine came later' });
+      expect(frames.every((f) => !f.lead && f.z === '1')).toBe(true);
+      return;
     }
-    const hole = born.at(-1)!;
-    const start = frames.find((f) => f.t >= end)!;
+    const start = frames.find((f) => f.t >= from)!;
     expect(start.off, 'D1 is away from the hole').toBeGreaterThan(40);
-    // A glide, not a jump: still on its way 300 ms after the lift, on the pose by 700 ms.
-    const at = (ms: number) => frames.find((f) => f.t >= end + ms)!;
+    // A glide, not a jump: still on its way 300 ms in, on the pose by 700 ms.
+    const at = (ms: number) => frames.find((f) => f.t >= from + ms)!;
     expect(at(300).off, 'mid-glide').toBeGreaterThan(1);
     expect(at(300).off, 'mid-glide').toBeLessThan(start.off);
     expect(at(700).off, 'landed on D1').toBeLessThan(0.5);
-    expect(
-      Math.hypot(start.courier.x - hole.courier.x, start.courier.y - hole.courier.y),
-    ).toBeLessThan(0.1 * start.off);
+    expect(Math.hypot(start.courier.x - hole.x, start.courier.y - hole.y)).toBeLessThan(
+      0.1 * start.off,
+    );
     // Back on its own layer once landed, and never under a card while it leads.
-    const dropped = frames.findIndex((f) => f.t >= end && !f.lead);
+    const dropped = frames.findIndex((f) => f.t >= from && !f.lead);
     expect(dropped, 'drops to its layer').toBeGreaterThan(0);
-    expect(frames[dropped]!.t - end, 'not before the glide ends').toBeGreaterThan(500);
+    expect(frames[dropped]!.t - from, 'not before the glide ends').toBeGreaterThan(500);
     for (const f of frames.slice(dropped)) {
       expect(f.lead).toBe(false);
       expect(f.z).toBe('1');
