@@ -13,24 +13,35 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { addAfterEffect, addEffect, useThree } from '@react-three/fiber';
-import type { BufferGeometry, Camera, Scene, WebGLRenderer } from 'three';
+import {
+  PMREMGenerator,
+  type BufferGeometry,
+  type Camera,
+  type Scene,
+  type Texture,
+  type WebGLRenderer,
+} from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
 import type { Pulse } from '../canvas/pulse';
 import { MODELS } from '../world/assets';
 import { brandGeometry } from '../world/brandGeometry';
 import { pageLeaving, useMolar, useRigLifetime } from '../scenes/webgl/hooks';
-import { damp, levelFromChoice, passViewport, ramp, turntableYaw } from '../scenes/webgl/math';
+import { damp, levelFromChoice, passViewport, ramp } from '../scenes/webgl/math';
 
 import { workflowBeats } from './beats';
 import { COURIER } from './courier';
+import { COURIER_OFF_ATTR } from './attrs';
 import { BOX_GROW, createCourierRig, type CourierRig } from './courierRig';
 import type { Journey } from './driver';
-import { archFrame, viewportTop } from './pose';
+import { archFrame, idleAmount, smoothstep, viewportTop } from './pose';
+/** Seconds of idle float and turn at a dock after the last move (then the canvas sleeps). */
+const IDLE_S = 12;
 
 /** The WebGL courier draws from this tier; tier 1 keeps the DOM courier. */
 export const WEBGL_COURIER_TIER = COURIER.minTier;
-/** Seconds: a level change reads as one turn, close to the SVG crossfade (--dur-4). */
-const LEVEL_TAU = 0.3;
+/** Seconds: a level change eases in about 0.55 s, damped, never overshooting. */
+const LEVEL_TAU = 0.18;
 
 function drawPass(
   gl: WebGLRenderer,
@@ -88,6 +99,33 @@ export function WebglCourier(props: {
   // The theme now and on every change; disposes the rig when it goes.
   useRigLifetime(rig);
 
+  // The studio environment: a room PMREM built once from the renderer (no file), for real
+  // reflections in the glaze and the enamel; freed with the rig.
+  useEffect(() => {
+    if (rig === null) return;
+    const { gl } = get();
+    let env: Texture | null = null;
+    const build = (): void => {
+      env?.dispose();
+      const pmrem = new PMREMGenerator(gl);
+      const room = new RoomEnvironment();
+      env = pmrem.fromScene(room, 0.04).texture;
+      room.dispose();
+      pmrem.dispose();
+      rig.setEnvironment(env);
+    };
+    build();
+    // A lost context takes the PMREM's render target with it: built again on restore (else the
+    // glaze reflects black).
+    const canvas = gl.domElement;
+    canvas.addEventListener('webglcontextrestored', build);
+    return () => {
+      canvas.removeEventListener('webglcontextrestored', build);
+      rig.setEnvironment(null);
+      env?.dispose();
+    };
+  }, [rig, get]);
+
   useEffect(() => {
     if (journey === null || rig === null || tier < WEBGL_COURIER_TIER) {
       journey?.setWebgl(false);
@@ -113,17 +151,47 @@ export function WebglCourier(props: {
       dock === 'restoration' ? levelFromChoice(choices?.getAttribute('data-choice') ?? null) : 0;
 
     // Before the World decides: a frame only when what the courier shows changed (the pose, the
-    // level easing to a chip, the canvas still fading in). No idle motion: at rest the canvas
-    // keeps its last frame and the ticker sleeps.
+    // level easing to a chip, the canvas still fading in), and the idle float and turn at a dock
+    // for IDLE_S after the last move, easing out to the rest pose: then the canvas keeps its last
+    // frame and the ticker sleeps.
     let signature = '';
+    let quietSince = performance.now();
+    const idleEnvelope = (): number => {
+      const quiet = (performance.now() - quietSince) / 1000;
+      return 1 - smoothstep(Math.min(1, Math.max(0, (quiet - IDLE_S + 3) / 3)));
+    };
     const offAsk = addEffect(() => {
       const p = journey.pose();
-      const next = [p.x, p.y, p.scale, p.rotation, p.arch, p.smile, p.opacity, p.local]
+      const sh = journey.shown();
+      const next = [
+        sh.x,
+        sh.y,
+        sh.scale,
+        sh.tilt,
+        sh.sx,
+        p.x,
+        p.y,
+        p.scale,
+        p.rotation,
+        p.arch,
+        p.smile,
+        p.opacity,
+        p.local,
+        p.presence,
+      ]
         .map((v) => v.toFixed(2))
-        .concat(p.form, String(p.hidden), String(target(p.dock)))
+        .concat(
+          p.form,
+          String(p.hidden),
+          String(target(p.dock)),
+          String(document.documentElement.hasAttribute(COURIER_OFF_ATTR)),
+        )
         .join('|');
       if (next !== signature || Math.abs(level - target(p.dock)) > 0.001 || !shown) {
+        if (next !== signature) quietSince = performance.now();
         signature = next;
+        pulse.request();
+      } else if (p.dock !== null && idleAmount(p) > 0 && idleEnvelope() > 0) {
         pulse.request();
       }
     });
@@ -136,14 +204,18 @@ export function WebglCourier(props: {
       const pose = journey.pose();
       const scrollY = window.scrollY;
 
+      // A check of the page's own pixels switches the courier off (COURIER_OFF_ATTR).
+      const off = document.documentElement.hasAttribute(COURIER_OFF_ATTR);
       const smile = journey.docks().find((d) => d.id === 'smile');
-      if (smile && pose.dock === 'smile' && pose.arch > 0 && pose.smile < 1) {
+      if (!off && smile && pose.dock === 'smile' && pose.arch > 0 && pose.smile < 1) {
         const frame = archFrame(smile, scrollY, pose.local);
         const top = viewportTop(smile, scrollY);
         rig.updateArch({
           width: smile.width,
           height: smile.height,
           archWidth: frame.width,
+          offsetX: frame.cx - (smile.left + smile.width / 2),
+          offsetY: frame.cy - (top + smile.height / 2),
           // It appears out of the dissolve and leaves into it, as the smile photo comes in.
           dissolve: Math.max(1 - pose.arch, pose.smile),
         });
@@ -156,26 +228,33 @@ export function WebglCourier(props: {
         );
       }
 
-      if (!pose.hidden && pose.opacity > 0.005) {
+      if (!off && !pose.hidden && pose.opacity > 0.005 && pose.presence > 0.005) {
         const atRestoration = pose.dock === 'restoration';
         level = damp(level, target(pose.dock), dt, LEVEL_TAU);
         const settle = atRestoration
           ? ramp(pose.local, 0, 0.12) * (1 - ramp(pose.local, 0.88, 1))
           : 0;
-        const side = pose.scale * BOX_GROW;
+        // The shown place: the pose with its spring, lean and squash (motion.ts).
+        const shown = journey.shown();
+        const side = shown.scale * BOX_GROW;
         rig.update({
           pose,
-          time: 0,
+          lean: shown.tilt,
+          stretch: [shown.sx, shown.sy],
+          time: performance.now() / 1000,
           level: Math.round(level * 1000) / 1000,
-          turn: settle * turntableYaw(level, pose.local, 0),
+          // D3: no turn between the levels (the owner: «one left, one right»); the tooth eases
+          // into a three-quarter top view, its chewing surface the subject of the shot.
+          turn: 0,
+          view: settle,
           beats: workflowBeats(pose.dock === 'workflow' ? pose.local : null),
-          idle: 0,
+          idle: pose.dock !== null ? idleAmount(pose) * idleEnvelope() : 0,
           pixels: pose.scale * gl.getPixelRatio(),
         });
         drawPass(
           gl,
           size,
-          { left: pose.x - side / 2, top: pose.y - side / 2, width: side, height: side },
+          { left: shown.x - side / 2, top: shown.y - side / 2, width: side, height: side },
           rig.scene,
           rig.camera,
         );

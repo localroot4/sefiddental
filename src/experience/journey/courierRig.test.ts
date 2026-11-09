@@ -69,7 +69,7 @@ describe('courier rig', () => {
     const tilt = () => rig.scene.children[1]!.children[0]!.rotation.x;
     rig.update(frame(pose({ form: 'tooth', arch: 0 })));
     const before = tilt();
-    rig.update(frame(pose({ form: 'tooth', arch: 1 })));
+    rig.update(frame(pose({ form: 'tooth', arch: 1, lift: 0 })));
     expect(tilt()).toBeGreaterThan(before);
     rig.update(frame(pose({ form: 'mark' })));
     expect(tilt()).toBe(0);

@@ -1,6 +1,5 @@
 import { ButtonLink } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
-import { Chip } from '@/components/ui/Field';
 import { TextLink } from '@/components/ui/TextLink';
 import { t } from '@/i18n/fa';
 import { PAGE_PATHS } from '@/lib/paths';
@@ -21,6 +20,17 @@ const PANEL = [
   'group-data-[choice=3]/tiers:grid noscript:group-has-[label:nth-of-type(3)>input:checked]/tiers:grid lg:[[data-pins]_&]:group-data-[choice=3]/tiers:visible',
   'group-data-[choice=4]/tiers:grid noscript:group-has-[label:nth-of-type(4)>input:checked]/tiers:grid lg:[[data-pins]_&]:group-data-[choice=4]/tiers:visible',
 ];
+// The segmented control's indicator under the chosen level, by its position (RTL: the start is
+// the right, so later levels move it left).
+const SLIDE =
+  'group-data-[choice=2]/tiers:-translate-x-full group-data-[choice=3]/tiers:-translate-x-[200%] group-data-[choice=4]/tiers:-translate-x-[300%] ltr:group-data-[choice=2]/tiers:translate-x-full ltr:group-data-[choice=3]/tiers:translate-x-[200%] ltr:group-data-[choice=4]/tiers:translate-x-[300%]';
+// The track's columns and the indicator's width per number of levels (static classes).
+const SEGMENTS: Record<number, { cols: string; width: string }> = {
+  1: { cols: 'grid-cols-1', width: 'w-[calc(100%-6px)]' },
+  2: { cols: 'grid-cols-2', width: 'w-[calc((100%-6px)/2)]' },
+  3: { cols: 'grid-cols-3', width: 'w-[calc((100%-6px)/3)]' },
+  4: { cols: 'grid-cols-4', width: 'w-[calc((100%-6px)/4)]' },
+};
 // Pinned (html[data-pins] from 1024 px): every panel sits in one grid cell and the unchosen ones
 // are only invisible, so the sticky stage keeps one height whatever the scroll checks. A height
 // change there moved the reader by Chrome's scroll anchoring (70 px on a reload at VIP, F2).
@@ -72,20 +82,44 @@ export function RestorationSection(props: {
           <div className="grid content-start gap-6">
             <fieldset className="min-w-0" aria-describedby="home-tiers-note">
               <legend className="sr-only">{t('home.restoration.legend')}</legend>
-              <div className="flex flex-wrap gap-2">
+              {/* A segmented control: the same radio group, one track; the chosen level raises
+                  its own surface (its text's background, for every contrast check) and a brand
+                  bar slides under it, below the text (none until one is chosen, F24). */}
+              <div
+                className={`relative grid max-w-[26rem] rounded-pill bg-surface-sunken p-[3px] ring-1 ring-line ring-inset ${SEGMENTS[tiers.length]?.cols ?? ''}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className={`pointer-events-none absolute start-[3px] bottom-[5px] h-[3px] px-[18%] opacity-0 transition-[translate,opacity] duration-(--dur-3) ease-out motion-reduce:transition-none group-data-choice/tiers:opacity-100 ${SLIDE} ${SEGMENTS[tiers.length]?.width ?? ''}`}
+                >
+                  <span className="block size-full rounded-full bg-brand" />
+                </span>
                 {tiers.map((tier) => (
-                  <Chip
+                  <label
                     key={tier.key}
-                    name="home-tier"
-                    value={tier.key}
-                    label={ltr(tier.name)}
-                    className="min-w-24 justify-center"
-                  />
+                    className="relative flex min-h-target cursor-pointer rounded-pill"
+                  >
+                    <input
+                      type="radio"
+                      name="home-tier"
+                      value={tier.key}
+                      className="peer absolute inset-0 m-0 size-full cursor-pointer rounded-[inherit] opacity-0"
+                    />
+                    {/* The segment's face: the text on its own surface, which the chosen level
+                        raises (no box behind the text, so every contrast check reads it). */}
+                    <span className="pointer-events-none flex flex-1 items-center justify-center rounded-pill px-3 text-small font-medium text-ink transition-[background-color,box-shadow,color] duration-(--dur-2) peer-checked:bg-surface-raised peer-checked:font-semibold peer-checked:text-brand-strong peer-checked:shadow-raised peer-checked:ring-1 peer-checked:ring-brand/50 peer-checked:ring-inset motion-reduce:transition-none forced-colors:peer-checked:outline-2 forced-colors:peer-checked:-outline-offset-2 forced-colors:peer-checked:outline-[Highlight] forced-colors:peer-checked:outline-solid">
+                      {ltr(tier.name)}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute inset-0 rounded-pill outline-offset-2 outline-focus peer-focus-visible:outline-2"
+                    />
+                  </label>
                 ))}
               </div>
               {/* What the levels differ in, before a chip is chosen (the brief's tier facts). One
                   caption line at 1024 px, so the pinned stage still fits a 768 px viewport. */}
-              <p id="home-tiers-note" className="mt-2 text-caption text-ink-muted">
+              <p id="home-tiers-note" className="mt-[0.25rem] text-caption text-ink-muted">
                 {ltr(t('home.restoration.levels'))}
               </p>
             </fieldset>

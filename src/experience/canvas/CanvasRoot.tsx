@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * The one fixed canvas behind the home content (spec EXP 3.9). Imported with a plain `import()`
- * after the gates, so no three.js byte loads before `load`. Transparent (the journey,
- * docs/experience/journey.md): it draws the courier over the page's own surfaces. It renders
- * inside the experience root, under every section of `.site` (z-index -1, after the warm layer
- * and the journey layer in tree order), with no transformed, filtered or contained ancestor up
- * to `.site` (WarmLayer.tsx has the same rule, which `position: fixed` needs); decorative,
- * `aria-hidden`, no pointer events.
+ * The one fixed canvas of the home page (spec EXP 3.9). Imported with a plain `import()` after
+ * the gates, so no three.js byte loads before `load`. Transparent (the journey,
+ * docs/experience/journey.md): it draws the courier over the page's own surfaces, above the
+ * sections' boxes and below the header, the sticky bar and the boxes marked
+ * `[data-above-courier]` (z-index COURIER_Z in `.site`); the courier's lanes keep it off all text
+ * and controls. No transformed, filtered or contained ancestor up to `.site` (WarmLayer.tsx has
+ * the same rule, which `position: fixed` needs); decorative, `aria-hidden`, no pointer events.
  */
 import { useCallback, useEffect, useState } from 'react';
 
@@ -19,6 +19,7 @@ import type { TierSettings } from '@/lib/qualityTier';
 import { applyStyle } from '../core/applyStyle';
 import type { FrameRuntime } from '../core/store';
 import type { ScrollEngine } from '../engine/scrollEngine';
+import { COURIER_Z } from '../journey/attrs';
 import type { Journey } from '../journey/driver';
 import type { StepSource } from '../tier/tierStore';
 import { World } from '../world/World';
@@ -48,7 +49,7 @@ export interface CanvasRootProps {
 const LAYER_STYLE = {
   position: 'fixed',
   inset: '0',
-  'z-index': '-1',
+  'z-index': COURIER_Z,
   'pointer-events': 'none',
   contain: 'strict',
 } as const;

@@ -62,12 +62,14 @@ describe('home hero markup', () => {
     // The band leaves the photo's bounds: it is outside the clipping wrapper.
     const wrapper = html.indexOf('lg:overflow-clip');
     expect(wrapper).toBeLessThan(photo);
-    // From 1024 px the sunken surface is the wrapper's, in its own stacking context (under the
-    // photo), and the section is transparent: the band shows the page surface.
+    // From 1024 px the sunken surface is the wrapper's, painted before the photo, and the section
+    // is transparent: the band shows the page surface. No stacking context of its own: the
+    // journey's courier paints above the photo and below the cards (`data-above-courier`, z 2).
     expect(html.slice(0, wrapper)).toContain('lg:bg-transparent');
     const wrapperClass = html.slice(html.lastIndexOf('class="', wrapper), wrapper);
-    expect(wrapperClass).toContain('lg:isolate');
+    expect(wrapperClass).not.toContain('isolate');
     expect(html.slice(wrapper, wrapper + 40)).toContain('lg:bg-surface-sunken');
+    expect(html).toContain('data-above-courier=""');
     expect(html).not.toContain('style=');
   });
 

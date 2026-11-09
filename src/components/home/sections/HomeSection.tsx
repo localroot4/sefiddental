@@ -36,14 +36,18 @@ export function PinRoom(props: { vh: 1 | 2 }) {
 }
 
 /**
- * The header-row docks: the dentists' clear of the «همهٔ پزشکان» link; the workflow's at the end
- * edge (no action there), only while the stage is not the pinned diagonal, which has its own.
+ * The workflow's header-row dock: an empty box at the end edge (no action there), only while the
+ * stage is not the pinned diagonal, which has its own.
  */
-const HEADER_DOCK = {
-  dentists: 'absolute end-[9rem] top-0 hidden h-[min(8rem,100%)] w-[min(13rem,22%)] md:block',
-  workflow:
-    'absolute end-0 top-0 hidden h-[min(8rem,100%)] w-[min(13rem,24%)] md:block lg:[[data-pins]_&]:hidden',
-} as const;
+const WORKFLOW_DOCK =
+  'absolute end-0 top-0 hidden h-[min(8rem,100%)] w-[min(13rem,24%)] md:block lg:[[data-pins]_&]:hidden';
+
+/**
+ * D6 (docs/experience/journey.md): the mark settles as the heading's emblem, an inline box a small
+ * gap after the heading's last word, 1.3 em square (about 1.6 cap heights for the form inside),
+ * centred on the line; empty and `aria-hidden`, so the heading reads as before. At every width.
+ */
+const EMBLEM = 'ms-[0.35em] inline-block size-[1.3em] align-[-0.32em]';
 
 export const media = (value: number | Media | null | undefined): Media | null =>
   typeof value === 'object' && value !== null ? value : null;
@@ -64,27 +68,38 @@ export function HomeSection(props: {
   /** The whole section is a pinned stage for this many viewport heights (`PinRoom`). */
   pin?: 1 | 2;
   /**
-   * A journey dock in the header row (docs/experience/journey.md): an empty box at the end side,
-   * clear of the action, from 744 px (tablets too); absolute, so the header keeps its height.
+   * A journey dock in the header row (docs/experience/journey.md): the workflow's an empty box at
+   * the end side, clear of the action, from 744 px (tablets too), absolute, so the header keeps its
+   * height; the dentists' the heading's emblem at every width.
    */
-  dock?: keyof typeof HEADER_DOCK;
+  dock?: 'dentists' | 'workflow';
   children: ReactNode;
 }) {
   const id = `home-${props.section}-title`;
+  const emblem = props.dock === 'dentists';
   const heading = props.copy ? (
     <SectionHeader
       id={id}
-      title={props.copy.heading}
+      title={
+        emblem ? (
+          <>
+            {props.copy.heading}
+            <span data-dock="dentists" aria-hidden="true" className={EMBLEM} />
+          </>
+        ) : (
+          props.copy.heading
+        )
+      }
       lead={props.copy.intro ? ltr(props.copy.intro) : undefined}
       action={props.action}
       className={props.split ? 'lg:mb-0 lg:self-start' : undefined}
     />
   ) : null;
   const header =
-    heading && props.dock ? (
+    heading && props.dock === 'workflow' ? (
       <div className="relative">
         {heading}
-        <div data-dock={props.dock} aria-hidden="true" className={HEADER_DOCK[props.dock]} />
+        <div data-dock="workflow" aria-hidden="true" className={WORKFLOW_DOCK} />
       </div>
     ) : (
       heading

@@ -17,9 +17,17 @@ and 10. The page copy, layout, scroll pins and DOM fallbacks of phase 7 stay.
 - Material: porcelain or glass with studio light (one key, one fill, one rim); no
   environment map at tier 1. No gems, dust, reliefs or film grain anywhere: remove
   them (`world/Dust.tsx`, the trust, services and booking world scenes, the gems).
-- The canvas stays one fixed, `aria-hidden`, `pointer-events: none` layer under the
-  DOM text (CanvasRoot, phase 8 gates unchanged). The courier never covers text, a
-  CTA or a form field: every dock is a DOM box that holds no text.
+- Design intent (polish, 2026-11-07): experience mode; a calm, premium object that
+  is always there: glazed brand-teal porcelain with real studio reflections (a room
+  PMREM built at runtime), a soft rim and contact shadow; motion that eases and
+  settles (a critically damped follow, a lean into the move, a slow idle float and
+  a light across the glaze at a dock), never a ghost.
+- The canvas and the DOM courier are fixed, `aria-hidden`, `pointer-events: none`
+  layers at `z-index: 1` in `.site` (journey/attrs.ts `COURIER_Z`): above the
+  sections' boxes, below the header, the sticky bar and the boxes marked
+  `[data-above-courier]` (the hero's cards). The courier never covers text, a CTA or
+  a field: every dock is a DOM box that holds no text, and every travel goes through
+  the clear lanes between them (section 3).
 
 ## 2. Stations
 
@@ -30,12 +38,12 @@ over the scroll between them.
 
 | # | Dock | Section | Form at the dock | What happens while docked |
 |---|---|---|---|---|
-| D1 | `hero` | Hero, beside the headline on the photo side | mark | Rises out of the hero photo at the end of the intro (it takes over from the intro's SVG mark at the same screen box), slow idle turn |
+| D1 | `hero` | The hero photo's floor under the gap between the title card and the form card (from 744 px); under 744 px in the 4:5 photo band under the form | mark | Visible from the first view on the photo, above it and below the cards; slow float and turn, a light across the glaze; the first scroll takes it down from where it is |
 | D2 | `services` | Services stage, above the track | mark | Turns a little per service as the track moves (the SVG icon morph stays the readable part) |
 | D3 | `restoration` | Restoration stage, the molar slot | tooth | The phase 8 restoration rig drives it: the three levels (filling, inlay, crown) |
 | D4 | `workflow` | Workflow diagonal | tooth | The beats on the tooth itself: point cloud, wireframe, solid, lit |
-| D5 | `smile` | New band between workflow and before/after | tooth, then the arch | The tooth flies into the empty slot of a full arch and seats with a soft click. The camera pulls back; the arch dissolves into a smiling face photo (a demo stock photo, `DEMO_CONTENT` only) |
-| D6 | `dentists` | Dentists heading, end side | mark | Small, idle; it leaves the smile as a mark (whip at the start of travel) |
+| D5 | `smile` | The arch band between workflow and before/after, a stage that sticks while the journey runs | tooth, then the arch | The upper arch seen from below (section 9), its teeth where the photo's are. The tooth flies into the empty first molar and seats with a soft click, the camera pulls back, the arch cross-fades into the occlusal photo registered; a glint runs along the teeth and the tooth condenses at the first molar and lifts off toward the reader while the photo dims and settles back |
+| D6 | `dentists` | An emblem a small gap after the dentists heading, 1.3 em square, on its line (every width) | mark | As it arrives a soft teal light sweeps the cards' portraits from the left, on their top edge only; then it rests as the heading's emblem |
 | D7 | `booking` | The empty slot under the hours | mark | Breathes beside the form (phase 8 booking stage rules stay: the stage is transparent only while the courier paints there) |
 | D8 | `footer` | The footer playground's mark home | mark | Falls into the footer field and hands over to the playground (section 4) |
 
@@ -44,13 +52,13 @@ Docks per width (a dock that is not rendered is skipped):
 | Width | Docks |
 |---|---|
 | From 1024 px | All eight. D4 is the pinned diagonal's strip at tiers 2-3 with pins; otherwise the empty box at the end of the workflow header row |
-| 744-1023 px (tablets in portrait) | D2, D3, D4 (header box), D5, D6, D7 (under the hours, closing the stacked column), D8. No D1: under 1024 px the hero is the full photo and the courier cannot draw over it |
-| Under 744 px (phones) | D2, D3, D5, D8 |
+| 744-1023 px (tablets in portrait) | All eight: D1 on the hero photo under the cards, D4 the header box, D7 under the hours (closing the stacked column) |
+| Under 744 px (phones) | D1 (in the 4:5 photo band, when the hero has one), D2, D3, D5, D6 (the heading's emblem), D8 |
 
 Travel between docks: a cubic path from one dock's centre to the next, eased
 (`power2.inOut` on the scroll between them), with a small arc toward the page's
 middle and a turn of at most 180 degrees. Scale follows the dock size. Speed is
-bounded: a travel spans at least 60 vh of scroll.
+bounded: a travel spans at least 45 vh of scroll (less where docks stand closer than that).
 
 ## 3. One pose function
 
@@ -60,6 +68,24 @@ frame. Everything that moves the courier reads it: the WebGL courier, the DOM
 courier and the tests. Same input, same output, so reverse scroll is exact and a
 reload at any place shows the right pose at once. It has unit tests for every dock,
 both travel ends, the whip, a resize, and a page that opens mid-journey.
+
+
+Lanes (`route.ts`): measured with the docks, never per frame, the page's text and
+control boxes, the children of `[data-above-courier]`, and whole `[data-courier-wall]`
+boxes (a card rail or the services track, whose contents move sideways) are the
+obstacles; a scrubbed entrance (`[data-scrub]`) is measured at rest. Each travel is
+planned once: at scroll samples every 12 px the courier may stay on the eased path or
+take a grid place, smaller down to a minimum, or peek in from a side; a shortest path
+(one grid step per sample, the way between two samples checked against the scrolling
+boxes) prefers the eased path, full size and calm motion. Where no place on screen is
+clear (a phone's full-width text) it leaves the frame at a side and comes back, never
+a ghost. A travel floats on screen between its two docks' poses and rides with them at
+both ends; a hold ends before its dock reaches the header or the sticky bar.
+
+Secondary motion (`motion.ts`, render only): the shown place follows the pose with a
+critically damped spring (about 0.3 s, no overshoot), leans into a sideways move and
+squashes a little with the scroll's speed, and stretches through the whip; at rest it
+lands on the pose exactly, and a jump of more than half a screen is taken at once.
 
 ## 4. Footer hand-off
 
@@ -131,28 +157,30 @@ Anything else unlisted stays tier 1. `?tier=` still overrides.
 - Code: `src/experience/journey/` (pose, docks, arch, beats, driver, the DOM and WebGL
   couriers). The pose is pure and unit-tested; `?debug=1` installs `window.__sefidJourney`
   (pose, holds, which courier draws) for the e2e rows in `tests/e2e/home-journey.spec.ts`.
-- Layers: the journey layer (bands, DOM courier) and the transparent canvas sit inside
-  `.site` at z-index -1, after the warm layer: under every section and its text. The booking
-  and footer stages are transparent while the layer paints their own colours under them
-  (`html[data-world-stage]`), so the courier shows over them. The FAQ stays opaque: the
-  courier passes behind it.
-- D1 sits in the hero's world window under the photo (from 1024 px): the canvas cannot draw
-  over the photo (it is under the page, and the render gate draws nothing while the photo
-  covers the viewport), so the courier rises into view as the photo scrolls away. The intro's
-  SVG mark is not handed over at the same box.
+- Layers (polish, 2026-11-07): the bands stay under the page (`.site`, z-index -1); the
+  DOM courier's layer and the canvas are at z-index 1, above the sections' boxes and
+  below the header (30), the sticky bar (40) and the hero's cards (2). The hero is no
+  longer a render-gate cover: the canvas draws the courier over its photo.
+- D1 is a box on the hero photo's floor under the gap between the two cards (from
+  744 px; the hero grid has room for it under the cards) and in the 4:5 photo band
+  under 744 px; the courier waits there from the first view.
 - Docks per width: section 2. Tablets (744-1023 px) got D4, D6 and D7 on 2026-11-07
   (branch `p9-tablet`); before that the band had only D2, D3, D5, D8 and the courier was gone
   for long stretches. Tablet evidence: `docs/qa/tablet/` (`capture.mjs`).
 - D2 is the services SVG mark's own box: at tiers 1 to 3 the mark hides while the journey runs
   (the courier stands in for it, so one mark shows), and tier 0 keeps the SVG mark and its
   icon morph.
-- In travel the courier passes under text (never over it): the text stays on top, but its
-  contrast drops while the courier is behind it. At every dock the box holds no text.
+- In travel the courier keeps to the clear lanes (section 3): it is never under or over
+  text, and never fades.
 - D4 draws the point cloud and the wireframe as two extra calls on the tooth; the courier is
   otherwise one call (mark or tooth) plus its soft contact shadow, and the arch one
   instanced call. No shadow map at any tier.
-- D5 photo: `smile-*` (Pexels, Daniel Xavier) on the client preview only; elsewhere the
-  labelled placeholder (gaps row 65).
+- D5 photo: the owner's occlusal arch photo (`arch-occlusal-*`, section 9) on the
+  client preview; elsewhere the labelled placeholder.
+- The arch band is a sticky stage with a 1.2-screen room at every tier, tier 0 and
+  reduced motion included (decided 2026-11-07): the page keeps one layout at every tier
+  (D24, no shift after hydration), so at tier 0 the photo simply holds while the page
+  scrolls on.
 
 ## 9. D5 occlusal arch photo (owner decision, 2026-11-07)
 

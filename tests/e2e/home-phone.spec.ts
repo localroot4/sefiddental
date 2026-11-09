@@ -393,6 +393,8 @@ for (const tier of [0, 1, 2] as const) {
   }, testInfo) => {
     phoneOnly(testInfo);
     test.skip(browserName !== 'chromium', CDP_ONLY);
+    // The page is longer since the arch band holds the reader for 1.2 screens (D5).
+    test.setTimeout(90_000);
     await recordClsAll(page);
     await page.goto(`/?tier=${tier}`);
     if (tier === 0) await page.waitForLoadState('load');
@@ -820,7 +822,7 @@ test('T-PH8 the light floor: the second stepped-down page view in 14 days makes 
   expect([...seen.benchmark]).toEqual([]);
 });
 
-test('T-PH9 a block that grows during a swipe refreshes the triggers only after the swipe (200 ms after touchEnd), and the page never jumps back', async ({
+test('T-PH9 a block that grows during a swipe refreshes the triggers only after the swipe (after touchEnd, 200 ms after the last scroll), and the page never jumps back', async ({
   page,
   browserName,
 }, testInfo) => {
@@ -854,8 +856,8 @@ test('T-PH9 a block that grows during a swipe refreshes the triggers only after 
   await scrollToY(page, 600);
   const cdp = await page.context().newCDPSession(page);
   const swipeStart = await page.evaluate(() => performance.now());
-  // No hold: the finger lifts on its last move, so the scroll ends at `touchEnd` (or later, with
-  // a fling) and ScrollTrigger's scrollEnd comes 200 ms after it at the earliest.
+  // No hold: the finger lifts on its last move, so the scroll ends near `touchEnd` (or later, with
+  // a fling) and ScrollTrigger's scrollEnd comes 200 ms after the last scroll event.
   await swipe(
     page,
     cdp,
@@ -884,8 +886,17 @@ test('T-PH9 a block that grows during a swipe refreshes the triggers only after 
     refreshAt.filter((at) => at >= swipeStart),
     'a refresh followed the growth',
   ).not.toEqual([]);
+  // ScrollTrigger's safe refresh waits 200 ms from the last scroll event, which can come a few ms
+  // before touchend when there is no fling: a bound from touchend alone failed 2 of 10 on main.
+  // The last move is read from the per-frame samples, so one frame (17 ms) is allowed.
   for (const at of refreshAt.filter((time) => time >= swipeStart)) {
-    expect(at - touchEnd).toBeGreaterThanOrEqual(200);
+    expect(at, 'refresh after touchend').toBeGreaterThanOrEqual(touchEnd);
+    const before = scrolls.filter(([t]) => t < at);
+    let lastMove = swipeStart;
+    for (let i = 1; i < before.length; i += 1) {
+      if (before[i]![1] !== before[i - 1]![1]) lastMove = before[i]![0];
+    }
+    expect(at - lastMove, 'ms the page was still before the refresh').toBeGreaterThanOrEqual(183);
   }
 });
 

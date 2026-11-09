@@ -71,6 +71,30 @@ function placeInFlow(
   return { left: rect.left + window.scrollX, top, width: rect.width, height: rect.height, pin };
 }
 
+/**
+ * A rect inside an element drawn with a scale `a` and a translation about its transform origin,
+ * taken back to where it is at rest: p' = O + a (p - O) + t, so p = O + (p' - t - O) / a. O is the
+ * origin (`origin`, from the element's own corner) in the untransformed box, whose corner sits at
+ * drawn - t - origin (a - 1).
+ */
+export function atRest(
+  r: { left: number; top: number; right: number; bottom: number },
+  drawn: { left: number; top: number },
+  m: { a: number; e: number; f: number },
+  origin: { x: number; y: number },
+): { left: number; top: number; right: number; bottom: number } {
+  const a = m.a || 1;
+  const ox = drawn.left - m.e - origin.x * (1 - a) + origin.x;
+  const oy = drawn.top - m.f - origin.y * (1 - a) + origin.y;
+  const back = (v: number, o: number, t: number): number => o + (v - t - o) / a;
+  return {
+    left: back(r.left, ox, m.e),
+    right: back(r.right, ox, m.e),
+    top: back(r.top, oy, m.f),
+    bottom: back(r.bottom, oy, m.f),
+  };
+}
+
 /** Every rendered `[data-dock]` box under `root`, in document px. */
 export function measureDocks(root: ParentNode = document): Dock[] {
   const docks: Dock[] = [];
@@ -85,15 +109,27 @@ export function measureDocks(root: ParentNode = document): Dock[] {
   return docks;
 }
 
-/** What the courier never sits under: the controls and fields, and every line of shown text. */
-const CONTROLS = 'a[href], button, input, select, textarea, [role="button"]';
+/** What the courier never covers: the controls and fields, and every line of shown text. */
+const CONTROLS = 'a[href], button, input, select, textarea, summary, [role="button"]';
+/**
+ * On a container painted above the courier's layer (the hero's cards): the courier goes round
+ * each of its children's boxes whole.
+ */
+export const ABOVE_ATTR = 'data-above-courier';
+/**
+ * On a box whose contents move sideways under the reader's hand or the scroll (a card rail, the
+ * services track): its texts are not where a measure finds them later, so the courier goes round
+ * the whole box.
+ */
+export const WALL_ATTR = 'data-courier-wall';
 /** Decorative or not the page's text: the courier's own layers, the header, the dev overlay. */
 const SKIP = '[aria-hidden="true"], header, [data-dev-overlay], [data-courier-layer]';
 
 /**
- * The boxes of the page's text and controls under `root`, in document px (pose.ts fades the
- * courier out over them). One box per text node (its lines' union) and per control; measured with
- * the docks, never per frame.
+ * The boxes of the page's text and controls under `root`, and the boxes painted above the
+ * courier, in document px (route.ts plans the travels round them). One box per text node (its
+ * lines' union), per control and per child of a `[data-above-courier]`; measured with the docks, never per
+ * frame.
  */
 export function measureObstacles(root: Element): Box[] {
   const nav = navHeight();
@@ -110,15 +146,37 @@ export function measureObstacles(root: Element): Box[] {
       right = Math.max(right, r.right);
       bottom = Math.max(bottom, r.bottom);
     }
-    if (right > left && bottom > top) {
-      out.push(placeInFlow(el, { left, top, width: right - left, height: bottom - top }, nav));
+    if (!(right > left && bottom > top)) return;
+    // A scroll-scrubbed entrance (`[data-scrub]`: a rise, a slide, a settle) may be mid-way now:
+    // the box is taken where the element comes to rest, its transform undone.
+    const scrub = el.closest<HTMLElement>('[data-scrub]');
+    const style = scrub ? getComputedStyle(scrub) : null;
+    const m = style ? new DOMMatrixReadOnly(style.transform) : null;
+    if (scrub && style && m && !m.isIdentity) {
+      const [ox = 0, oy = 0] = style.transformOrigin.split(' ').map(parseFloat);
+      ({ left, top, right, bottom } = atRest(
+        { left, top, right, bottom },
+        scrub.getBoundingClientRect(),
+        m,
+        { x: ox, y: oy },
+      ));
     }
+    out.push(placeInFlow(el, { left, top, width: right - left, height: bottom - top }, nav));
   };
+  const walls = Array.from(root.querySelectorAll<HTMLElement>(`[${WALL_ATTR}]`)).filter(
+    // Only while its contents can move: wider than its box (a rail that wraps into a grid is not).
+    (el) => el.closest(SKIP) === null && el.scrollWidth > el.clientWidth + 1,
+  );
   const shown = (el: Element): boolean =>
-    el.closest(SKIP) === null && getComputedStyle(el).visibility !== 'hidden';
+    el.closest(SKIP) === null &&
+    !walls.some((wall) => wall.contains(el)) &&
+    getComputedStyle(el).visibility !== 'hidden';
   for (const el of root.querySelectorAll(CONTROLS)) {
     if (shown(el)) add(el, el.getClientRects());
   }
+  for (const el of root.querySelectorAll(`[${ABOVE_ATTR}] > :not([data-dock])`))
+    add(el, el.getClientRects());
+  for (const el of walls) add(el, el.getClientRects());
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const range = document.createRange();
   for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
@@ -130,12 +188,17 @@ export function measureObstacles(root: Element): Box[] {
   return out;
 }
 
-/** The viewport and the scroll range the pose needs. */
+/** The viewport, the scroll range and the fixed bars the pose needs. */
 export function measureViewport(): Viewport {
   const html = document.documentElement;
+  const header = document.querySelector('header');
+  const bar = document.querySelector<HTMLElement>('[data-sticky-bar]');
   return {
     width: html.clientWidth || window.innerWidth,
     height: window.innerHeight,
     maxScroll: Math.max(0, html.scrollHeight - window.innerHeight),
+    insetTop: header?.offsetHeight ?? 0,
+    // Shown or slid away for now, the bar comes back: the courier keeps clear of its place.
+    insetBottom: bar && getComputedStyle(bar).display !== 'none' ? bar.offsetHeight : 0,
   };
 }

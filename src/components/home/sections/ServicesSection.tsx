@@ -83,7 +83,11 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
           ) : (
             <div className="mb-8 md:mb-12">{mark}</div>
           )}
-          <div data-rail="" className="-mx-gutter lg:mx-0 lg:[[data-pins]_&]:overflow-x-clip">
+          <div
+            data-rail=""
+            data-courier-wall=""
+            className="-mx-gutter lg:mx-0 lg:[[data-pins]_&]:overflow-x-clip"
+          >
             <div
               data-track=""
               data-worlds={accents.join(' ')}

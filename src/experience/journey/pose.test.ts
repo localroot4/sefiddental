@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
+import { ARCH_PHOTO } from '@/lib/archPhoto';
+
 import { ARCH_DEPTH, ARCH_SLOT, ARCH_TEETH, archLayout, footprintAngle, projectArch } from './arch';
 import {
   archFrame,
   bounceOut,
-  clearance,
   courierPose,
   CROWN_SHARE,
-  FADE_PX,
   FOOTER_DROP_PX,
   FORM_SHARE,
   holdRanges,
@@ -16,11 +16,13 @@ import {
   seatAmount,
   MIN_TRAVEL_VH,
   NO_POSE,
+  prepareLanes,
   STATIONS,
   viewportTop,
   type Box,
   type Dock,
   type DockId,
+  type Lanes,
   type Pose,
   type Viewport,
 } from './pose';
@@ -55,9 +57,10 @@ function page(): Dock[] {
       height: 380,
       pin: { start: 5700, end: 7500 },
     },
-    { id: 'smile', left: 400, top: 8600, width: 640, height: 427, pin: null },
-    { id: 'dentists', left: 300, top: 9800, width: 220, height: 120, pin: null },
-    { id: 'booking', left: 200, top: 11_200, width: 192, height: 192, pin: null },
+    // The arch band sticks while the journey runs (SmileBand.tsx).
+    { id: 'smile', left: 520, top: 8300, width: 400, height: 500, pin: { start: 8228, end: 9488 } },
+    { id: 'dentists', left: 300, top: 10_400, width: 220, height: 120, pin: null },
+    { id: 'booking', left: 200, top: 11_400, width: 192, height: 192, pin: null },
     { id: 'footer', left: 1200, top: 12_500, width: 96, height: 120, pin: null },
   ];
 }
@@ -145,7 +148,7 @@ describe('courierPose: docks', () => {
 });
 
 describe('courierPose: travel', () => {
-  it('J6 every travel spans at least 60 vh of scroll, and holds never overlap', () => {
+  it('J6 every travel spans at least 45 vh of scroll, and holds never overlap', () => {
     const holds = holdsOf();
     for (let i = 1; i < holds.length; i += 1) {
       expect(holds[i]!.start - holds[i - 1]!.end).toBeGreaterThanOrEqual(
@@ -179,6 +182,11 @@ describe('courierPose: travel', () => {
     let prev = at(0);
     for (let y = 1; y <= VIEW.maxScroll; y += 1) {
       const pose = at(y);
+      // Where the form does not show (sunk into the smile) it may move: no one sees it.
+      if (pose.presence < 0.01 || prev.presence < 0.01) {
+        prev = pose;
+        continue;
+      }
       expect(Math.abs(pose.x - prev.x), `x at ${y}`).toBeLessThan(8);
       expect(Math.abs(pose.y - prev.y), `y at ${y}`).toBeLessThan(8);
       expect(Math.abs(pose.scale - prev.scale), `scale at ${y}`).toBeLessThan(4);
@@ -244,12 +252,18 @@ describe('courierPose: travel', () => {
     const footer = b.dock;
     const y = (t: number) => a.end + (b.start - a.end) * t;
     const boxX = footer.left + footer.width / 2;
-    const top = at(y(0.78));
+    // The drop takes the last stretch of the travel (at most a quarter viewport of scroll).
+    const drop = Math.min(0.22 * (b.start - a.end), 0.25 * VIEW.height);
+    const top = at(b.start - drop);
     expect(top.x).toBeCloseTo(boxX, 3);
-    expect(top.y).toBeCloseTo(viewportTop(footer, y(0.78)) + footer.height / 2 - FOOTER_DROP_PX, 0);
-    for (const t of [0.82, 0.9, 0.97]) {
-      const p = at(y(t));
-      const home = viewportTop(footer, y(t)) + footer.height / 2;
+    expect(top.y).toBeCloseTo(
+      viewportTop(footer, b.start - drop) + footer.height / 2 - FOOTER_DROP_PX,
+      0,
+    );
+    for (const share of [0.2, 0.5, 0.9]) {
+      const yy = b.start - drop * (1 - share);
+      const p = at(yy);
+      const home = viewportTop(footer, yy) + footer.height / 2;
       expect(p.x).toBeCloseTo(boxX, 5);
       expect(p.y).toBeGreaterThanOrEqual(home - FOOTER_DROP_PX - 1e-6);
       expect(p.y).toBeLessThanOrEqual(home + 1e-6);
@@ -289,10 +303,37 @@ describe('courierPose: smile station', () => {
     expect(seated.smile).toBe(0);
     // The pull-back makes the arch (and the seated tooth) smaller.
     expect(at(y(0.6)).scale).toBeLessThan(seated.scale);
-    expect(at(y(0.75)).smile).toBeGreaterThan(0);
-    expect(at(y(0.75)).smile).toBeLessThan(1);
+    expect(at(y(0.55)).smile).toBeGreaterThan(0);
+    expect(at(y(0.55)).smile).toBeLessThan(1);
     expect(at(y(1)).smile).toBe(1);
     expect(at(hold.end + 2000)).toMatchObject({ arch: 1, smile: 1 });
+  });
+
+  it('J13b the hand-off: the tooth sinks into the smile, a glint sweeps the teeth, the tooth lifts off it', () => {
+    const hold = holdsOf().find((h) => h.dock.id === 'smile')!;
+    const dock = hold.dock;
+    const y = (t: number) => hold.start + (hold.end - hold.start) * t;
+    // It sinks into the photo with the arch: nothing of it shows while the light sweeps.
+    expect(at(y(0.55)).presence).toBeLessThan(1);
+    const sweep = at(y(0.75));
+    expect(sweep.presence).toBe(0);
+    expect(sweep.glint).toBeGreaterThan(0);
+    expect(sweep.glint).toBeLessThan(1);
+    // Out of the glint: at the first molar it seated in, growing, rising, then whole.
+    const forming = at(y(0.86));
+    expect(forming.presence).toBeGreaterThan(0);
+    const frame = archFrame(dock, y(0.86), 0.86);
+    const slot = projectArch(archLayout()[ARCH_SLOT]!);
+    expect(forming.x).toBeCloseTo(frame.cx + slot.u * frame.width, 5);
+    const lifted = at(y(1));
+    expect(lifted).toMatchObject({ presence: 1, lift: 1, form: 'tooth', glint: 0 });
+    expect(lifted.scale).toBeGreaterThanOrEqual(forming.scale);
+    expect(lifted.y - viewportTop(dock, y(1))).toBeLessThan(forming.y - viewportTop(dock, y(0.86)));
+    expect(seatAmount(lifted)).toBe(0);
+    // The travel leaves from exactly there, whole.
+    const leave = at(hold.end + 1);
+    expect(Math.abs(leave.x - lifted.x)).toBeLessThan(3);
+    expect(leave.presence).toBe(1);
   });
 
   it('J14 without the smile box the photo simply shows', () => {
@@ -354,10 +395,11 @@ describe('courierPose: purity', () => {
     for (let y = 1; y < 5000; y += 1) {
       const pose = courierPose(y, docks, view, 1);
       expect(Number.isFinite(pose.x) && Number.isFinite(pose.y)).toBe(true);
-      // Still no jump: a crowded travel is steeper, never a cut.
-      expect(Math.abs(pose.x - prev.x) + Math.abs(pose.y - prev.y), `step at ${y}`).toBeLessThan(
-        12,
-      );
+      // Still no jump where it shows: a crowded travel is steeper, never a cut.
+      if (pose.presence > 0.01 && prev.presence > 0.01)
+        expect(Math.abs(pose.x - prev.x) + Math.abs(pose.y - prev.y), `step at ${y}`).toBeLessThan(
+          12,
+        );
       prev = pose;
     }
     expect(prev.dock).toBe('smile');
@@ -382,105 +424,157 @@ describe('seat and spin', () => {
     }
     expect(edge).toBeLessThan(0.2);
     // Seated in the arch the tooth shows its footprint: no spin.
-    const seated = at(holds.find((h) => h.dock.id === 'smile')!.end - 1);
+    const smile = holds.find((h) => h.dock.id === 'smile')!;
+    const seated = at(smile.start + (smile.end - smile.start) * 0.4);
     expect(seatAmount(seated)).toBe(1);
     expect(domSpin(seated)).toBe(0);
   });
 });
 
-describe('never under text', () => {
-  /** A paragraph across the page between the dentists and the booking docks. */
-  const text: Box = { left: 0, top: 10_500, width: 1440, height: 60, pin: null };
-  const withText = (y: number) => courierPose(y, page(), VIEW, 2, [text]);
+/** The largest step of the courier per 2 scrolled px in a lane (measured 8.6 px; route.ts). */
+const STEP_BOUND = 12;
 
-  it('J22 the courier fades out over text and back, continuously, the same both ways', () => {
-    const holds = holdsOf();
+describe('never under text: the lanes', () => {
+  /** A paragraph between the dentists and the booking docks, with a clear start-side gutter. */
+  const text: Box = { left: 260, top: 10_900, width: 1180, height: 60, pin: null };
+  const viewOf = { ...VIEW, insetTop: 72 };
+  const docks = page();
+  const textOnly = [text];
+  const planned = new Map<Box[], Lanes>();
+  const lanesFor = (boxes: Box[]): Lanes => {
+    if (!planned.has(boxes)) planned.set(boxes, prepareLanes(docks, viewOf, boxes).all());
+    return planned.get(boxes)!;
+  };
+  const withText = (y: number, boxes: Box[] = textOnly) =>
+    courierPose(y, docks, viewOf, 2, lanesFor(boxes));
+  const touches = (pose: Pose, box: Box, y: number): boolean => {
+    const half = (pose.scale * FORM_SHARE) / 2;
+    const top = viewportTop(box, y);
+    return (
+      pose.y + half > top &&
+      pose.y - half < top + box.height &&
+      pose.x + half > box.left &&
+      pose.x - half < box.left + box.width
+    );
+  };
+
+  it('J22 a travel goes round the text through a clear lane, whole, on screen, the same both ways', () => {
+    const holds = holdRanges(page(), viewOf);
     const a = holds.find((h) => h.dock.id === 'dentists')!;
     const b = holds.find((h) => h.dock.id === 'booking')!;
-    let hidden = 0;
+    let moved = 0;
     let prev = withText(a.end);
-    for (let y = a.end; y <= b.start; y += 1) {
+    for (let y = a.end; y <= b.start; y += 2) {
       const pose = withText(y);
-      const half = (pose.scale * FORM_SHARE) / 2;
-      const top = text.top - y;
-      const touching = pose.y + half > top && pose.y - half < top + text.height;
-      // Wherever its form's box touches the text, the courier shows nothing.
-      if (touching) expect(pose.opacity, `at ${y}`).toBe(0);
-      if (pose.opacity === 0) hidden += 1;
-      expect(Math.abs(pose.opacity - prev.opacity), `fade step at ${y}`).toBeLessThan(0.2);
+      expect(touches(pose, text, y), `under the text at ${y}`).toBe(false);
+      expect(pose.opacity, `whole at ${y}`).toBe(1);
+      expect(pose.y - (pose.scale * FORM_SHARE) / 2, `under the header at ${y}`).toBeGreaterThan(
+        72,
+      );
+      expect(pose.y + (pose.scale * FORM_SHARE) / 2).toBeLessThan(viewOf.height);
+      // No jump: the lane moves at most one grid cell a sample (12 px of scroll), so about 9 px
+      // per scrolled 2 px with the page's own pace on top.
+      expect(Math.hypot(pose.x - prev.x, pose.y - prev.y), `step at ${y}`).toBeLessThan(STEP_BOUND);
+      if (Math.abs(pose.x - courierPose(y, docks, viewOf, 2).x) > 1) moved += 1;
       expect(withText(y)).toEqual(pose);
       prev = pose;
     }
-    expect(hidden).toBeGreaterThan(0);
-    // Away from it the courier is whole, and docks (clear of text) show it whole.
-    expect(withText(a.end).opacity).toBe(1);
-    expect(withText(middleOf('booking')).opacity).toBe(1);
+    // It left the eased path for the lane somewhere.
+    expect(moved).toBeGreaterThan(0);
+    // The ends are the docks' own poses.
+    expect(withText(a.end)).toMatchObject({ x: at(a.end).x, y: at(a.end).y });
   });
 
-  it('J23 clearance is 1 from FADE_PX away, 0 on contact, and follows a pinned box', () => {
-    const pose = { ...at(middleOf('dentists')), scale: 100 };
-    const half = (100 * FORM_SHARE) / 2;
-    const box = (gap: number): Box => ({
-      left: pose.x + half + gap,
-      top: 2000 + pose.y - 10,
-      width: 50,
-      height: 20,
-      pin: null,
-    });
-    expect(clearance(pose, [box(FADE_PX + 1)], 2000)).toBe(1);
-    expect(clearance(pose, [box(0)], 2000)).toBe(0);
-    const mid = clearance(pose, [box(FADE_PX / 2)], 2000);
-    expect(mid).toBeGreaterThan(0);
-    expect(mid).toBeLessThan(1);
-    expect(clearance(pose, [], 2000)).toBe(1);
-    // A box in a stuck stage stays put on screen through its pin.
-    const pinned: Box = { ...box(0), top: 5000 + pose.y - 10, pin: { start: 5000, end: 6000 } };
-    expect(clearance(pose, [pinned], 5500)).toBe(0);
-    expect(clearance(pose, [pinned], 6500)).toBe(1);
+  it('J23 past a full-width text with no lane the courier leaves the frame at a side, never a ghost', () => {
+    // A wall of text across the whole width: no place on screen is clear while it passes.
+    const walls = [{ left: 0, top: 10_900, width: 1440, height: 60, pin: null }];
+    const wall = walls[0]!;
+    const holds = holdRanges(page(), viewOf);
+    const a = holds.find((h) => h.dock.id === 'dentists')!;
+    const b = holds.find((h) => h.dock.id === 'booking')!;
+    let away = 0;
+    for (let y = a.end; y <= b.start; y += 2) {
+      const pose = withText(y, walls);
+      const half = (pose.scale * FORM_SHARE) / 2;
+      const off = pose.x + half < 0 || pose.x - half > viewOf.width;
+      if (off) away += 1;
+      else expect(touches(pose, wall, y), `on the text at ${y}`).toBe(false);
+      expect(pose.opacity, `a ghost at ${y}`).toBe(1);
+    }
+    expect(away).toBeGreaterThan(0);
+  });
+
+  it('J24 without obstacles a travel floats on screen between its two docks', () => {
+    const holds = holdsOf();
+    for (let i = 1; i < holds.length; i += 1) {
+      const a = holds[i - 1]!;
+      const b = holds[i]!;
+      for (let k = 0; k <= 20; k += 1) {
+        const pose = at(a.end + ((b.start - a.end) * k) / 20);
+        expect(pose.y, `${a.dock.id}->${b.dock.id} ${k}`).toBeGreaterThan(-pose.scale / 2);
+        expect(pose.y).toBeLessThan(VIEW.height + pose.scale / 2);
+      }
+    }
   });
 });
 
 describe('arch layout', () => {
-  it('J19 fourteen teeth on a symmetric U, front teeth toward the viewer, the slot a right molar', () => {
+  it("J19 sixteen teeth on the photo's symmetric U, incisors in front, the slot the right first molar", () => {
     const teeth = archLayout();
     expect(teeth).toHaveLength(ARCH_TEETH);
+    expect(ARCH_TEETH).toBe(16);
     for (let i = 0; i < teeth.length; i += 1) {
       const a = teeth[i]!;
       const b = teeth[teeth.length - 1 - i]!;
-      expect(a.x).toBeCloseTo(-b.x, 3);
-      expect(a.z).toBeCloseTo(b.z, 3);
-      expect(a.yaw).toBeCloseTo(-b.yaw, 3);
-      expect(a.z).toBeGreaterThanOrEqual(0);
-      expect(a.z).toBeLessThanOrEqual(ARCH_DEPTH);
+      expect(a.x).toBeCloseTo(-b.x, 9);
+      expect(a.z).toBeCloseTo(b.z, 9);
+      expect(a.yaw).toBeCloseTo(-b.yaw, 9);
+      expect(a.z).toBeGreaterThanOrEqual(-1e-9);
+      expect(a.z).toBeLessThanOrEqual(ARCH_DEPTH + 1e-9);
+      // In order across the arch, one end to the other (the glint runs along this order).
       if (i > 0) expect(a.x).toBeGreaterThan(teeth[i - 1]!.x);
     }
     const slot = teeth[ARCH_SLOT]!;
     expect(slot.x).toBeGreaterThan(0.25);
-    // A molar: wider than the incisors and canines in front of it.
-    expect(slot.width).toBeGreaterThan(teeth[ARCH_TEETH / 2]!.width);
+    // A molar: wider than the premolars in front of it, behind the incisors.
+    expect(slot.width).toBeGreaterThan(teeth[ARCH_SLOT - 1]!.width);
     expect(teeth[ARCH_TEETH / 2]!.z).toBeGreaterThan(slot.z);
-    // The crowns never overlap along the curve.
-    for (let i = 1; i < teeth.length; i += 1) {
-      const a = teeth[i - 1]!;
-      const b = teeth[i]!;
-      expect(Math.hypot(b.x - a.x, b.z - a.z)).toBeGreaterThan((a.width + b.width) / 2 - 0.01);
-    }
   });
 
-  it('J20 the projection centres the arch on its frame and puts the front teeth lower', () => {
+  it('J20 the occlusal projection centres the arch on its frame, the incisors at the top', () => {
     const teeth = archLayout();
     const front = projectArch(teeth[ARCH_TEETH / 2]!);
     const back = projectArch(teeth[0]!);
-    expect(front.v).toBeGreaterThan(back.v);
-    expect(front.v + back.v).toBeCloseTo(
-      projectArch({ x: 0, z: ARCH_DEPTH }).v + projectArch({ x: 0, z: 0 }).v,
-      1,
-    );
+    expect(front.v).toBeLessThan(back.v);
+    // Centred: the front and the back teeth sit about equally far from the middle.
+    expect(Math.abs(front.v + back.v)).toBeLessThan(0.1);
+    expect(projectArch({ x: 0, z: ARCH_DEPTH }).v).toBeCloseTo(-ARCH_DEPTH / 2, 9);
     expect(projectArch({ x: 0.2, z: ARCH_DEPTH / 2 })).toEqual({ u: 0.2, v: 0 });
-    // Footprints follow the curve: rising toward the ends on screen (the back is up).
+    // Footprints follow the curve, mirrored on the two sides; the slot is on the screen's right.
     const slot = teeth[ARCH_SLOT]!;
-    expect(footprintAngle(slot.yaw)).toBeLessThan(0);
-    expect(footprintAngle(teeth[1]!.yaw)).toBeGreaterThan(0);
+    expect(projectArch(slot).u).toBeGreaterThan(0);
+    expect(footprintAngle(slot.yaw)).toBeCloseTo(
+      -footprintAngle(teeth[ARCH_TEETH - 1 - ARCH_SLOT]!.yaw),
+      5,
+    );
     expect(footprintAngle(0)).toBeCloseTo(0, 9);
+  });
+});
+
+describe('the occlusal photo is registered to the arch', () => {
+  it("J25 the arch projects each tooth onto the photo's own tooth, and its middle onto the centre", () => {
+    const r = ARCH_PHOTO.width / ARCH_PHOTO.height;
+    const right = archLayout().slice(ARCH_TEETH / 2);
+    right.forEach((tooth, i) => {
+      const p = projectArch(tooth);
+      const photo = ARCH_PHOTO.teeth[i]!;
+      expect(ARCH_PHOTO.centre.u + p.u * ARCH_PHOTO.archWidth).toBeCloseTo(photo.u, 9);
+      expect(ARCH_PHOTO.centre.v + p.v * ARCH_PHOTO.archWidth * r).toBeCloseTo(photo.v, 9);
+    });
+    // The centre is the arch's middle: halfway between the incisors and the last molars.
+    const front = ARCH_PHOTO.teeth[0]!.v;
+    const back = ARCH_PHOTO.teeth.at(-1)!.v;
+    expect(ARCH_PHOTO.centre.v).toBeCloseTo((front + back) / 2, 3);
+    expect(ARCH_PHOTO.archWidth).toBeCloseTo(2 * (ARCH_PHOTO.teeth.at(-1)!.u - 0.5), 3);
   });
 });

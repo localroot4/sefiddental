@@ -279,6 +279,11 @@
 [data-world-slot='compare'][data-world-live] figure > div:first-child > div {
   visibility: hidden;
 }
+/* The canvas paints above the sections (the courier's layer, journey/attrs.ts COURIER_Z): the
+   labels and the divider stay above the wipe it draws (the range input is z-10 already). */
+[data-world-slot='compare'][data-world-live] figure > div:first-child > span {
+  z-index: 2;
+}
 
 /* The scroll engine's settle (phone spec D25): while `data-settling` is on the experience root
    (one --dur-3 window after the engine starts and when it goes), the targets it scrubs ease to
@@ -336,7 +341,8 @@
    away until the courier lands on its box (the hand-off), the services mark steps aside for the
    courier that docks in its box (D2), and the DOM courier breathes on the
    compositor, so a page at rest runs no script loop. `--breathe` (0..1) fades the breath out on
-   the way into the footer, where the mark must land still. Tier 0 never sets either. */
+   the way into the footer, where the mark must land still; `--breathe-k` is the courier's scale. Tier
+   0 never sets either. */
 [data-courier-away],
 [data-courier-here] {
   visibility: hidden;
@@ -344,17 +350,146 @@
 [data-courier-breathe] {
   animation: courier-breathe 6s var(--ease-in-out) infinite;
 }
-[data-courier]:not([data-shown]) [data-courier-breathe] {
+[data-courier-breathe]:not([data-shown]) {
   animation-play-state: paused;
 }
 @keyframes courier-breathe {
   0%,
   100% {
-    translate: 0 calc(-3px * var(--breathe, 1));
+    translate: 0 calc(-3px * var(--breathe, 1) * var(--breathe-k, 1));
     scale: 1;
   }
   50% {
-    translate: 0 calc(3px * var(--breathe, 1));
+    translate: 0 calc(3px * var(--breathe, 1) * var(--breathe-k, 1));
     scale: calc(1 + 0.015 * var(--breathe, 1));
+  }
+}
+
+/* D6 of the journey (docs/experience/journey.md): as the courier's mark arrives at the dentists'
+   heading, a soft teal light sweeps across the cards' portraits from the left, on their top edge
+   only (away from the faces' eyes and from every text); the driver writes --sweep 0..1. */
+[data-home-section='dentists'] [data-portrait] {
+  position: relative;
+  --at: calc(var(--sweep, 0) * 1.7 - var(--d, 0));
+}
+[data-home-section='dentists'] [role='region'] > :nth-last-child(2) [data-portrait] {
+  --d: 0.35;
+}
+[data-home-section='dentists'] [role='region'] > :nth-last-child(3) [data-portrait] {
+  --d: 0.7;
+}
+[data-home-section='dentists'] [data-portrait]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+      100deg,
+      transparent 40%,
+      color-mix(in oklab, var(--color-brand) 34%, transparent) 50%,
+      transparent 60%
+    )
+    no-repeat;
+  background-size: 300% 100%;
+  background-position-x: calc(150% - var(--at) * 200%);
+  mask-image: linear-gradient(to bottom, #000, transparent 34%);
+}
+
+/* A switch for checks that judge the page's own pixels (the a11y contrast judge): the courier's
+   DOM layer paints nothing, and the WebGL courier skips its passes (WebglCourier.tsx); every other
+   WebGL scene still draws. */
+[data-courier-off] [data-courier-layer] {
+  opacity: 0;
+}
+
+/* D3's top view of the DOM courier (JourneyLayer.tsx): each level shows its own restoration and
+   plays it once when it is chosen. Plain: a cavity outline, then one flat composite fill with its
+   margin in view. VIP: a crisp ceramic inlay comes down, turns into line and seats with a click;
+   a gloss passes over the perfect fit. CIP: dentine, then a translucent enamel layer, then the
+   fissures stained by hand, and a slow shimmer. */
+.courier-top .ct-vip,
+.courier-top .ct-cip {
+  opacity: 0;
+}
+.courier-top[data-top-level='1'] .ct-plain,
+.courier-top[data-top-level='2'] .ct-plain {
+  opacity: 0;
+}
+.courier-top[data-top-level='1'] .ct-vip,
+.courier-top[data-top-level='2'] .ct-cip {
+  opacity: 1;
+}
+.courier-top [class^='ct-'] {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.courier-top[data-top-level='0'] .ct-outline {
+  animation: ct-draw 500ms var(--ease-out) both;
+}
+.courier-top[data-top-level='0'] .ct-fill {
+  animation: ct-fade 400ms var(--ease-out) 450ms both;
+}
+.courier-top[data-top-level='1'] .ct-inlay {
+  animation: ct-seat 700ms var(--ease-out) both;
+}
+.courier-top[data-top-level='1'] .ct-gloss {
+  animation: ct-sweep 900ms var(--ease-in-out) 650ms both;
+}
+.courier-top[data-top-level='2'] .ct-dentine {
+  animation: ct-fade 350ms var(--ease-out) both;
+}
+.courier-top[data-top-level='2'] .ct-enamel {
+  animation: ct-fade 450ms var(--ease-out) 300ms both;
+}
+.courier-top[data-top-level='2'] .ct-stain {
+  animation: ct-draw 700ms var(--ease-out) 700ms both;
+}
+.courier-top[data-top-level='2'] .ct-shimmer {
+  animation: ct-sweep 1600ms var(--ease-in-out) 1300ms both;
+}
+@keyframes ct-draw {
+  from {
+    stroke-dashoffset: 70;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes ct-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes ct-seat {
+  0% {
+    opacity: 0;
+    transform: translateY(-16px) rotate(-14deg) scale(1.14);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(0) rotate(0) scale(1.02);
+  }
+  82% {
+    transform: scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes ct-sweep {
+  0% {
+    opacity: 0;
+    transform: translateX(0) skewX(-18deg);
+  }
+  40% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(60px) skewX(-18deg);
   }
 }

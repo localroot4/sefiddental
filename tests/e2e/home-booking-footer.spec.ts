@@ -783,3 +783,117 @@ test('T-BF8 the «کیفیت» radios move html[data-tier] at once, keep the foo
   await expect.poll(() => page.evaluate(() => localStorage.getItem('sefid-quality'))).toBeNull();
   await expect(radio(t('home.quality.auto'))).toBeChecked();
 });
+
+/**
+ * T-BF11 (the owner's report: after a round trip the mark stayed stuck on the stage's top line
+ * while the other parts rested on the floor): three scroll round trips through the hand-off, by
+ * wheel at tier 2 (WebGL) and by finger at tier 1 (DOM). Back at the bottom each time the courier
+ * is not drawn anywhere and the mark part rests at home in the field: never both, never neither.
+ */
+async function roundTrips(page: Page, move: (dy: number) => Promise<void>): Promise<void> {
+  const state = () =>
+    page.evaluate(() => {
+      const j = (
+        window as unknown as {
+          __sefidJourney: { pose(): { hidden: boolean }; webgl(): boolean };
+        }
+      ).__sefidJourney;
+      const part = document.querySelector<HTMLElement>('[data-dock="footer"]')!;
+      const dom = document.querySelector<HTMLElement>('[data-courier]')!;
+      const field = document.querySelector('[data-playground-field]')!.getBoundingClientRect();
+      const box = part.getBoundingClientRect();
+      return {
+        bottom: Math.abs(window.scrollY + innerHeight - document.documentElement.scrollHeight) < 2,
+        hidden: j.pose().hidden,
+        webgl: j.webgl(),
+        away: part.hasAttribute('data-courier-away'),
+        partShown: getComputedStyle(part).visibility === 'visible',
+        domCourier: getComputedStyle(dom).visibility === 'visible',
+        inField:
+          box.left >= field.left - 1 &&
+          box.right <= field.right + 1 &&
+          box.top >= field.top - 1 &&
+          box.bottom <= field.bottom + 1,
+      };
+    });
+  // What the canvas adds over the footer: nothing, once the part has the mark.
+  const canvasDraws = async (): Promise<boolean> => {
+    const clip = (await page.locator(STAGE).boundingBox())!;
+    const on = await page.screenshot({ clip });
+    await page.evaluate(() =>
+      document.querySelector('canvas')?.style.setProperty('visibility', 'hidden'),
+    );
+    const off = await page.screenshot({ clip });
+    await page.evaluate(() => document.querySelector('canvas')?.style.removeProperty('visibility'));
+    return !on.equals(off);
+  };
+  for (let k = 0; k < 40 && !(await state()).bottom; k += 1) await move(600);
+  await page.waitForTimeout(1500);
+  for (const up of [500, 1200, 300]) {
+    await move(-up);
+    await page.waitForTimeout(600);
+    for (let k = 0; k < 10 && !(await state()).bottom; k += 1) await move(600);
+    await page.waitForTimeout(1500);
+    const s = await state();
+    expect(s.bottom, `round trip ${up}: at the bottom`).toBe(true);
+    expect(s, `round trip ${up}`).toMatchObject({
+      hidden: true,
+      away: false,
+      partShown: true,
+      domCourier: false,
+      inField: true,
+    });
+    if (s.webgl)
+      expect(await canvasDraws(), `round trip ${up}: a courier left on the canvas`).toBe(false);
+  }
+}
+
+test('T-BF11 three wheel round trips through the hand-off: the part has the mark, the canvas nothing', async ({
+  page,
+}, testInfo) => {
+  only(testInfo, 'desktop-dark');
+  test.setTimeout(180_000);
+  await needsWebgl2(page);
+  await page.goto('/?tier=2&debug=1');
+  await page.waitForLoadState('load');
+  await page.waitForFunction(() => '__sefidJourney' in window, null, { timeout: 30_000 });
+  await page.mouse.move(700, 400);
+  await roundTrips(page, async (dy) => {
+    for (let i = 0; i < Math.abs(dy) / 100; i += 1) {
+      await page.mouse.wheel(0, Math.sign(dy) * 100);
+      await page.waitForTimeout(16);
+    }
+  });
+});
+
+test('T-BF11b the same by finger at tier 1 on a tablet', async ({
+  page,
+  browserName,
+}, testInfo) => {
+  only(testInfo, 'tablet-light');
+  test.skip(browserName !== 'chromium', CDP_ONLY);
+  test.setTimeout(180_000);
+  await page.goto('/?tier=1&debug=1');
+  await page.waitForLoadState('load');
+  await page.waitForFunction(() => '__sefidJourney' in window, null, { timeout: 30_000 });
+  const cdp = await page.context().newCDPSession(page);
+  const x = 600;
+  await roundTrips(page, async (dy) => {
+    const from = dy > 0 ? 900 : 300;
+    const to = from - Math.sign(dy) * Math.min(600, Math.abs(dy));
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x, y: from, id: 1 }],
+    });
+    for (let i = 1; i <= 6; i += 1) {
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x, y: from + ((to - from) * i) / 6, id: 1 }],
+      });
+      await page.waitForTimeout(16);
+    }
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitForTimeout(300);
+  });
+  await cdp.detach();
+});
