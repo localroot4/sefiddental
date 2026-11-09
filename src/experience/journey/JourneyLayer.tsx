@@ -7,12 +7,11 @@
  * booking and footer stages' own colours while those stages are transparent (so the courier
  * shows over them and every text pair keeps its contrast) are absolute boxes in `.site`'s own
  * coordinates, so they scroll natively with their stages; one fixed layer holds the DOM courier
- * of tier 1
- * (and the fallback at tiers 2 and 3 until, or whenever, the WebGL courier does not draw): the
- * inline SVG mark and tooth, moved by the pose with transforms only. The whip turns the spin box
- * edge-on and swaps the two forms; the smile station draws the arch as an SVG. The breath is a
- * CSS animation, so a page at rest runs no script loop. Loaded with the engine chunk at tiers 1
- * to 3; tier 0 and reduced motion never load it.
+ * of tier 1 (and the fallback at tiers 2 and 3 until, or whenever, the WebGL courier does not
+ * draw): the SVG mark and tooth in one full-viewport SVG, a group moved by the pose. The whip
+ * turns the spin group edge-on (a horizontal scale) and swaps the two forms; the smile station
+ * draws the arch as an SVG. The breath is a CSS animation, so a page at rest runs no script loop.
+ * Loaded with the engine chunk at tiers 1 to 3; tier 0 and reduced motion never load it.
  */
 import { useEffect, useRef } from 'react';
 
@@ -122,8 +121,8 @@ export default function JourneyLayer(props: {
   const { root, engine, tier, debug, onJourney } = props;
   const layer = useRef<HTMLDivElement>(null);
   const bands = useRef<Partial<Record<BandId, HTMLDivElement | null>>>({});
-  const courier = useRef<HTMLDivElement>(null);
-  const spin = useRef<HTMLDivElement>(null);
+  const courier = useRef<SVGGElement>(null);
+  const spin = useRef<SVGGElement>(null);
   const mark = useRef<SVGSVGElement>(null);
   const tooth = useRef<SVGSVGElement>(null);
   const crown = useRef<SVGSVGElement>(null);
@@ -161,23 +160,25 @@ export default function JourneyLayer(props: {
       box?.style.setProperty('visibility', show ? 'visible' : 'hidden');
       // The breath pauses while the DOM courier is hidden.
       if (box && box.hasAttribute('data-shown') !== show) box.toggleAttribute('data-shown', show);
-      // Scaled about its top-left corner: that corner sits half the scaled size off the centre.
       if (box && show) {
-        // The shown place (the pose with its spring, lean and squash, motion.ts): scaled about the
-        // box's centre, then placed by its top-left corner.
+        // The shown place (the pose with its spring, lean and squash, motion.ts), about the
+        // drawing's centre.
         const k = shown.scale / BOX;
-        box.style.setProperty(
+        box.setAttribute(
           'transform',
-          `translate3d(${shown.x - BOX / 2}px, ${shown.y - BOX / 2}px, 0) rotate(${shown.tilt}rad) scale(${k * shown.sx}, ${k * shown.sy})`,
+          `translate(${shown.x} ${shown.y}) rotate(${deg(shown.tilt)}) scale(${k * shown.sx} ${k * shown.sy})`,
         );
         box.style.setProperty('--breathe', String(idleAmount(pose)));
         // 1 except where a travel has no lane at all (route.ts, the last resort).
         box.style.setProperty('opacity', String(Math.round(pose.opacity * 1000) / 1000));
-        // Seated in the arch the tooth is a crown seen from above: its turn is the footprint's.
-        spin.current?.style.setProperty('transform', `rotateY(${domSpin(pose)}rad)`);
+        // The turn about the vertical axis, seen flat: seated in the arch the tooth is a crown
+        // seen from above, whose turn is the footprint's.
+        const turn = Math.cos(domSpin(pose));
+        spin.current?.setAttribute('transform', `scale(${turn} 1)`);
         const isTooth = pose.form === 'tooth';
         const fade = pose.presence;
-        mark.current?.style.setProperty('opacity', isTooth ? '0' : String(fade));
+        // The mark has no back: it hides once turned past edge-on.
+        mark.current?.style.setProperty('opacity', isTooth || turn < 0 ? '0' : String(fade));
         const seat = seatAmount(pose);
         tooth.current?.style.setProperty('opacity', String(isTooth ? fade * (1 - seat) : 0));
         crown.current?.style.setProperty('opacity', String(isTooth ? fade * seat : 0));
@@ -345,176 +346,210 @@ export default function JourneyLayer(props: {
           data-courier-spark=""
           className="invisible absolute top-0 left-0 size-[100px] origin-center rounded-full [background:radial-gradient(circle,rgb(255_255_255/0.95),rgb(207_245_241/0.5)_30%,transparent_68%)]"
         />
-        <div
-          ref={courier}
-          data-courier=""
-          className="invisible absolute top-0 left-0 size-[100px] origin-center [perspective:420px]"
-        >
-          <div data-courier-breathe="" className="size-full">
-            <div ref={spin} className="relative size-full [transform-style:preserve-3d]">
-              <svg
-                ref={shadow}
-                viewBox="0 0 100 100"
-                className="absolute inset-0 size-full overflow-visible"
-              >
-                <ellipse cx="50" cy="97" rx="34" ry="5" fill="url(#courier-shadow)" />
-              </svg>
-              <svg
-                ref={mark}
-                data-form="mark"
-                viewBox="0 0 168.03 207.3"
-                className="absolute inset-0 m-auto h-[92%] w-auto [backface-visibility:hidden]"
-              >
-                <use href="#lockup-mark" width="168.03" height="207.3" fill="url(#courier-glaze)" />
-                <use href="#lockup-mark" width="168.03" height="207.3" fill="url(#courier-sheen)" />
-                <use
-                  href="#lockup-mark"
-                  width="168.03"
-                  height="207.3"
-                  fill="none"
-                  stroke="url(#courier-bevel)"
-                  strokeWidth="5"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <svg
-                ref={tooth}
-                data-form="tooth"
-                viewBox="0 0 200 240"
-                className="absolute inset-0 m-auto h-full w-auto opacity-0"
-              >
-                <g fill="url(#courier-enamel)" stroke={PORCELAIN_EDGE} strokeWidth="1.5">
-                  <path d={ROOTS} />
-                  <path d={CROWN} />
-                </g>
-                {/* The levels over the porcelain: VIP a glaze sheen, CIP the warm neck and the
-                    stained grooves (the restoration chips choose, at its dock only). */}
-                {LEVEL_NAMES.map((level, i) => (
-                  <g
-                    key={level}
-                    ref={(el) => {
-                      levels.current[i] = el;
-                    }}
+        {/* The courier is SVG geometry in one fixed, full-viewport SVG: a moved <g> is not a
+            box to the browser's layout-shift tracker, which counted the moved HTML box as
+            shifting during a touch scroll (T-PH4). Drawn about its centre, in a 100-unit box. */}
+        <svg data-courier-stage="" className="absolute inset-0 size-full overflow-visible">
+          <g ref={courier} data-courier-body="" className="invisible">
+            <g data-courier-breathe="">
+              <g ref={spin}>
+                <svg
+                  ref={shadow}
+                  viewBox="0 0 100 100"
+                  x="-50"
+                  y="-50"
+                  width="100"
+                  height="100"
+                  overflow="visible"
+                >
+                  <ellipse cx="50" cy="97" rx="34" ry="5" fill="url(#courier-shadow)" />
+                </svg>
+                <svg
+                  ref={mark}
+                  data-form="mark"
+                  viewBox="0 0 168.03 207.3"
+                  x="-50"
+                  y="-46"
+                  width="100"
+                  height="92"
+                >
+                  <use
+                    href="#lockup-mark"
+                    width="168.03"
+                    height="207.3"
+                    fill="url(#courier-glaze)"
+                  />
+                  <use
+                    href="#lockup-mark"
+                    width="168.03"
+                    height="207.3"
+                    fill="url(#courier-sheen)"
+                  />
+                  <use
+                    href="#lockup-mark"
+                    width="168.03"
+                    height="207.3"
                     fill="none"
-                    className={`transition-opacity duration-(--dur-4) ${i === 0 ? '' : 'opacity-0'}`}
-                  >
-                    {i >= 1 ? (
-                      <ellipse cx="82" cy="62" rx="34" ry="14" fill="#FFFFFF" opacity="0.55" />
-                    ) : null}
-                    {i === 2 ? (
-                      <g strokeLinecap="round" className="stroke-warm">
-                        <path d="M56 113c20 8 68 8 88 0" strokeOpacity="0.5" strokeWidth="9" />
-                        <path d="M78 51c2 9 6 15 12 18m32-18c-2 9-6 15-12 18" strokeWidth="2.2" />
-                      </g>
-                    ) : null}
+                    stroke="url(#courier-bevel)"
+                    strokeWidth="5"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+                <svg
+                  ref={tooth}
+                  data-form="tooth"
+                  viewBox="0 0 200 240"
+                  x="-50"
+                  y="-50"
+                  width="100"
+                  height="100"
+                  className="opacity-0"
+                >
+                  <g fill="url(#courier-enamel)" stroke={PORCELAIN_EDGE} strokeWidth="1.5">
+                    <path d={ROOTS} />
+                    <path d={CROWN} />
                   </g>
-                ))}
-              </svg>
-              {/* D3's top view: the crown's chewing surface and the level's restoration on it
+                  {/* The levels over the porcelain: VIP a glaze sheen, CIP the warm neck and the
+                    stained grooves (the restoration chips choose, at its dock only). */}
+                  {LEVEL_NAMES.map((level, i) => (
+                    <g
+                      key={level}
+                      ref={(el) => {
+                        levels.current[i] = el;
+                      }}
+                      fill="none"
+                      className={`transition-opacity duration-(--dur-4) ${i === 0 ? '' : 'opacity-0'}`}
+                    >
+                      {i >= 1 ? (
+                        <ellipse cx="82" cy="62" rx="34" ry="14" fill="#FFFFFF" opacity="0.55" />
+                      ) : null}
+                      {i === 2 ? (
+                        <g strokeLinecap="round" className="stroke-warm">
+                          <path d="M56 113c20 8 68 8 88 0" strokeOpacity="0.5" strokeWidth="9" />
+                          <path d="M78 51c2 9 6 15 12 18m32-18c-2 9-6 15-12 18" strokeWidth="2.2" />
+                        </g>
+                      ) : null}
+                    </g>
+                  ))}
+                </svg>
+                {/* D3's top view: the crown's chewing surface and the level's restoration on it
                   (globals.css courier-top: composite fill, seated inlay, layered ceramic). */}
-              <svg
-                ref={top}
-                data-form="top"
-                data-top-level="0"
-                viewBox="0 0 100 100"
-                className="courier-top absolute inset-0 m-auto size-[86%] overflow-visible opacity-0"
-              >
-                <path
-                  d="M50 8c14 0 22 4 29 10s13 16 13 30-3 24-10 31-17 13-32 13-25-6-32-13S8 63 8 48s6-24 13-30S36 8 50 8z"
-                  fill="url(#courier-crown)"
-                  stroke={PORCELAIN_EDGE}
-                  strokeWidth="1.2"
-                />
-                {/* The cusps and the central fissure of a molar seen from above. */}
-                <path
-                  d="M30 30q10 8 20 4 10 4 20-4M32 70q9-8 18-4 9-4 18 4M50 34v32"
-                  fill="none"
-                  stroke="#BFA98A"
-                  strokeOpacity="0.55"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                />
-                <g className="ct-plain">
+                <svg
+                  ref={top}
+                  data-form="top"
+                  data-top-level="0"
+                  viewBox="0 0 100 100"
+                  x="-43"
+                  y="-43"
+                  width="86"
+                  height="86"
+                  overflow="visible"
+                  className="courier-top opacity-0"
+                >
                   <path
-                    className="ct-outline"
-                    d="M38 40q12-6 24 0 6 10 0 20-12 6-24 0-6-10 0-20z"
+                    d="M50 8c14 0 22 4 29 10s13 16 13 30-3 24-10 31-17 13-32 13-25-6-32-13S8 63 8 48s6-24 13-30S36 8 50 8z"
+                    fill="url(#courier-crown)"
+                    stroke={PORCELAIN_EDGE}
+                    strokeWidth="1.2"
+                  />
+                  {/* The cusps and the central fissure of a molar seen from above. */}
+                  <path
+                    d="M30 30q10 8 20 4 10 4 20-4M32 70q9-8 18-4 9-4 18 4M50 34v32"
                     fill="none"
-                    stroke="#9A8670"
-                    strokeWidth="1.4"
-                    strokeDasharray="70"
-                  />
-                  <path
-                    className="ct-fill"
-                    d="M38 40q12-6 24 0 6 10 0 20-12 6-24 0-6-10 0-20z"
-                    fill="#E7DCCB"
-                    stroke="#B9A78F"
-                    strokeWidth="0.8"
-                  />
-                </g>
-                <g className="ct-vip">
-                  <path
-                    className="ct-inlay"
-                    d="M37 39l13-5 13 5 3 11-3 11-13 5-13-5-3-11z"
-                    fill="url(#courier-enamel)"
-                    stroke="#E9DFCF"
-                    strokeWidth="0.6"
-                  />
-                  <rect
-                    className="ct-gloss"
-                    x="20"
-                    y="20"
-                    width="12"
-                    height="60"
-                    fill="#FFFFFF"
-                    opacity="0"
-                  />
-                </g>
-                <g className="ct-cip">
-                  <path
-                    className="ct-dentine"
-                    d="M37 39l13-5 13 5 3 11-3 11-13 5-13-5-3-11z"
-                    fill="#EBD3B4"
-                  />
-                  <path
-                    className="ct-enamel"
-                    d="M37 39l13-5 13 5 3 11-3 11-13 5-13-5-3-11z"
-                    fill="#FFFDF8"
-                    fillOpacity="0.72"
-                  />
-                  <path
-                    className="ct-stain"
-                    d="M44 44q6 4 12 0M50 44v12M44 56q6-4 12 0"
-                    fill="none"
-                    stroke="#A06F3E"
+                    stroke="#BFA98A"
                     strokeOpacity="0.55"
-                    strokeWidth="0.9"
+                    strokeWidth="1.6"
                     strokeLinecap="round"
-                    strokeDasharray="40"
                   />
-                  <rect
-                    className="ct-shimmer"
-                    x="20"
-                    y="20"
-                    width="10"
-                    height="60"
-                    fill="#FFFFFF"
-                    opacity="0"
-                  />
-                </g>
-              </svg>
-              <svg
-                ref={crown}
-                data-form="crown"
-                viewBox="-0.5 -0.5 1 1"
-                className="absolute inset-0 size-full overflow-visible opacity-0"
-              >
-                <g transform={`rotate(${slotAngle})`}>
-                  <Crown width={CROWN_SHARE} />
-                </g>
-              </svg>
-            </div>
-          </div>
-        </div>
+                  <g className="ct-plain">
+                    <path
+                      className="ct-outline"
+                      d="M38 40q12-6 24 0 6 10 0 20-12 6-24 0-6-10 0-20z"
+                      fill="none"
+                      stroke="#9A8670"
+                      strokeWidth="1.4"
+                      strokeDasharray="70"
+                    />
+                    <path
+                      className="ct-fill"
+                      d="M38 40q12-6 24 0 6 10 0 20-12 6-24 0-6-10 0-20z"
+                      fill="#E7DCCB"
+                      stroke="#B9A78F"
+                      strokeWidth="0.8"
+                    />
+                  </g>
+                  <g className="ct-vip">
+                    <path
+                      className="ct-inlay"
+                      d="M37 39l13-5 13 5 3 11-3 11-13 5-13-5-3-11z"
+                      fill="url(#courier-enamel)"
+                      stroke="#E9DFCF"
+                      strokeWidth="0.6"
+                    />
+                    <rect
+                      className="ct-gloss"
+                      x="20"
+                      y="20"
+                      width="12"
+                      height="60"
+                      fill="#FFFFFF"
+                      opacity="0"
+                    />
+                  </g>
+                  <g className="ct-cip">
+                    <path
+                      className="ct-dentine"
+                      d="M37 39l13-5 13 5 3 11-3 11-13 5-13-5-3-11z"
+                      fill="#EBD3B4"
+                    />
+                    <path
+                      className="ct-enamel"
+                      d="M37 39l13-5 13 5 3 11-3 11-13 5-13-5-3-11z"
+                      fill="#FFFDF8"
+                      fillOpacity="0.72"
+                    />
+                    <path
+                      className="ct-stain"
+                      d="M44 44q6 4 12 0M50 44v12M44 56q6-4 12 0"
+                      fill="none"
+                      stroke="#A06F3E"
+                      strokeOpacity="0.55"
+                      strokeWidth="0.9"
+                      strokeLinecap="round"
+                      strokeDasharray="40"
+                    />
+                    <rect
+                      className="ct-shimmer"
+                      x="20"
+                      y="20"
+                      width="10"
+                      height="60"
+                      fill="#FFFFFF"
+                      opacity="0"
+                    />
+                  </g>
+                </svg>
+                <svg
+                  ref={crown}
+                  data-form="crown"
+                  viewBox="-0.5 -0.5 1 1"
+                  x="-50"
+                  y="-50"
+                  width="100"
+                  height="100"
+                  overflow="visible"
+                  className="opacity-0"
+                >
+                  <g transform={`rotate(${slotAngle})`}>
+                    <Crown width={CROWN_SHARE} />
+                  </g>
+                </svg>
+              </g>
+            </g>
+            {/* The box the checks read (rect, visibility, hit-test): over the forms, unpainted. */}
+            <rect data-courier="" x="-50" y="-50" width="100" height="100" fill="transparent" />
+          </g>
+        </svg>
       </div>
     </>
   );
