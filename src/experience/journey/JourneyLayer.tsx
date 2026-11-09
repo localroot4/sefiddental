@@ -121,7 +121,9 @@ export default function JourneyLayer(props: {
   const { root, engine, tier, debug, onJourney } = props;
   const layer = useRef<HTMLDivElement>(null);
   const bands = useRef<Partial<Record<BandId, HTMLDivElement | null>>>({});
+  const stage = useRef<HTMLDivElement>(null);
   const courier = useRef<SVGGElement>(null);
+  const hitbox = useRef<SVGRectElement>(null);
   const spin = useRef<SVGGElement>(null);
   const mark = useRef<SVGSVGElement>(null);
   const tooth = useRef<SVGSVGElement>(null);
@@ -157,18 +159,27 @@ export default function JourneyLayer(props: {
 
       const box = courier.current;
       const show = !webgl && !pose.hidden;
-      box?.style.setProperty('visibility', show ? 'visible' : 'hidden');
+      for (const el of [box, hitbox.current]) {
+        el?.style.setProperty('visibility', show ? 'visible' : 'hidden');
+      }
       // The breath pauses while the DOM courier is hidden.
-      if (box && box.hasAttribute('data-shown') !== show) box.toggleAttribute('data-shown', show);
+      const breath = stage.current;
+      if (breath && breath.hasAttribute('data-shown') !== show) {
+        breath.toggleAttribute('data-shown', show);
+      }
       if (box && show) {
         // The shown place (the pose with its spring, lean and squash, motion.ts), about the
         // drawing's centre.
         const k = shown.scale / BOX;
-        box.setAttribute(
-          'transform',
-          `translate(${shown.x} ${shown.y}) rotate(${deg(shown.tilt)}) scale(${k * shown.sx} ${k * shown.sy})`,
-        );
-        box.style.setProperty('--breathe', String(idleAmount(pose)));
+        const place = `translate(${shown.x} ${shown.y}) rotate(${deg(shown.tilt)}) scale(${k * shown.sx} ${k * shown.sy})`;
+        box.setAttribute('transform', place);
+        hitbox.current?.setAttribute('transform', place);
+        // The breath moves the stage's HTML box about the courier, on the compositor (an animated
+        // SVG element repaints on the main thread every frame, which starved the footer's drag
+        // samples, T-BF10b).
+        breath?.style.setProperty('--breathe', String(idleAmount(pose)));
+        breath?.style.setProperty('--breathe-k', String(k));
+        breath?.style.setProperty('transform-origin', `${shown.x}px ${shown.y}px`);
         // 1 except where a travel has no lane at all (route.ts, the last resort).
         box.style.setProperty('opacity', String(Math.round(pose.opacity * 1000) / 1000));
         // The turn about the vertical axis, seen flat: seated in the arch the tooth is a crown
@@ -349,9 +360,9 @@ export default function JourneyLayer(props: {
         {/* The courier is SVG geometry in one fixed, full-viewport SVG: a moved <g> is not a
             box to the browser's layout-shift tracker, which counted the moved HTML box as
             shifting during a touch scroll (T-PH4). Drawn about its centre, in a 100-unit box. */}
-        <svg data-courier-stage="" className="absolute inset-0 size-full overflow-visible">
-          <g ref={courier} data-courier-body="" className="invisible">
-            <g data-courier-breathe="">
+        <div ref={stage} data-courier-breathe="" className="absolute inset-0">
+          <svg className="absolute inset-0 size-full overflow-visible">
+            <g ref={courier} className="invisible">
               <g ref={spin}>
                 <svg
                   ref={shadow}
@@ -546,9 +557,21 @@ export default function JourneyLayer(props: {
                 </svg>
               </g>
             </g>
-            {/* The box the checks read (rect, visibility, hit-test): over the forms, unpainted. */}
-            <rect data-courier="" x="-50" y="-50" width="100" height="100" fill="transparent" />
-          </g>
+          </svg>
+        </div>
+        {/* The box the checks read (rect, visibility, hit-test): over the forms, unpainted, and
+            outside the breath. */}
+        <svg className="absolute inset-0 size-full overflow-visible">
+          <rect
+            ref={hitbox}
+            data-courier=""
+            x="-50"
+            y="-50"
+            width="100"
+            height="100"
+            fill="transparent"
+            className="invisible"
+          />
         </svg>
       </div>
     </>
