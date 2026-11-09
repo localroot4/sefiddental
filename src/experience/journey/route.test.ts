@@ -131,6 +131,7 @@ describe('routeSteps', () => {
     });
     let longest = 0;
     let count = 0;
+    const t0 = performance.now();
     for (;;) {
       const started = performance.now();
       const r = steps.next();
@@ -138,7 +139,10 @@ describe('routeSteps', () => {
       count += 1;
       if (r.done) break;
     }
-    console.log(`routeSteps: ${count} steps, the longest ${longest.toFixed(1)} ms`);
+    const total = performance.now() - t0;
+    console.log(
+      `routeSteps: ${count} steps, the longest ${longest.toFixed(1)} ms of ${total.toFixed(1)} ms`,
+    );
     expect(count).toBeGreaterThan(10);
     expect(longest).toBeLessThan(16);
   });

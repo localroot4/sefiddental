@@ -158,6 +158,38 @@ describe('journey driver', () => {
     journey.destroy();
   });
 
+  it('DR10 without an idle callback (WebKit) a slot ends after about 8 ms; it never plans every travel in one task', () => {
+    vi.stubGlobal('requestIdleCallback', undefined);
+    vi.stubGlobal('cancelIdleCallback', undefined);
+    // A width no other test uses: the planned lanes are kept per viewport across tests.
+    const width = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 913 });
+    const slots: (() => void)[] = [];
+    const timeout = vi.spyOn(window, 'setTimeout').mockImplementation(((cb: () => void) => {
+      slots.push(cb);
+      return slots.length;
+    }) as unknown as typeof window.setTimeout);
+    const { journey } = start();
+    const lanes = journey.lanes()!;
+    let longest = 0;
+    let count = 0;
+    while (slots.length > 0) {
+      const t0 = performance.now();
+      slots.shift()!();
+      longest = Math.max(longest, performance.now() - t0);
+      count += 1;
+    }
+    const { planned, ms } = lanes.stats();
+    // The planning took several slots, none much past its 8 ms (one route step may overrun).
+    expect(planned).toBeGreaterThan(0);
+    expect(ms).toBeGreaterThan(40);
+    expect(count).toBeGreaterThan(2);
+    expect(longest).toBeLessThan(ms / 2);
+    timeout.mockRestore();
+    journey.destroy();
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+  });
+
   it('DR3 the footer hand-off: the part shows once the courier lands, and goes home when it lifts off', () => {
     const { journey } = start();
     const part = document.querySelector<HTMLElement>('[data-dock="footer"]')!;
