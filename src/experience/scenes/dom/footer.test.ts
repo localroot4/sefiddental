@@ -115,7 +115,19 @@ function ctx(over: Partial<SceneContext> = {}): SceneContext {
 }
 
 /** The chunk resolved (a microtask) and the arming frame ran (a 0 ms timer here). */
-const settled = () => new Promise((resolve) => setTimeout(resolve, 5));
+/**
+ * The lazy Draggable import has resolved: the parts are draggable (5 ms was not always enough
+ * under CI coverage, run 125). Without a draggable after 500 ms it returns, for the failure cases.
+ */
+const settled = () =>
+  vi
+    .waitFor(
+      () => {
+        if (mocks.instances.length === 0) throw new Error('no Draggable yet');
+      },
+      { timeout: 500, interval: 5 },
+    )
+    .catch(() => undefined);
 
 beforeEach(() => {
   // Frames are 0 ms timers here (jsdom schedules none on its own).
