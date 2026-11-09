@@ -695,6 +695,10 @@ for (const tier of HOME_TIERS) {
   test(`T-KB walk home at ?tier=${tier} (tier 2 pins the scenes from 1024 px)`, async ({
     page,
   }) => {
+    // The same stops as tier 0, but each frame draws the courier: in WebKit on the CI runner
+    // (software rendering) a stop took about 0.6 s, the whole walk over 30 s (tier 0: 15-17 s;
+    // run 124).
+    test.slow(tier > 0);
     await openHome(page, tier);
     const labels = await tabWalk(page);
     // The hero card's phone field comes before the first scene.
