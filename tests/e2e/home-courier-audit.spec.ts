@@ -280,4 +280,104 @@ test.describe('courier audit', () => {
     const failing = await audit(page, 1);
     expect(report(failing), `failing samples at ${size.width}x${size.height}`).toBe('');
   });
+
+  test('T-CA4 the intro hand-off: no frame of a glide puts the form over text, a control or a card; a phone never glides', async ({
+    page,
+  }, testInfo) => {
+    const name = testInfo.project.name;
+    test.skip(!['desktop-light', 'tablet-light', 'phone-light'].includes(name), 'light rows');
+    const sizes =
+      name === 'desktop-light'
+        ? [
+            { width: 1440, height: 900 },
+            { width: 1024, height: 768 },
+          ]
+        : name === 'tablet-light'
+          ? [
+              { width: 820, height: 1180 },
+              { width: 854, height: 1280 },
+            ]
+          : [page.viewportSize()!];
+    for (const size of sizes) {
+      // A new tab plays the intro again (its session flag is per tab).
+      const tab = await page.context().newPage();
+      await tab.setViewportSize(size);
+      // Every frame of a glide, from the intro's first frame on (the intro plays: no skipIntro).
+      await tab.addInitScript(() => {
+        const out = { glide: 0, problems: [] as string[] };
+        (window as unknown as { __glide: typeof out }).__glide = out;
+        const tick = (): void => {
+          const j = (
+            window as unknown as {
+              __sefidJourney?: {
+                handoff(): string | null;
+                shown(): {
+                  x: number;
+                  y: number;
+                  scale: number;
+                  tilt: number;
+                  sx: number;
+                  sy: number;
+                };
+              };
+            }
+          ).__sefidJourney;
+          if (j?.handoff() === 'glide') {
+            out.glide += 1;
+            // The form's box as T-CA1 draws it (the shown place, grown by its lean and stretch).
+            const d = j.shown();
+            const turn = Math.abs(Math.cos(d.tilt)) + Math.abs(Math.sin(d.tilt));
+            const half = ((d.scale * 0.8) / 2) * turn * Math.max(d.sx, d.sy);
+            const hit = (r: DOMRect): boolean =>
+              r.width > 0 &&
+              r.height > 0 &&
+              r.left < d.x + half &&
+              r.right > d.x - half &&
+              r.top < d.y + half &&
+              r.bottom > d.y - half;
+            const skip = '[aria-hidden="true"], [data-dev-overlay], [data-courier-layer], #intro';
+            const shown = (el: Element): boolean =>
+              el.closest(skip) === null && getComputedStyle(el).visibility !== 'hidden';
+            for (const el of document.querySelectorAll(
+              'a[href], button, input, select, textarea, summary, [role="button"]',
+            )) {
+              if (shown(el) && [...el.getClientRects()].some(hit)) {
+                out.problems.push(`over a control «${(el.textContent ?? '').trim().slice(0, 24)}»`);
+              }
+            }
+            for (const card of document.querySelectorAll(
+              '[data-above-courier] > :not([data-dock])',
+            )) {
+              if ([...card.getClientRects()].some(hit)) out.problems.push('over a card');
+            }
+            const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+            const range = document.createRange();
+            for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+              const el = node.parentElement;
+              if (!el || !node.textContent?.trim() || !shown(el)) continue;
+              range.selectNodeContents(node);
+              if ([...range.getClientRects()].some(hit)) {
+                out.problems.push(`over text «${node.textContent.trim().slice(0, 24)}»`);
+              }
+            }
+          }
+          if (performance.now() < 8000) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      });
+      await tab.goto('/?tier=1&debug=1');
+      await tab.waitForFunction(() => document.documentElement.dataset.intro === 'done');
+      await tab.waitForTimeout(1500);
+      const { glide, problems } = await tab.evaluate(
+        () => (window as unknown as { __glide: { glide: number; problems: string[] } }).__glide,
+      );
+      testInfo.annotations.push({
+        type: 'glide frames',
+        description: `${size.width}x${size.height}: ${glide}`,
+      });
+      if (name === 'phone-light') expect(glide, 'a phone never glides').toBe(0);
+      expect([...new Set(problems)], `${size.width}x${size.height}`).toEqual([]);
+      await tab.close();
+    }
+  });
 });

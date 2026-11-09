@@ -231,6 +231,7 @@ describe('journey driver', () => {
     afterEach(() => {
       delete document.documentElement.dataset.intro;
       performance.clearMarks('intro:end');
+      document.getElementById('intro')?.remove();
     });
 
     it("DR11 born in the intro mark's hole above the cards, it glides to the pose once the overlay lifts; a long frame slows the glide, never skips it", () => {
@@ -294,7 +295,120 @@ describe('journey driver', () => {
       const none = start();
       expect(none.last()).toMatchObject({ lead: false, born: 1 });
       none.journey.destroy();
+      // A phone (D1 below the first screen): never a glide, late or not.
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+      document.documentElement.dataset.intro = 'done';
+      performance.clearMarks('intro:end');
+      performance.mark('intro:end');
+      const phone = start();
+      expect(phone.last()).toMatchObject({ lead: false, born: 1 });
+      expect(phone.journey.handoff()).toBeNull();
+      expect(ticks).toHaveLength(0);
+      phone.journey.destroy();
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    });
+
+    /** The intro playing with its dialog, the mark's box at (650, 300) 134 by 166. */
+    const playing = () => {
+      document.documentElement.dataset.intro = 'playing';
+      document.body.insertAdjacentHTML(
+        'beforeend',
+        '<dialog id="intro" open><svg class="i-m"></svg></dialog>',
+      );
+      place(document.querySelector('#intro .i-m')!, 300, 166, 650, 134);
+    };
+    const lift = (detail: { skipped: boolean; reduced: boolean } | null = null) => {
+      document.documentElement.dataset.intro = 'done';
+      document.dispatchEvent(new CustomEvent('sefid:intro-end', { detail }));
+    };
+    const opens = async () => {
+      document.getElementById('intro')!.classList.add('s3');
+      // The frame's opening reaches the driver through a mutation observer (a microtask).
+      await Promise.resolve();
+    };
+
+    it('DR13 in the hole the tick sleeps: a planning slot wakes it, and it lets go after a few still frames', () => {
+      vi.stubGlobal('requestIdleCallback', undefined);
+      vi.stubGlobal('cancelIdleCallback', undefined);
+      const slots: (() => void)[] = [];
+      const timeout = vi.spyOn(window, 'setTimeout').mockImplementation(((cb: () => void) => {
+        slots.push(cb);
+        return slots.length;
+      }) as unknown as typeof window.setTimeout);
+      playing();
+      const { journey } = start();
+      expect(journey.handoff()).toBe('hole');
+      // The idle (here the timer) slot plans and wakes the tick.
+      while (slots.length > 0) slots.shift()!();
+      expect(ticks).toHaveLength(1);
+      runTicks(20);
+      expect(journey.handoff()).toBe('hole');
+      expect(ticks).toHaveLength(0);
+      timeout.mockRestore();
+      journey.destroy();
+    });
+
+    it('DR14 a phone: the mark fades out in the hole as the frame opens, then the courier is on its pose, no glide', async () => {
+      const width = window.innerWidth;
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: 390 });
+      playing();
+      const { journey, last } = start();
+      expect(last()).toMatchObject({ lead: true, born: 0, holeOut: false });
+      await opens();
+      expect(journey.handoffMode()).toBe('fade');
+      expect(last()).toMatchObject({ lead: true, born: 0, holeOut: true });
+      const after = vi.fn();
+      journey.afterHandoff(after);
+      lift();
+      expect(after).toHaveBeenCalledOnce();
+      expect(last()).toMatchObject({ lead: false, born: 1, holeOut: false });
+      expect(last().shown.x).toBeCloseTo(last().pose.x, 6);
+      expect(journey.handoff()).toBeNull();
+      expect(ticks).toHaveLength(0);
+      journey.destroy();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+    });
+
+    it('DR15 a card on the way: no glide frame may touch it, so the mark fades in the hole', async () => {
+      document
+        .getElementById('root')!
+        .insertAdjacentHTML(
+          'afterbegin',
+          '<div data-above-courier=""><div class="card"></div></div>',
+        );
+      // Across the way from the hole (717, 383) down to the services dock.
+      place(document.querySelector('.card')!, 500, 60, 0, 1024);
+      playing();
+      const { journey, last } = start();
+      await opens();
+      expect(journey.handoffMode()).toBe('fade');
+      lift();
+      expect(last()).toMatchObject({ lead: false, born: 1 });
+      journey.destroy();
+    });
+
+    it('DR16 reduced motion switched on during the intro: no glide; a resize mid-glide ends it', async () => {
+      playing();
+      const reduced = start();
+      await opens();
+      expect(reduced.journey.handoffMode()).toBe('glide');
+      lift({ skipped: true, reduced: true });
+      expect(reduced.last()).toMatchObject({ born: 1 });
+      expect(reduced.journey.handoff()).toBeNull();
+      expect(ticks).toHaveLength(0);
+      reduced.journey.destroy();
+      document.getElementById('intro')!.remove();
+      playing();
+      const resized = start();
+      lift();
+      runTicks(5);
+      expect(resized.journey.handoff()).toBe('glide');
+      expect(resized.last().born).toBeLessThan(1);
+      resized.journey.measure();
+      expect(resized.journey.handoff()).toBeNull();
+      expect(resized.last().born).toBe(1);
+      expect(resized.last().shown.x).toBeCloseTo(resized.last().pose.x, 6);
+      resized.journey.destroy();
     });
   });
 });

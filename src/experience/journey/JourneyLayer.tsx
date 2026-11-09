@@ -157,7 +157,10 @@ export default function JourneyLayer(props: {
       webgl,
       born,
       lead,
+      holeOut,
     }: Frame): void => {
+      // A hand-off that cannot glide clear: the mark fades out in the intro's hole with its frame.
+      layer.current?.toggleAttribute('data-courier-hole-out', holeOut);
       // The intro hand-off: above the hero's cards from the intro mark's hole until clear of them.
       if (lead !== led) {
         led = lead;
@@ -326,6 +329,9 @@ export default function JourneyLayer(props: {
         // Where the courier is drawn this frame (the pose with its spring, lean and squash).
         shown: journey.shown,
         planStats: () => journey.lanes()?.stats() ?? null,
+        // The intro hand-off: its state now and how it ends (driver.ts).
+        handoff: journey.handoff,
+        handoffMode: journey.handoffMode,
       };
     }
     return () => {

@@ -6,7 +6,7 @@
  * onto the pose exactly, so reverse scrolling and a reload stay exact; a jump (a reload, an anchor,
  * a programmatic scroll of more than half a viewport) is taken at once, not chased.
  */
-import type { Pose } from './pose';
+import { viewportTop, type Box, type Pose } from './pose';
 
 /** The spring's angular frequency (1/s): about 0.3 s to settle, critically damped. */
 const OMEGA = 24;
@@ -43,6 +43,46 @@ const rise = (t: number): number => 1 - (1 + GLIDE_OMEGA * t) * Math.exp(-GLIDE_
 export function glide(t: number): number {
   if (t >= GLIDE_S) return 1;
   return t <= 0 ? 0 : rise(t) / rise(GLIDE_S);
+}
+
+/** A place in the viewport (px): the courier's centre and its box's side. */
+export interface Place {
+  x: number;
+  y: number;
+  scale: number;
+}
+
+/**
+ * The intro glide from `from` to `to` keeps the courier's form box (80 % of its box, as the
+ * courier audit draws it, and `margin` px) off every obstacle (text, controls, cards; docks.ts
+ * measureObstacles, in document px) at `scrollY`, at every step of its curve, the first included.
+ */
+export function glideClear(
+  from: Place,
+  to: Place,
+  obstacles: readonly Box[],
+  scrollY: number,
+  margin = 2,
+): boolean {
+  const steps = 24;
+  for (let i = 0; i <= steps; i += 1) {
+    const e = glide((GLIDE_S * i) / steps);
+    const x = from.x + (to.x - from.x) * e;
+    const y = from.y + (to.y - from.y) * e;
+    const half = ((from.scale + (to.scale - from.scale) * e) * 0.8) / 2 + margin;
+    for (const o of obstacles) {
+      const top = viewportTop(o, scrollY);
+      if (
+        x - half < o.left + o.width &&
+        x + half > o.left &&
+        y - half < top + o.height &&
+        y + half > top
+      ) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 export interface Shown {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { createFollow, GLIDE_S, glide } from './motion';
+import { createFollow, GLIDE_S, glide, glideClear } from './motion';
 import { NO_POSE, type Pose } from './pose';
 
 const pose = (x: number, y: number, scale = 100): Pose => ({
@@ -92,5 +92,26 @@ describe('the drawn form stays in its lane', () => {
     expect(glide(GLIDE_S / 2)).toBeGreaterThan(0.7);
     expect(glide(GLIDE_S)).toBe(1);
     expect(glide(5)).toBe(1);
+  });
+
+  it('M6 the intro glide is clear only if no frame of its form box touches an obstacle', () => {
+    const box = (left: number, top: number, width: number, height: number, pin = null) => ({
+      left,
+      top,
+      width,
+      height,
+      pin,
+    });
+    const from = { x: 400, y: 300, scale: 100 };
+    const to = { x: 400, y: 700, scale: 50 };
+    // A card beside the way down: clear (the form box is 80 % of the courier's box).
+    expect(glideClear(from, to, [box(470, 0, 200, 900)], 0)).toBe(true);
+    // A line of text across the way: not clear.
+    expect(glideClear(from, to, [box(300, 500, 300, 20)], 0)).toBe(false);
+    // The hole itself on a card: not clear from the first frame.
+    expect(glideClear(from, to, [box(430, 280, 100, 40)], 0)).toBe(false);
+    // Obstacles in document px: scrolled 400 down, a box at 900 is on the way at 500.
+    expect(glideClear(from, to, [box(300, 900, 300, 20)], 400)).toBe(false);
+    expect(glideClear(from, to, [box(300, 900, 300, 20)], 0)).toBe(true);
   });
 });

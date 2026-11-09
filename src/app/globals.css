@@ -395,6 +395,18 @@
   mask-image: linear-gradient(to bottom, #000, transparent 34%);
 }
 
+/* The intro hand-off where the courier cannot glide clear of the text and the cards (and on every
+   phone): its mark fades out in the intro's hole with the frame's own fade (introScript.ts INTRO_CSS,
+   `#intro.s3 .i-f`: i-fade .15s linear .25s), and it shows on its pose after the lift. */
+[data-courier-hole-out] {
+  animation: courier-hole-out 0.15s linear 0.25s both;
+}
+@keyframes courier-hole-out {
+  to {
+    opacity: 0;
+  }
+}
+
 /* A switch for checks that judge the page's own pixels (the a11y contrast judge): the courier's
    DOM layer paints nothing, and the WebGL courier skips its passes (WebglCourier.tsx); every other
    WebGL scene still draws. */

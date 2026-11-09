@@ -480,6 +480,8 @@ test("T-IN11 the served page: a render-blocking expect link in <head> naming the
 type HandoffFrame = {
   t: number;
   intro: string | null;
+  /** The frame is opening (the dialog's stage 3). */
+  opening: boolean;
   /** The intro mark's box (the frame's hole at its first scale), while the dialog is open. */
   hole: { x: number; y: number; h: number } | null;
   courier: { x: number; y: number; h: number; shown: boolean };
@@ -487,12 +489,23 @@ type HandoffFrame = {
   off: number;
   lead: boolean;
   z: string;
-  /** The courier's box overlaps a card it normally passes under. */
-  underCard: boolean;
+  /** The courier layer's opacity (the mark's fade in the hole). */
+  layer: number;
+  state: 'hole' | 'glide' | null;
+  mode: 'glide' | 'fade' | null;
+};
+
+/** The driver's glide clock (driver.ts): frame time, at most a 30 fps frame each (ms). */
+const glideClock = (frames: HandoffFrame[], from: number) => {
+  const clock = [0];
+  for (let i = from + 1; i < frames.length; i += 1) {
+    clock.push(clock.at(-1)! + Math.min(frames[i]!.t - frames[i - 1]!.t, 1000 / 30));
+  }
+  return (ms: number) => from + clock.findIndex((c) => c >= ms);
 };
 
 for (const tier of [1, 2] as const) {
-  test(`T-IN12 ?tier=${tier}: the courier is born in the intro mark's hole, glides to D1 in about 600 ms once the overlay lifts, and drops under the cards only once clear of them`, async ({
+  test(`T-IN12 ?tier=${tier}: the courier is born in the intro mark's hole; it glides to D1 only where no frame of the glide touches text or a card (never on a phone), else its mark fades out in the hole with the intro and it shows on its pose`, async ({
     page,
   }, testInfo) => {
     if (tier === 1) only(testInfo, 'phone-light', 'tablet-light', 'desktop-light');
@@ -507,6 +520,8 @@ for (const tier of [1, 2] as const) {
             __sefidJourney?: {
               pose(): { x: number; y: number };
               shown(): { x: number; y: number };
+              handoff(): HandoffFrame['state'];
+              handoffMode(): HandoffFrame['mode'];
             };
           }
         ).__sefidJourney;
@@ -514,13 +529,6 @@ for (const tier of [1, 2] as const) {
         const layer = document.querySelector('[data-courier-layer]');
         const dialog = document.querySelector<HTMLDialogElement>('#intro');
         const mark = dialog?.open ? dialog.querySelector('.i-m')?.getBoundingClientRect() : null;
-        // The intro mark's last place, journey or not (a late journey starts from it).
-        if (mark) {
-          (window as unknown as { __hole: HandoffFrame['hole'] }).__hole = {
-            ...centre(mark),
-            h: mark.height,
-          };
-        }
         if (j && box && layer) {
           const r = box.getBoundingClientRect();
           const pose = j.pose();
@@ -528,6 +536,7 @@ for (const tier of [1, 2] as const) {
           frames.push({
             t: performance.now(),
             intro: document.documentElement.dataset.intro ?? null,
+            opening: Boolean(dialog?.open && dialog.classList.contains('s3')),
             hole: mark ? { ...centre(mark), h: mark.height } : null,
             courier: {
               ...centre(r),
@@ -537,12 +546,9 @@ for (const tier of [1, 2] as const) {
             off: Math.hypot(shown.x - pose.x, shown.y - pose.y),
             lead: layer.hasAttribute('data-courier-lead'),
             z: getComputedStyle(layer).zIndex,
-            underCard: [
-              ...document.querySelectorAll('[data-above-courier] > :not([data-dock])'),
-            ].some((card) => {
-              const c = card.getBoundingClientRect();
-              return r.left < c.right && r.right > c.left && r.top < c.bottom && r.bottom > c.top;
-            }),
+            layer: Number(getComputedStyle(layer).opacity),
+            state: j.handoff(),
+            mode: j.handoffMode(),
           });
         }
         if (performance.now() < 6000) requestAnimationFrame(tick);
@@ -555,19 +561,23 @@ for (const tier of [1, 2] as const) {
     const frames = await page.evaluate(
       () => (window as unknown as { __handoff: HandoffFrame[] }).__handoff,
     );
-    const end = (await marks(page)).end!;
+    const phone = testInfo.project.name.startsWith('phone');
     const born = frames.filter((f) => f.intro === 'playing' && f.hole !== null);
-    const lastHole = await page.evaluate(
-      () => (window as unknown as { __hole: HandoffFrame['hole'] }).__hole,
-    );
-    const first = frames[0]!;
-    // The glide starts at the lift, or for a journey that came up to 800 ms after it, at once from
-    // the intro mark's last place.
-    let from: number;
-    let hole: { x: number; y: number };
-    if (born.length > 0) {
-      // Born while the overlay is up: the courier's mark (92 % of its box) fills the hole exactly,
-      // above the cards.
+    const lift = frames.findIndex((f) => f.intro === 'done');
+    expect(lift, 'frames after the lift').toBeGreaterThan(-1);
+    if (born.length === 0) {
+      // The journey came after the intro: a glide where it keeps clear (never on a phone), or
+      // no hand-off at all, the courier on its own layer from its first frame.
+      const late = frames[0]!.state === 'glide';
+      testInfo.annotations.push({ type: 'hand-off', description: late ? 'late glide' : 'none' });
+      if (!late) {
+        expect(frames.every((f) => !f.lead && f.z === '1' && f.off < 0.5)).toBe(true);
+        return;
+      }
+      expect(phone, 'no glide on a phone').toBe(false);
+    } else {
+      // Born while the overlay is up: the courier's mark (92 % of its box) fills the hole
+      // exactly, above the cards.
       for (const f of born) {
         expect(f.courier.shown, 'shown in the hole').toBe(true);
         expect(Math.abs(f.courier.x - f.hole!.x), 'x on the hole').toBeLessThan(1);
@@ -578,43 +588,43 @@ for (const tier of [1, 2] as const) {
         expect(f.lead, 'above everything').toBe(true);
         expect(Number(f.z), 'above the cards (z 2)').toBeGreaterThan(2);
       }
-      from = end;
-      hole = born.at(-1)!.courier;
-    } else if (first.t - end < 800) {
-      testInfo.annotations.push({ type: 'hand-off', description: "late: from the mark's place" });
-      expect(first.lead, 'above the cards from its first frame').toBe(true);
-      expect(Math.abs(first.courier.x - lastHole!.x), 'x on the mark').toBeLessThan(1.5);
-      expect(Math.abs(first.courier.y - lastHole!.y), 'y on the mark').toBeLessThan(1.5);
-      expect(Math.abs(first.courier.h * 0.92 - lastHole!.h), "the mark's size").toBeLessThan(1.5);
-      from = first.t;
-      hole = lastHole!;
-    } else {
-      // A phone's engine waits up to 1500 ms after load for its probe (phone spec D23), often past
-      // the intro: then no hand-off at all, and the courier keeps its own layer from the start.
-      expect(testInfo.project.name, 'only a phone may miss the hand-off').toMatch(/^phone/);
-      testInfo.annotations.push({ type: 'hand-off', description: 'none: the engine came later' });
-      expect(frames.every((f) => !f.lead && f.z === '1')).toBe(true);
+    }
+    const mode = frames[lift]!.mode;
+    testInfo.annotations.push({ type: 'hand-off', description: mode ?? 'none' });
+    if (phone) expect(mode, 'a phone never glides').toBe('fade');
+    if (mode === 'fade') {
+      // The mark fades out in the hole with the frame's own fade: never back up, nearly gone by
+      // the last frame before the lift.
+      const opening = born.filter((f) => f.opening).map((f) => f.layer);
+      expect(opening.length, 'frames while the frame opens').toBeGreaterThan(0);
+      for (let i = 1; i < opening.length; i += 1) {
+        expect(opening[i]!).toBeLessThanOrEqual(opening[i - 1]!);
+      }
+      expect(opening.at(-1)!, 'faded with the intro').toBeLessThan(0.6);
+      // Then, from the first frame after the lift, it is on its pose and its own layer, whole: no
+      // glide.
+      for (const f of frames.slice(lift)) {
+        expect(f.off, 'on its pose').toBeLessThan(0.5);
+        expect(f.lead).toBe(false);
+        expect(f.z).toBe('1');
+        expect(f.layer).toBe(1);
+      }
       return;
     }
-    const start = frames.find((f) => f.t >= from)!;
+    // The glide, counted in frames on the driver's own clock (its steps are capped frame times).
+    expect(mode).toBe('glide');
+    const glideStart = born.length > 0 ? lift : 0;
+    const at = glideClock(frames, glideStart);
+    const start = frames[glideStart]!;
     expect(start.off, 'D1 is away from the hole').toBeGreaterThan(40);
-    // A glide, not a jump: still on its way 300 ms in, on the pose by 700 ms.
-    const at = (ms: number) => frames.find((f) => f.t >= from + ms)!;
-    expect(at(300).off, 'mid-glide').toBeGreaterThan(1);
-    expect(at(300).off, 'mid-glide').toBeLessThan(start.off);
-    expect(at(700).off, 'landed on D1').toBeLessThan(0.5);
-    expect(Math.hypot(start.courier.x - hole.x, start.courier.y - hole.y)).toBeLessThan(
-      0.1 * start.off,
-    );
-    // Back on its own layer once landed, and never under a card while it leads.
-    const dropped = frames.findIndex((f) => f.t >= from && !f.lead);
-    expect(dropped, 'drops to its layer').toBeGreaterThan(0);
-    expect(frames[dropped]!.t - from, 'not before the glide ends').toBeGreaterThan(500);
+    expect(frames[at(150)]!.off, 'mid-glide').toBeGreaterThan(1);
+    expect(frames[at(150)]!.off, 'mid-glide').toBeLessThan(start.off);
+    expect(frames[at(750)]!.off, 'landed on D1').toBeLessThan(0.5);
+    const dropped = frames.findIndex((f, i) => i >= glideStart && !f.lead);
+    expect(dropped, 'drops to its layer').toBeGreaterThan(at(500));
     for (const f of frames.slice(dropped)) {
       expect(f.lead).toBe(false);
       expect(f.z).toBe('1');
     }
-    expect(frames.slice(dropped).every((f) => f.underCard === false || f.off < 0.5)).toBe(true);
-    expect(frames[dropped]!.underCard, 'clear of the cards when it drops').toBe(false);
   });
 }

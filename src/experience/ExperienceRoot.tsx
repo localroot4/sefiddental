@@ -27,12 +27,6 @@ import { TierProvider, useTier, useTierStore } from './tier/TierProvider';
 
 /** The canvas mounts in an idle callback, at the latest this long after the gates open. */
 const MOUNT_IDLE_TIMEOUT_MS = 1500;
-/**
- * After an intro, the canvas waits out the courier's hand-off glide (journey/motion.ts GLIDE_S,
- * 600 ms): three.js's start is a long task that would freeze the glide.
- */
-const HANDOFF_WAIT_MS = 700;
-const INTRO_END_EVENT = 'sefid:intro-end';
 /** Coarse pointers: the engine waits for the probe's answer at most this long after `load`. */
 const ENGINE_GATE_MS = 1500;
 /** The root attribute the pinned CSS follows (sticky stages and their rooms from 1024 px). */
@@ -269,27 +263,6 @@ function ExperienceHost(props: {
   }, [wantsCanvas, canvasModule]);
 
   const [idleReached, setIdleReached] = useState(false);
-  useEffect(() => {
-    if (!mountable || idleReached) return;
-    const mount = (): (() => void) => onIdle(() => setIdleReached(true), MOUNT_IDLE_TIMEOUT_MS);
-    const intro = document.documentElement.dataset.intro;
-    if (intro === undefined) return mount();
-    let cancel = (): void => {};
-    let timer = 0;
-    const wait = (): void => {
-      timer = window.setTimeout(() => {
-        cancel = mount();
-      }, HANDOFF_WAIT_MS);
-    };
-    // The gate opens at the intro's cap even while the overlay is still up: wait for its end.
-    if (intro === 'playing') document.addEventListener(INTRO_END_EVENT, wait, { once: true });
-    else wait();
-    return () => {
-      document.removeEventListener(INTRO_END_EVENT, wait);
-      window.clearTimeout(timer);
-      cancel();
-    };
-  }, [mountable, idleReached]);
 
   const [overlayModule, setOverlayModule] = useState<OverlayModule | null>(null);
   useEffect(() => {
@@ -310,6 +283,23 @@ function ExperienceHost(props: {
   // 1 to 3 (the DOM courier, the bands, the hand-offs); the canvas courier reads its pose.
   const [journeyModule, setJourneyModule] = useState<JourneyModule | null>(null);
   const [journey, setJourney] = useState<Journey | null>(null);
+  useEffect(() => {
+    if (!mountable || idleReached) return;
+    const mount = (): (() => void) => onIdle(() => setIdleReached(true), MOUNT_IDLE_TIMEOUT_MS);
+    if (document.documentElement.dataset.intro === undefined) return mount();
+    // After an intro the canvas waits until the journey's hand-off is over (journey/driver.ts):
+    // the WebGL courier would take the glide over, and three.js's start is a long task. The
+    // journey comes with the engine at every tier the canvas draws at, and decides.
+    if (journey === null) return;
+    let cancel = (): void => {};
+    const off = journey.afterHandoff(() => {
+      cancel = mount();
+    });
+    return () => {
+      off();
+      cancel();
+    };
+  }, [mountable, idleReached, journey]);
   const journeyWanted = engine !== null && readyTier >= 1;
   useEffect(() => {
     if (!journeyWanted || journeyModule !== null) return;

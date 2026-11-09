@@ -16,11 +16,9 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import { introMarkBox } from '@/lib/intro/introMark';
 
-import { subscribeIntro } from '../core/browserSignals';
-
 import { AWAY_ATTR, HERE_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
 import { ABOVE_ATTR, measureDocks, measureObstacles, measureViewport } from './docks';
-import { createFollow, glide, type Shown } from './motion';
+import { createFollow, glide, glideClear, type Place, type Shown } from './motion';
 import {
   courierPose,
   prepareLanes,
@@ -43,6 +41,10 @@ export const MARK_SHARE = 0.92;
  * intro mark's place: the mark the reader just saw flies on to D1.
  */
 const LATE_HANDOFF_MS = 800;
+/** Under this width D1 is below the first screen (journey.md, docks per width): no glide. */
+const GLIDE_MIN_WIDTH = 744;
+/** introScript.ts: the intro's end, with `{ skipped, reduced }`. */
+const INTRO_END_EVENT = 'sefid:intro-end';
 
 /** The stages the courier passes over whose own background the layer paints (section 6). */
 export const BANDS = [
@@ -79,6 +81,8 @@ export interface Frame {
   born: number;
   /** Above the cards: from the hole until the glide is over and the courier is clear of them. */
   lead: boolean;
+  /** The mark fades out in the intro's hole, with the frame's own fade. */
+  holeOut: boolean;
 }
 
 export interface Journey {
@@ -95,6 +99,12 @@ export interface Journey {
   setWebgl(on: boolean): void;
   /** The WebGL courier draws now (the DOM courier hides its forms). */
   webgl(): boolean;
+  /** The intro hand-off now: in the hole, gliding, or over (null). */
+  handoff(): 'hole' | 'glide' | null;
+  /** How it ends: a glide to the pose, the mark's fade in the hole, or not decided yet. */
+  handoffMode(): 'glide' | 'fade' | null;
+  /** Calls `cb` once the hand-off is over (at once if there is none); returns the unsubscribe. */
+  afterHandoff(cb: () => void): () => void;
   /** Measure again now (a test, a font load the observer missed). */
   measure(): void;
   destroy(): void;
@@ -178,9 +188,13 @@ export function createJourney(opts: {
   };
 
   // The intro hand-off: born in the intro mark's hole while the overlay is up (the frame's hole
-  // at its first scale is exactly the mark's box), it glides to the pose once the overlay lifts.
-  // Only when the intro plays: never at tier 0 or under reduced motion.
-  let hole: { x: number; y: number; scale: number } | null = null;
+  // at its first scale is exactly the mark's box). As the frame opens the driver decides: a glide
+  // to the pose once the overlay lifts, only where every frame of it keeps the form clear of the
+  // text, the controls and the cards (motion.ts glideClear); else, and on every phone (D1 below
+  // the first screen), the mark fades out in the hole with the intro's own fade and the courier
+  // shows on its pose after the lift. Only when the intro plays: never at tier 0 or under reduced
+  // motion, nor when reduced motion comes on during the intro.
+  let hole: Place | null = null;
   // The overlay itself, not isIntroDone(): its cap from navigation start would end the hole early
   // on a page that started the intro late.
   const playing = (): boolean => html.dataset.intro === 'playing';
@@ -190,10 +204,21 @@ export function createJourney(opts: {
     ended !== undefined &&
     performance.now() - ended < LATE_HANDOFF_MS;
   /** 'hole' while the overlay is up, the glide's time so far (s) after it, null without one. */
-  let handoff: 'hole' | number | null = playing() ? 'hole' : late ? 0 : null;
+  let handoff: 'hole' | number | null = playing() ? 'hole' : null;
+  /** How the hole ends, decided as the frame opens (or at the lift). */
+  let mode: 'glide' | 'fade' | null = null;
+  /** The mark fades out in the hole with the intro's frame (JourneyLayer, globals.css). */
+  let holeOut = false;
   let lead = handoff !== null;
+  const waiting: (() => void)[] = [];
+  const endHandoff = (): void => {
+    handoff = null;
+    holeOut = false;
+    for (const cb of waiting.splice(0)) cb();
+  };
   // The cards themselves, as the lanes see them (docks.ts measureObstacles).
   const cards = [...root.querySelectorAll<HTMLElement>(`[${ABOVE_ATTR}] > :not([data-dock])`)];
+  const dialog = document.getElementById('intro');
   const measureHole = (): void => {
     const mark = document.querySelector('#intro[open] .i-m')?.getBoundingClientRect();
     if (!mark || !(mark.height > 0)) return;
@@ -202,6 +227,11 @@ export function createJourney(opts: {
       y: mark.top + mark.height / 2,
       scale: mark.height / MARK_SHARE,
     };
+  };
+  const decide = (): 'glide' | 'fade' => {
+    const pose = courierPose(window.scrollY, docks, viewport, tier, lanes);
+    if (hole === null || pose.hidden || window.innerWidth < GLIDE_MIN_WIDTH) return 'fade';
+    return glideClear(hole, pose, obstacles, window.scrollY) ? 'glide' : 'fade';
   };
   const overCards = (at: Shown): boolean => {
     const half = at.scale / 2;
@@ -232,7 +262,7 @@ export function createJourney(opts: {
       if (handoff !== 'hole') handoff += Math.min(dt, 1 / 30);
       born = handoff === 'hole' ? 0 : glide(handoff);
       if (born >= 1 || hole === null || pose.hidden) {
-        handoff = null;
+        endHandoff();
         born = 1;
       } else {
         const mix = (a: number, b: number): number => a + (b - a) * born;
@@ -246,8 +276,8 @@ export function createJourney(opts: {
         };
       }
     }
-    // Back under the cards only once clear of them.
-    if (lead && handoff === null && !overCards(shown)) lead = false;
+    // Back under the cards once the mark has faded, or once the glide is clear of them.
+    if (lead && handoff === null && (mode !== 'glide' || !overCards(shown))) lead = false;
     const dim = Math.round(photoDim(pose) * 1000) / 1000;
     const opacity = `${Math.round(pose.smile * 1000) / 1000}|${dim}`;
     if (photo && opacity !== lastOpacity) {
@@ -270,7 +300,7 @@ export function createJourney(opts: {
       if (nextAway && away === false) part.dispatchEvent(new CustomEvent(LIFTOFF_EVENT));
       away = nextAway;
     }
-    render({ pose, shown, scrollY, docks, bands, viewport, webgl, born, lead });
+    render({ pose, shown, scrollY, docks, bands, viewport, webgl, born, lead, holeOut });
   };
 
   // Follow the tick while something moves; let go after a few still frames.
@@ -287,8 +317,8 @@ export function createJourney(opts: {
       lastY = y;
       apply(delta);
       // Until the spring has landed on the pose (motion.ts) and the intro glide is over, then
-      // the tick sleeps.
-      if (still >= STILL_FRAMES && spring.settled() && handoff === null) {
+      // the tick sleeps (in the hole too: it holds still until the overlay lifts).
+      if (still >= STILL_FRAMES && spring.settled() && typeof handoff !== 'number') {
         off?.();
         off = null;
       }
@@ -300,6 +330,8 @@ export function createJourney(opts: {
     frame = 0;
     measure();
     if (handoff === 'hole') measureHole();
+    // A resize or a rotation mid-glide: the courier takes its pose at once.
+    else if (handoff !== null) endHandoff();
     apply();
   };
   const schedule = (): void => {
@@ -321,20 +353,48 @@ export function createJourney(opts: {
     // The dialog is gone: the mark's place from the intro's own geometry (introMark.ts).
     const mark = introMarkBox(window.innerWidth, window.innerHeight);
     hole = { x: mark.x, y: mark.y, scale: mark.h / MARK_SHARE };
+    // Too late for a fade with the intro: a glide, where it keeps clear, or none.
+    mode = decide();
+    if (mode === 'glide') {
+      handoff = 0;
+      lead = true;
+    }
   }
   if (hole === null) {
     handoff = null;
     lead = false;
   }
-  const unsubscribeIntro =
-    handoff === 'hole'
-      ? subscribeIntro(() => {
-          if (handoff !== 'hole' || playing()) return;
-          handoff = 0;
-          follow();
-        })
-      : null;
-  if (late) follow();
+  // The frame opens (s3): the glide or the fade is decided while the courier is still in the
+  // hole, so a fade runs with the frame's own (globals.css courier-hole-out).
+  const opens = (): void => {
+    if (handoff !== 'hole' || mode !== null || !dialog?.classList.contains('s3')) return;
+    mode = decide();
+    if (mode === 'fade') {
+      holeOut = true;
+      apply();
+    }
+  };
+  const frameObserver = handoff === 'hole' && dialog ? new MutationObserver(opens) : null;
+  frameObserver?.observe(dialog!, { attributes: true, attributeFilter: ['class'] });
+  opens();
+  // The overlay lifts: the glide, or the courier on its pose (reduced motion switched on during
+  // the intro included).
+  const lifts = (event: Event): void => {
+    if (handoff !== 'hole') return;
+    frameObserver?.disconnect();
+    mode ??= decide();
+    const reduced = (event as CustomEvent<{ reduced?: boolean } | null>).detail?.reduced === true;
+    if (mode === 'glide' && !reduced) {
+      handoff = 0;
+      follow();
+    } else {
+      mode = 'fade';
+      endHandoff();
+      apply();
+    }
+  };
+  if (handoff === 'hole') document.addEventListener(INTRO_END_EVENT, lifts);
+  if (handoff !== null && handoff !== 'hole') follow();
   apply();
 
   return {
@@ -350,10 +410,24 @@ export function createJourney(opts: {
       apply();
     },
     webgl: () => webgl,
+    handoff: () => (handoff === 'hole' ? 'hole' : handoff === null ? null : 'glide'),
+    handoffMode: () => mode,
+    afterHandoff(cb) {
+      if (handoff === null) {
+        cb();
+        return () => {};
+      }
+      waiting.push(cb);
+      return () => {
+        const at = waiting.indexOf(cb);
+        if (at >= 0) waiting.splice(at, 1);
+      };
+    },
     measure: remeasure,
     destroy() {
       destroyed = true;
-      unsubscribeIntro?.();
+      frameObserver?.disconnect();
+      document.removeEventListener(INTRO_END_EVENT, lifts);
       off?.();
       off = null;
       if (frame !== 0) cancelAnimationFrame(frame);
