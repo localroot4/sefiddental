@@ -117,6 +117,21 @@ function Crown(props: { width: number; depth?: number }) {
   );
 }
 
+/**
+ * The mark's fade in the intro's hole on the intro frame's own clock: a journey that comes up while
+ * the frame already opens (WebKit often does) starts the same fade as late, so without this the
+ * overlay would lift before the mark had faded.
+ */
+function withFrame(layer: HTMLElement | null): void {
+  const name = (a: Animation): string => (a as CSSAnimation).animationName ?? '';
+  const frame = document
+    .querySelector('#intro .i-f')
+    ?.getAnimations()
+    .find((a) => name(a) === 'i-fade');
+  const fade = layer?.getAnimations().find((a) => name(a) === 'courier-hole-out');
+  if (frame && fade && frame.startTime !== null) fade.startTime = frame.startTime;
+}
+
 export default function JourneyLayer(props: {
   root: HTMLElement;
   engine: EngineTicks;
@@ -145,6 +160,7 @@ export default function JourneyLayer(props: {
   useEffect(() => {
     applyStyle(layer.current, LAYER);
     let lastLevel = -1;
+    let fading = false;
     let topShown = false;
     let placed: Frame['bands'] | null = null;
     let led: boolean | null = null;
@@ -160,7 +176,11 @@ export default function JourneyLayer(props: {
       holeOut,
     }: Frame): void => {
       // A hand-off that cannot glide clear: the mark fades out in the intro's hole with its frame.
-      layer.current?.toggleAttribute('data-courier-hole-out', holeOut);
+      if (holeOut !== fading) {
+        fading = holeOut;
+        layer.current?.toggleAttribute('data-courier-hole-out', holeOut);
+        if (holeOut) withFrame(layer.current);
+      }
       // The intro hand-off: above the hero's cards from the intro mark's hole until clear of them.
       if (lead !== led) {
         led = lead;

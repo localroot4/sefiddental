@@ -491,6 +491,8 @@ type HandoffFrame = {
   z: string;
   /** The courier layer's opacity (the mark's fade in the hole). */
   layer: number;
+  /** The intro frame's own opacity (its fade as it opens), while the dialog is open. */
+  frame: number | null;
   state: 'hole' | 'glide' | null;
   mode: 'glide' | 'fade' | null;
 };
@@ -547,6 +549,9 @@ for (const tier of [1, 2] as const) {
             lead: layer.hasAttribute('data-courier-lead'),
             z: getComputedStyle(layer).zIndex,
             layer: Number(getComputedStyle(layer).opacity),
+            frame: dialog?.open
+              ? Number(getComputedStyle(dialog.querySelector('.i-f')!).opacity)
+              : null,
             state: j.handoff(),
             mode: j.handoffMode(),
           });
@@ -593,14 +598,13 @@ for (const tier of [1, 2] as const) {
     testInfo.annotations.push({ type: 'hand-off', description: mode ?? 'none' });
     if (phone) expect(mode, 'a phone never glides').toBe('fade');
     if (mode === 'fade') {
-      // The mark fades out in the hole with the frame's own fade: never back up, nearly gone by
-      // the last frame before the lift.
-      const opening = born.filter((f) => f.opening).map((f) => f.layer);
+      // The mark fades out in the hole with the frame's own fade, frame for frame (on the
+      // frame's clock even when the journey came up while the frame was already opening).
+      const opening = born.filter((f) => f.opening && f.state === 'hole' && f.mode === 'fade');
       expect(opening.length, 'frames while the frame opens').toBeGreaterThan(0);
-      for (let i = 1; i < opening.length; i += 1) {
-        expect(opening[i]!).toBeLessThanOrEqual(opening[i - 1]!);
+      for (const f of opening) {
+        expect(Math.abs(f.layer - f.frame!), 'faded with the intro').toBeLessThan(0.12);
       }
-      expect(opening.at(-1)!, 'faded with the intro').toBeLessThan(0.6);
       // Then, from the first frame after the lift, it is on its pose and its own layer, whole: no
       // glide.
       for (const f of frames.slice(lift)) {
