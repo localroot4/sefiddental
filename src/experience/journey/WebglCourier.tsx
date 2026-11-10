@@ -285,6 +285,10 @@ export function WebglCourier(props: {
         journey.setWebgl(visible);
       }
     });
+    // The rig can come after the FrameDriver let the ticker go (the World drew its first frame,
+    // then 30 idle ticks): the handover runs only in a frame, so it asks for one, else the DOM
+    // courier stays until the next scroll or input (T-HR2: a reader at rest after a jump).
+    pulse.request();
     return () => {
       off();
       offAsk();
