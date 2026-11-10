@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { renderToString } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { TierProvider } from '@/experience/tier/TierProvider';
@@ -142,6 +143,16 @@ describe('QualityControl', () => {
     await choose(t('home.quality.auto'));
     expect(localStorage.getItem('sefid-quality')).toBeNull();
     expect(radio(t('home.quality.auto'))).toHaveProperty('checked', true);
+  });
+
+  it('holds the tier line before hydration: the server HTML has a no-break space in it, so the footer keeps its height when the tier name arrives', () => {
+    const html = renderToString(
+      <TierProvider siteCap={null}>
+        <QualityControl labels={LABELS} />
+      </TierProvider>,
+    );
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    expect(doc.querySelector('fieldset p')?.textContent).toBe('\u00a0');
   });
 
   it('reflects a saved choice on load', () => {

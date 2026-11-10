@@ -125,7 +125,9 @@ export default function QualityControl(props: { labels: QualityLabels }) {
         aria-live={live ? 'polite' : undefined}
         className="text-caption text-ink-muted"
       >
-        {tier.hydrated ? (why ? `${tierName(tier.tier)} · ${why}` : tierName(tier.tier)) : null}
+        {/* Before hydration a no-break space holds the line, so the footer does not grow by it
+            once the tier is known (T-PH3 measured the footer 20 px apart across that moment). */}
+        {tier.hydrated ? (why ? `${tierName(tier.tier)} · ${why}` : tierName(tier.tier)) : '\u00a0'}
       </p>
     </fieldset>
   );
