@@ -100,15 +100,15 @@ export async function worldStartedOnLoad(page: Page): Promise<void> {
 }
 
 /**
- * worldSettled once a jump has passed the world window: from tier 2 a non-phone page mounts the
- * world when the window under the hero has been seen, and a jump straight past it counts since
+ * worldSettled once a jump has passed the world window: from tier 2 a page mounts the world when
+ * the window under the hero has been seen (a phone too: only a tier 1 phone keeps the posters, and
+ * only the debug flag loads none on a phone; run 134 T-RS4 at ?tier=3 hung on a tap), and a jump straight past it counts since
  * the observer's root reaches above the viewport (03bddc5). On CI's software GPU its start-up is
  * then one task of 5 to 15 s in which no poll, tween or smooth scroll moves (run 133: T-RS2 and
  * T-RS6 short of their chip's step). The specs' scroll helpers call it after every jump; once a
  * worldSettled has seen the world up the page remembers it, so later calls return at once.
  */
 export async function worldAfterJump(page: Page): Promise<void> {
-  if (test.info().project.name.startsWith('phone-')) return;
   const due = await page.evaluate(() => {
     if ((window as unknown as { __worldUp?: boolean }).__worldUp) return false;
     const target =
