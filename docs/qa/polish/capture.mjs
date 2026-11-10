@@ -1,8 +1,8 @@
 // Polish evidence (docs/experience/journey.md): the home page at every dock and half way through
 // every travel, the hero idle and its descent, the D5 hand-off and the D6 arrival in sixths, D3's
 // restoration per level (playing and at rest), and the intro hand-off (the courier in the intro
-// mark's hole, then its glide to D1), at 1440x900, 854x1280 and 390x844, light and dark, tiers 2
-// and 1. JPEG, at most 1000 px wide.
+// mark's hole, its mark fading with the intro where it cannot glide clear, the lift, D1), at
+// 1440x900, 854x1280 and 390x844, light and dark, tiers 2 and 1. JPEG, at most 1000 px wide.
 //   node docs/qa/polish/capture.mjs <origin> [--sizes=1440x900,854x1280,390x844] [--tiers=2,1]
 //     [--schemes=light,dark] [--only=docks|hero|d5|d6|d3|intro]
 // (after `npm run build` and `npm run db:e2e`, with the standalone server on <origin>, DEMO_CONTENT
@@ -27,9 +27,8 @@ const jpeg = (png, file, width) =>
   sharp(png).resize({ width: Math.min(1000, width) }).jpeg({ quality: 70, mozjpeg: true }).toFile(file);
 
 /**
- * The intro hand-off: screenshots in a loop from the first frame of the overlay, each one timed by
- * the page's own clock against `intro:end`; then the courier in the hole (the last frame before the
- * lift), the first frames of the glide, about 300 and 450 ms in, and D1 at 800 ms.
+ * The intro hand-off: screenshots in a loop from the courier's first frame in the hole, each one
+ * timed by the page's own clock against `intro:end`.
  */
 async function intro(context, width, height, tier, scheme, attempt = 1) {
   const page = await context.newPage();
@@ -52,33 +51,44 @@ async function intro(context, width, height, tier, scheme, attempt = 1) {
   const cdp = await context.newCDPSession(page);
   const shots = [];
   for (;;) {
-    const t = await page.evaluate(() => {
+    const { t, opening, fading } = await page.evaluate(() => {
       const end = performance.getEntriesByName('intro:end')[0];
-      return end ? performance.now() - end.startTime : -1;
+      const layer = document.querySelector('[data-courier-layer]');
+      return {
+        t: end ? performance.now() - end.startTime : -1,
+        opening: document.querySelector('#intro[open].s3') !== null,
+        // The mark fading out in the hole: its layer part way to transparent.
+        fading: layer !== null && layer.hasAttribute('data-courier-hole-out')
+          ? Number(getComputedStyle(layer).opacity)
+          : null,
+      };
     });
     const { data } = await cdp.send('Page.captureScreenshot', {
       format: 'jpeg',
       quality: 90,
       optimizeForSpeed: true,
     });
-    shots.push({ t, png: Buffer.from(data, 'base64') });
+    shots.push({ t, opening, fading, png: Buffer.from(data, 'base64') });
     if (t > 900) break;
   }
-  const before = shots.filter((s) => s.t < 0);
+  const opening = shots.filter((s) => s.t < 0 && s.opening);
   const after = shots.filter((s) => s.t >= 0);
   const near = (ms) => after.reduce((a, b) => (Math.abs(b.t - ms) < Math.abs(a.t - ms) ? b : a));
+  // The frame opening on the courier in the hole; the mark fading with it (or, where the glide is
+  // clear, the first frames of the glide); the first frame after the lift; the courier on D1.
+  const fade = opening.find((s) => s.fading !== null && s.fading < 0.8) ?? opening.at(-1);
+  const glides = fade?.fading === null;
   const picks = [
-    ['1-hole', before.at(-1)],
-    ['2-glide', after[0]],
-    ['3-glide', near(300)],
-    ['4-glide', near(450)],
-    ['5-d1', near(800)],
+    ['1-hole', opening[0]],
+    [glides ? '2-glide' : '2-fade', glides ? near(150) : fade],
+    ['3-lift', after[0]],
+    ['4-d1', near(800)],
   ];
   for (const [name, shot] of picks) {
     if (!shot) continue;
     await jpeg(shot.png, path.join(here, `${width}x${height}-t${tier}-${scheme}-intro-${name}.jpg`), width);
   }
-  console.log(`${width}x${height} t${tier} ${scheme} intro: ${picks.map(([n, s]) => `${n} ${Math.round(s?.t ?? NaN)} ms`).join(', ')}`);
+  console.log(`${width}x${height} t${tier} ${scheme} intro: ${picks.map(([n, s]) => `${n} ${Math.round(s?.t ?? NaN)} ms${s?.fading == null ? '' : ` (${s.fading.toFixed(2)})`}`).join(', ')}`);
   await page.close();
 }
 
