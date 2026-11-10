@@ -9,7 +9,7 @@ import { t } from '@/i18n/fa';
 import { formsHydrated, recordBeacons } from '../helpers/booking';
 import { watchConsoleErrors } from '../helpers/console';
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2 } from '../helpers/webgl';
+import { needsWebgl2, worldSettled } from '../helpers/webgl';
 
 interface Snapshot {
   tier: number;
@@ -630,11 +630,21 @@ test.describe('tablet landscape touch', () => {
     await engineReady(page);
     expect((await snapshot(page)).layout).toMatchObject({ pinnedScenes: true, lenis: false });
     await scrollIntoScene(page, 'services');
+    // This scroll shows the world window, so the WebGL world starts now; the rotations are timed
+    // once it is up: during its start-up no frame renders, and the media query change of a
+    // rotation waited for one past the poll (pins back 1 s after a 5 s poll gave up, the world at
+    // 9 to 22 frames: CI run 130; 6 of 20 with two workers on two cores).
+    await worldSettled(page);
     const before = await snapshot(page);
     const section = await sectionUnderMiddle(page);
     expect(section).toBe('services');
 
     await page.setViewportSize({ width: 820, height: 1180 });
+    // The relatch follows the media query, whose change is delivered with the next rendered frame;
+    // on a software GPU shared by two pages (CI's two workers) the canvas resize holds the frames
+    // for 5 to 6 s (one main-thread task, 118 ms for a page on its own), so each rotation is
+    // checked once the page draws again.
+    await worldSettled(page);
     await expect.poll(async () => (await snapshot(page)).layout.pinnedScenes).toBe(false);
     await frames(page);
     await expect(page.locator('html[data-pins]')).toHaveCount(0);
@@ -643,6 +653,7 @@ test.describe('tablet landscape touch', () => {
     expect(await sectionUnderMiddle(page)).toBe(section);
 
     await page.setViewportSize({ width: 1180, height: 820 });
+    await worldSettled(page);
     await expect.poll(async () => (await snapshot(page)).layout.pinnedScenes).toBe(true);
     await expect.poll(async () => (await snapshot(page)).scene).toBe(before.scene);
     // The pins are back and their spacers are in the bounds the place was applied from.
