@@ -305,9 +305,6 @@ test('T-SV3 the MorphSVG chunk loads only at ?tier=2 from 1024 px, after load, o
     `T-SV3 at 4x: addMorphs ${timing.morphMs.toFixed(1)} ms, pin creation ${timing.pinMs.toFixed(1)} ms, chunk task ${task?.duration ?? 0} ms`,
   );
   expect(task?.duration ?? 0).toBeLessThanOrEqual(LONG_TASK_MS);
-  // The jump into the pin passed the world window, so the world starts now: on CI's software GPU
-  // one task of many seconds at 4x, in which no poll below runs (run 132: line 331).
-  await worldSettled(page);
 
   // The morph runs: the mark keeps its committed outline as `data-original`, its path changes
   // through the pin and comes back to the rendered start shape (MorphSVG writes the start as
@@ -315,6 +312,9 @@ test('T-SV3 the MorphSVG chunk loads only at ?tier=2 from 1024 px, after load, o
   const { start, end } = await pinRange(page);
   const path = page.locator(`${SCENE} [data-mark] svg path`).first();
   await scrollTo(page, end);
+  // The first jump past the world window: the WebGL world starts now, on CI's software GPU one
+  // task of many seconds at 4x in which no poll below runs (run 132: the stable-path poll).
+  await worldSettled(page);
   // Written by the first morph tween's render, the committed outline the restore puts back.
   await expect(path).toHaveAttribute('data-original', SERVICE_MARK_OUTLINE);
   await scrollTo(page, start - 10);
