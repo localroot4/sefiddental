@@ -1,8 +1,8 @@
-import { Box3, BoxGeometry, Vector3 } from 'three';
+import { Box3, BoxGeometry, SphereGeometry, Vector3 } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SOLID, workflowBeats } from './beats';
-import { createCourierRig, mulberry32, sampleSurface } from './courierRig';
+import { archTooth, createCourierRig, mulberry32, sampleSurface } from './courierRig';
 import { courierPose, NO_POSE, type Pose } from './pose';
 
 // Stand-ins for molar.glb (crown 1.03 wide, roots to y -1.03) and mark.glb (1 wide).
@@ -85,5 +85,38 @@ describe('courier rig', () => {
     for (let i = 0; i < 200; i += 1) {
       expect(box.containsPoint(new Vector3().fromArray(a, i * 3))).toBe(true);
     }
+  });
+
+  it("R6 an arch tooth is the molar's crown at a fraction of its triangles, its shape and normals kept", () => {
+    const molar = new SphereGeometry(0.5, 64, 48);
+    const full = molar.getIndex()!.count / 3;
+    const crown = archTooth(molar, -0.25, 0.08);
+    const kept = crown.getIndex()!.count / 3;
+    expect(kept).toBeGreaterThan(50);
+    expect(kept).toBeLessThan(full / 4);
+    // Only the part above -0.25 (the clusters keep its cut within a cell), the same width.
+    crown.computeBoundingBox();
+    const box = crown.boundingBox!;
+    expect(box.min.y).toBeGreaterThan(-0.25 - 0.08);
+    expect(box.max.x).toBeGreaterThan(0.44);
+    // Normals stay unit and outward on a sphere.
+    const p = crown.getAttribute('position');
+    const n = crown.getAttribute('normal');
+    for (let i = 0; i < p.count; i += 7) {
+      const out = new Vector3(p.getX(i), p.getY(i), p.getZ(i)).normalize();
+      const normal = new Vector3(n.getX(i), n.getY(i), n.getZ(i));
+      expect(normal.length()).toBeCloseTo(1, 4);
+      expect(normal.dot(out)).toBeGreaterThan(0.8);
+    }
+    // The rig's arch draws it, not the full molar.
+    const rig = createCourierRig({ mark: mark(), molar: tooth() }, { particles: 10 });
+    let instanced = 0;
+    rig.arch.scene.traverse((o) => {
+      if ((o as { isInstancedMesh?: boolean }).isInstancedMesh) {
+        instanced =
+          (o as unknown as { geometry: { index: { count: number } } }).geometry.index.count / 3;
+      }
+    });
+    expect(instanced).toBeLessThan(12);
   });
 });

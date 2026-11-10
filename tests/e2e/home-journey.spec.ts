@@ -419,6 +419,55 @@ test.describe('phone, DOM courier', () => {
   });
 });
 
+/** Median frame time (ms) over 12 frames of a slow scroll through `y` (10 px a frame). */
+const frameCost = (page: Page, y: number) =>
+  page.evaluate(async (at) => {
+    window.scrollTo(0, at - 60);
+    await new Promise((r) => setTimeout(r, 1200));
+    const times: number[] = [];
+    let last = performance.now();
+    for (let i = 0; i < 12; i += 1) {
+      window.scrollTo(0, at - 60 + i * 10);
+      await new Promise((r) => requestAnimationFrame(r));
+      const now = performance.now();
+      times.push(now - last);
+      last = now;
+    }
+    times.sort((a, b) => a - b);
+    return times[6]!;
+  }, y);
+
+test.describe('tier 2 frame cost', () => {
+  test.beforeEach(({}, testInfo) => {
+    test.skip(!['desktop-light', 'tablet-light'].includes(testInfo.project.name), 'two widths');
+    test.setTimeout(180_000);
+  });
+
+  test('T-JN14 tier 2: a frame at D5 (the arch) costs no more than 2.5 times a frame at the other docks, on the same machine', async ({
+    page,
+  }, testInfo) => {
+    const holds = await open(page, 'tier=2');
+    await scrollToY(page, holds[0]!.end + 200);
+    await expect.poll(() => probe<boolean>(page, 'webgl'), { timeout: 90_000 }).toBe(true);
+    const at = (id: string, f: number) => {
+      const h = holds.find((x) => x.id === id)!;
+      return h.start + (h.end - h.start) * f;
+    };
+    const others: number[] = [];
+    for (const id of ['services', 'restoration', 'dentists'])
+      others.push(await frameCost(page, at(id, 0.5)));
+    others.sort((a, b) => a - b);
+    const base = others[1]!;
+    const arch = [await frameCost(page, at('smile', 0.2)), await frameCost(page, at('smile', 0.4))];
+    testInfo.annotations.push({
+      type: 'frame cost (ms)',
+      description: `docks ${others.map(Math.round).join(', ')}; D5 ${arch.map(Math.round).join(', ')}`,
+    });
+    for (const cost of arch)
+      expect(cost, `D5 against ${Math.round(base)} ms`).toBeLessThan(2.5 * base);
+  });
+});
+
 test.describe('tablet, DOM courier', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'tablet-light', 'tablet journey rows run in tablet-light');
