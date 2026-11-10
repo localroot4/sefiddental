@@ -9,7 +9,7 @@ import { t } from '@/i18n/fa';
 
 import { throttleCpu } from '../helpers/cpu';
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2 } from '../helpers/webgl';
+import { needsWebgl2, worldSettled } from '../helpers/webgl';
 
 const SCENE = '[data-scene="services"]';
 /** The pin's room: the scroll distance after the sticky stage, display none without pins. */
@@ -305,6 +305,9 @@ test('T-SV3 the MorphSVG chunk loads only at ?tier=2 from 1024 px, after load, o
     `T-SV3 at 4x: addMorphs ${timing.morphMs.toFixed(1)} ms, pin creation ${timing.pinMs.toFixed(1)} ms, chunk task ${task?.duration ?? 0} ms`,
   );
   expect(task?.duration ?? 0).toBeLessThanOrEqual(LONG_TASK_MS);
+  // The jump into the pin passed the world window, so the world starts now: on CI's software GPU
+  // one task of many seconds at 4x, in which no poll below runs (run 132: line 331).
+  await worldSettled(page);
 
   // The morph runs: the mark keeps its committed outline as `data-original`, its path changes
   // through the pin and comes back to the rendered start shape (MorphSVG writes the start as
