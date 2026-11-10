@@ -548,7 +548,29 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
     const rest = await settled(page, 1);
     const field = (await page.locator(FIELD).boundingBox())!;
     expect(inside((await bar.boundingBox())!, field), `${name}: inside the field`).toBe(true);
-    if (dx !== 0) {
+    // Host gate for the carry: Draggable applies pointer moves on its frame tick, and the throw
+    // speed comes from the moves drawn in the 100 ms before the release. A host that draws a
+    // frame in more than 50 ms (headless WebKit on the CI runner, run 128: about 250 ms) draws
+    // no frame of a 64 ms flick, so the part never moves sideways before the release.
+    const frameMs = await page.evaluate(() => {
+      const { up, frames } = (
+        window as unknown as { __fall: { up: number; frames: [number, number][] } }
+      ).__fall;
+      const t = frames.map(([at]) => at).filter((at) => at < up && at > up - 1000);
+      const gaps = t
+        .slice(1)
+        .map((at, i) => at - t[i]!)
+        .sort((a, b) => a - b);
+      return gaps[Math.floor(gaps.length / 2)] ?? Infinity;
+    });
+    // Chromium always checks it, so a slow throw there fails loudly.
+    const chromium = page.context().browser()?.browserType().name() === 'chromium';
+    if (dx !== 0 && frameMs > 50 && !chromium) {
+      test.info().annotations.push({
+        type: 'carry not checked',
+        description: `this host draws a frame in ${Math.round(frameMs)} ms`,
+      });
+    } else if (dx !== 0) {
       expect((rest.x - released.x) * toward, `${name}: carried on in x`).toBeGreaterThan(10);
     }
   }
