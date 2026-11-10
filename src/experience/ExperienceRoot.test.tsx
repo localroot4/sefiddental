@@ -274,7 +274,7 @@ describe('ExperienceRoot (dom)', () => {
     registry.sceneLoadsWebgl = true;
     home('/?tier=2');
     const windowObserver = () =>
-      observers.find((o) => o.options?.rootMargin === '0px 0px -1px 0px');
+      observers.find((o) => o.options?.rootMargin?.endsWith(' 0px -1px 0px'));
     await waitFor(() => expect(windowObserver()).toBeDefined(), { timeout: 3000 });
     // Past the 200 ms idle mount: nothing mounts before the window shows.
     await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
@@ -294,7 +294,7 @@ describe('ExperienceRoot (dom)', () => {
     registry.sceneLoadsWebgl = true;
     home('/?tier=2');
     const windowObserver = () =>
-      observers.find((o) => o.options?.rootMargin === '0px 0px -1px 0px');
+      observers.find((o) => o.options?.rootMargin?.endsWith(' 0px -1px 0px'));
     await waitFor(() => expect(windowObserver()).toBeDefined(), { timeout: 3000 });
     const services = document.querySelector('[data-scene="services"]')!;
     const above = { bottom: -400 } as DOMRectReadOnly;
@@ -311,6 +311,19 @@ describe('ExperienceRoot (dom)', () => {
       ),
     );
     await waitFor(() => expect(mocks.canvasMounts).toBeGreaterThan(0), { timeout: 3000 });
+  });
+
+  it('XR15 a jump past the world window still mounts the canvas: the window counts as in view anywhere above the viewport', async () => {
+    registry.sceneLoadsWebgl = true;
+    home('/?tier=2');
+    const windowObserver = () =>
+      observers.find((o) => o.options?.rootMargin?.endsWith(' 0px -1px 0px'));
+    await waitFor(() => expect(windowObserver()).toBeDefined(), { timeout: 3000 });
+    // An observer reports a change of state only: from below the viewport straight to above it
+    // (an anchor, the End key) a plain viewport root never intersects, so it never calls back.
+    // Its root reaches far above the viewport, so the jump is a change to intersecting.
+    const top = parseFloat(windowObserver()!.options!.rootMargin!.split(' ')[0]!);
+    expect(top).toBeGreaterThanOrEqual(100_000);
   });
 
   it('XR2 keep-place: a relatch that changes the pins reads the old place, moves data-pins and restores it at once, never on unmount', async () => {

@@ -9,7 +9,7 @@ import { t } from '@/i18n/fa';
 import { formsHydrated, recordBeacons } from '../helpers/booking';
 import { watchConsoleErrors } from '../helpers/console';
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2 } from '../helpers/webgl';
+import { needsWebgl2, worldSettled } from '../helpers/webgl';
 
 interface Snapshot {
   tier: number;
@@ -490,11 +490,17 @@ test('T-EN4h a first visit in auto mode whose probe answers before the engine ch
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
+  let inFlight = 0;
   await page.route(/\.js(\?|$)/, async (route) => {
-    const response = await route.fetch();
-    const body = await response.text();
-    if (body.includes('ScrollTrigger')) await held;
-    await route.fulfill({ response, body });
+    inFlight += 1;
+    try {
+      const response = await route.fetch();
+      const body = await response.text();
+      if (body.includes('ScrollTrigger')) await held;
+      await route.fulfill({ response, body });
+    } finally {
+      inFlight -= 1;
+    }
   });
   await page.goto('/#home-voices-title');
   const voicesTop = () =>
@@ -509,7 +515,12 @@ test('T-EN4h a first visit in auto mode whose probe answers before the engine ch
   await engineCreated(page);
   await frames(page);
   await frames(page);
-  // A chunk still in its handler (the journey layer loads with the engine) finishes first.
+  // A chunk still in its handler (the journey layer loads with the engine) finishes first, and
+  // only then is the route removed: once the handler list is empty, the first handler to finish
+  // switches the page's interception off (Playwright's route dispatch re-sends the empty
+  // patterns), so a second one still in its fetch then fulfills a route already continued
+  // ("Route is already handled!", CI run 130; 13 of 30 with two workers on two cores).
+  await expect.poll(() => inFlight).toBe(0);
   await page.unrouteAll({ behavior: 'wait' });
   // The pins arrived with the engine; the place was read in the document without them.
   await expect(page.locator('html[data-pins]')).toHaveCount(1);
@@ -619,11 +630,21 @@ test.describe('tablet landscape touch', () => {
     await engineReady(page);
     expect((await snapshot(page)).layout).toMatchObject({ pinnedScenes: true, lenis: false });
     await scrollIntoScene(page, 'services');
+    // This scroll shows the world window, so the WebGL world starts now; the rotations are timed
+    // once it is up: during its start-up no frame renders, and the media query change of a
+    // rotation waited for one past the poll (pins back 1 s after a 5 s poll gave up, the world at
+    // 9 to 22 frames: CI run 130; 6 of 20 with two workers on two cores).
+    await worldSettled(page);
     const before = await snapshot(page);
     const section = await sectionUnderMiddle(page);
     expect(section).toBe('services');
 
     await page.setViewportSize({ width: 820, height: 1180 });
+    // The relatch follows the media query, whose change is delivered with the next rendered frame;
+    // on a software GPU shared by two pages (CI's two workers) the canvas resize holds the frames
+    // for 5 to 6 s (one main-thread task, 118 ms for a page on its own), so each rotation is
+    // checked once the page draws again.
+    await worldSettled(page);
     await expect.poll(async () => (await snapshot(page)).layout.pinnedScenes).toBe(false);
     await frames(page);
     await expect(page.locator('html[data-pins]')).toHaveCount(0);
@@ -632,6 +653,7 @@ test.describe('tablet landscape touch', () => {
     expect(await sectionUnderMiddle(page)).toBe(section);
 
     await page.setViewportSize({ width: 1180, height: 820 });
+    await worldSettled(page);
     await expect.poll(async () => (await snapshot(page)).layout.pinnedScenes).toBe(true);
     await expect.poll(async () => (await snapshot(page)).scene).toBe(before.scene);
     // The pins are back and their spacers are in the bounds the place was applied from.

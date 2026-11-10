@@ -240,7 +240,11 @@ function ExperienceHost(props: {
         if (entries.some((e) => e.isIntersecting || e.boundingClientRect.bottom <= 0))
           setWindowSeen(true);
       },
-      { rootMargin: '0px 0px -1px 0px' },
+      // The root reaches far above the viewport: a window the reader jumped past (an anchor, the
+      // End key, the scrollbar) intersects it too. An observer calls back only on a change of
+      // state, and straight from below the viewport to above it a viewport root never
+      // intersects: the world never mounted for that visit.
+      { rootMargin: '100000px 0px -1px 0px' },
     );
     observer.observe(target);
     return () => observer.disconnect();
