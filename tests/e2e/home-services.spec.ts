@@ -205,6 +205,9 @@ test('T-SV3 the MorphSVG chunk loads only at ?tier=2 from 1024 px, after load, o
 }, testInfo) => {
   only(testInfo, 'desktop-light');
   test.skip(browserName !== 'chromium', CDP_ONLY);
+  // Five page views, the last two at 4x CPU: over 30 s on a slow runner (CI run 130). The long-task
+  // check reads each task's own length, so the timeout is not what it measures.
+  test.slow();
   const morph = watchScripts(page, 'MorphSVG');
   const intoScene = () =>
     page.evaluate(() => {

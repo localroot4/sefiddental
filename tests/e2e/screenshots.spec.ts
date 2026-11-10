@@ -137,15 +137,15 @@ for (const template of LIVE_SHAPE ? EMPTY_HUBS : TEMPLATES) {
     if ('scroll' in template) {
       // The phone and tablet pass scrolls by touch through a CDP session (scrollThrough).
       test.skip(browserName !== 'chromium', 'needs a CDP session (touch drive), Chromium only');
-      // A full down-and-up pass by touch takes over 30 s on a loaded host: triple the timeout
-      // and let each pass fail inside it.
-      test.slow();
+      // A capture, not a speed check: on a slow runner a touch pass took over 140 s (CI run 130,
+      // a 16 ms wait took 100 ms). Each pass gets 200 s; the timeout holds both passes.
+      test.setTimeout(450_000);
       // Desktop wheels three notches a step: the tier 2 home is 17 viewports long with its pins,
       // and 80 px steps took about 40 s each way on the 2-core runner (CI runs 110 and 113, before
       // and after the journey alike); every reveal and pin still runs on the way.
       const scroll = {
         drive: size(testInfo) === 'desktop' ? 'wheel' : 'touch',
-        deadlineMs: 40_000,
+        deadlineMs: 200_000,
         stepPx: size(testInfo) === 'desktop' ? 240 : undefined,
       } as const;
       await page.waitForTimeout(1500);
@@ -198,7 +198,7 @@ test('T-SS recording: the intro and a full scroll at ?tier=2', async ({
   only(testInfo, 'desktop-light', 'phone-light');
   // The phone pass scrolls by touch through a CDP session (scrollThrough).
   test.skip(browserName !== 'chromium', 'needs a CDP session (touch drive), Chromium only');
-  test.setTimeout(120_000);
+  test.setTimeout(300_000);
   const phone = size(testInfo) === 'phone';
   const file = `home-tier2-${phone ? 390 : 1440}.webm`;
   // A context of this test's own: the project's options plus a video at the viewport size, and
@@ -215,9 +215,10 @@ test('T-SS recording: the intro and a full scroll at ?tier=2', async ({
   await page.evaluate(() => document.fonts.ready);
   await page.waitForTimeout(1500);
   if (!phone) await page.mouse.move(720, 450);
-  // 50 s for the scroll: with the intro and the waits it fits the 120 s test timeout.
+  // 200 s for the scroll, as the screenshot passes above: with the intro and the waits it fits
+  // the 300 s test timeout.
   expect(
-    await scrollThrough(page, 1, { drive: phone ? 'touch' : 'wheel', deadlineMs: 50_000 }),
+    await scrollThrough(page, 1, { drive: phone ? 'touch' : 'wheel', deadlineMs: 200_000 }),
   ).toBe(true);
   await page.waitForTimeout(1500);
   const video = page.video();
