@@ -100,7 +100,16 @@ export interface Enamel {
 
 const ENAMEL = { roughness: 0.52, clearcoat: 0.25, clearcoatRoughness: 0.42 };
 
-export function createEnamel(opts: { color: string; sss: number }): Enamel {
+export function createEnamel(opts: {
+  color: string;
+  sss: number;
+  /**
+   * False: no clearcoat lobe at any level (the D5 arch: thirteen small teeth over a large pass,
+   * where the shader's own softbox reflection carries the gloss).
+   */
+  clearcoat?: boolean;
+}): Enamel {
+  const coat = opts.clearcoat === false ? 0 : 1;
   const uniforms: EnamelUniforms = {
     uRefine: { value: 0 },
     uCharacter: { value: 0 },
@@ -116,6 +125,7 @@ export function createEnamel(opts: { color: string; sss: number }): Enamel {
     color: opts.color,
     metalness: 0,
     ...ENAMEL,
+    clearcoat: ENAMEL.clearcoat * coat,
   });
   const yMin = MOLAR_Y.min.toFixed(3);
   const yMax = MOLAR_Y.max.toFixed(3);
@@ -247,7 +257,7 @@ material.clearcoat *= uGlaze;
       uniforms.uRefine.value = refine;
       uniforms.uCharacter.value = character;
       material.roughness = ENAMEL.roughness - 0.28 * refine;
-      material.clearcoat = ENAMEL.clearcoat + 0.65 * refine;
+      material.clearcoat = (ENAMEL.clearcoat + 0.65 * refine) * coat;
       material.clearcoatRoughness = ENAMEL.clearcoatRoughness - 0.3 * refine;
       uniforms.uReflect.value = 0.2 + 0.3 * refine;
     },

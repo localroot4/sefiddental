@@ -9,6 +9,7 @@
  * courier tooth seats in its slot pixel for pixel; it fades in and out by dissolving.
  */
 import {
+  AmbientLight,
   BufferAttribute,
   BufferGeometry,
   Color,
@@ -54,6 +55,79 @@ const TOOTH_TILT = 0.42;
 const SEAT_TILT = Math.PI / 2;
 /** At D3 a three-quarter top view: the restoration on the chewing surface leads the shot. */
 const D3_TILT = 1.05;
+
+/** The arch's teeth keep the molar above this height (molar.glb units): the crown and its neck. */
+const ARCH_CROWN_FROM = -0.25;
+/** The grid an arch tooth's vertices cluster to (molar.glb units; the crown is 1.03 wide). */
+const ARCH_CELL = 0.08;
+/** The arch's even fill in place of the studio environment. */
+const ARCH_AMBIENT = 2.6;
+
+/**
+ * An arch tooth from the molar: the triangles with a vertex at or above `minY` (the part an
+ * occlusal view shows), their vertices clustered to a `cell` grid (each cluster at its members'
+ * mean, with their mean normal) and the triangles that collapse dropped. Plain TypeScript: a
+ * WebAssembly simplifier is refused by the page CSP.
+ */
+export function archTooth(geometry: BufferGeometry, minY: number, cell: number): BufferGeometry {
+  const position = geometry.getAttribute('position');
+  const normal = geometry.getAttribute('normal');
+  const index = geometry.getIndex();
+  const count = index ? index.count : position.count;
+  const at = (i: number): number => (index ? index.getX(i) : i);
+  const clusters = new Map<string, number>();
+  const of = new Int32Array(position.count).fill(-1);
+  // Per cluster: the summed position and normal, and its member count.
+  const sums = new Float64Array(position.count * 7);
+  const add = (i: number, v: number): void => {
+    sums[i] = sums[i]! + v;
+  };
+  const cluster = (k: number): number => {
+    if (of[k]! < 0) {
+      const key = `${Math.floor(position.getX(k) / cell)},${Math.floor(position.getY(k) / cell)},${Math.floor(position.getZ(k) / cell)}`;
+      let id = clusters.get(key);
+      if (id === undefined) {
+        id = clusters.size;
+        clusters.set(key, id);
+      }
+      of[k] = id;
+      const s = id * 7;
+      add(s, position.getX(k));
+      add(s + 1, position.getY(k));
+      add(s + 2, position.getZ(k));
+      add(s + 3, normal ? normal.getX(k) : 0);
+      add(s + 4, normal ? normal.getY(k) : 0);
+      add(s + 5, normal ? normal.getZ(k) : 0);
+      add(s + 6, 1);
+    }
+    return of[k]!;
+  };
+  const triangles: number[] = [];
+  for (let i = 0; i < count; i += 3) {
+    const [a, b, c] = [at(i), at(i + 1), at(i + 2)];
+    if (Math.max(position.getY(a), position.getY(b), position.getY(c)) < minY) continue;
+    const [p, q, r] = [cluster(a), cluster(b), cluster(c)];
+    if (p !== q && q !== r && p !== r) triangles.push(p, q, r);
+  }
+  const n = clusters.size;
+  const positions = new Float32Array(n * 3);
+  const normals = new Float32Array(n * 3);
+  for (let id = 0; id < n; id += 1) {
+    const s = id * 7;
+    const members = sums[s + 6]!;
+    const length = Math.hypot(sums[s + 3]!, sums[s + 4]!, sums[s + 5]!) || 1;
+    for (let k = 0; k < 3; k += 1) {
+      positions[id * 3 + k] = sums[s + k]! / members;
+      normals[id * 3 + k] = sums[s + 3 + k]! / length;
+    }
+  }
+  const tooth = new BufferGeometry();
+  tooth.setAttribute('position', new BufferAttribute(positions, 3));
+  tooth.setAttribute('normal', new BufferAttribute(normals, 3));
+  tooth.setIndex(triangles);
+  if (!normal) tooth.computeVertexNormals();
+  return tooth;
+}
 
 /** A small deterministic PRNG (mulberry32): the same cloud on every visit and in screenshots. */
 export function mulberry32(seed: number): () => number {
@@ -320,10 +394,22 @@ export function createCourierRig(
   const archStudio = createStudio();
   archStudio.shadow.visible = false;
   archScene.add(archStudio.group);
-  const archEnamel = createEnamel({ color: '#F3ECDF', sss: 0.22 });
+  // The studio environment's light, without its cost (it doubled the arch's pass): an even fill
+  // matched on screenshots to the lit arch.
+  archScene.add(new AmbientLight('#FFFFFF', ARCH_AMBIENT));
+  // Fifteen teeth in one pass over the whole smile box: their triangles were the cost (a tier 2
+  // frame at D5 took five times one at the other docks). Each tooth is only its crown, which is all
+  // the occlusal view shows (the roots point away, behind the crowns), its vertices clustered to a
+  // grid (archTooth); no clearcoat lobe and no environment map (the enamel's own softbox
+  // reflection carries the gloss).
+  const archEnamel = createEnamel({ color: '#F3ECDF', sss: 0.22, clearcoat: false });
   archEnamel.setLevel(1, 0);
   const teeth = archLayout();
-  const instances = new InstancedMesh(geometry.molar, archEnamel.material, teeth.length - 1);
+  const instances = new InstancedMesh(
+    archTooth(geometry.molar, ARCH_CROWN_FROM, ARCH_CELL),
+    archEnamel.material,
+    teeth.length - 1,
+  );
   const m = new Matrix4();
   const q = new Quaternion();
   const up = new Vector3(0, 1, 0);
@@ -423,12 +509,11 @@ export function createCourierRig(
       archEnamel.uniforms.uDissolve.value = dissolve;
     },
     setEnvironment(env) {
+      // Not the arch's scene: its pass covers the whole smile box (see the arch above).
       scene.environment = env;
-      archScene.environment = env;
       // A soft studio: the reflections carry the form, the fake softboxes stay as the accent.
       glaze.envMapIntensity = 0.55;
       enamel.material.envMapIntensity = 0.45;
-      archEnamel.material.envMapIntensity = 0.45;
     },
     setTheme(dark, brand) {
       studio.setTheme(dark);
