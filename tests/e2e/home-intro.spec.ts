@@ -278,7 +278,25 @@ test('T-IN3 a tap, Tab, Esc or the skip button ends it within 100 ms; focus neve
     ],
     ['Tab', () => page.keyboard.press('Tab')],
     ['Escape', () => page.keyboard.press('Escape')],
-    ['the skip button', () => page.getByRole('button', { name: SKIP }).click()],
+    [
+      'the skip button',
+      // A real click on the button's centre, without the locator's wait for two equal frames:
+      // headless WebKit on the CI runner draws about one frame in 300 ms, so that wait outlived
+      // the 1300 ms intro (runs 126 and 127: `<html data-intro="done"> intercepts pointer events`).
+      // The button does not move while the intro plays.
+      async () => {
+        const { x, y, hit } = await page.evaluate((name) => {
+          const button = [...document.querySelectorAll('#intro button')].find(
+            (b) => b.textContent?.trim() === name,
+          )!;
+          const r = button.getBoundingClientRect();
+          const [cx, cy] = [r.x + r.width / 2, r.y + r.height / 2];
+          return { x: cx, y: cy, hit: button.contains(document.elementFromPoint(cx, cy)) };
+        }, SKIP);
+        expect(hit, 'the skip button is on top at its centre').toBe(true);
+        await (touch ? page.touchscreen.tap(x, y) : page.mouse.click(x, y));
+      },
+    ],
   ];
   for (const [label, act] of methods) {
     // The button is visible from the first frame: its round starts at once, so the click never
