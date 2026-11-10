@@ -221,7 +221,10 @@ test.describe('courier audit', () => {
   for (const tier of [2, 1] as const) {
     test(`T-CA3 tier ${tier}: during a wheel scroll the drawn courier crosses no text or control`, async ({
       page,
+      browserName,
     }, testInfo) => {
+      // Playwright has no mouse wheel in mobile WebKit: the same 60 px steps by script there.
+      const wheelless = browserName === 'webkit' && testInfo.project.use.isMobile === true;
       test.skip(
         testInfo.project.name !== 'desktop-light' && testInfo.project.name !== 'tablet-light',
         'one row per width, light',
@@ -254,8 +257,14 @@ test.describe('courier audit', () => {
       const failing: Sample[] = [];
       // About 1500 px/s: 60 px every 40 ms, the check in the frame after each notch.
       for (let y = 0; y < max; y = await page.evaluate(() => window.scrollY)) {
-        await page.mouse.wheel(0, 60);
+        if (wheelless) await page.evaluate(() => window.scrollBy(0, 60));
+        else await page.mouse.wheel(0, 60);
         await page.waitForTimeout(40);
+        // The frame after the notch: the driver has drawn the courier for this scroll position (a
+        // slow headless frame, about 300 ms in WebKit, would compare an older one with the text).
+        await page.evaluate(
+          () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+        );
         const sample = await page.evaluate(check);
         // Over text or a control only: mid-scroll the whole-paint check is the rest audit's.
         const over = sample?.problems.filter((p) => p.startsWith('over')) ?? [];
