@@ -7,6 +7,7 @@ import { useTier } from './tier/TierProvider';
 
 interface FakeEngine {
   layout: { latchedAtTier: number };
+  latchedAtTier: number;
   scrollTo: ReturnType<typeof vi.fn>;
   activeScene: ReturnType<typeof vi.fn>;
   destroy: ReturnType<typeof vi.fn>;
@@ -25,6 +26,8 @@ const mocks = vi.hoisted(() => ({
   canvasImports: 0,
   /** The tier of every render of the journey layer. */
   journeyTiers: [] as number[],
+  /** The latched layout tier of the engine every render of the journey layer was given. */
+  journeyEngines: [] as number[],
   /** Renders of the canvas host: the factory count above sees only the file's first import. */
   canvasMounts: 0,
   /** detect-gpu: the options of the last call and the answer it waits for. */
@@ -57,6 +60,7 @@ vi.mock('./engine/scrollEngine', () => ({
     if (mocks.createThrows) throw new Error('engine');
     const engine: FakeEngine = {
       layout: opts.layout,
+      latchedAtTier: opts.layout.latchedAtTier,
       scrollTo: vi.fn(),
       activeScene: vi.fn(() => ({ id: 'services', progress: 0.5 })),
       destroy: vi.fn(),
@@ -86,8 +90,9 @@ vi.mock('./engine/scrollEngine', () => ({
 // The factory runs on the first `import()` only: a count of 0 proves the chunk was never asked for.
 // The journey layer needs a real layout (ResizeObserver, ScrollTrigger): its own tests cover it.
 vi.mock('./journey/JourneyLayer', () => ({
-  default: (props: { tier: number }) => {
+  default: (props: { tier: number; engine: { latchedAtTier: number } }) => {
     mocks.journeyTiers.push(props.tier);
+    mocks.journeyEngines.push(props.engine.latchedAtTier);
     return null;
   },
 }));
@@ -138,9 +143,14 @@ let disconnected: number;
 function Probe() {
   const tier = useTier();
   return (
-    <output data-testid="tier" onClick={() => tier.setPageOverride(0)}>
-      {`${tier.tier}|${tier.layout.latchedAtTier}`}
-    </output>
+    <>
+      <output data-testid="tier" onClick={() => tier.setPageOverride(0)}>
+        {`${tier.tier}|${tier.layout.latchedAtTier}`}
+      </output>
+      {/* The «کیفیت» radios' call (QualityControl). */}
+      <button type="button" data-testid="choose-0" onClick={() => tier.setUserOverride(0)} />
+      <button type="button" data-testid="choose-1" onClick={() => tier.setUserOverride(1)} />
+    </>
   );
 }
 
@@ -165,6 +175,7 @@ beforeEach(() => {
   observed = [];
   disconnected = 0;
   mocks.journeyTiers = [];
+  mocks.journeyEngines = [];
   vi.stubGlobal(
     'IntersectionObserver',
     class {
@@ -229,6 +240,25 @@ describe('ExperienceRoot (dom)', () => {
     home('/?tier=0');
     await act(() => new Promise((resolve) => setTimeout(resolve, 600)));
     expect(mocks.journeyTiers).toEqual([]);
+  });
+
+  it('XR14 a choice of tier 1 on a tier-0 page: the journey waits for the engine latched at tier 1 (the tier-0 engine registered no ScrollTrigger)', async () => {
+    const view = home('/');
+    // Auto mode (no query tier, which outranks the reader's choice): the benchmark answers.
+    await waitFor(() => expect(mocks.gpu.options).not.toBeNull());
+    await act(async () => mocks.gpu.answer({ tier: 3, type: 'BENCHMARK' }));
+    await waitFor(() => expect(mocks.journeyTiers.length).toBeGreaterThan(0), { timeout: 3000 });
+    // A tier-0 page (here chosen; on a software GPU the device's): its engine makes no trigger,
+    // so it never registers ScrollTrigger.
+    await act(async () => view.getByTestId('choose-0').click());
+    await waitFor(() => expect(mocks.engines.at(-1)?.latchedAtTier).toBe(0));
+    mocks.journeyEngines = [];
+    mocks.journeyTiers = [];
+    // The radio: the tier is 1 at once; the engine for it comes three frames later.
+    await act(async () => view.getByTestId('choose-1').click());
+    await waitFor(() => expect(mocks.engines.at(-1)?.latchedAtTier).toBe(1));
+    await waitFor(() => expect(mocks.journeyTiers.length).toBeGreaterThan(0), { timeout: 3000 });
+    expect(new Set(mocks.journeyEngines)).toEqual(new Set([1]));
   });
 
   it('XR13 a canvas with nothing to draw never mounts: the debug flag loads the chunk, a tier that draws nothing keeps the page frames', async () => {

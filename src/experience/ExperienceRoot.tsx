@@ -300,7 +300,12 @@ function ExperienceHost(props: {
       cancel();
     };
   }, [mountable, idleReached, journey]);
-  const journeyWanted = engine !== null && readyTier >= 1;
+  // Only with an engine built for tier 1 or more: the driver makes a ScrollTrigger, which that
+  // engine registered first. A choice of tier 1 on a tier-0 page sets the tier at once, but its
+  // engine comes three frames later; with the tier-0 engine still current, a journey chunk already
+  // loaded made its trigger on an unregistered ScrollTrigger (`_context` is not a function) and
+  // the page fell to its error boundary (T-BF8, one run in ten).
+  const journeyWanted = engine !== null && engine.latchedAtTier >= 1 && readyTier >= 1;
   useEffect(() => {
     if (!journeyWanted || journeyModule !== null) return;
     let cancelled = false;

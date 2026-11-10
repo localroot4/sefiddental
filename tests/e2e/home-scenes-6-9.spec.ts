@@ -14,7 +14,7 @@ import { skipIntro } from '../helpers/intro';
 import { needsWebgl2 } from '../helpers/webgl';
 
 type Hook = {
-  snapshot(): { labels: string[]; layout: { latchedAtTier: number } };
+  snapshot(): { labels: string[]; layout: { latchedAtTier: number }; framesRendered: number };
   setUserOverride(o: number | 'auto'): void;
 };
 
@@ -35,6 +35,37 @@ async function engineReady(page: Page): Promise<void> {
     const h = (window as unknown as { __sefid?: Hook }).__sefid;
     return h !== undefined && h.snapshot().labels.length > 0;
   });
+}
+
+/**
+ * The WebGL world has started and the page draws steadily again: its first frame, then 20 frames in
+ * a row under 100 ms each. On desktop the debug flag loads the world at `load` and it starts right
+ * after the engine; on a software GPU its start-up compiles shaders for seconds, past its first
+ * frame too (the studio environment recompiles the materials), and Chrome draws no frame
+ * meanwhile, so a tween that runs then cannot draw its last steps until the world is up.
+ */
+async function worldSettled(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => ((window as unknown as { __sefid: Hook }).__sefid.snapshot().framesRendered ?? 0) > 0,
+    null,
+    { timeout: 30_000 },
+  );
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const until = performance.now() + 30_000;
+        let last = performance.now();
+        let steady = 0;
+        const frame = (now: number): void => {
+          steady = now - last < 100 ? steady + 1 : 0;
+          last = now;
+          if (steady >= 20) resolve();
+          else if (now > until) reject(new Error('the page never drew 20 steady frames in 30 s'));
+          else requestAnimationFrame(frame);
+        };
+        requestAnimationFrame(frame);
+      }),
+  );
 }
 
 /** Two animation frames: ScrollTrigger and the scenes have seen the scroll. */
@@ -148,6 +179,11 @@ test('T-S7 touch: no pointermove listener on the dentist cards; fine pointer at 
   test.skip(browserName !== 'chromium', CDP_ONLY);
   await page.goto('/?debug=1&tier=2');
   await engineReady(page);
+  // The cards' 320 ms entrance is played once the world has started: during its start-up (one task
+  // of 4.7 to 5.5 s after its first frames, on two cores) it froze short of opacity 1 (0.9993 for
+  // 5 s in CI run 129; 0.9938 to 0.9999 here), then reached 1 as the world drew. A phone loads the
+  // world only after this scroll, and its cards never fade (the rail slides).
+  if (testInfo.project.name === 'desktop-light') await worldSettled(page);
   const card = '[data-scene="dentists"] [role="region"] > *';
   const portrait = `${card} [data-portrait]`;
   await expect(page.locator(card).first()).toBeVisible();

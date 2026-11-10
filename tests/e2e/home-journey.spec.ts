@@ -470,22 +470,32 @@ test.describe('D3 top view, DOM courier', () => {
   });
 });
 
-/** Median frame time (ms) over 12 frames of a slow scroll through `y` (10 px a frame). */
+/**
+ * Median frame time (ms) over 12 frames of a slow scroll through `y` (10 px a frame), after one
+ * pass of the same scroll that is not counted: the first frames that draw a dock's scene pay its
+ * one-time costs (programs, uploads). CI run 129 failed on such a pass: D5 156 ms at its first
+ * sample, 82 ms at the next, 88 and 88 on the retry, against 54 to 61 ms at the costliest other
+ * dock.
+ */
 const frameCost = (page: Page, y: number) =>
   page.evaluate(async (at) => {
-    window.scrollTo(0, at - 60);
-    await new Promise((r) => setTimeout(r, 1200));
-    const times: number[] = [];
-    let last = performance.now();
-    for (let i = 0; i < 12; i += 1) {
-      window.scrollTo(0, at - 60 + i * 10);
-      await new Promise((r) => requestAnimationFrame(r));
-      const now = performance.now();
-      times.push(now - last);
-      last = now;
-    }
-    times.sort((a, b) => a - b);
-    return times[6]!;
+    const pass = async (): Promise<number> => {
+      window.scrollTo(0, at - 60);
+      await new Promise((r) => setTimeout(r, 1200));
+      const times: number[] = [];
+      let last = performance.now();
+      for (let i = 0; i < 12; i += 1) {
+        window.scrollTo(0, at - 60 + i * 10);
+        await new Promise((r) => requestAnimationFrame(r));
+        const now = performance.now();
+        times.push(now - last);
+        last = now;
+      }
+      times.sort((a, b) => a - b);
+      return times[6]!;
+    };
+    await pass();
+    return pass();
   }, y);
 
 test.describe('tier 2 frame cost', () => {

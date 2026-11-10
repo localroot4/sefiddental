@@ -54,6 +54,11 @@ export interface ScrollEngine {
   readonly master: gsap.core.Timeline | null;
   /** Main-thread milliseconds of `createScrollEngine`. */
   readonly initMs: number;
+  /**
+   * The layout tier it was built for. From 1, ScrollTrigger was registered before it
+   * (prepareScrollEngine); a tier-0 engine registers none.
+   */
+  readonly latchedAtTier: number;
   /** 0..1 document scroll fraction. */
   progress(): number;
   /** 0..1 inside the scene's segment. */
@@ -432,6 +437,7 @@ export function createScrollEngine(opts: {
     get initMs() {
       return initMs;
     },
+    latchedAtTier: layout.latchedAtTier,
     progress,
     sceneProgress(id) {
       const bound = bounds.find((b) => b.id === id);
