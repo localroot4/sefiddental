@@ -654,7 +654,8 @@ describe('notify jobs and the SMS cap on the database (admin-notify.md 12)', () 
 
   it('NT8 one SMS per destination per 24 h: concurrent claims let one through; release frees it', async () => {
     const secret = readEnv().ipHashSecret;
-    const hash = destinationHash(e164(uniquePhone()), secret);
+    const phone = uniquePhone();
+    const hash = destinationHash(e164(phone), secret);
     expect(hash).toMatch(/^[a-f0-9]{64}$/);
     const now = Date.now();
     const claims = await Promise.all([1, 2, 3, 4, 5].map(() => claimSms(payload, hash, now)));
@@ -675,6 +676,10 @@ describe('notify jobs and the SMS cap on the database (admin-notify.md 12)', () 
       depth: 0,
     });
     expect(docs).toHaveLength(1);
-    expect(JSON.stringify(docs)).not.toMatch(/\+98|0999/);
+    // The number itself, not a fragment: the hash is 64 random hex characters, and «0999» turned up
+    // in it once (CI run 136).
+    const stored = JSON.stringify(docs);
+    expect(stored).not.toContain('+98');
+    expect(stored).not.toContain(phone.slice(1));
   });
 });
