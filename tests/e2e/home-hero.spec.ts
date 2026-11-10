@@ -4,7 +4,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2 } from '../helpers/webgl';
+import { needsWebgl2, worldSettled } from '../helpers/webgl';
 
 const HERO = '[data-scene="hero"]';
 const PHOTO = `${HERO} [data-hero-photo]`;
@@ -129,6 +129,10 @@ test.describe('without the intro', () => {
     page,
   }, testInfo) => {
     only(testInfo, 'desktop-light');
+    // The budget covers the world's start-up it waits through (below): 11 to 15 s with CI's two
+    // workers on two cores, and the whole test took 15 to 24.5 s there (30 runs), too close to the
+    // default 30 s for a slower runner. The assertions keep their own timeouts.
+    test.setTimeout(60_000);
     await needsWebgl2(page);
     await page.goto('/?tier=2');
     await waitForEngine(page);
@@ -141,6 +145,13 @@ test.describe('without the intro', () => {
     expect(top).toBeGreaterThan(0);
     expect(height).toBeGreaterThan(900);
     const expected = (y: number): number => 0.15 * Math.min(Math.max(0, y - top), height);
+    // The world window under the hero shows from y 500, which starts the WebGL world; on a
+    // software GPU its start-up renders no frame for seconds (one task of 11 to 15 s with CI's two
+    // workers on two cores), so the scrubbed photo could not follow within the poll. The world is
+    // started first, and the parallax is read once the page draws again.
+    await scrollTo(page, Math.round(top + height + 300));
+    await worldSettled(page);
+    await scrollTo(page, 0);
     for (const y of [200, 500, Math.round(top + height * 0.75)]) {
       await scrollTo(page, y);
       await expect

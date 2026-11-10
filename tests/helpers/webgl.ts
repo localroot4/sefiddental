@@ -20,19 +20,27 @@ export async function needsWebgl2(page: Page): Promise<void> {
 }
 
 /**
- * The WebGL world has started and the page draws steadily again: its first frame (the debug hook,
- * `?debug=1`), then 20 frames in a row under 100 ms each. On a software GPU the world's start-up
- * compiles shaders for seconds, past its first frame too (the studio environment recompiles the
- * materials), and Chrome renders no frame meanwhile: a tween cannot draw its last steps, and a
- * media query change (a rotation) is not delivered, until it is up. A test that times either
- * waits for this once the world has been asked for.
+ * The WebGL world has started and the page draws steadily again: its first frame (the World shows
+ * its canvas then: inline opacity 1), the WebGL courier drawn (the DOM courier steps aside: its box
+ * hidden; it draws with the studio environment, whose compile is the long part), then 20 frames in
+ * a row under 100 ms each. For a page whose courier is on screen at tier 2 or 3. On a software GPU
+ * the world's start-up compiles shaders for seconds, and Chrome renders no frame meanwhile: a
+ * tween cannot draw its last steps, and a media query change (a rotation) is not delivered, until
+ * it is up. A test that times either waits for this once the world has been asked for.
  */
 export async function worldSettled(page: Page): Promise<void> {
   await page.waitForFunction(
     () =>
-      ((
-        window as unknown as { __sefid?: { snapshot(): { framesRendered?: number } } }
-      ).__sefid?.snapshot().framesRendered ?? 0) > 0,
+      document.querySelector<HTMLCanvasElement>('[data-experience-layer] canvas')?.style.opacity ===
+      '1',
+    null,
+    { timeout: 30_000 },
+  );
+  await page.waitForFunction(
+    () => {
+      const dom = document.querySelector('[data-courier]');
+      return dom !== null && getComputedStyle(dom).visibility === 'hidden';
+    },
     null,
     { timeout: 30_000 },
   );
