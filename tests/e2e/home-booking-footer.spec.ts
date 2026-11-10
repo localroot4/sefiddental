@@ -493,15 +493,19 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
   const record = () =>
     bar.evaluate((el) => {
       const w = window as unknown as { __fall: { up: number; frames: [number, number][] } };
-      w.__fall = { up: -1, frames: [] };
+      // A recording of its own: the previous one's loop stops at its next frame, else both push
+      // into this list and every frame counts twice (CI run 133: a 1 ms median frame gap).
+      const mine = { up: -1, frames: [] as [number, number][] };
+      w.__fall = mine;
       const y = () => new DOMMatrix(getComputedStyle(el).transform).m42;
-      window.addEventListener('pointerup', () => (w.__fall.up = performance.now()), {
+      window.addEventListener('pointerup', () => (mine.up = performance.now()), {
         once: true,
         capture: true,
       });
       const tick = (): void => {
-        w.__fall.frames.push([performance.now(), y()]);
-        if (w.__fall.frames.length < 600) requestAnimationFrame(tick);
+        if (w.__fall !== mine) return;
+        mine.frames.push([performance.now(), y()]);
+        if (mine.frames.length < 600) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     });
@@ -533,7 +537,6 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
     // right before the release.
     for (let i = 1; i <= 6; i += 1) await pointer.move(at.x, at.y - 25 * i);
     await page.waitForTimeout(dx === 0 ? 300 : 150);
-    const held = await translation(page, 1);
     for (let i = 1; dx !== 0 && i <= 4; i += 1) {
       await pointer.move(at.x + (dx * i) / 4, at.y - 150);
       await page.waitForTimeout(16);
@@ -551,17 +554,21 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
     const field = (await page.locator(FIELD).boundingBox())!;
     expect(inside((await bar.boundingBox())!, field), `${name}: inside the field`).toBe(true);
     // Host gate for the carry: Draggable applies pointer moves on its frame tick, and the throw
-    // speed is how far the part went in the 100 ms before the release. A host that drew no frame
-    // of the 64 ms flick (headless WebKit on the CI runner: about 250 ms a frame in run 128, and
-    // one missed flick in run 132 with a faster median) leaves the part where it was held, so
-    // there is no throw to carry.
-    const drawn = Math.abs(released.x - held.x) >= 1;
+    // speed is measured from the samples of the 100 ms before the release. A host that drew no
+    // frame in those 100 ms leaves no sample there, so the part has no throw to carry (headless
+    // WebKit on the CI runner: about 250 ms a frame in run 128, about 100 ms in run 133).
+    const framesBefore = await page.evaluate(() => {
+      const { up, frames } = (
+        window as unknown as { __fall: { up: number; frames: [number, number][] } }
+      ).__fall;
+      return frames.filter(([at]) => at > up - 100 && at < up).length;
+    });
     // Chromium always checks it, so a slow throw there fails loudly.
     const chromium = page.context().browser()?.browserType().name() === 'chromium';
-    if (dx !== 0 && !drawn && !chromium) {
+    if (dx !== 0 && framesBefore === 0 && !chromium) {
       test.info().annotations.push({
         type: 'carry not checked',
-        description: 'this host drew no frame of the flick before the release',
+        description: 'this host drew no frame in the 100 ms before the release',
       });
     } else if (dx !== 0) {
       expect((rest.x - released.x) * toward, `${name}: carried on in x`).toBeGreaterThan(10);
