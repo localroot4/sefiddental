@@ -9,7 +9,7 @@ import { t } from '@/i18n/fa';
 import { formsHydrated, recordBeacons } from '../helpers/booking';
 import { watchConsoleErrors } from '../helpers/console';
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2, worldSettled } from '../helpers/webgl';
+import { needsWebgl2, worldSettled, worldStartedOnLoad } from '../helpers/webgl';
 
 interface Snapshot {
   tier: number;
@@ -42,6 +42,7 @@ async function engineReady(page: Page): Promise<void> {
     const h = (window as unknown as { __sefid?: Hook }).__sefid;
     return h !== undefined && h.snapshot().labels.length > 0;
   });
+  await worldStartedOnLoad(page);
 }
 
 /** Document-order ids of the `[data-scene]` elements on the page. */

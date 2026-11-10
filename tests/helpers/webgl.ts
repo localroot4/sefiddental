@@ -29,6 +29,13 @@ export async function needsWebgl2(page: Page): Promise<void> {
  * it is up. A test that times either waits for this once the world has been asked for.
  */
 export async function worldSettled(page: Page): Promise<void> {
+  // The start-up is not the test's own time (11 to 15 s with two workers on two cores, more on a
+  // slow runner: CI run 131 T-S6 and T-WF1 ran out of their 30 s): the budget covers the three
+  // waits below while they run, then grows by what they took, so the test keeps all of its own.
+  const info = test.info();
+  const budget = info.timeout;
+  const started = Date.now();
+  if (budget > 0) info.setTimeout(budget + 90_000);
   await page.waitForFunction(
     () =>
       document.querySelector<HTMLCanvasElement>('[data-experience-layer] canvas')?.style.opacity ===
@@ -60,4 +67,25 @@ export async function worldSettled(page: Page): Promise<void> {
         requestAnimationFrame(frame);
       }),
   );
+  if (budget > 0) info.setTimeout(budget + (Date.now() - started));
+}
+
+/**
+ * worldSettled where the page starts the world on load: `?debug=1` mounts the canvas at once on a
+ * desktop or a tablet (a phone loads none), and from `?tier=2` the courier draws on it. The specs'
+ * engineReady call it, so no test there times a tween, a scrub or a smooth scroll inside the
+ * start-up: on CI's software GPU one task of 5 to 15 s right after load answered no poll (run 129
+ * T-S7; run 131 T-EN7 3109 px short, T-S6, T-WF1). A real GPU never meets it: a software renderer
+ * latches tier 0 (qualityTier.ts).
+ */
+export async function worldStartedOnLoad(page: Page): Promise<void> {
+  const query = new URL(page.url()).searchParams;
+  const tier = query.get('tier');
+  if (
+    query.get('debug') !== '1' ||
+    (tier !== '2' && tier !== '3') ||
+    test.info().project.name.startsWith('phone-')
+  )
+    return;
+  await worldSettled(page);
 }

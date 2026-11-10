@@ -13,7 +13,7 @@ import { watchConsoleErrors } from '../helpers/console';
 import { throttleCpu } from '../helpers/cpu';
 import { sampleFrames } from '../helpers/frames';
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2 } from '../helpers/webgl';
+import { needsWebgl2, worldStartedOnLoad } from '../helpers/webgl';
 
 interface Snapshot {
   tier: number;
@@ -63,6 +63,7 @@ async function engineReady(page: Page): Promise<void> {
     const h = (window as unknown as { __sefid?: Hook }).__sefid;
     return h !== undefined && h.snapshot().labels.length > 0;
   });
+  await worldStartedOnLoad(page);
 }
 
 const frames = (page: Page) =>

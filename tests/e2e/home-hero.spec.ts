@@ -129,10 +129,6 @@ test.describe('without the intro', () => {
     page,
   }, testInfo) => {
     only(testInfo, 'desktop-light');
-    // The budget covers the world's start-up it waits through (below): 11 to 15 s with CI's two
-    // workers on two cores, and the whole test took 15 to 24.5 s there (30 runs), too close to the
-    // default 30 s for a slower runner. The assertions keep their own timeouts.
-    test.setTimeout(60_000);
     await needsWebgl2(page);
     await page.goto('/?tier=2');
     await waitForEngine(page);

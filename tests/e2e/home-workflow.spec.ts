@@ -8,7 +8,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2 } from '../helpers/webgl';
+import { needsWebgl2, worldStartedOnLoad } from '../helpers/webgl';
 
 type Hook = { snapshot(): { labels: string[] } };
 
@@ -23,6 +23,7 @@ async function engineReady(page: Page): Promise<void> {
     const h = (window as unknown as { __sefid?: Hook }).__sefid;
     return h !== undefined && h.snapshot().labels.length > 0;
   });
+  await worldStartedOnLoad(page);
 }
 
 /** Two animation frames: ScrollTrigger has rendered the scrub for the scroll. */
