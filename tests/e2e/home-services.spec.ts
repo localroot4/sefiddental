@@ -377,6 +377,9 @@ test('T-SV4 on touch phones and tablets: no pin, a mandatory snap row, every car
     const link = links.nth(i);
     await link.evaluate((el) => (el as HTMLElement).focus());
     await expect(link).toBeFocused();
+    // The first focus scrolls the page past the world window, which starts the world at tier 2
+    // (run 136: the card's poll ran out inside the start-up).
+    await worldAfterJump(page);
     const card = link.locator('xpath=ancestor::article[1]');
     await expect
       .poll(async () => {
