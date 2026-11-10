@@ -490,11 +490,17 @@ test('T-EN4h a first visit in auto mode whose probe answers before the engine ch
   const held = new Promise<void>((resolve) => {
     release = resolve;
   });
+  let inFlight = 0;
   await page.route(/\.js(\?|$)/, async (route) => {
-    const response = await route.fetch();
-    const body = await response.text();
-    if (body.includes('ScrollTrigger')) await held;
-    await route.fulfill({ response, body });
+    inFlight += 1;
+    try {
+      const response = await route.fetch();
+      const body = await response.text();
+      if (body.includes('ScrollTrigger')) await held;
+      await route.fulfill({ response, body });
+    } finally {
+      inFlight -= 1;
+    }
   });
   await page.goto('/#home-voices-title');
   const voicesTop = () =>
@@ -509,7 +515,12 @@ test('T-EN4h a first visit in auto mode whose probe answers before the engine ch
   await engineCreated(page);
   await frames(page);
   await frames(page);
-  // A chunk still in its handler (the journey layer loads with the engine) finishes first.
+  // A chunk still in its handler (the journey layer loads with the engine) finishes first, and
+  // only then is the route removed: once the handler list is empty, the first handler to finish
+  // switches the page's interception off (Playwright's route dispatch re-sends the empty
+  // patterns), so a second one still in its fetch then fulfills a route already continued
+  // ("Route is already handled!", CI run 130; 13 of 30 with two workers on two cores).
+  await expect.poll(() => inFlight).toBe(0);
   await page.unrouteAll({ behavior: 'wait' });
   // The pins arrived with the engine; the place was read in the document without them.
   await expect(page.locator('html[data-pins]')).toHaveCount(1);
