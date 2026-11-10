@@ -28,7 +28,10 @@ export async function needsWebgl2(page: Page): Promise<void> {
  * tween cannot draw its last steps, and a media query change (a rotation) is not delivered, until
  * it is up. A test that times either waits for this once the world has been asked for.
  */
-export async function worldSettled(page: Page): Promise<void> {
+export async function worldSettled(
+  page: Page,
+  steady: { frames: number; underMs: number } = { frames: 20, underMs: 100 },
+): Promise<void> {
   // The start-up is not the test's own time (11 to 15 s with two workers on two cores, more on a
   // slow runner: CI run 131 T-S6 and T-WF1 ran out of their 30 s): the budget covers the three
   // waits below while they run, then grows by what they took, so the test keeps all of its own.
@@ -52,21 +55,27 @@ export async function worldSettled(page: Page): Promise<void> {
     { timeout: 30_000 },
   );
   await page.evaluate(
-    () =>
+    ({ frames, underMs }) =>
       new Promise<void>((resolve, reject) => {
         const until = performance.now() + 30_000;
         let last = performance.now();
-        let steady = 0;
+        let run = 0;
         const frame = (now: number): void => {
-          steady = now - last < 100 ? steady + 1 : 0;
+          run = now - last < underMs ? run + 1 : 0;
           last = now;
-          if (steady >= 20) resolve();
-          else if (now > until) reject(new Error('the page never drew 20 steady frames in 30 s'));
+          if (run >= frames) resolve();
+          else if (now > until)
+            reject(new Error(`the page never drew ${frames} frames under ${underMs} ms in 30 s`));
           else requestAnimationFrame(frame);
         };
         requestAnimationFrame(frame);
       }),
+    steady,
   );
+  // worldAfterJump returns at once from here on.
+  await page.evaluate(() => {
+    (window as unknown as { __worldUp?: boolean }).__worldUp = true;
+  });
   if (budget > 0) info.setTimeout(budget + (Date.now() - started));
 }
 
@@ -95,8 +104,8 @@ export async function worldStartedOnLoad(page: Page): Promise<void> {
  * world when the window under the hero has been seen, and a jump straight past it counts since
  * the observer's root reaches above the viewport (03bddc5). On CI's software GPU its start-up is
  * then one task of 5 to 15 s in which no poll, tween or smooth scroll moves (run 133: T-RS2 and
- * T-RS6 short of their chip's step). The specs' scroll helpers call it after every jump; once the
- * world is up the page remembers it, so later calls return at once.
+ * T-RS6 short of their chip's step). The specs' scroll helpers call it after every jump; once a
+ * worldSettled has seen the world up the page remembers it, so later calls return at once.
  */
 export async function worldAfterJump(page: Page): Promise<void> {
   if (test.info().project.name.startsWith('phone-')) return;
@@ -112,8 +121,7 @@ export async function worldAfterJump(page: Page): Promise<void> {
     );
   });
   if (!due) return;
-  await worldSettled(page);
-  await page.evaluate(() => {
-    (window as unknown as { __worldUp?: boolean }).__worldUp = true;
-  });
+  // Only the start-up's end: a pinned scene on CI's software GPU may never draw 20 frames under
+  // 100 ms in a row (T-WF1, T-WF2 at the workflow pin), while the start-up task blocks for seconds.
+  await worldSettled(page, { frames: 5, underMs: 500 });
 }
