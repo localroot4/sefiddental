@@ -4,7 +4,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2, worldSettled } from '../helpers/webgl';
+import { needsWebgl2, worldAfterJump, worldSettled } from '../helpers/webgl';
 
 const HERO = '[data-scene="hero"]';
 const PHOTO = `${HERO} [data-hero-photo]`;
@@ -57,6 +57,7 @@ async function waitForEngine(page: Page): Promise<void> {
 async function scrollTo(page: Page, y: number): Promise<void> {
   await page.evaluate((top) => window.scrollTo(0, top), y);
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(y);
+  await worldAfterJump(page);
 }
 
 type Settle = {

@@ -9,7 +9,7 @@ import { t } from '@/i18n/fa';
 
 import { throttleCpu } from '../helpers/cpu';
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2, worldSettled } from '../helpers/webgl';
+import { needsWebgl2, worldAfterJump } from '../helpers/webgl';
 
 const SCENE = '[data-scene="services"]';
 /** The pin's room: the scroll distance after the sticky stage, display none without pins. */
@@ -38,6 +38,7 @@ const frames = (page: Page) =>
 async function scrollTo(page: Page, top: number): Promise<void> {
   await page.evaluate((y) => window.scrollTo({ top: y, behavior: 'instant' }), top);
   await frames(page);
+  await worldAfterJump(page);
 }
 
 /**
@@ -311,10 +312,9 @@ test('T-SV3 the MorphSVG chunk loads only at ?tier=2 from 1024 px, after load, o
   // cubic path data once the first tween rendered, never the committed string again).
   const { start, end } = await pinRange(page);
   const path = page.locator(`${SCENE} [data-mark] svg path`).first();
+  // The first jump past the world window: scrollTo waits for the world it starts (worldAfterJump;
+  // at 4x on CI's software GPU one task of many seconds, run 132: the stable-path poll).
   await scrollTo(page, end);
-  // The first jump past the world window: the WebGL world starts now, on CI's software GPU one
-  // task of many seconds at 4x in which no poll below runs (run 132: the stable-path poll).
-  await worldSettled(page);
   // Written by the first morph tween's render, the committed outline the restore puts back.
   await expect(path).toHaveAttribute('data-original', SERVICE_MARK_OUTLINE);
   await scrollTo(page, start - 10);

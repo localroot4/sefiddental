@@ -8,7 +8,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2, worldStartedOnLoad } from '../helpers/webgl';
+import { needsWebgl2, worldAfterJump, worldStartedOnLoad } from '../helpers/webgl';
 
 type Hook = { snapshot(): { labels: string[] } };
 
@@ -35,6 +35,7 @@ const frames = (page: Page) =>
 async function scrollTo(page: Page, y: number): Promise<void> {
   await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y);
   await frames(page);
+  await worldAfterJump(page);
 }
 
 /**
@@ -205,6 +206,7 @@ const docTop = (page: Page, selector: string) =>
 /** Scrolls to `y` and waits out the scrub lag. */
 async function scrollToY(page: Page, y: number): Promise<void> {
   await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), Math.round(y));
+  await worldAfterJump(page);
   await page.waitForTimeout(SCRUB_WAIT_MS);
 }
 

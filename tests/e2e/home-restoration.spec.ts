@@ -9,7 +9,7 @@ import { expect, test, type Locator, type Page, type TestInfo } from '@playwrigh
 
 import { recordBeacons } from '../helpers/booking';
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2 } from '../helpers/webgl';
+import { needsWebgl2, worldAfterJump } from '../helpers/webgl';
 
 const BOOK = 'رزرو نوبت';
 const STEPS = ['standard', 'vip', 'cip'] as const;
@@ -29,6 +29,7 @@ const frames = (page: Page) =>
 async function scrollTo(page: Page, y: number): Promise<void> {
   await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y);
   await frames(page);
+  await worldAfterJump(page);
 }
 
 /**

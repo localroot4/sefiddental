@@ -11,7 +11,7 @@ import { expectNoA11yViolations } from '../helpers/axe';
 import { recordBeacons } from '../helpers/booking';
 import { scrollThrough } from '../helpers/frames';
 import { skipIntro } from '../helpers/intro';
-import { needsWebgl2, worldStartedOnLoad } from '../helpers/webgl';
+import { needsWebgl2, worldAfterJump, worldStartedOnLoad } from '../helpers/webgl';
 
 type Hook = {
   snapshot(): { labels: string[]; layout: { latchedAtTier: number } };
@@ -60,6 +60,7 @@ async function scrollTo(page: Page, selector: string, offset = 0): Promise<void>
     [selector, offset] as const,
   );
   await frames(page);
+  await worldAfterJump(page);
 }
 
 const computed = (page: Page, selector: string, property: string) =>
