@@ -56,8 +56,8 @@ const D3_TILT = 1.05;
 
 /** The arch's teeth keep the molar above this height (molar.glb units): the crown and its neck. */
 const ARCH_CROWN_FROM = -0.25;
-/** The grid an arch tooth's vertices cluster to (molar.glb units; the crown is 1.03 wide). */
-const ARCH_CELL = 0.08;
+/** The grid an arch tooth's vertices cluster to (molar.glb units; the crown is 1.03 wide): 677 triangles. */
+const ARCH_CELL = 0.1;
 /** The arch's even fill in place of the studio environment. */
 const ARCH_AMBIENT = 2.6;
 
