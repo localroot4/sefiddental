@@ -7,6 +7,7 @@
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
 import { isolateClient } from '../helpers/booking';
+import { needsWebgl2 } from '../helpers/webgl';
 
 const SKIP = 'رد کردن انیمیشن';
 const PHONE_FIELD = 'شمارهٔ موبایل';
@@ -530,9 +531,14 @@ for (const tier of [1, 2] as const) {
   }, testInfo) => {
     if (tier === 1) only(testInfo, 'phone-light', 'tablet-light', 'desktop-light');
     else only(testInfo, 'desktop-light');
+    test.slow();
+    // Without WebGL 2 the page latches tier 0 whatever `?tier` says: no courier, no hand-off.
+    await needsWebgl2(page);
     await page.addInitScript(() => {
       const frames: HandoffFrame[] = [];
       (window as unknown as { __handoff: HandoffFrame[] }).__handoff = frames;
+      let liftAt: number | null = null;
+      let after = 0;
       const centre = (r: DOMRect) => ({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
       const tick = (): void => {
         const j = (
@@ -573,14 +579,26 @@ for (const tier of [1, 2] as const) {
             state: j.handoff(),
             mode: j.handoffMode(),
           });
+          if (frames.at(-1)!.intro === 'done') {
+            liftAt ??= frames.at(-1)!.t;
+            after += 1;
+          }
         }
-        if (performance.now() < 6000) requestAnimationFrame(tick);
+        // Until 2 s and 30 recorded frames after the lift (a slow host draws one frame in 300 ms),
+        // not to a fixed page time: on the CI runner the lift itself can come after 6 s.
+        const done = after >= 30 && liftAt !== null && performance.now() - liftAt > 2000;
+        if (!done && performance.now() < 20_000) requestAnimationFrame(tick);
+        else (window as unknown as { __handoffEnd: boolean }).__handoffEnd = true;
       };
       requestAnimationFrame(tick);
     });
     await page.goto(`/?tier=${tier}&debug=1`);
     await waitForEnd(page);
-    await page.waitForTimeout(1500);
+    await page.waitForFunction(
+      () => (window as unknown as { __handoffEnd?: boolean }).__handoffEnd === true,
+      null,
+      { timeout: 25_000 },
+    );
     const frames = await page.evaluate(
       () => (window as unknown as { __handoff: HandoffFrame[] }).__handoff,
     );
