@@ -533,6 +533,7 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
     // right before the release.
     for (let i = 1; i <= 6; i += 1) await pointer.move(at.x, at.y - 25 * i);
     await page.waitForTimeout(dx === 0 ? 300 : 150);
+    const held = await translation(page, 1);
     for (let i = 1; dx !== 0 && i <= 4; i += 1) {
       await pointer.move(at.x + (dx * i) / 4, at.y - 150);
       await page.waitForTimeout(16);
@@ -550,26 +551,17 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
     const field = (await page.locator(FIELD).boundingBox())!;
     expect(inside((await bar.boundingBox())!, field), `${name}: inside the field`).toBe(true);
     // Host gate for the carry: Draggable applies pointer moves on its frame tick, and the throw
-    // speed comes from the moves drawn in the 100 ms before the release. A host that draws a
-    // frame in more than 50 ms (headless WebKit on the CI runner, run 128: about 250 ms) draws
-    // no frame of a 64 ms flick, so the part never moves sideways before the release.
-    const frameMs = await page.evaluate(() => {
-      const { up, frames } = (
-        window as unknown as { __fall: { up: number; frames: [number, number][] } }
-      ).__fall;
-      const t = frames.map(([at]) => at).filter((at) => at < up && at > up - 1000);
-      const gaps = t
-        .slice(1)
-        .map((at, i) => at - t[i]!)
-        .sort((a, b) => a - b);
-      return gaps[Math.floor(gaps.length / 2)] ?? Infinity;
-    });
+    // speed is how far the part went in the 100 ms before the release. A host that drew no frame
+    // of the 64 ms flick (headless WebKit on the CI runner: about 250 ms a frame in run 128, and
+    // one missed flick in run 132 with a faster median) leaves the part where it was held, so
+    // there is no throw to carry.
+    const drawn = Math.abs(released.x - held.x) >= 1;
     // Chromium always checks it, so a slow throw there fails loudly.
     const chromium = page.context().browser()?.browserType().name() === 'chromium';
-    if (dx !== 0 && frameMs > 50 && !chromium) {
+    if (dx !== 0 && !drawn && !chromium) {
       test.info().annotations.push({
         type: 'carry not checked',
-        description: `this host draws a frame in ${Math.round(frameMs)} ms`,
+        description: 'this host drew no frame of the flick before the release',
       });
     } else if (dx !== 0) {
       expect((rest.x - released.x) * toward, `${name}: carried on in x`).toBeGreaterThan(10);
