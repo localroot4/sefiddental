@@ -35,6 +35,19 @@ const block = (page: Page) => page.locator('#bk-block');
 const submitIn = (root: ReturnType<Page['locator']>) =>
   root.getByRole('button', { name: t('booking.submit') });
 const path = (page: Page) => decodeURI(new URL(page.url()).pathname);
+/**
+ * The home block's submit, tapped once the page has drawn it: the block is about 10 000 px down
+ * on a phone, and mobile WebKit hit-tests a tap right after Playwright's scroll against the frame
+ * drawn before it (the tap hit the page wrapper in 2 of 12 local runs and in CI run 129). A
+ * person taps what has been drawn.
+ */
+async function submitDrawn(page: Page, form: ReturnType<Page['locator']>): Promise<void> {
+  await submitIn(form).scrollIntoViewIfNeeded();
+  await page.evaluate(
+    () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+  );
+  await submitIn(form).click();
+}
 
 test.beforeEach(({ page }) => skipIntro(page));
 
@@ -109,7 +122,7 @@ test('T-HB2 the home block: the full success in place with location block', asyn
   await expect(form.getByRole('link', { name: t('urgent.label') })).toHaveCount(0);
   await form.getByLabel(t('booking.phone')).fill(phone);
   await form.getByLabel(t('booking.name')).fill('نمونهٔ آزمایشی');
-  await submitIn(form).click();
+  await submitDrawn(page, form);
   await expect(form.getByRole('heading', { name: t('booking.done') })).toBeFocused();
   await expect(form.getByText(maskedPhone(phone))).toBeVisible();
   await expect(form.getByRole('heading', { name: t('booking.bringHeading') })).toBeVisible();
