@@ -315,8 +315,17 @@ test('T-HOME8 the booking form validates on submit and on blur with the conversi
   await expect(error).toHaveCount(0);
   // The full form in scene 10: the note's limit.
   const block = page.locator('#bk-block');
-  await block.getByText('توضیح بیشتر').click();
-  await block.getByLabel('توضیح (اختیاری)').fill('ا'.repeat(501));
+  // A browser without WebGL 2 relatches from tier 1 to 0 when its probe answers, and the tier 1
+  // engine's teardown can move the page between press and release (CI runs 135 and 136: the
+  // summary took focus, the <details> stayed shut). Press again only while it is still shut; a
+  // <details> that never opens still fails here.
+  const note = block.getByLabel('توضیح (اختیاری)');
+  await expect(async () => {
+    if (!(await block.locator('details').evaluate((d) => (d as HTMLDetailsElement).open)))
+      await block.getByText('توضیح بیشتر').click();
+    await expect(note).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 10_000 });
+  await note.fill('ا'.repeat(501));
   await block.getByLabel('شمارهٔ موبایل').fill('09123456789');
   await block.getByRole('button', { name: 'ثبت درخواست' }).click();
   await expect(block.locator('#bk-block-note-error')).toHaveText(
