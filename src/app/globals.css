@@ -279,6 +279,15 @@
 [data-world-slot='compare'][data-world-live] figure > div:first-child > div {
   visibility: hidden;
 }
+/* The slot itself sits above the canvas (z 1, journey/attrs.ts COURIER_Z): its entrance (a
+   transform and an opacity on `[data-enter]`) makes it a stacking context, inside which the
+   labels' z-index cannot beat the canvas; the labels, the divider and the handle with its focus
+   ring then hid under the wipe until the entrance ended (a11y T-KB, WebKit). The box stays
+   transparent where the canvas draws the photos. */
+[data-world-slot='compare'][data-world-live] {
+  position: relative;
+  z-index: 2;
+}
 /* The canvas paints above the sections (the courier's layer, journey/attrs.ts COURIER_Z): the
    labels and the divider stay above the wipe it draws (the range input is z-10 already). */
 [data-world-slot='compare'][data-world-live] figure > div:first-child > span {
