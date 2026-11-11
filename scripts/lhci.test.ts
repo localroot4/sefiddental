@@ -218,7 +218,7 @@ describe('lighthouserc.cjs', () => {
         'error',
         { maxNumericValue: 2500, aggregationMethod: 'optimistic' },
       ],
-      'resource-summary:script:size': ['error', { maxNumericValue: (170 + 65 + 1) * 1024 }],
+      'resource-summary:script:size': ['error', { maxNumericValue: (170 + 67 + 1) * 1024 }],
       'cumulative-layout-shift': ['error', { maxNumericValue: 0.05, aggregationMethod: 'median' }],
     });
   });
