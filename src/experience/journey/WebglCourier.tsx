@@ -217,15 +217,18 @@ export function WebglCourier(props: {
       if (!off && smile && pose.dock === 'smile' && pose.arch > 0 && pose.smile < 1) {
         const frame = archFrame(smile, scrollY, pose.local);
         const top = viewportTop(smile, scrollY);
-        rig.updateArch({
-          width: smile.width,
-          height: smile.height,
-          archWidth: frame.width,
-          offsetX: frame.cx - (smile.left + smile.width / 2),
-          offsetY: frame.cy - (top + smile.height / 2),
-          // It appears out of the dissolve and leaves into it, as the smile photo comes in.
-          dissolve: Math.max(1 - pose.arch, pose.smile),
-        });
+        rig.updateArch(
+          {
+            width: smile.width,
+            height: smile.height,
+            archWidth: frame.width,
+            offsetX: frame.cx - (smile.left + smile.width / 2),
+            offsetY: frame.cy - (top + smile.height / 2),
+            // It appears out of the dissolve and leaves into it, as the smile photo comes in.
+            dissolve: Math.max(1 - pose.arch, pose.smile),
+          },
+          gl,
+        );
         drawPass(
           gl,
           size,

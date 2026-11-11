@@ -10,16 +10,20 @@
  */
 import {
   AmbientLight,
+  Box3,
   BufferAttribute,
   BufferGeometry,
   Color,
   Group,
+  HalfFloatType,
   InstancedMesh,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
+  NearestFilter,
   OrthographicCamera,
+  PlaneGeometry,
   Points,
   Quaternion,
   Scene,
@@ -27,11 +31,13 @@ import {
   type Texture,
   Vector3,
   type WebGLProgramParametersWithUniforms,
+  type WebGLRenderer,
+  WebGLRenderTarget,
 } from 'three';
 
 import { disposeObject3D, type DisposeCount } from '../scenes/dispose';
 import { levelBlend } from '../scenes/webgl/math';
-import { createEnamel, MOLAR_Y } from '../scenes/webgl/molar';
+import { createEnamel, MOLAR_Y, NOISE_GLSL } from '../scenes/webgl/molar';
 import { createStudio } from '../scenes/webgl/studio';
 
 import { ARCH_DEPTH, ARCH_ELEVATION, ARCH_SLOT, archLayout } from './arch';
@@ -62,6 +68,50 @@ const ARCH_CROWN_FROM = -0.25;
 const ARCH_CELL = 0.1;
 /** The arch's even fill in place of the studio environment. */
 const ARCH_AMBIENT = 2.6;
+/**
+ * The baked arch's texels per screen pixel at its widest (the pull-back widens it by 1 / 0.84):
+ * about 2, so the bilinear lookup averages four texels, as the canvas's 4x MSAA does.
+ */
+const ARCH_BAKE_SCALE = 2.4;
+const ARCH_BAKE_MAX = 2048;
+
+const ARCH_QUAD_VERTEX = /* glsl */ `
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}`;
+
+/** The baked arch (premultiplied, linear HDR), tone mapped like the scene and dissolved. */
+const ARCH_QUAD_FRAGMENT = /* glsl */ `
+uniform sampler2D uMap;
+uniform sampler2D uNoiseMap;
+uniform float uDissolve;
+varying vec2 vUv;
+void main() {
+  vec4 t = texture2D(uMap, vUv);
+  if (t.a < 0.004) discard;
+  if (uDissolve > 0.0 && texture2D(uNoiseMap, vUv).r < uDissolve) discard;
+  gl_FragColor = vec4(t.rgb / t.a, t.a);
+  #include <tonemapping_fragment>
+  #include <colorspace_fragment>
+  #include <premultiplied_alpha_fragment>
+}`;
+
+/** Each tooth's dissolve threshold, from its own object position as the enamel draws it (molar.ts). */
+const ARCH_NOISE_VERTEX = /* glsl */ `
+varying vec3 vObjPos;
+void main() {
+  #include <begin_vertex>
+  vObjPos = transformed;
+  #include <project_vertex>
+}`;
+const ARCH_NOISE_FRAGMENT = /* glsl */ `
+varying vec3 vObjPos;
+${NOISE_GLSL}
+void main() {
+  gl_FragColor = vec4(sefidNoise(vObjPos.xy * 7.0 + vObjPos.z * 5.0) * 0.98 + 0.01, 0.0, 0.0, 1.0);
+}`;
 
 /**
  * An arch tooth from the molar: the triangles with a vertex at or above `minY` (the part an
@@ -291,16 +341,23 @@ export interface CourierRig {
   camera: OrthographicCamera;
   arch: { scene: Scene; camera: OrthographicCamera };
   update(frame: CourierFrame): void;
-  /** `box` the arch pass box (px), `width` the arch's width in it (px), `dissolve` 0..1. */
-  updateArch(frame: {
-    width: number;
-    height: number;
-    archWidth: number;
-    dissolve: number;
-    /** The arch's middle from the box's centre (px, y down). */
-    offsetX?: number;
-    offsetY?: number;
-  }): void;
+  /**
+   * `box` the arch pass box (px), `width` the arch's width in it (px), `dissolve` 0..1. With
+   * `gl`, the arch is baked into a texture once (again after a theme change, a larger size or a
+   * restored context) and drawn as one quad.
+   */
+  updateArch(
+    frame: {
+      width: number;
+      height: number;
+      archWidth: number;
+      dissolve: number;
+      /** The arch's middle from the box's centre (px, y down). */
+      offsetX?: number;
+      offsetY?: number;
+    },
+    gl?: WebGLRenderer,
+  ): void;
   setTheme(dark: boolean, brand: string): void;
   /**
    * A studio environment (a PMREM of a room, built at runtime by the caller from the renderer):
@@ -433,6 +490,63 @@ export function createCourierRig(
   archGroup.add(instances);
   archScene.add(archGroup);
 
+  // The arch never changes in its own frame: an orthographic camera fixed in place, which only
+  // frames it (updateArch moves the frustum's edges: a 2D scale and shift of the picture). So it
+  // is baked once into a texture over its bounds and drawn as one quad there: a tier 2 frame at
+  // D5 drew fifteen lit teeth over the smile box (about 30 ms of 60 on two cores with a software
+  // GPU, T-JN14). The dissolve keeps each tooth's own noise, baked beside the colour.
+  archScene.updateMatrixWorld(true);
+  const bounds = new Box3().setFromObject(archGroup).expandByScalar(0.02);
+  const bakeCamera = new OrthographicCamera(
+    bounds.min.x,
+    bounds.max.x,
+    bounds.max.y,
+    bounds.min.y,
+    0.1,
+    20,
+  );
+  bakeCamera.position.copy(archCamera.position);
+  const bakeSize = new Vector3();
+  bounds.getSize(bakeSize);
+  const bake = new WebGLRenderTarget(1, 1, { type: HalfFloatType, depthBuffer: true });
+  // The dissolve's per-pixel threshold, baked beside the colour: nearest, never mixed with the
+  // empty texels around a tooth.
+  const bakeNoise = new WebGLRenderTarget(1, 1, {
+    depthBuffer: true,
+    minFilter: NearestFilter,
+    magFilter: NearestFilter,
+  });
+  const noiseMaterial = new ShaderMaterial({
+    vertexShader: ARCH_NOISE_VERTEX,
+    fragmentShader: ARCH_NOISE_FRAGMENT,
+  });
+  const quadUniforms = {
+    uMap: { value: bake.texture },
+    uNoiseMap: { value: bakeNoise.texture },
+    uDissolve: { value: 0 },
+  };
+  const quad = new Mesh(
+    new PlaneGeometry(bakeSize.x, bakeSize.y),
+    new ShaderMaterial({
+      uniforms: quadUniforms,
+      vertexShader: ARCH_QUAD_VERTEX,
+      fragmentShader: ARCH_QUAD_FRAGMENT,
+      transparent: true,
+      premultipliedAlpha: true,
+      depthTest: false,
+      depthWrite: false,
+    }),
+  );
+  quad.position.set((bounds.min.x + bounds.max.x) / 2, (bounds.min.y + bounds.max.y) / 2, 0);
+  quad.visible = false;
+  archScene.add(quad);
+  let baked = 0;
+  let bakeStale = true;
+  let bakeCanvas: HTMLCanvasElement | null = null;
+  const restale = (): void => {
+    bakeStale = true;
+  };
+
   let level = -1;
   return {
     scene,
@@ -494,7 +608,7 @@ export function createCourierRig(
       decal.update(isTooth ? restore : null, view * fade * pose.presence);
       studio.setWarm(beats.warm);
     },
-    updateArch({ width, height, archWidth, dissolve, offsetX = 0, offsetY = 0 }) {
+    updateArch({ width, height, archWidth, dissolve, offsetX = 0, offsetY = 0 }, gl) {
       const w = width / 2 / archWidth;
       const h = height / 2 / archWidth;
       const ox = offsetX / archWidth;
@@ -507,6 +621,44 @@ export function createCourierRig(
         archCamera.updateProjectionMatrix();
       }
       archEnamel.uniforms.uDissolve.value = dissolve;
+      quadUniforms.uDissolve.value = dissolve;
+      // Without a float colour buffer (or a renderer) the teeth draw every frame, as before.
+      if (!gl?.extensions.has('EXT_color_buffer_float')) return;
+      if (bakeCanvas !== gl.domElement) {
+        bakeCanvas?.removeEventListener('webglcontextrestored', restale);
+        bakeCanvas = gl.domElement;
+        bakeCanvas.addEventListener('webglcontextrestored', restale);
+        bakeStale = true;
+      }
+      const texels = Math.min(
+        ARCH_BAKE_MAX,
+        Math.ceil(bakeSize.x * archWidth * gl.getPixelRatio() * ARCH_BAKE_SCALE),
+      );
+      if (bakeStale || texels > baked * 1.05) {
+        const rows = Math.ceil((texels * bakeSize.y) / bakeSize.x);
+        bake.setSize(texels, rows);
+        bakeNoise.setSize(texels, rows);
+        archGroup.visible = true;
+        quad.visible = false;
+        const target = gl.getRenderTarget();
+        const alpha = gl.getClearAlpha();
+        gl.setRenderTarget(bake);
+        gl.setClearAlpha(0);
+        gl.clear();
+        archEnamel.uniforms.uDissolve.value = 0;
+        gl.render(archScene, bakeCamera);
+        gl.setRenderTarget(bakeNoise);
+        gl.clear();
+        archScene.overrideMaterial = noiseMaterial;
+        gl.render(archScene, bakeCamera);
+        archScene.overrideMaterial = null;
+        gl.setRenderTarget(target);
+        gl.setClearAlpha(alpha);
+        baked = texels;
+        bakeStale = false;
+      }
+      archGroup.visible = false;
+      quad.visible = true;
     },
     setEnvironment(env) {
       // Not the arch's scene: its pass covers the whole smile box (see the arch above).
@@ -518,6 +670,7 @@ export function createCourierRig(
     setTheme(dark, brand) {
       studio.setTheme(dark);
       archStudio.setTheme(dark);
+      bakeStale = true;
       const ivory = dark ? '#F2ECE1' : '#F0E8DA';
       enamel.material.color.set(ivory);
       archEnamel.material.color.set(ivory);
@@ -535,6 +688,10 @@ export function createCourierRig(
       spin.remove(mark);
       glaze.dispose();
       instances.dispose();
+      bake.dispose();
+      bakeNoise.dispose();
+      noiseMaterial.dispose();
+      bakeCanvas?.removeEventListener('webglcontextrestored', restale);
       const a = disposeObject3D(scene);
       const b = disposeObject3D(archScene);
       return {

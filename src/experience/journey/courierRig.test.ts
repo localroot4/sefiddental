@@ -1,4 +1,4 @@
-import { Box3, BoxGeometry, SphereGeometry, Vector3 } from 'three';
+import { Box3, BoxGeometry, SphereGeometry, Vector3, type WebGLRenderer } from 'three';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SOLID, workflowBeats } from './beats';
@@ -142,5 +142,52 @@ describe('courier rig', () => {
       }
     });
     expect(instanced).toBeLessThan(12);
+  });
+  it('R7 the arch is baked once into a texture and drawn as one quad: again only for a larger size, a theme or a restored context', () => {
+    const rig = createCourierRig({ mark: mark(), molar: tooth() }, { particles: 10 });
+    const canvas = new EventTarget(); // the renderer's canvas: only its restore event matters
+    const render = vi.fn();
+    const stub = (float: boolean) =>
+      ({
+        extensions: { has: (name: string) => float && name === 'EXT_color_buffer_float' },
+        domElement: canvas,
+        getPixelRatio: () => 1,
+        getRenderTarget: () => null,
+        setRenderTarget: vi.fn(),
+        getClearAlpha: () => 0,
+        setClearAlpha: vi.fn(),
+        clear: vi.fn(),
+        render,
+      }) as unknown as WebGLRenderer;
+    const shown = () => {
+      const kinds: string[] = [];
+      rig.arch.scene.traverseVisible((o) => {
+        if ((o as { isInstancedMesh?: boolean }).isInstancedMesh) kinds.push('teeth');
+        else if ((o as { isMesh?: boolean }).isMesh && o.parent === rig.arch.scene)
+          kinds.push('quad');
+      });
+      return kinds;
+    };
+    const box = { width: 640, height: 427, archWidth: 400, dissolve: 0 };
+    // No float colour buffer: the teeth draw every frame, as before.
+    rig.updateArch(box, stub(false));
+    expect(render).not.toHaveBeenCalled();
+    expect(shown()).toEqual(['teeth']);
+    const gl = stub(true);
+    rig.updateArch(box, gl);
+    // Two passes: the colour and the dissolve's threshold.
+    expect(render).toHaveBeenCalledTimes(2);
+    expect(shown()).toEqual(['quad']);
+    rig.updateArch({ ...box, dissolve: 0.5, archWidth: 410 }, gl);
+    expect(render).toHaveBeenCalledTimes(2);
+    rig.updateArch({ ...box, archWidth: 520 }, gl);
+    expect(render).toHaveBeenCalledTimes(4);
+    rig.setTheme(true, '#0A8A80');
+    rig.updateArch({ ...box, archWidth: 520 }, gl);
+    expect(render).toHaveBeenCalledTimes(6);
+    canvas.dispatchEvent(new Event('webglcontextrestored'));
+    rig.updateArch({ ...box, archWidth: 520 }, gl);
+    expect(render).toHaveBeenCalledTimes(8);
+    rig.dispose();
   });
 });

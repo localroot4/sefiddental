@@ -62,7 +62,7 @@ float sefidCuspHeight(float x, float z, float amp) {
   return h;
 }`;
 
-const NOISE_GLSL = /* glsl */ `
+export const NOISE_GLSL = /* glsl */ `
 float sefidHash(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float sefidNoise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
