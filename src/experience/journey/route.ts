@@ -53,8 +53,6 @@ const BLOCKED = 1e6;
 const WINDOW_ROWS = 6;
 /** One planning step's time on this device before it gives the main thread back. */
 const SLICE_MS = 4;
-/** The check points on the way between two samples are at most this far apart (px of relative move). */
-const WAY_PX = 4;
 /** The cost of a way that keeps the margin only at its quarter points (a fade costs BLOCKED). */
 const TIGHT = 100;
 
@@ -245,27 +243,17 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
   }
 
   // The way from sample k-1 to sample k, against the boxes as they are then (the page has
-  // scrolled part of the step: they sit lower by the rest of it). `dense`: points at most WAY_PX
-  // of relative move apart, each with the margin grown by half that. The form's gap to a box
-  // changes no faster than the move, so such a way keeps the lane margin all along (1 px short at
-  // most next to a sample). Else its quarter points only, at the plain margin: a fast sideways
-  // pass then cut a box's corner by 7 px between them, and the drawn courier's lag and lean took
-  // the rest (T-CA3 on CI, the booking submit). The search takes a dense way wherever there is
-  // one (TIGHT), and a quarter-point way where there is none, as before.
+  // scrolled part of the step: they sit lower by the rest of it). `way` checks its quarter points
+  // as `clear` does (the bars, a side off screen). `along` checks the whole straight way against
+  // each box: every side of the overlap is linear in the way's progress, so the way meets the box
+  // (with its margin) only where all four hold together. Quarter points alone let a fast sideways
+  // pass cut a box's corner by 7 px, and the drawn courier's lag and lean took the rest (T-CA3 on
+  // CI, the booking submit). The search takes a way clear all along wherever there is one (TIGHT),
+  // and one clear at its quarter points where there is none, as before.
   const step = (y1 - y0) / n;
-  const way = (
-    k: number,
-    a: { x: number; y: number; s: number },
-    b: { x: number; y: number; s: number },
-    dense: boolean,
-  ): boolean => {
-    const move =
-      Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y + step)) + (Math.abs(b.s - a.s) * FORM) / 2;
-    // A multiple of four: the dense points include the quarter points.
-    const parts = dense ? 4 * Math.max(1, Math.ceil(move / (4 * WAY_PX))) : 4;
-    const margin = marginAt(k) + (dense ? move / parts / 2 : 0);
-    for (let q = 1; q < parts; q += 1) {
-      const f = q / parts;
+  type Point = { x: number; y: number; s: number };
+  const way = (k: number, a: Point, b: Point): boolean => {
+    for (const f of [0.25, 0.5, 0.75]) {
       if (
         !clear(
           rectsAt[k]!,
@@ -274,19 +262,51 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
           a.s + (b.s - a.s) * f,
           vp,
           true,
-          margin,
+          marginAt(k),
         )
       )
         return false;
     }
     return true;
   };
-  /** The way's extra cost: 0 dense, TIGHT at its quarter points only, Infinity not even there. */
+  const along = (k: number, a: Point, b: Point): boolean => {
+    const rects = rectsAt[k]!;
+    const m = marginAt(k);
+    // The form's centre and half side at progress 0 and 1, the boxes fixed (the page's scroll
+    // carried into the courier's place).
+    const x0 = a.x;
+    const y0 = a.y - step;
+    const h0 = (a.s * FORM) / 2 + m;
+    const dx = b.x - x0;
+    const dy = b.y - y0;
+    const dh = (b.s * FORM) / 2 + m - h0;
+    for (let i = 0; i < rects.length; i += 4) {
+      let lo = 0;
+      let hi = 1;
+      // Each side: g + f d > 0 for an overlap (left < x + h, right > x - h, top < y + h, ...).
+      const side = (g: number, d: number): boolean => {
+        if (d === 0) return g > 0;
+        const root = -g / d;
+        if (d > 0) lo = Math.max(lo, root);
+        else hi = Math.min(hi, root);
+        return lo < hi;
+      };
+      if (
+        side(x0 + h0 - rects[i]!, dx + dh) &&
+        side(rects[i + 2]! - x0 + h0, dh - dx) &&
+        side(y0 + h0 - rects[i + 1]!, dy + dh) &&
+        side(rects[i + 3]! - y0 + h0, dh - dy)
+      )
+        return false;
+    }
+    return true;
+  };
+  /** The way's extra cost: 0 clear all along, TIGHT at its quarter points only, else Infinity. */
   const between = (k: number, io: number, jo: number): number => {
     const a = { x: px[io]!, y: py[io]!, s: ps[io]! };
     const b = { x: px[jo]!, y: py[jo]!, s: ps[jo]! };
-    if (way(k, a, b, true)) return 0;
-    return way(k, a, b, false) ? TIGHT : Infinity;
+    if (!way(k, a, b)) return Infinity;
+    return along(k, a, b) ? 0 : TIGHT;
   };
   const nodeCost = (i: number, k: number): number => {
     const b = bases[k]!;
@@ -319,6 +339,8 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
     for (let j = 0; j <= grid; j += 1) {
       if (last && j !== grid) continue;
       if (j !== grid && !act[o + j]) continue;
+      // One sample's nodes with their ways took 25 ms on a 2-core runner: the step ends on time here.
+      if (due()) yield;
       const jo = o + j;
       const own = nodeCost(jo, k);
       let best = Infinity;
@@ -411,8 +433,10 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
       };
       if (
         clear(rectsAt[k]!, next.x, next.y, next.s, vp, false, marginAt(k)) &&
-        way(k, a, next, true) &&
-        way(k + 1, next, c, true)
+        way(k, a, next) &&
+        along(k, a, next) &&
+        way(k + 1, next, c) &&
+        along(k + 1, next, c)
       ) {
         b.x = next.x;
         b.y = next.y;
