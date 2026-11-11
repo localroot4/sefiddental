@@ -140,6 +140,24 @@ describe('measureDocks', () => {
     ]);
   });
 
+  it('DK10 an invisible tier panel is an obstacle: the scrub shows it without a measure', () => {
+    document.body.innerHTML = `
+      <main id="root">
+        <div data-tier-panel="vip" style="visibility: hidden"><a id="vip" href="/b"></a></div>
+        <div style="visibility: hidden"><a id="other" href="/c"></a></div>
+      </main>`;
+    scrollTo(0);
+    place(document.getElementById('vip')!, { top: 300, left: 20, w: 120, h: 44 });
+    place(document.getElementById('other')!, { top: 400, left: 20, w: 120, h: 44 });
+    Object.defineProperty(Range.prototype, 'getClientRects', {
+      configurable: true,
+      value: () => [],
+    });
+    const boxes = measureObstacles(document.getElementById('root')!);
+    delete (Range.prototype as { getClientRects?: unknown }).getClientRects;
+    expect(boxes).toEqual([{ left: 20, top: 300, width: 120, height: 44, pin: null }]);
+  });
+
   it('DK3 the viewport is the client width, the window height and the scroll range', () => {
     Object.defineProperty(document.documentElement, 'scrollHeight', {
       configurable: true,

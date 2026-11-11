@@ -124,6 +124,8 @@ export const ABOVE_ATTR = 'data-above-courier';
 export const WALL_ATTR = 'data-courier-wall';
 /** Decorative or not the page's text: the courier's own layers, the header, the dev overlay. */
 const SKIP = '[aria-hidden="true"], header, [data-dev-overlay], [data-courier-layer]';
+/** Panels that take turns in one place as the reader scrolls (the restoration's tiers). */
+const TIER_PANEL = '[data-tier-panel]';
 
 /**
  * The boxes of the page's text and controls under `root`, and the boxes painted above the
@@ -167,10 +169,14 @@ export function measureObstacles(root: Element): Box[] {
     // Only while its contents can move: wider than its box (a rail that wraps into a grid is not).
     (el) => el.closest(SKIP) === null && el.scrollWidth > el.clientWidth + 1,
   );
+  // The restoration's tier panels share one cell while pinned, the unchosen ones only invisible
+  // (RestorationSection.tsx), and its scrub shows one after another with no measure between: the
+  // lanes keep clear of every one (planned at the top, they knew only the first; T-CA3 crossed
+  // another's «رزرو نوبت»). Elsewhere a hidden element stays out.
   const shown = (el: Element): boolean =>
     el.closest(SKIP) === null &&
     !walls.some((wall) => wall.contains(el)) &&
-    getComputedStyle(el).visibility !== 'hidden';
+    (getComputedStyle(el).visibility !== 'hidden' || el.closest(TIER_PANEL) !== null);
   for (const el of root.querySelectorAll(CONTROLS)) {
     if (shown(el)) add(el, el.getClientRects());
   }
