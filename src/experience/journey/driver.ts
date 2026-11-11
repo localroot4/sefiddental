@@ -158,9 +158,10 @@ export function createJourney(opts: {
     typeof requestIdleCallback === 'function'
       ? requestIdleCallback(cb, { timeout: 120 })
       : window.setTimeout(() => {
-          // WebKit has no idle callback: an 8 ms slot that really runs out (a constant would
-          // plan every travel in one long task).
-          const end = performance.now() + 8;
+          // WebKit has no idle callback: a slot that really runs out (a constant would plan
+          // every travel in one long task). 12 ms: two of the planner's 4 ms steps, a task of
+          // about 10 ms; an 8 ms slot held one step, and the lanes came in 60 % later (T-JN13).
+          const end = performance.now() + 12;
           cb({ timeRemaining: () => Math.max(0, end - performance.now()) });
         }, 32);
   const unidle = (id: number): void => {
