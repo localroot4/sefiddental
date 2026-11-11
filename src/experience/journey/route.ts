@@ -130,6 +130,44 @@ function clear(
   return true;
 }
 
+const QUARTERS = [0.25, 0.5, 0.75] as const;
+
+/**
+ * Whether the overlap's four sides, each `g + f d > 0` along a way's progress f in 0..1, hold
+ * together somewhere: the way meets that box there. No closure or array: it runs for most boxes
+ * near a way in the search's inner loop (WebKit planned at half the speed with one).
+ */
+function meets(
+  g0: number,
+  d0: number,
+  g1: number,
+  d1: number,
+  g2: number,
+  d2: number,
+  g3: number,
+  d3: number,
+): boolean {
+  let lo = 0;
+  let hi = 1;
+  if (d0 === 0) {
+    if (g0 <= 0) return false;
+  } else if (d0 > 0) lo = Math.max(lo, -g0 / d0);
+  else hi = Math.min(hi, -g0 / d0);
+  if (d1 === 0) {
+    if (g1 <= 0) return false;
+  } else if (d1 > 0) lo = Math.max(lo, -g1 / d1);
+  else hi = Math.min(hi, -g1 / d1);
+  if (d2 === 0) {
+    if (g2 <= 0) return false;
+  } else if (d2 > 0) lo = Math.max(lo, -g2 / d2);
+  else hi = Math.min(hi, -g2 / d2);
+  if (d3 === 0) {
+    if (g3 <= 0) return false;
+  } else if (d3 > 0) lo = Math.max(lo, -g3 / d3);
+  else hi = Math.min(hi, -g3 / d3);
+  return lo < hi;
+}
+
 /** Plans a route at once (tests; the driver steps `routeSteps` in idle time instead). */
 export function planRoute(opts: RouteInput): Route {
   const steps = routeSteps(opts);
@@ -251,15 +289,23 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
   // CI, the booking submit). The search takes a way clear all along wherever there is one (TIGHT),
   // and one clear at its quarter points where there is none, as before.
   const step = (y1 - y0) / n;
-  type Point = { x: number; y: number; s: number };
-  const way = (k: number, a: Point, b: Point): boolean => {
-    for (const f of [0.25, 0.5, 0.75]) {
+  // A way from (ax, ay) at side as to (bx, by) at side bs, in plain numbers (no object per call).
+  const way = (
+    k: number,
+    ax: number,
+    ay: number,
+    as: number,
+    bx: number,
+    by: number,
+    bs: number,
+  ) => {
+    for (const f of QUARTERS) {
       if (
         !clear(
           rectsAt[k]!,
-          a.x + (b.x - a.x) * f,
-          a.y + (b.y - a.y) * f - (1 - f) * step,
-          a.s + (b.s - a.s) * f,
+          ax + (bx - ax) * f,
+          ay + (by - ay) * f - (1 - f) * step,
+          as + (bs - as) * f,
           vp,
           true,
           marginAt(k),
@@ -269,33 +315,49 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
     }
     return true;
   };
-  const along = (k: number, a: Point, b: Point): boolean => {
+  const along = (
+    k: number,
+    ax: number,
+    ay: number,
+    as: number,
+    bx: number,
+    by: number,
+    bs: number,
+  ): boolean => {
     const rects = rectsAt[k]!;
     const m = marginAt(k);
     // The form's centre and half side at progress 0 and 1, the boxes fixed (the page's scroll
     // carried into the courier's place).
-    const x0 = a.x;
-    const y0 = a.y - step;
-    const h0 = (a.s * FORM) / 2 + m;
-    const dx = b.x - x0;
-    const dy = b.y - y0;
-    const dh = (b.s * FORM) / 2 + m - h0;
+    const y0 = ay - step;
+    const h0 = (as * FORM) / 2 + m;
+    const h1 = (bs * FORM) / 2 + m;
+    const dx = bx - ax;
+    const dy = by - y0;
+    const dh = h1 - h0;
+    // The box the way sweeps: a box outside it is never met.
+    const h = Math.max(h0, h1);
+    const left = Math.min(ax, bx) - h;
+    const right = Math.max(ax, bx) + h;
+    const top = Math.min(y0, by) - h;
+    const bottom = Math.max(y0, by) + h;
     for (let i = 0; i < rects.length; i += 4) {
-      let lo = 0;
-      let hi = 1;
-      // Each side: g + f d > 0 for an overlap (left < x + h, right > x - h, top < y + h, ...).
-      const side = (g: number, d: number): boolean => {
-        if (d === 0) return g > 0;
-        const root = -g / d;
-        if (d > 0) lo = Math.max(lo, root);
-        else hi = Math.min(hi, root);
-        return lo < hi;
-      };
+      const rl = rects[i]!;
+      const rt = rects[i + 1]!;
+      const rr = rects[i + 2]!;
+      const rb = rects[i + 3]!;
+      if (rl >= right || rr <= left || rt >= bottom || rb <= top) continue;
+      // Each side: left < x + h, right > x - h, top < y + h, bottom > y - h.
       if (
-        side(x0 + h0 - rects[i]!, dx + dh) &&
-        side(rects[i + 2]! - x0 + h0, dh - dx) &&
-        side(y0 + h0 - rects[i + 1]!, dy + dh) &&
-        side(rects[i + 3]! - y0 + h0, dh - dy)
+        meets(
+          ax + h0 - rl,
+          dx + dh,
+          rr - ax + h0,
+          dh - dx,
+          y0 + h0 - rt,
+          dy + dh,
+          rb - y0 + h0,
+          dh - dy,
+        )
       )
         return false;
     }
@@ -303,10 +365,14 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
   };
   /** The way's extra cost: 0 clear all along, TIGHT at its quarter points only, else Infinity. */
   const between = (k: number, io: number, jo: number): number => {
-    const a = { x: px[io]!, y: py[io]!, s: ps[io]! };
-    const b = { x: px[jo]!, y: py[jo]!, s: ps[jo]! };
-    if (!way(k, a, b)) return Infinity;
-    return along(k, a, b) ? 0 : TIGHT;
+    const ax = px[io]!;
+    const ay = py[io]!;
+    const as = ps[io]!;
+    const bx = px[jo]!;
+    const by = py[jo]!;
+    const bs = ps[jo]!;
+    if (!way(k, ax, ay, as, bx, by, bs)) return Infinity;
+    return along(k, ax, ay, as, bx, by, bs) ? 0 : TIGHT;
   };
   const nodeCost = (i: number, k: number): number => {
     const b = bases[k]!;
@@ -339,8 +405,9 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
     for (let j = 0; j <= grid; j += 1) {
       if (last && j !== grid) continue;
       if (j !== grid && !act[o + j]) continue;
-      // One sample's nodes with their ways took 25 ms on a 2-core runner: the step ends on time here.
-      if (due()) yield;
+      // One sample's nodes with their ways took 25 ms on a 2-core runner: the step ends on time
+      // here too (the clock read every 32 nodes: once a node cost WebKit a tenth of the planning).
+      if ((j & 31) === 0 && due()) yield;
       const jo = o + j;
       const own = nodeCost(jo, k);
       let best = Infinity;
@@ -433,10 +500,10 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
       };
       if (
         clear(rectsAt[k]!, next.x, next.y, next.s, vp, false, marginAt(k)) &&
-        way(k, a, next) &&
-        along(k, a, next) &&
-        way(k + 1, next, c) &&
-        along(k + 1, next, c)
+        way(k, a.x, a.y, a.s, next.x, next.y, next.s) &&
+        along(k, a.x, a.y, a.s, next.x, next.y, next.s) &&
+        way(k + 1, next.x, next.y, next.s, c.x, c.y, c.s) &&
+        along(k + 1, next.x, next.y, next.s, c.x, c.y, c.s)
       ) {
         b.x = next.x;
         b.y = next.y;
