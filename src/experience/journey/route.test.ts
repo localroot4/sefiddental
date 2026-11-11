@@ -54,6 +54,49 @@ describe('planRoute and placeOn', () => {
     expect(placeOn(route, 2000)).toMatchObject({ x: 600, y: 700 });
   });
 
+  it('RT6 a fast sideways pass keeps the lane margin all the way, not only at its samples', () => {
+    // A long travel (samples 21.5 px of scroll apart) swinging across the width past button-sized
+    // boxes, as the dentists-to-booking travel does at 1440 (T-CA3: 7 px of the margin lost
+    // between two samples, over the booking submit).
+    for (const seed of [1, 5, 8]) {
+      let r = seed * 9301;
+      const rnd = () => (r = (r * 9301 + 49297) % 233280) / 233280;
+      const obstacles: Box[] = Array.from({ length: 40 }, () => ({
+        left: 100 + rnd() * 1200,
+        top: 1300 + rnd() * 3400,
+        width: 60 + rnd() * 140,
+        height: 24 + rnd() * 20,
+        pin: null,
+      }));
+      const [y0, y1] = [1000, 4445];
+      const base = (t: number) => ({
+        x: 200 + 1000 * (0.5 - 0.5 * Math.cos(Math.PI * 6 * t)),
+        y: 450,
+        s: 94,
+      });
+      const route = planRoute({ y0, y1, base, obstacles, viewport: VIEW, min: 40 });
+      // Next to its docks the margin is the dock's own (route.ts marginAt): the four samples there.
+      const edge = ((y1 - y0) / (route.samples.length - 1)) * 4;
+      for (let y = y0 + edge; y <= y1 - edge; y += 1) {
+        const p = placeOn(route, y);
+        if (p.o < 1) continue;
+        const half = (p.s * 0.8) / 2;
+        for (const b of obstacles) {
+          const top = b.top - y;
+          const gap = Math.max(
+            b.left - (p.x + half),
+            p.x - half - (b.left + b.width),
+            top - (p.y + half),
+            p.y - half - (top + b.height),
+          );
+          // Next to a sample the way is checked from its first point on: at most 1 px short there.
+          if (gap < LANE_MARGIN - 1)
+            expect(gap, `seed ${seed} at ${y}`).toBeGreaterThanOrEqual(LANE_MARGIN - 1);
+        }
+      }
+    }
+  });
+
   it('RT3 placeOn interpolates between samples and holds the ends outside the range', () => {
     const route = {
       y0: 0,

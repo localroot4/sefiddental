@@ -53,6 +53,10 @@ const BLOCKED = 1e6;
 const WINDOW_ROWS = 6;
 /** One planning step's time on this device before it gives the main thread back. */
 const SLICE_MS = 4;
+/** The check points on the way between two samples are at most this far apart (px of relative move). */
+const WAY_PX = 4;
+/** The cost of a way that keeps the margin only at its quarter points (a fade costs BLOCKED). */
+const TIGHT = 100;
 
 /** An index of the boxes by document top, for the ones on screen at one scroll position. */
 interface Index {
@@ -240,25 +244,49 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
     free[e] = k === 0 || k === n || clear(rects, b.x, b.y, b.s, vp, false, marginAt(k)) ? 1 : 0;
   }
 
-  // Points on the way from sample k-1 to sample k, against the boxes as they are then (the page
-  // has scrolled part of the step: they sit lower by the rest of it).
+  // The way from sample k-1 to sample k, against the boxes as they are then (the page has
+  // scrolled part of the step: they sit lower by the rest of it). `dense`: points at most WAY_PX
+  // of relative move apart, each with the margin grown by half that. The form's gap to a box
+  // changes no faster than the move, so such a way keeps the lane margin all along (1 px short at
+  // most next to a sample). Else its quarter points only, at the plain margin: a fast sideways
+  // pass then cut a box's corner by 7 px between them, and the drawn courier's lag and lean took
+  // the rest (T-CA3 on CI, the booking submit). The search takes a dense way wherever there is
+  // one (TIGHT), and a quarter-point way where there is none, as before.
   const step = (y1 - y0) / n;
-  const between = (k: number, io: number, jo: number): boolean => {
-    for (const f of [0.25, 0.5, 0.75]) {
+  const way = (
+    k: number,
+    a: { x: number; y: number; s: number },
+    b: { x: number; y: number; s: number },
+    dense: boolean,
+  ): boolean => {
+    const move =
+      Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y + step)) + (Math.abs(b.s - a.s) * FORM) / 2;
+    // A multiple of four: the dense points include the quarter points.
+    const parts = dense ? 4 * Math.max(1, Math.ceil(move / (4 * WAY_PX))) : 4;
+    const margin = marginAt(k) + (dense ? move / parts / 2 : 0);
+    for (let q = 1; q < parts; q += 1) {
+      const f = q / parts;
       if (
         !clear(
           rectsAt[k]!,
-          px[io]! + (px[jo]! - px[io]!) * f,
-          py[io]! + (py[jo]! - py[io]!) * f - (1 - f) * step,
-          ps[io]! + (ps[jo]! - ps[io]!) * f,
+          a.x + (b.x - a.x) * f,
+          a.y + (b.y - a.y) * f - (1 - f) * step,
+          a.s + (b.s - a.s) * f,
           vp,
           true,
-          marginAt(k),
+          margin,
         )
       )
         return false;
     }
     return true;
+  };
+  /** The way's extra cost: 0 dense, TIGHT at its quarter points only, Infinity not even there. */
+  const between = (k: number, io: number, jo: number): number => {
+    const a = { x: px[io]!, y: py[io]!, s: ps[io]! };
+    const b = { x: px[jo]!, y: py[jo]!, s: ps[jo]! };
+    if (way(k, a, b, true)) return 0;
+    return way(k, a, b, false) ? TIGHT : Infinity;
   };
   const nodeCost = (i: number, k: number): number => {
     const b = bases[k]!;
@@ -302,11 +330,12 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
         const dy = Math.abs(py[jo]! - py[io]! - (bases[k]!.y - bases[k - 1]!.y));
         if (dx > reach || dy > reach) return;
         if (Math.abs(ps[jo]! - ps[io]!) > 0.3 * Math.max(ps[jo]!, ps[io]!)) return;
-        const c = cost[io]! + moveCost(io, jo, k);
+        let c = cost[io]! + moveCost(io, jo, k);
         if (c >= best) return;
         // The courier moves on a straight line between two samples while the page scrolls on
         // under it: the way between is clear too.
-        if (free[jo] && !between(k, io, jo)) return;
+        if (free[jo]) c += between(k, io, jo);
+        if (c >= best) return;
         best = c;
         arg = i;
       };
@@ -380,22 +409,10 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
         y: (a.y + 2 * b.y + c.y) / 4,
         s: (a.s + 2 * b.s + c.s) / 4,
       };
-      const way = (p: Omit<Place, 'o'>, q: Omit<Place, 'o'>, kk: number): boolean =>
-        [0.25, 0.5, 0.75].every((f) =>
-          clear(
-            rectsAt[kk]!,
-            p.x + (q.x - p.x) * f,
-            p.y + (q.y - p.y) * f - (1 - f) * step,
-            p.s + (q.s - p.s) * f,
-            vp,
-            true,
-            marginAt(kk),
-          ),
-        );
       if (
         clear(rectsAt[k]!, next.x, next.y, next.s, vp, false, marginAt(k)) &&
-        way(a, next, k) &&
-        way(next, c, k + 1)
+        way(k, a, next, true) &&
+        way(k + 1, next, c, true)
       ) {
         b.x = next.x;
         b.y = next.y;
