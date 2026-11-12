@@ -407,30 +407,41 @@ describe('footer scene', () => {
     (cleanup as () => void)();
   });
 
-  it('a flick on a host that draws every 250 ms or so (the held frame 350 ms back) still carries its speed in x', async () => {
+  it("a slow host's frames do not decide the throw: the pointer's moves do (up, held, flicked sideways)", async () => {
     const cleanup = scene.setup(ctx());
     near!();
     await settled();
     Object.defineProperty(field, 'clientHeight', { value: 300, configurable: true });
     Object.defineProperty(field, 'clientWidth', { value: 1000, configurable: true });
     const mark = mocks.instances[0]!;
-    Object.defineProperty(mark.target, 'offsetTop', { value: 100, configurable: true });
+    Object.defineProperty(mark.target, 'offsetTop', { value: 200, configurable: true });
     Object.defineProperty(mark.target, 'offsetHeight', { value: 50, configurable: true });
     Object.defineProperty(mark.target, 'offsetLeft', { value: 400, configurable: true });
     Object.defineProperty(mark.target, 'offsetWidth', { value: 96, configurable: true });
     const now = vi.spyOn(performance, 'now');
-    // Held at x 0 in the last frame before the flick, 350 ms before the release; the next frame
-    // already draws the whole flick (CI run 148, T-BF10 in WebKit: carried 0 px).
-    now.mockReturnValue(1000);
-    gsap.set(mark.target, { x: 0, y: 20 });
+    const move = (t: number, x: number, y: number) => {
+      now.mockReturnValue(t);
+      window.dispatchEvent(new MouseEvent('pointermove', { clientX: 500 + x, clientY: 400 + y }));
+    };
+    mocks.vars!.onPress.call(mark);
+    // Up 150 px in six moves, held still 160 ms, then a flick of 160 px sideways in four moves.
+    for (let i = 1; i <= 6; i += 1) move(1000 + i * 16, 0, -25 * i);
+    for (let i = 1; i <= 4; i += 1) move(1250 + i * 16, 40 * i, -150);
+    // A host drawing every 250 ms or so: one frame mid-way up, the next with the flick done
+    // (CI run 149, T-BF10 in WebKit: drag samples alone threw it up, or lost the throw).
+    now.mockReturnValue(1048);
+    gsap.set(mark.target, { x: 0, y: -75 });
     mocks.vars!.onDrag?.call(mark);
     now.mockReturnValue(1310);
-    gsap.set(mark.target, { x: 160, y: 20 });
+    gsap.set(mark.target, { x: 160, y: -150 });
     mocks.vars!.onDrag?.call(mark);
-    now.mockReturnValue(1350);
+    now.mockReturnValue(1340);
     mocks.vars!.onRelease.call(mark);
     now.mockRestore();
-    for (const t of gsap.getTweensOf(mark.target)) t.time(0.2);
+    // The fall is one timeline of segments: play it to 50 ms as a whole.
+    gsap.getTweensOf(mark.target)[0]!.parent!.time(0.05);
+    // It falls at once (no rise) and carries the flick on in x.
+    expect(Number(gsap.getProperty(mark.target, 'y'))).toBeGreaterThan(-150);
     expect(Number(gsap.getProperty(mark.target, 'x'))).toBeGreaterThan(170);
     (cleanup as () => void)();
   });

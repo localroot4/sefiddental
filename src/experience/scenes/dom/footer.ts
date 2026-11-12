@@ -64,8 +64,6 @@ export function boundsOf(
 
 /** Gravity of the playground (px/s²): a part dropped from the field's height lands in ~0.45 s. */
 export const GRAVITY = 4200;
-/** The oldest drag sample a release speed is measured from (ms): a slow host draws every 250. */
-const SAMPLE_MAX_MS = 500;
 /** A sideways throw slides at least this long (s), also along the floor (friction, power2.out). */
 const SLIDE_S = 0.4;
 /** Each bounce rises this share of the fall above it; under 3 px it is not drawn. */
@@ -204,32 +202,52 @@ const scene: DomScene = {
     for (const part of parts) part.addEventListener(LIFTOFF_EVENT, onLiftoff);
     // The pointer's last samples per part, for the release velocity (px/s).
     const samples = new Map<HTMLElement, { t: number; x: number; y: number }[]>();
-    // The release velocity: from the oldest drag sample of the last 100 ms to where the pointer
-    // has the part now (`end`: Draggable's own x and y, which follow every pointer move, while
-    // the drawn part and the samples follow its frames). A part held still before the release has
-    // no recent sample, or one where it still is, so it simply drops. With no sample, or only the
-    // newest, in those 100 ms (a touch flick coalesced into one move; a host that draws a frame
-    // every 100 ms or so, where the flick was never drawn) it is measured from the latest sample
-    // before them, if that one is under 500 ms old: else it measured 0 px/s and the throw was lost
-    // (CI runs 42377118771 and 145, T-BF10 in WebKit; run 148, a host drawing every 250 ms or
-    // so). The speed is a displacement over time, so a part held still in that sample's frame
-    // still measures about 0 px/s.
+    // The pointer's own moves (client px) while a part is pressed: one per input event, whatever
+    // the frame rate. The last move before a hold is where the part was held, so a hold measures
+    // 0 px/s; a drag sample (one per drawn frame) on a host that draws every 250 ms can be from
+    // the drag before the hold, and threw a flick up (CI run 149, T-BF10 in WebKit).
+    let moves: { t: number; x: number; y: number }[] = [];
+    const onMove = (event: PointerEvent): void => {
+      moves.push({ t: performance.now(), x: event.clientX, y: event.clientY });
+      if (moves.length > 12) moves.shift();
+    };
+    const listen = (on: boolean): void => {
+      if (on) window.addEventListener('pointermove', onMove, { capture: true, passive: true });
+      else window.removeEventListener('pointermove', onMove, { capture: true });
+    };
+    // The speed from the oldest sample of the last 100 ms to `end`. A part held still before the
+    // release has no recent sample, or one where it still is, so it simply drops. With no sample,
+    // or only the newest, in those 100 ms (a touch flick coalesced into one move; a host that
+    // draws a frame every 100 ms or so, where the flick was never drawn) it is measured from the
+    // latest sample before them, if that one is under 250 ms old: else it measured 0 px/s and the
+    // throw was lost (CI runs 42377118771 and 145, T-BF10 in WebKit).
+    const speed = (
+      list: readonly { t: number; x: number; y: number }[],
+      end: { x: number; y: number },
+    ): { vx: number; vy: number } => {
+      const now = performance.now();
+      let i = list.findIndex((p) => now - p.t <= 100);
+      if (i === -1 || i === list.length - 1) {
+        const before = i === -1 ? list.length - 1 : i - 1;
+        if (before >= 0 && now - list[before]!.t <= 250) i = before;
+      }
+      const first = list[i];
+      if (!first || now - first.t < 8 || now - first.t > 250) return { vx: 0, vy: 0 };
+      const dt = (now - first.t) / 1000;
+      return { vx: (end.x - first.x) / dt, vy: (end.y - first.y) / dt };
+    };
+    // The release velocity: from the pointer's moves where it has any, to its last one; else
+    // from the drag samples to where the pointer has the part now (`end`: Draggable's own x and
+    // y, which follow every pointer move, while the drawn part and the samples follow its frames).
     const velocity = (
       part: HTMLElement,
       end: { x: number; y: number },
     ): { vx: number; vy: number } => {
-      const now = performance.now();
       const list = samples.get(part) ?? [];
       samples.delete(part);
-      let i = list.findIndex((p) => now - p.t <= 100);
-      if (i === -1 || i === list.length - 1) {
-        const before = i === -1 ? list.length - 1 : i - 1;
-        if (before >= 0 && now - list[before]!.t <= SAMPLE_MAX_MS) i = before;
-      }
-      const first = list[i];
-      if (!first || now - first.t < 8 || now - first.t > SAMPLE_MAX_MS) return { vx: 0, vy: 0 };
-      const dt = (now - first.t) / 1000;
-      return { vx: (end.x - first.x) / dt, vy: (end.y - first.y) / dt };
+      const pointer = moves;
+      moves = [];
+      return pointer.length > 0 ? speed(pointer, pointer.at(-1)!) : speed(list, end);
     };
     // On release the part falls at once under gravity, carrying its throw sideways (a decaying
     // x inside the field, which also slides a part thrown along the floor) and upward (it rises,
@@ -278,6 +296,8 @@ const scene: DomScene = {
         },
         onPress(this: DraggableInstance) {
           const part = this.target as HTMLElement;
+          moves = [];
+          listen(true);
           clearHomeTimer();
           stopFall(part);
           gsap.killTweensOf(part);
@@ -298,6 +318,7 @@ const scene: DomScene = {
           samples.set(part, list);
         },
         onRelease(this: DraggableInstance) {
+          listen(false);
           // Where the pointer has the part, not yet drawn on a slow host.
           const live = Number.isFinite(this.x) && Number.isFinite(this.y);
           settle(this.target as HTMLElement, live ? { x: this.x, y: this.y } : undefined);
@@ -343,6 +364,7 @@ const scene: DomScene = {
       enter.kill();
       clearHomeTimer();
       replay.removeEventListener('click', onReplay);
+      listen(false);
       for (const part of parts) part.removeEventListener(LIFTOFF_EVENT, onLiftoff);
       replay.classList.add('invisible');
       replay.setAttribute('inert', '');
