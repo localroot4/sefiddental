@@ -83,7 +83,9 @@ function Line(props: { icon: 'map-pin' | 'phone' | 'clock'; children: ReactNode 
  * entering view hides the sticky bar), then «خدمات پرطرفدار», «کلینیک» and «راهنما» as
  * disclosures on phones and open columns from 744 px, then socials, legal lines once provided
  * and the copyright. Every value comes from FooterData; with the database down it is the fallback.
- * The phones here are NAP: they dial without the closed-hours sheet (C13).
+ * The phones here are NAP: they dial without the closed-hours sheet (C13). Dark in both themes
+ * (`data-theme="dark"` scopes the dark tokens), so on the home page it continues the playground
+ * stage above it as one section.
  */
 export function SiteFooter(props: { contact: FooterData; now?: Date }) {
   const { contact } = props;
@@ -92,7 +94,8 @@ export function SiteFooter(props: { contact: FooterData; now?: Date }) {
   const maps = Object.fromEntries(contact.maps.map((m) => [MAP_FIELD[m.provider], m.url]));
   const { licenseNumber, technicalSupervisor } = contact.legal;
   return (
-    <footer className="mt-auto border-t border-line bg-surface-sunken">
+    // One dark section in both themes (docs/experience/footer.md): the dark tokens apply inside it.
+    <footer data-theme="dark" className="mt-auto bg-surface-sunken text-ink">
       <div className="mx-auto grid w-full max-w-content gap-6 px-gutter py-12 md:grid-cols-[1.6fr_1fr_1fr_1fr] md:gap-8">
         <div data-sticky-hide="" className="grid content-start gap-3">
           <BrandLogo

@@ -36,3 +36,22 @@ premium composition.
   looks finished.
 - Nothing covers the footer's links or text; the footer keeps its height (no layout shift).
 - The quality control keeps its current behaviour and labels; only its place and form change.
+
+## 3. As built (2026-11-12)
+
+- The footer is dark in both themes on every page: `data-theme="dark"` on `<footer>` scopes the
+  dark tokens, so every text pair keeps the contrast it has in the dark theme. The sticky bar's
+  spacer under it and the journey's footer band take the same scope.
+- Home: the playground stage opens the footer on the same dark ground, with no edge between
+  them. The parts stand on a fine lit horizon (`.playground-floor`, a soft reflection under it)
+  with a faint teal glow behind them (`.playground-glow`); the lockup rests at a quiet scale
+  (the mark 90 px tall from 1024 px). The field is 220 px on phones, 240 px on tablets and
+  320 px from 1024 px.
+- «کیفیت جلوه‌ها» and a quiet «پخش دوباره» (a ghost button, 44 px tall) sit on the floor's
+  edge, under the horizon.
+- Not as in section 1: the floor is the top of the footer, above the columns, not above the
+  copyright, and the quality control is under the floor, not in the bottom bar. The scroll
+  engine and the tier provider live inside `<main>` (`ExperienceRoot`), the footer outside it;
+  moving the stage between the columns and the bottom bar would put the footer landmark inside
+  `<main>` or need a client portal (a layout shift and no tier 0 markup). The parts therefore
+  never pass over a column.

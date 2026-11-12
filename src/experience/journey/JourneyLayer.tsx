@@ -386,6 +386,7 @@ export default function JourneyLayer(props: {
             bands.current.footer = el;
           }}
           data-band="footer"
+          data-theme="dark"
           className="invisible absolute inset-x-0 top-0 bg-surface-sunken"
         />
       </div>

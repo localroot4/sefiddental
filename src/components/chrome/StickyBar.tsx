@@ -22,7 +22,12 @@ const HEIGHT = 'h-[calc(var(--sticky-bar-h)+env(safe-area-inset-bottom))]';
 export function StickyBar(props: { phone: string; whatsapp: string | null }) {
   return (
     <>
-      <div aria-hidden="true" className={cx(HEIGHT, 'bg-surface-sunken lg:hidden')} />
+      {/* The footer's own ground under it (the footer is dark in both themes). */}
+      <div
+        aria-hidden="true"
+        data-theme="dark"
+        className={cx(HEIGHT, 'bg-surface-sunken lg:hidden')}
+      />
       <nav
         aria-label={t('nav.quick')}
         data-sticky-bar=""

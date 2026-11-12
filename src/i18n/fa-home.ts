@@ -101,7 +101,7 @@ export const HOME_MESSAGES = {
   'home.intro.skip': 'رد کردن انیمیشن',
   // BOOKING+FOOTER: the «کیفیت» control, its five options and the three reasons the effective tier
   // differs from the choice.
-  'home.quality.label': 'کیفیت',
+  'home.quality.label': 'کیفیت جلوه‌ها',
   'home.quality.auto': 'خودکار',
   'home.quality.tier0': 'بدون جلوه',
   'home.quality.tier1': 'سبک',

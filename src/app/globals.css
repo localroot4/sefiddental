@@ -346,6 +346,45 @@
   background-color: transparent;
 }
 
+/* The footer playground's ground (docs/experience/footer.md 1): a fine lit horizon the parts
+   stand on, fading out at both ends, a soft reflection under it, and a faint teal glow behind
+   the parts. Light only, no shapes: the stage reads as the dark footer's own floor. */
+.playground-glow {
+  background-image: radial-gradient(45% 60% at 50% 100%, rgb(43 181 170 / 0.13), transparent 70%);
+}
+.playground-floor {
+  height: 1px;
+  background-image: linear-gradient(
+    to right,
+    transparent,
+    rgb(127 227 217 / 0.5) 18%,
+    rgb(127 227 217 / 0.5) 82%,
+    transparent
+  );
+}
+.playground-floor::after {
+  content: '';
+  position: absolute;
+  inset-inline: 12%;
+  top: 1px;
+  height: 2.5rem;
+  background-image: radial-gradient(50% 100% at 50% 0%, rgb(43 181 170 / 0.14), transparent);
+}
+
+/* The footer's mark part has the courier glaze's colour of the page theme (courierRig.ts
+   setTheme), not the dark stage's brand teal, so the landing hands over without a colour jump. */
+[data-playground-part='mark'] {
+  color: var(--color-brand-logo);
+}
+:root[data-theme='dark'] [data-playground-part='mark'] {
+  color: #14a296;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) [data-playground-part='mark'] {
+    color: #14a296;
+  }
+}
+
 /* The journey (docs/experience/journey.md, src/experience/journey): the footer's mark part stays
    away until the courier lands on its box (the hand-off), the services mark steps aside for the
    courier that docks in its box (D2), and the DOM courier breathes on the
