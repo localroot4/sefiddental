@@ -48,8 +48,8 @@ import { createRestoreDecal } from './restoreDecal';
 
 /** The pass box is this much larger than the pose's scale: room for the turn and the shadow. */
 export const BOX_GROW = 1.5;
-/** mark.glb is 1 unit wide and 223 / 184 tall. */
-const MARK_HEIGHT = 223 / 184;
+/** mark.glb is the logo's own outline: 1 unit wide and 207.3 / 168.03 tall (the DOM symbol's box). */
+const MARK_HEIGHT = 207.3 / 168.03;
 const MARK_FILL = 0.92;
 const TOOTH_HEIGHT = MOLAR_Y.max - MOLAR_Y.min;
 /** Crown centre of molar.glb: the point that seats in the arch. */
@@ -269,49 +269,58 @@ const POINTS_FRAGMENT = /* glsl */ `
 `;
 
 /**
- * The glazed mark: clearcoat, a studio falloff from top to bottom, a soft diagonal glass streak,
- * two softboxes in the reflection and a light rim, no environment map. The orthographic view sees
- * a flat face in one colour, so the falloff and the streak follow the view-space position.
+ * The glazed mark: porcelain teal under clearcoat, lit by its form, not painted on the screen. A
+ * soft top light (a few per cent, so the face reads as lit, not as a gradient), two softboxes in
+ * the reflection that catch only the rounded bevel, a light fresnel rim, and at a dock a slow glint
+ * that runs along the bevel. The orthographic view sees the face flat, so the top light follows the
+ * view-space height; the softboxes and the glint follow the normal.
  */
 function createGlaze(): {
   material: MeshPhysicalMaterial;
   rim: { value: Color };
   sweep: { value: number };
+  glint: { value: number };
 } {
   const rim = { value: new Color('#CFF5F1') };
-  // The idle light sweep across the glaze: the streak's offset (off the form at both ends).
+  // The idle glint along the bevel: its offset (off the form at both ends) and its strength.
   const sweep = { value: 0 };
+  const glint = { value: 0 };
   const material = new MeshPhysicalMaterial({
-    roughness: 0.24,
+    roughness: 0.3,
     metalness: 0,
     clearcoat: 1,
-    clearcoatRoughness: 0.08,
+    clearcoatRoughness: 0.12,
     // Always in the transparent pass: the courier fades out over text (pose.opacity).
     transparent: true,
   });
   material.onBeforeCompile = (shader: WebGLProgramParametersWithUniforms) => {
     shader.uniforms.uRim = rim;
     shader.uniforms.uSweep = sweep;
+    shader.uniforms.uGlint = glint;
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform vec3 uRim;\nuniform float uSweep;')
+      .replace(
+        '#include <common>',
+        '#include <common>\nuniform vec3 uRim;\nuniform float uSweep;\nuniform float uGlint;',
+      )
       .replace(
         '#include <opaque_fragment>',
         `{
   vec3 mv = -vViewPosition;
   float facing = saturate(dot(normal, geometryViewDir));
   vec3 r = reflect(-geometryViewDir, normal);
-  float boxes = smoothstep(0.35, 0.9, r.y) * 0.55 + smoothstep(0.55, 0.95, r.x) * smoothstep(-0.3, 0.5, r.y) * 0.35;
-  float fresnel = 0.04 + 0.96 * pow(1.0 - facing, 4.0);
-  outgoingLight *= 0.8 + 0.34 * smoothstep(-0.55, 0.55, mv.y);
-  float streak = exp(-pow((mv.x * 0.62 + mv.y * 0.78 - 0.12 - uSweep) / 0.2, 2.0)) * facing;
-  outgoingLight += vec3(boxes) * (0.25 + fresnel) + vec3(0.16 * streak);
-  outgoingLight += uRim * pow(1.0 - facing, 3.0) * 0.3;
+  float edge = 1.0 - facing;
+  float boxes = smoothstep(0.35, 0.9, r.y) * 0.45 + smoothstep(0.55, 0.95, r.x) * smoothstep(-0.3, 0.5, r.y) * 0.25;
+  float fresnel = 0.04 + 0.96 * pow(edge, 4.0);
+  outgoingLight *= 0.94 + 0.1 * smoothstep(-0.6, 0.6, mv.y);
+  float glint = exp(-pow((mv.x * 0.62 + mv.y * 0.78 - uSweep) / 0.16, 2.0)) * smoothstep(0.08, 0.5, edge);
+  outgoingLight += vec3(boxes) * (0.2 + fresnel) + vec3(0.35 * uGlint * glint);
+  outgoingLight += uRim * pow(edge, 3.0) * 0.22;
 }
 #include <opaque_fragment>`,
       );
   };
-  material.customProgramCacheKey = () => 'sefid-glaze-3';
-  return { material, rim, sweep };
+  material.customProgramCacheKey = () => 'sefid-glaze-4';
+  return { material, rim, sweep, glint };
 }
 
 export interface CourierFrame {
@@ -389,7 +398,7 @@ export function createCourierRig(
   tilt.add(spin);
   scene.add(holder);
 
-  const { material: glaze, rim, sweep } = createGlaze();
+  const { material: glaze, rim, sweep, glint } = createGlaze();
   const mark = new Mesh(geometry.mark, glaze);
   mark.scale.setScalar(MARK_FILL / MARK_HEIGHT);
   spin.add(mark);
@@ -579,8 +588,9 @@ export function createCourierRig(
       tooth.position.y = -(centre + (CROWN_Y - centre) * seat) * toothScale;
       spin.rotation.y = pose.rotation + turn + idle * 0.12 * Math.sin(time * 0.45);
       holder.position.y = idle * 0.02 * Math.sin((time / 6) * Math.PI * 2);
-      // Every 7 s a light passes across the glaze while the mark idles at a dock.
-      sweep.value = idle > 0 ? (((time / 7) % 1) * 2 - 1) * 1.6 * idle : 0;
+      // Every 9 s a glint runs along the bevel while the mark rests at a dock; none in flight.
+      sweep.value = (((time / 9) % 1) * 2 - 1) * 1.6;
+      glint.value = idle;
       const fade = pose.opacity;
       glaze.opacity = fade;
       enamel.material.opacity = fade;
@@ -675,9 +685,9 @@ export function createCourierRig(
       enamel.material.color.set(ivory);
       archEnamel.material.color.set(ivory);
       enamel.uniforms.uBuildEdge.value.set(brand);
-      // Brand teal, lifted on navy so the mark keeps its presence in the dark theme.
-      glaze.color.set(dark ? '#139E92' : '#0A8A80');
-      glaze.emissive.set(dark ? '#0B4F4A' : '#000000');
+      // The logo's teal (--color-brand-logo), lifted on navy so the mark keeps its presence.
+      glaze.color.set(dark ? '#14A296' : '#00827A');
+      glaze.emissive.set(dark ? '#06302D' : '#000000');
       rim.value.set(dark ? '#7FE3D9' : '#CFF5F1');
       wireMaterial.color.set(brand);
       pointUniforms.uColor.value.set(brand);

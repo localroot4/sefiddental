@@ -51,4 +51,4 @@ export const MIRRORED_ICONS: readonly IconName[] = ['arrow-forward', 'caret-back
  * The sync script and test IS1 fail when it no longer matches, so a changed name list or package
  * version can never serve a stale sprite from the week-long /brand cache.
  */
-export const ICON_SPRITE_HASH = '3d4c1902';
+export const ICON_SPRITE_HASH = 'cd963cb9';

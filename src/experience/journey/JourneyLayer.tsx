@@ -72,22 +72,23 @@ function Paint() {
           <stop offset="0.55" stopColor="#F1E8D9" />
           <stop offset="1" stopColor="#CDB99A" />
         </radialGradient>
-        <linearGradient id="courier-glaze" x1="0.1" y1="0" x2="0.9" y2="1">
-          <stop offset="0" stopColor="#3CC4B8" />
-          <stop offset="0.45" stopColor="#0A8A80" />
-          <stop offset="1" stopColor="#04524C" />
+        {/* The logo's teal (#00827A) lit from above, as the WebGL glaze (courierRig.ts). */}
+        <linearGradient id="courier-glaze" x1="0.35" y1="0" x2="0.65" y2="1">
+          <stop offset="0" stopColor="#14A296" />
+          <stop offset="0.5" stopColor="#00827A" />
+          <stop offset="1" stopColor="#006E67" />
         </linearGradient>
-        <linearGradient id="courier-sheen" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0.25" stopColor="#FFFFFF" stopOpacity="0" />
-          <stop offset="0.42" stopColor="#FFFFFF" stopOpacity="0.35" />
-          <stop offset="0.55" stopColor="#FFFFFF" stopOpacity="0" />
+        {/* The clearcoat's soft top light, not a painted band. */}
+        <linearGradient id="courier-sheen" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#FFFFFF" stopOpacity="0.2" />
+          <stop offset="0.3" stopColor="#FFFFFF" stopOpacity="0" />
         </linearGradient>
-        {/* The bevel: a light edge on the upper start side, a dark one opposite. */}
-        <linearGradient id="courier-bevel" x1="0.1" y1="0" x2="0.9" y2="1">
-          <stop offset="0" stopColor="#E9FFFC" stopOpacity="0.85" />
-          <stop offset="0.45" stopColor="#E9FFFC" stopOpacity="0" />
-          <stop offset="0.6" stopColor="#022E2B" stopOpacity="0" />
-          <stop offset="1" stopColor="#022E2B" stopOpacity="0.55" />
+        {/* The rounded bevel: a light edge on top, a darker one at the feet. */}
+        <linearGradient id="courier-bevel" x1="0.2" y1="0" x2="0.8" y2="1">
+          <stop offset="0" stopColor="#E9FFFC" stopOpacity="0.7" />
+          <stop offset="0.4" stopColor="#E9FFFC" stopOpacity="0" />
+          <stop offset="0.65" stopColor="#013B37" stopOpacity="0" />
+          <stop offset="1" stopColor="#013B37" stopOpacity="0.4" />
         </linearGradient>
         <radialGradient id="courier-shadow">
           <stop offset="0" stopColor="#000000" stopOpacity="0.22" />
@@ -465,7 +466,7 @@ export default function JourneyLayer(props: {
                     height="207.3"
                     fill="none"
                     stroke="url(#courier-bevel)"
-                    strokeWidth="5"
+                    strokeWidth="3"
                     strokeLinejoin="round"
                   />
                 </svg>

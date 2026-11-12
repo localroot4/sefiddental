@@ -20,7 +20,7 @@ export const DRACO_FILES = {
 } as const;
 
 const BYTES: Record<string, number> = {
-  [MODELS.mark]: 8529,
+  [MODELS.mark]: 6754,
   [DRACO_FILES.worker]: 13537,
   [DRACO_FILES.wasm]: 63458,
 };
