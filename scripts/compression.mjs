@@ -80,6 +80,20 @@ function weaken(res) {
   if (etag && !etag.startsWith('W/')) res.setHeader('ETag', `W/${etag}`);
 }
 
+/** One JSON line on stderr, as the app logs (no URL: a path or query may carry personal data). */
+function logFailure(msg, encoding, error) {
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      time: new Date().toISOString(),
+      service: 'sefid-web',
+      msg,
+      encoding,
+      detail: error?.code ?? error?.message ?? String(error),
+    }),
+  );
+}
+
 function createEncoder(encoding) {
   return encoding === 'br'
     ? zlib.createBrotliCompress({
@@ -182,7 +196,10 @@ export function compressResponse(req, res, { staticDir } = {}) {
     // A full compressor made res.write return false: the app waits for res 'drain' to go on.
     encoder.on('drain', () => res.emit('drain'));
     encoder.on('end', () => end.call(res));
-    encoder.on('error', (error) => res.destroy(error));
+    encoder.on('error', (error) => {
+      logFailure('compression_failed', encoding, error);
+      res.destroy(error);
+    });
     // A client gone mid-stream: the compressor goes with it.
     res.on('close', () => {
       if (!res.writableFinished) encoder.destroy();
@@ -212,11 +229,12 @@ export function compressResponse(req, res, { staticDir } = {}) {
     // writeHead(status, [message], [headers]): its headers first, so the decision sees them.
     const headers = rest.find((arg) => arg !== null && typeof arg === 'object');
     if (Array.isArray(headers)) {
-      // Raw pairs: [[name, value], ...] or [name, value, name, value, ...].
+      // Raw pairs: [[name, value], ...] or [name, value, name, value, ...]. A name may repeat
+      // (two Set-Cookie): appended, never replaced.
       const pairs = Array.isArray(headers[0])
         ? headers
         : headers.flatMap((v, i) => (i % 2 === 0 ? [[v, headers[i + 1]]] : []));
-      for (const [k, v] of pairs) this.setHeader(k, v);
+      for (const [k, v] of pairs) this.appendHeader(k, v);
     } else if (headers) {
       for (const [k, v] of Object.entries(headers)) if (v !== undefined) this.setHeader(k, v);
     }
@@ -274,6 +292,7 @@ export function compressResponse(req, res, { staticDir } = {}) {
       commit();
     }
     if (mode === 'file') {
+      if (this.destroyed) return this;
       if (done) this.once('finish', done);
       const stream = createReadStream(file);
       stream.on('data', (part) => {
@@ -281,7 +300,13 @@ export function compressResponse(req, res, { staticDir } = {}) {
       });
       this.on('drain', () => stream.resume());
       stream.on('end', () => end.call(this));
-      stream.on('error', (error) => this.destroy(error));
+      stream.on('error', (error) => {
+        logFailure('precompressed_read_failed', encoding, error);
+        this.destroy(error);
+      });
+      // A client gone mid-download: no drain will come, so the file closes with the response
+      // (a paused stream kept its descriptor open).
+      this.once('close', () => stream.destroy());
       return this;
     }
     if (mode !== 'stream') return end.call(this, chunk, enc, cb);
@@ -299,7 +324,7 @@ export function compressResponse(req, res, { staticDir } = {}) {
     else if (mode === 'pending' && !commitSoon) {
       commitSoon = true;
       setImmediate(() => {
-        if (mode !== 'pending') return;
+        if (mode !== 'pending' || res.destroyed) return;
         commit();
         encoder.flush(flushOp);
       });

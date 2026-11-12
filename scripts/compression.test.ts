@@ -1,11 +1,13 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import zlib from 'node:zlib';
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { Transform } from 'node:stream';
+
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { compressible, compressResponse, MIN_BYTES, negotiate } from './compression.mjs';
 
@@ -253,6 +255,148 @@ describe('compressResponse', () => {
     }
   }, 15_000);
 
+  /** Requests `url` and drops the connection after the first bytes of the body. */
+  const abortAfterFirstBytes = (port: number, url: string) =>
+    new Promise<void>((resolve) => {
+      const req = http.request(
+        { host: '127.0.0.1', port, path: url, headers: { 'Accept-Encoding': 'br' } },
+        (res) => {
+          res.once('data', () => {
+            req.destroy();
+            resolve();
+          });
+        },
+      );
+      req.on('error', () => resolve());
+      req.end();
+    });
+  const openFds = () => readdirSync('/proc/self/fd').length;
+
+  it('CP11 a client gone mid-download of a precompressed file leaves no file open', async () => {
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'cp11-'));
+    try {
+      const chunks = path.join(dir, '.next', 'static', 'chunks');
+      mkdirSync(chunks, { recursive: true });
+      // Far over the socket's buffers: the server's writes back up while the client is gone.
+      writeFileSync(path.join(chunks, 'big.js.br'), Buffer.alloc(8 * 1024 * 1024, 7));
+      const port = await serve((_req, res) => {
+        res.setHeader('Content-Type', 'application/javascript');
+        res.setHeader('Content-Length', 20_000);
+        res.end('x'.repeat(20_000));
+      }, dir);
+      await abortAfterFirstBytes(port, '/_next/static/chunks/big.js');
+      await new Promise((r) => setTimeout(r, 200));
+      const before = openFds();
+      for (let i = 0; i < 10; i += 1)
+        await abortAfterFirstBytes(port, '/_next/static/chunks/big.js');
+      await new Promise((r) => setTimeout(r, 300));
+      expect(openFds() - before).toBeLessThanOrEqual(1);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it('CP12 a client gone mid-stream: the compressor is destroyed with the response', async () => {
+    const encoders: zlib.BrotliCompress[] = [];
+    const real = zlib.createBrotliCompress;
+    const spy = vi.spyOn(zlib, 'createBrotliCompress').mockImplementation((options) => {
+      const encoder = real(options);
+      encoders.push(encoder);
+      return encoder;
+    });
+    try {
+      const part = 'y'.repeat(64_000);
+      const port = await serve((_req, res) => {
+        res.setHeader('Content-Type', 'text/html');
+        res.write(part);
+        // The app goes on writing slowly; the client is gone by then.
+        const timer = setInterval(() => res.write(part), 20);
+        res.on('close', () => clearInterval(timer));
+      });
+      await abortAfterFirstBytes(port, '/');
+      await new Promise((r) => setTimeout(r, 200));
+      expect(encoders).toHaveLength(1);
+      expect(encoders[0]!.destroyed).toBe(true);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('CP13 a compressor error ends the response and logs one structured line', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const spy = vi.spyOn(zlib, 'createBrotliCompress').mockImplementation(
+      () =>
+        new Transform({
+          transform(_chunk, _enc, cb) {
+            cb(new Error('boom'));
+          },
+        }) as unknown as zlib.BrotliCompress,
+    );
+    try {
+      const port = await serve((_req, res) => {
+        res.setHeader('Content-Type', 'text/html');
+        res.end(page);
+      });
+      const outcome = await get(port, '/', { 'Accept-Encoding': 'br' }).then(
+        () => 'ended',
+        () => 'aborted',
+      );
+      expect(outcome).toBe('aborted');
+      const line = logged.mock.calls
+        .map((c) => String(c[0]))
+        .find((l) => l.includes('compression_failed'));
+      expect(line).toBeTruthy();
+      expect(JSON.parse(line!)).toMatchObject({
+        level: 'error',
+        msg: 'compression_failed',
+        encoding: 'br',
+      });
+    } finally {
+      spy.mockRestore();
+      logged.mockRestore();
+    }
+  });
+
+  it('CP14 raw writeHead headers keep a repeated name (two Set-Cookie stay two)', async () => {
+    const port = await serve((_req, res) => {
+      res.writeHead(200, [
+        'Content-Type',
+        'text/html',
+        'Set-Cookie',
+        'a=1; Path=/',
+        'Set-Cookie',
+        'b=2; Path=/',
+      ]);
+      res.end(page);
+    });
+    const got = await get(port, '/', { 'Accept-Encoding': 'br' });
+    expect(got.headers['set-cookie']).toEqual(['a=1; Path=/', 'b=2; Path=/']);
+    expect(got.headers['content-encoding']).toBe('br');
+  });
+
+  it('CP15 a response destroyed between a flush and its commit builds no compressor', async () => {
+    const created: unknown[] = [];
+    const real = zlib.createBrotliCompress;
+    const spy = vi.spyOn(zlib, 'createBrotliCompress').mockImplementation((options) => {
+      const encoder = real(options);
+      created.push(encoder);
+      return encoder;
+    });
+    try {
+      const port = await serve((_req, res) => {
+        res.setHeader('Content-Type', 'text/html');
+        res.write('<!doctype html>');
+        (res as unknown as { flush(): void }).flush();
+        res.destroy();
+      });
+      await get(port, '/', { 'Accept-Encoding': 'br' }).catch(() => undefined);
+      await new Promise((r) => setTimeout(r, 100));
+      expect(created).toHaveLength(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
   it('CP6 a static chunk precompressed at build is sent as it is, under the app headers', async () => {
     const dir = mkdtempSync(path.join(os.tmpdir(), 'cp6-'));
     try {
@@ -278,9 +422,16 @@ describe('compressResponse', () => {
       const gz = await get(port, '/_next/static/chunks/a.js', { 'Accept-Encoding': 'gzip' });
       expect(gz.headers['content-encoding']).toBe('gzip');
       expect(zlib.gunzipSync(gz.raw).toString()).toBe(js);
-      // A path out of the static folder is never read.
-      const out = await get(port, '/_next/static/../../etc/passwd', { 'Accept-Encoding': 'br' });
-      expect(out.raw.equals(br)).toBe(false);
+      // A path out of the static folder is never read, however it is spelled.
+      const secret = Buffer.from('SECRET-'.repeat(300));
+      writeFileSync(path.join(dir, 'secret.js.br'), secret);
+      for (const out of [
+        '/_next/static/../../secret.js',
+        '/_next/static/%2e%2e/%2e%2e/secret.js',
+      ]) {
+        const got = await get(port, out, { 'Accept-Encoding': 'br' });
+        expect(got.raw.includes(Buffer.from('SECRET-')), out).toBe(false);
+      }
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
