@@ -187,17 +187,22 @@ test('T-EN2 a route change tears the engine down: a soft navigation away and bac
   await page.waitForURL((url) => url.pathname === '/');
   await engineReady(page);
   await scrollIntoScene(page, 'services');
-  // Lenis and the ticker monitor join the engine a frame or two after it: the counts settle
-  // upwards to the fresh load's; a leak from the first engine would keep them above it.
+  // Lenis and the ticker monitor join the engine a frame or two after it, and the journey's
+  // trigger and tick once its lanes are planned in idle time (several seconds on CI's runner,
+  // run 144: 14 and 2 of 15 and 3 at 5 s): the counts settle upwards to the fresh load's; a leak
+  // from the first engine would keep them above it.
   await expect
-    .poll(async () => {
-      const after = await snapshot(page);
-      return {
-        scrollTriggers: after.scrollTriggers,
-        tickSubscribers: after.tickSubscribers,
-        draggables: after.draggables,
-      };
-    })
+    .poll(
+      async () => {
+        const after = await snapshot(page);
+        return {
+          scrollTriggers: after.scrollTriggers,
+          tickSubscribers: after.tickSubscribers,
+          draggables: after.draggables,
+        };
+      },
+      { timeout: 15_000 },
+    )
     .toEqual({
       scrollTriggers: fresh.scrollTriggers,
       tickSubscribers: fresh.tickSubscribers,
