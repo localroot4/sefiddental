@@ -426,8 +426,13 @@ const topAnimations = (page: Page) =>
       part: ((a as CSSAnimation).effect as KeyframeEffect).target?.getAttribute('class') ?? '',
       state: a.playState,
       at: Number(a.currentTime ?? 0),
+      // When it started (ms on the document timeline); a play still pending starts now.
+      start: Number(a.startTime ?? document.timeline.currentTime),
     })),
   );
+
+/** The document timeline's time now (ms): an animation started after it played from then on. */
+const timelineNow = (page: Page) => page.evaluate(() => Number(document.timeline.currentTime));
 
 test.describe('D3 top view, DOM courier', () => {
   test.beforeEach(({}, testInfo) => {
@@ -441,20 +446,25 @@ test.describe('D3 top view, DOM courier', () => {
     const hold = holds.find((h) => h.id === 'restoration')!;
     await scrollToY(page, hold.start - 300);
     await page.waitForTimeout(1500);
+    const arriving = await timelineNow(page);
     await scrollToY(page, (hold.start + hold.end) / 2);
     const top = page.locator('[data-form="top"]');
     expect(Number(await top.evaluate((el) => (el as SVGElement).style.opacity))).toBeGreaterThan(
       0.9,
     );
     await expect(top).toHaveAttribute('data-top-level', '0');
-    // Coming in: the composite fill is still being laid, not finished since the page loaded.
+    // Coming in: the composite fill is laid from the arrival on, not finished since the page
+    // loaded. Read by its start: its 0.85 s can end before a slow host reads it (CI run 145,
+    // WebKit: «finished»), which says nothing about when it played.
     const fill = (await topAnimations(page)).find((a) => a.part === 'ct-fill')!;
-    expect(fill.state, 'the fill plays on arrival').toBe('running');
+    expect(fill.start, 'the fill plays on arrival').toBeGreaterThanOrEqual(arriving);
+    expect(['running', 'finished']).toContain(fill.state);
     // A chip: VIP's inlay seats now, CIP's layers after it.
     for (const [name, level, part] of [
       ['VIP', '1', 'ct-inlay'],
       ['CIP', '2', 'ct-dentine'],
     ] as const) {
+      const choosing = await timelineNow(page);
       await page
         .locator('[data-scene="restoration"]')
         .getByRole('radio', { name })
@@ -462,7 +472,8 @@ test.describe('D3 top view, DOM courier', () => {
         .dispatchEvent('click');
       await expect(top).toHaveAttribute('data-top-level', level);
       const played = (await topAnimations(page)).find((a) => a.part === part)!;
-      expect(played.state, `${name} plays`).toBe('running');
+      expect(played.start, `${name} plays`).toBeGreaterThanOrEqual(choosing);
+      expect(['running', 'finished']).toContain(played.state);
     }
     // Then everything holds still: no CSS animation runs at rest.
     await page.waitForTimeout(3200);
