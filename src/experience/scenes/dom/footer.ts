@@ -202,30 +202,41 @@ const scene: DomScene = {
     for (const part of parts) part.addEventListener(LIFTOFF_EVENT, onLiftoff);
     // The pointer's last samples per part, for the release velocity (px/s).
     const samples = new Map<HTMLElement, { t: number; x: number; y: number }[]>();
-    // The release velocity: from the oldest sample of the last 100 ms to where the part is now. A
-    // part held still before the release has no recent sample, so it simply drops. A flick that
-    // arrives as one coalesced move (touch) leaves a single sample just before the release: it is
-    // measured from the sample before it, if that one is under 250 ms old.
-    const velocity = (part: HTMLElement): { vx: number; vy: number } => {
+    // The release velocity: from the oldest drag sample of the last 100 ms to where the pointer
+    // has the part now (`end`: Draggable's own x and y, which follow every pointer move, while
+    // the drawn part and the samples follow its frames). A part held still before the release has
+    // no recent sample, or one where it still is, so it simply drops. With no sample, or only the
+    // newest, in those 100 ms (a touch flick coalesced into one move; a host that draws a frame
+    // every 100 ms or so, where the flick was never drawn) it is measured from the latest sample
+    // before them, if that one is under 250 ms old: else it measured 0 px/s and the throw was lost
+    // (CI runs 42377118771 and 145, T-BF10 in WebKit).
+    const velocity = (
+      part: HTMLElement,
+      end: { x: number; y: number },
+    ): { vx: number; vy: number } => {
       const now = performance.now();
       const list = samples.get(part) ?? [];
       samples.delete(part);
       let i = list.findIndex((p) => now - p.t <= 100);
-      if (i > 0 && now - list[i]!.t < 16 && now - list[i - 1]!.t <= 250) i -= 1;
+      if (i === -1 || i === list.length - 1) {
+        const before = i === -1 ? list.length - 1 : i - 1;
+        if (before >= 0 && now - list[before]!.t <= 250) i = before;
+      }
       const first = list[i];
-      if (!first || now - first.t < 8) return { vx: 0, vy: 0 };
+      if (!first || now - first.t < 8 || now - first.t > 250) return { vx: 0, vy: 0 };
       const dt = (now - first.t) / 1000;
-      return {
-        vx: (Number(gsap.getProperty(part, 'x')) - first.x) / dt,
-        vy: (Number(gsap.getProperty(part, 'y')) - first.y) / dt,
-      };
+      return { vx: (end.x - first.x) / dt, vy: (end.y - first.y) / dt };
     };
     // On release the part falls at once under gravity, carrying its throw sideways (a decaying
     // x inside the field, which also slides a part thrown along the floor) and upward (it rises,
     // slows and falls); no throw is played first.
-    const settle = (part: HTMLElement): void => {
+    const settle = (part: HTMLElement, end?: { x: number; y: number }): void => {
       stopFall(part);
-      const { vx, vy } = velocity(part);
+      const drawn = {
+        x: Number(gsap.getProperty(part, 'x')),
+        y: Number(gsap.getProperty(part, 'y')),
+      };
+      const { vx, vy } = velocity(part, end ?? drawn);
       const bounds = boundsOf(field, part);
       const x = Number(gsap.getProperty(part, 'x'));
       const y = Number(gsap.getProperty(part, 'y'));
@@ -283,7 +294,9 @@ const scene: DomScene = {
           samples.set(part, list);
         },
         onRelease(this: DraggableInstance) {
-          settle(this.target as HTMLElement);
+          // Where the pointer has the part, not yet drawn on a slow host.
+          const live = Number.isFinite(this.x) && Number.isFinite(this.y);
+          settle(this.target as HTMLElement, live ? { x: this.x, y: this.y } : undefined);
         },
       });
     };

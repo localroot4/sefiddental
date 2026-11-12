@@ -379,6 +379,59 @@ describe('footer scene', () => {
     (cleanup as () => void)();
   });
 
+  it('a flick drawn in one slow frame (no frame between its move and the release) still carries its speed in x', async () => {
+    const cleanup = scene.setup(ctx());
+    near!();
+    await settled();
+    Object.defineProperty(field, 'clientHeight', { value: 300, configurable: true });
+    Object.defineProperty(field, 'clientWidth', { value: 1000, configurable: true });
+    const mark = mocks.instances[0]!;
+    Object.defineProperty(mark.target, 'offsetTop', { value: 100, configurable: true });
+    Object.defineProperty(mark.target, 'offsetHeight', { value: 50, configurable: true });
+    Object.defineProperty(mark.target, 'offsetLeft', { value: 400, configurable: true });
+    Object.defineProperty(mark.target, 'offsetWidth', { value: 96, configurable: true });
+    const now = vi.spyOn(performance, 'now');
+    // Held at x 0, then the whole flick lands as one move 40 ms before the release, and no frame
+    // follows it (a host drawing every 100 ms or so: CI run 145, T-BF10 in WebKit, carried 0 px).
+    now.mockReturnValue(1000);
+    gsap.set(mark.target, { x: 0, y: 20 });
+    mocks.vars!.onDrag?.call(mark);
+    now.mockReturnValue(1110);
+    gsap.set(mark.target, { x: 160, y: 20 });
+    mocks.vars!.onDrag?.call(mark);
+    now.mockReturnValue(1150);
+    mocks.vars!.onRelease.call(mark);
+    now.mockRestore();
+    for (const t of gsap.getTweensOf(mark.target)) t.time(0.2);
+    expect(Number(gsap.getProperty(mark.target, 'x'))).toBeGreaterThan(170);
+    (cleanup as () => void)();
+  });
+
+  it("a flick never drawn (no frame between the press and the release) carries the pointer's speed", async () => {
+    const cleanup = scene.setup(ctx());
+    near!();
+    await settled();
+    Object.defineProperty(field, 'clientHeight', { value: 300, configurable: true });
+    Object.defineProperty(field, 'clientWidth', { value: 1000, configurable: true });
+    const mark = mocks.instances[0]!;
+    Object.defineProperty(mark.target, 'offsetTop', { value: 100, configurable: true });
+    Object.defineProperty(mark.target, 'offsetHeight', { value: 50, configurable: true });
+    Object.defineProperty(mark.target, 'offsetLeft', { value: 400, configurable: true });
+    Object.defineProperty(mark.target, 'offsetWidth', { value: 96, configurable: true });
+    const now = vi.spyOn(performance, 'now');
+    // Drawn once at x 0; the flick moved Draggable's own x to 160, but no frame drew it.
+    now.mockReturnValue(1000);
+    gsap.set(mark.target, { x: 0, y: 20 });
+    mocks.vars!.onDrag?.call(mark);
+    Object.assign(mark, { x: 160, y: 20 });
+    now.mockReturnValue(1150);
+    mocks.vars!.onRelease.call(mark);
+    now.mockRestore();
+    for (const t of gsap.getTweensOf(mark.target)) t.time(0.2);
+    expect(Number(gsap.getProperty(mark.target, 'x'))).toBeGreaterThan(20);
+    (cleanup as () => void)();
+  });
+
   it('a part held still before the release drops straight down, its earlier drag forgotten', async () => {
     const cleanup = scene.setup(ctx());
     near!();
