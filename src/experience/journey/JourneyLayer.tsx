@@ -13,7 +13,7 @@
  * draws the arch as an SVG. The breath is a CSS animation, so a page at rest runs no script loop.
  * Loaded with the engine chunk at tiers 1 to 3; tier 0 and reduced motion never load it.
  */
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { CROWN, MOLAR_LEVELS, ROOTS } from '@/components/home/MolarStepper';
 
@@ -141,7 +141,15 @@ export default function JourneyLayer(props: {
   onJourney(journey: Journey | null): void;
 }): React.JSX.Element {
   const { root, engine, tier, debug, onJourney } = props;
-  const layer = useRef<HTMLDivElement>(null);
+  const layer = useRef<HTMLDivElement | null>(null);
+  // The layer's own style (fixed, no pointer events) from the moment it is in the page, as
+  // CanvasRoot does: set in the effect, it came a task after the DOM, and in between the layer's
+  // full-screen SVGs took a tap (T-HOME12 in WebKit: a press on a CTA released on them, so the
+  // click went to neither and the CTA did nothing).
+  const setLayer = useCallback((el: HTMLDivElement | null): void => {
+    layer.current = el;
+    applyStyle(el, LAYER);
+  }, []);
   const bands = useRef<Partial<Record<BandId, HTMLDivElement | null>>>({});
   const stage = useRef<HTMLDivElement>(null);
   const courier = useRef<SVGGElement>(null);
@@ -158,7 +166,6 @@ export default function JourneyLayer(props: {
   const levels = useRef<(SVGGElement | null)[]>([]);
 
   useEffect(() => {
-    applyStyle(layer.current, LAYER);
     let lastLevel = -1;
     let fading = false;
     let topShown = false;
@@ -381,7 +388,7 @@ export default function JourneyLayer(props: {
           className="invisible absolute inset-x-0 top-0 bg-surface-sunken"
         />
       </div>
-      <div ref={layer} data-courier-layer="" aria-hidden="true">
+      <div ref={setLayer} data-courier-layer="" aria-hidden="true">
         <Paint />
         <svg
           ref={arch}
