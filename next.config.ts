@@ -52,6 +52,11 @@ const proxySkipped = [
 const nextConfig: NextConfig = {
   output: 'standalone',
   poweredByHeader: false,
+  // The standalone server compresses through scripts/compression.mjs (brotli, then gzip; static
+  // files precompressed at build): every way it runs starts the wrapped server.js
+  // (scripts/wrap-standalone.mjs). Next's own gzip would encode first and the layer would pass.
+  // `next dev` serves uncompressed.
+  compress: false,
   reactStrictMode: true,
   // Trailing-slash redirects are one-hop 301s in the proxy (canonical redirect).
   skipTrailingSlashRedirect: true,

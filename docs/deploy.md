@@ -240,6 +240,13 @@ node .next/standalone/server.js
 
 - `server.js` sets `NODE_ENV=production` and changes into its own folder.
   Every path in the environment must be absolute.
+- `server.js` compresses its own responses (`scripts/compression.mjs`, put in
+  front of Next's server by `npm run build`; Next's own is off). It sends
+  brotli, then gzip, by the request's `Accept-Encoding`, with
+  `Vary: Accept-Encoding`. It sends `.next/static` files from the `.br` and
+  `.gz` copies the build writes beside them. Small bodies, images and fonts go
+  as they are. A proxy in front must pass `Accept-Encoding` through and must
+  not compress again (nginx leaves an encoded response as it is).
 - It listens on `HOSTNAME`:`PORT` (defaults `0.0.0.0`:`3000`).
 - At start the app validates the environment. A missing or short value stops
   the process (exit 1) with one fatal JSON line, for example:
