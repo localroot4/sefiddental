@@ -64,6 +64,8 @@ export function boundsOf(
 
 /** Gravity of the playground (px/s²): a part dropped from the field's height lands in ~0.45 s. */
 export const GRAVITY = 4200;
+/** The oldest drag sample a release speed is measured from (ms): a slow host draws every 250. */
+const SAMPLE_MAX_MS = 500;
 /** A sideways throw slides at least this long (s), also along the floor (friction, power2.out). */
 const SLIDE_S = 0.4;
 /** Each bounce rises this share of the fall above it; under 3 px it is not drawn. */
@@ -208,8 +210,10 @@ const scene: DomScene = {
     // no recent sample, or one where it still is, so it simply drops. With no sample, or only the
     // newest, in those 100 ms (a touch flick coalesced into one move; a host that draws a frame
     // every 100 ms or so, where the flick was never drawn) it is measured from the latest sample
-    // before them, if that one is under 250 ms old: else it measured 0 px/s and the throw was lost
-    // (CI runs 42377118771 and 145, T-BF10 in WebKit).
+    // before them, if that one is under 500 ms old: else it measured 0 px/s and the throw was lost
+    // (CI runs 42377118771 and 145, T-BF10 in WebKit; run 148, a host drawing every 250 ms or
+    // so). The speed is a displacement over time, so a part held still in that sample's frame
+    // still measures about 0 px/s.
     const velocity = (
       part: HTMLElement,
       end: { x: number; y: number },
@@ -220,10 +224,10 @@ const scene: DomScene = {
       let i = list.findIndex((p) => now - p.t <= 100);
       if (i === -1 || i === list.length - 1) {
         const before = i === -1 ? list.length - 1 : i - 1;
-        if (before >= 0 && now - list[before]!.t <= 250) i = before;
+        if (before >= 0 && now - list[before]!.t <= SAMPLE_MAX_MS) i = before;
       }
       const first = list[i];
-      if (!first || now - first.t < 8 || now - first.t > 250) return { vx: 0, vy: 0 };
+      if (!first || now - first.t < 8 || now - first.t > SAMPLE_MAX_MS) return { vx: 0, vy: 0 };
       const dt = (now - first.t) / 1000;
       return { vx: (end.x - first.x) / dt, vy: (end.y - first.y) / dt };
     };

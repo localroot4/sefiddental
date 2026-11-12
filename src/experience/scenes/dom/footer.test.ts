@@ -407,6 +407,34 @@ describe('footer scene', () => {
     (cleanup as () => void)();
   });
 
+  it('a flick on a host that draws every 250 ms or so (the held frame 350 ms back) still carries its speed in x', async () => {
+    const cleanup = scene.setup(ctx());
+    near!();
+    await settled();
+    Object.defineProperty(field, 'clientHeight', { value: 300, configurable: true });
+    Object.defineProperty(field, 'clientWidth', { value: 1000, configurable: true });
+    const mark = mocks.instances[0]!;
+    Object.defineProperty(mark.target, 'offsetTop', { value: 100, configurable: true });
+    Object.defineProperty(mark.target, 'offsetHeight', { value: 50, configurable: true });
+    Object.defineProperty(mark.target, 'offsetLeft', { value: 400, configurable: true });
+    Object.defineProperty(mark.target, 'offsetWidth', { value: 96, configurable: true });
+    const now = vi.spyOn(performance, 'now');
+    // Held at x 0 in the last frame before the flick, 350 ms before the release; the next frame
+    // already draws the whole flick (CI run 148, T-BF10 in WebKit: carried 0 px).
+    now.mockReturnValue(1000);
+    gsap.set(mark.target, { x: 0, y: 20 });
+    mocks.vars!.onDrag?.call(mark);
+    now.mockReturnValue(1310);
+    gsap.set(mark.target, { x: 160, y: 20 });
+    mocks.vars!.onDrag?.call(mark);
+    now.mockReturnValue(1350);
+    mocks.vars!.onRelease.call(mark);
+    now.mockRestore();
+    for (const t of gsap.getTweensOf(mark.target)) t.time(0.2);
+    expect(Number(gsap.getProperty(mark.target, 'x'))).toBeGreaterThan(170);
+    (cleanup as () => void)();
+  });
+
   it("a flick never drawn (no frame between the press and the release) carries the pointer's speed", async () => {
     const cleanup = scene.setup(ctx());
     near!();
