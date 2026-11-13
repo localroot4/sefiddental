@@ -332,7 +332,10 @@ describe('admin nav link and graphics', () => {
     expect(icon).toContain('aria-hidden="true"');
     const logo = renderToStaticMarkup(<Logo />);
     expect(logo).toContain('aria-label="کلینیک دندانپزشکی سفید"');
-    expect(logo).toMatch(/<use href="\/brand\/lockup\.svg\?v=[0-9a-f]{8}#lockup">/);
+    // The wordmark and the mark are two windows on the one symbol (BrandLogo.tsx): two uses of it.
+    expect(
+      logo.match(/<use href="\/brand\/lockup\.svg\?v=[0-9a-f]{8}#lockup"[^>]*>/g),
+    ).toHaveLength(2);
   });
 
   it('LG1 log lines keep time, level and event only', () => {

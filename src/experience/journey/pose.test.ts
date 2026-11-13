@@ -13,6 +13,7 @@ import {
   holdRanges,
   domSpin,
   idleAmount,
+  MARK_SHARE,
   seatAmount,
   MIN_TRAVEL_VH,
   NO_POSE,
@@ -32,7 +33,8 @@ const VIEW: Viewport = { width: 1440, height: 900, maxScroll: 12_000 };
 /** A desktop page: the three pinned stages (services, restoration, workflow) and five boxes. */
 function page(): Dock[] {
   return [
-    { id: 'hero', left: 120, top: 1000, width: 320, height: 240, pin: null },
+    // The header logo's mark: stuck at the top with the sticky header (docks.ts measureHeader).
+    { id: 'header', left: 1290, top: 24, width: 19, height: 24, pin: { start: 0, end: Infinity } },
     {
       id: 'services',
       left: 300,
@@ -75,7 +77,8 @@ const at = (y: number, docks = page(), view = VIEW): Pose => courierPose(y, dock
 
 describe('courierPose: docks', () => {
   it('J1 holds at every dock with its form, centred in the box (the smile box seats the tooth)', () => {
-    for (const { id } of STATIONS) {
+    // The header logo holds at the top only (J3).
+    for (const { id } of STATIONS.filter((s) => s.id !== 'header')) {
       const y = middleOf(id);
       const pose = at(y);
       const dock = page().find((d) => d.id === id)!;
@@ -108,11 +111,30 @@ describe('courierPose: docks', () => {
     expect(at(dentists + 50).y).toBeCloseTo(at(dentists).y - 50, 5);
   });
 
-  it('J3 before the first hold the courier waits at the first dock; at the top it is below the fold', () => {
-    const pose = at(0);
-    expect(pose.dock).toBe('hero');
-    expect(pose.local).toBe(0);
-    expect(pose.y - pose.scale / 2).toBeGreaterThan(VIEW.height);
+  it('J3 at the top the mark is home in the header logo (hidden); any scroll lifts it out at the logo mark, its size, dropping out of the bar before it drifts sideways', () => {
+    const header = page()[0]!;
+    const home = at(0);
+    expect(home.dock).toBe('header');
+    expect(home.hidden).toBe(true);
+    // One pixel down: on the logo mark exactly, at the logo's own size, not clamped under the bar.
+    const lift = at(1);
+    expect(lift.hidden).toBe(false);
+    expect(lift.to).toBe('services');
+    expect(lift.x).toBeCloseTo(header.left + header.width / 2, 0);
+    expect(lift.y).toBeCloseTo(header.top + header.height / 2, 0);
+    expect(lift.scale).toBeCloseTo(header.height / MARK_SHARE, 0);
+    expect(lift.rotation).toBeCloseTo(0, 1);
+    // A third into the travel the mark has dropped further (share of its way down) than it has
+    // moved sideways.
+    const services = holdsOf()[1]!;
+    const to = at(services.start);
+    const p = at(services.start * 0.3);
+    const down = (p.y - lift.y) / (to.y - lift.y);
+    const across = (p.x - lift.x) / (to.x - lift.x);
+    expect(down).toBeGreaterThan(across);
+    // No breath while it leaves the logo; it comes in on the way to D2.
+    expect(idleAmount(at(1))).toBeLessThan(0.01);
+    expect(idleAmount(at(services.start * 0.9))).toBeGreaterThan(0.5);
   });
 
   it('J4 the footer dock hands the mark to the playground: hidden once the courier is home', () => {

@@ -16,5 +16,10 @@ export const HERE_ATTR = 'data-courier-here';
 export const COURIER_Z = '1';
 /** The courier's layers while the intro hand-off leads: above the hero's cards, under the header. */
 export const LEAD_Z = '3';
+/**
+ * The courier's layers while the courier is in the header band (lifting out of the header logo or
+ * coming home into it): above the header (z 30), so the mark leaves the logo in front of the bar.
+ */
+export const HEADER_Z = '31';
 /** On `html`: the courier draws nothing (a check of the page's own pixels; globals.css). */
 export const COURIER_OFF_ATTR = 'data-courier-off';

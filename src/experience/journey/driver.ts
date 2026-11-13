@@ -3,7 +3,8 @@
  * of the courier at tiers 1 to 3. It measures the docks (docks.ts) on start and on every size
  * change, computes the pose (pose.ts) on scroll, and writes what the pose decides into the page:
  * the smile photo's opacity, the molar art hidden while the courier carries the tooth, the
- * footer's mark part away until the courier lands on it (the hand-off, section 4), the booking
+ * header logo's mark away while the courier is out of it and the footer's mark part away until the
+ * courier lands on it (the hand-offs, section 4), the booking
  * and footer stages made transparent over the bands the courier layer paints, and the frame of
  * the view (the DOM courier, JourneyLayer.tsx). The WebGL courier reads the same pose and tells
  * the driver when it draws, so the DOM courier steps aside at the same pose (and comes back on a
@@ -17,10 +18,18 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { introMarkBox } from '@/lib/intro/introMark';
 
 import { AWAY_ATTR, HERE_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
-import { ABOVE_ATTR, measureDocks, measureObstacles, measureViewport } from './docks';
+import {
+  ABOVE_ATTR,
+  measureDocks,
+  measureHeader,
+  measureObstacles,
+  measureViewport,
+} from './docks';
 import { createFollow, glide, glideClear, type Place, type Shown } from './motion';
 import {
   courierPose,
+  FORM_SHARE,
+  MARK_SHARE,
   prepareLanes,
   photoDim,
   type Lanes,
@@ -34,8 +43,7 @@ import {
 const LIVE_ATTR = 'data-world-live';
 /** Still frames before the driver lets go of the tick. */
 const STILL_FRAMES = 12;
-/** The courier's mark is this share of its box's height (JourneyLayer.tsx draws it so). */
-export const MARK_SHARE = 0.92;
+export { MARK_SHARE };
 /**
  * A journey that starts this soon after the intro (an engine that came late) still glides from the
  * intro mark's place: the mark the reader just saw flies on to D1.
@@ -81,6 +89,8 @@ export interface Frame {
   born: number;
   /** Above the cards: from the hole until the glide is over and the courier is clear of them. */
   lead: boolean;
+  /** In the header band (out of the header logo or home into it): above the header. */
+  overHeader: boolean;
   /** The mark fades out in the intro's hole, with the frame's own fade. */
   holeOut: boolean;
 }
@@ -143,6 +153,8 @@ export function createJourney(opts: {
   const photo = root.querySelector<HTMLElement>('[data-smile-photo]');
   const molar = root.querySelector<HTMLElement>('[data-dock="restoration"]');
   const part = root.querySelector<HTMLElement>('[data-dock="footer"]');
+  // The header logo's mark (D1): outside the root, in the header on every page.
+  const logoMark = document.querySelector<Element>('header [data-dock="header"]');
   const servicesMark = root.querySelector<HTMLElement>('[data-dock="services"]');
   const team = root.querySelector<HTMLElement>('[data-home-section="dentists"]');
   // The courier carries the tooth: the slot's own art steps aside (tier 0 keeps it).
@@ -178,8 +190,9 @@ export function createJourney(opts: {
     if (more) planning = idle(plan);
   };
   const measure = (): void => {
-    docks = measureDocks(root);
-    obstacles = measureObstacles(root);
+    const header = measureHeader();
+    docks = header.dock ? [header.dock, ...measureDocks(root)] : measureDocks(root);
+    obstacles = [...header.obstacles, ...measureObstacles(root)];
     bands = measureBands(root);
     viewport = measureViewport();
     lanes = prepareLanes(docks, viewport, obstacles);
@@ -252,6 +265,7 @@ export function createJourney(opts: {
   let lastOpacity = '';
   let lastSweep = '';
   let away: boolean | null = null;
+  let logoAway: boolean | null = null;
   const apply = (dt = 0): void => {
     const scrollY = window.scrollY;
     lanes?.use(scrollY);
@@ -294,14 +308,35 @@ export function createJourney(opts: {
       team.style.setProperty('--sweep', sweep);
       lastSweep = sweep;
     }
-    const nextAway = !pose.hidden;
+    // Each mark is away while the courier carries it: the footer's until it lands there, the
+    // logo's from the moment it lifts out of the header. Without a courier (NO_POSE) both show.
+    const nextAway = !(pose.hidden && pose.dock !== 'header');
+    const nextLogoAway = !(pose.hidden && pose.dock !== 'footer');
+    if (logoMark && nextLogoAway !== logoAway) {
+      logoMark.toggleAttribute(AWAY_ATTR, nextLogoAway);
+      logoAway = nextLogoAway;
+    }
+    const overHeader =
+      !pose.hidden && shown.y - (shown.scale * FORM_SHARE) / 2 < (viewport.insetTop ?? 0);
     if (part && nextAway !== away) {
       part.toggleAttribute(AWAY_ATTR, nextAway);
       // Lifting off a part the reader may have thrown: it goes home while it is hidden.
       if (nextAway && away === false) part.dispatchEvent(new CustomEvent(LIFTOFF_EVENT));
       away = nextAway;
     }
-    render({ pose, shown, scrollY, docks, bands, viewport, webgl, born, lead, holeOut });
+    render({
+      pose,
+      shown,
+      scrollY,
+      docks,
+      bands,
+      viewport,
+      webgl,
+      born,
+      lead,
+      overHeader,
+      holeOut,
+    });
   };
 
   // Follow the tick while something moves; let go after a few still frames.
@@ -441,6 +476,7 @@ export function createJourney(opts: {
       servicesMark?.removeAttribute(HERE_ATTR);
       html.removeAttribute(STAGE_ATTR);
       part?.removeAttribute(AWAY_ATTR);
+      logoMark?.removeAttribute(AWAY_ATTR);
       photo?.style.removeProperty('opacity');
       photo?.style.removeProperty('filter');
       photo?.style.removeProperty('transform');

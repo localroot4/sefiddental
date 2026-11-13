@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { isDockId, measureDocks, measureObstacles, measureViewport } from './docks';
+import { isDockId, measureDocks, measureHeader, measureObstacles, measureViewport } from './docks';
 
 /** Gives `el` a viewport rect (jsdom lays nothing out); `rendered: false` is `display: none`. */
 function place(
@@ -38,10 +38,38 @@ afterEach(() => {
   document.documentElement.removeAttribute('style');
 });
 
+describe('measureHeader', () => {
+  it('DK11 the header logo mark is D1, pinned over the whole scroll at its viewport top; the header controls but the logo are obstacles', () => {
+    document.body.innerHTML = `
+      <header>
+        <a id="logo" href="/"><svg><svg id="mark" data-dock="header"></svg></svg></a>
+        <a id="nav" href="/x">x</a><button id="menu">m</button><a id="gone" href="/y">y</a>
+      </header>`;
+    scrollTo(2400);
+    place(document.getElementById('logo')!, { top: 12, left: 1200, w: 120, h: 44 });
+    place(document.getElementById('mark')!, { top: 16, left: 1290, w: 19, h: 24 });
+    place(document.getElementById('nav')!, { top: 14, left: 900, w: 80, h: 44 });
+    place(document.getElementById('menu')!, { top: 14, left: 40, w: 44, h: 44 });
+    place(document.getElementById('gone')!, { top: 14 }, false);
+    const { dock, obstacles } = measureHeader();
+    const pin = { start: 0, end: Infinity };
+    expect(dock).toEqual({ id: 'header', left: 1290, top: 16, width: 19, height: 24, pin });
+    expect(obstacles).toEqual([
+      { left: 900, top: 14, width: 80, height: 44, pin },
+      { left: 40, top: 14, width: 44, height: 44, pin },
+    ]);
+  });
+
+  it('DK12 no logo with a dock (another page, a hidden header): no D1 and no obstacles', () => {
+    document.body.innerHTML = `<header><a href="/"><svg></svg></a></header>`;
+    expect(measureHeader()).toEqual({ dock: null, obstacles: [] });
+  });
+});
+
 describe('measureDocks', () => {
   it('DK1 reads every rendered dock in document px; unknown ids and hidden boxes are left out', () => {
     document.body.innerHTML = `
-      <div data-dock="hero"></div>
+      <div data-dock="services"></div>
       <div data-dock="nope"></div>
       <div data-dock="dentists"></div>
       <div data-dock="booking"></div>`;
@@ -52,9 +80,10 @@ describe('measureDocks', () => {
     place(dentists!, { top: 1200 }, false);
     place(booking!, { top: 1500, w: 0, h: 0 });
     expect(measureDocks()).toEqual([
-      { id: 'hero', left: 40, top: 1000, width: 288, height: 144, pin: null },
+      { id: 'services', left: 40, top: 1000, width: 288, height: 144, pin: null },
     ]);
-    expect(isDockId('hero')).toBe(true);
+    expect(isDockId('header')).toBe(true);
+    expect(isDockId('hero')).toBe(false);
     expect(isDockId('nope')).toBe(false);
     expect(isDockId(undefined)).toBe(false);
   });

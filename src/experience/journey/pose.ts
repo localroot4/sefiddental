@@ -16,13 +16,17 @@ import { ARCH_SLOT, archLayout, projectArch } from './arch';
 import { placeOn, routeSteps, type Route } from './route';
 
 export type DockId =
-  'hero' | 'services' | 'restoration' | 'workflow' | 'smile' | 'dentists' | 'booking' | 'footer';
+  'header' | 'services' | 'restoration' | 'workflow' | 'smile' | 'dentists' | 'booking' | 'footer';
 
 export type Form = 'mark' | 'tooth';
 
-/** The stations in journey order, with the courier's form at each. */
+/**
+ * The stations in journey order, with the courier's form at each. D1 is the header logo's own
+ * mark (owner, 2026-11-13): the courier lifts out of the logo as the reader scrolls and comes home
+ * into it at the top, as it lands in the footer's lockup at the end.
+ */
 export const STATIONS: readonly { id: DockId; form: Form }[] = [
-  { id: 'hero', form: 'mark' },
+  { id: 'header', form: 'mark' },
   { id: 'services', form: 'mark' },
   { id: 'restoration', form: 'tooth' },
   { id: 'workflow', form: 'tooth' },
@@ -91,7 +95,7 @@ export interface Pose {
    * back out of the glint (1 everywhere else).
    */
   presence: number;
-  /** The footer playground has the mark (hand-off), or there is no courier. */
+  /** The header logo or the footer playground has the mark (hand-off), or there is no courier. */
   hidden: boolean;
   /** The dock the courier holds at, null while it travels. */
   dock: DockId | null;
@@ -120,6 +124,8 @@ const SMILE_HOLD_VH = 0.9;
 const MIN_HOLD_VH = 0.2;
 /** The courier lands on the footer box once the box's bottom is this far down the viewport. */
 const FOOTER_LAND_VH = 0.92;
+/** The courier's mark is this share of its box's height (JourneyLayer.tsx draws it so). */
+export const MARK_SHARE = 0.92;
 /** Clear space between a docked courier and the header or the sticky bar (px). */
 const BAR_MARGIN = 8;
 /** The form fills this share of its dock's shorter side. */
@@ -139,7 +145,7 @@ const WHIP_START = [0, 0.28] as const;
 
 /** Base turn of the form at each dock (radians): a three-quarter view, flat at the footer. */
 const BASE_YAW: Record<DockId, number> = {
-  hero: -0.28,
+  header: 0,
   services: -0.3,
   restoration: 0,
   workflow: 0,
@@ -223,6 +229,8 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
     .filter((d) => ORDER.has(d.id) && d.width > 0 && d.height > 0)
     .sort((a, b) => (ORDER.get(a.id) ?? 0) - (ORDER.get(b.id) ?? 0))
     .map((dock): Hold => {
+      // The header logo has the mark at the very top only: any scroll lifts it out.
+      if (dock.id === 'header') return { dock, start: 0, end: 0 };
       if (dock.pin) return { dock, start: clampY(dock.pin.start), end: clampY(dock.pin.end) };
       // The footer hands the mark over as soon as its box is in view: the reader can take it.
       if (dock.id === 'footer') {
@@ -346,6 +354,15 @@ function docked(dock: Dock, y: number, local: number): Docked {
       rotation: SLOT.yaw,
     };
   }
+  // In the logo the mark is drawn at the logo's own size: the courier's box is that mark's height.
+  if (dock.id === 'header') {
+    return {
+      x: dock.left + dock.width / 2,
+      y: viewportTop(dock, y) + dock.height / 2,
+      scale: dock.height / MARK_SHARE,
+      rotation: 0,
+    };
+  }
   const turn = dock.id === 'services' ? (local - 0.5) * SERVICES_TURN : 0;
   return {
     x: dock.left + dock.width / 2,
@@ -366,10 +383,10 @@ interface SmileState {
 /**
  * A docked pose kept clear of the header and the sticky bar: a hold the travels pushed late (docks
  * close together) would ride its dock under them, so the courier stops at their edge instead. Not
- * the footer, which lands on its box.
+ * the footer, which lands on its box, nor the header logo, which is in the header itself.
  */
 function inView(at: Docked, dock: Dock, viewport: Viewport): Docked {
-  if (dock.id === 'footer') return at;
+  if (dock.id === 'footer' || dock.id === 'header') return at;
   const half = (at.scale * FORM_SHARE) / 2 + BAR_MARGIN;
   const top = (viewport.insetTop ?? 0) + half;
   const bottom = viewport.height - (viewport.insetBottom ?? 0) - half;
@@ -454,7 +471,7 @@ function placePose(
       ...station,
       // Only at the smile station does the form sink and condense.
       presence: hold.dock.id === 'smile' ? station.presence : 1,
-      hidden: hold.dock.id === 'footer',
+      hidden: hold.dock.id === 'footer' || hold.dock.id === 'header',
       dock: hold.dock.id,
       local,
       travel: 0,
@@ -558,7 +575,8 @@ function travelPath(a: Hold, b: Hold, viewport: Viewport): Path {
         3 * u * u * e * (p1x + fx - from.x) +
         3 * u * e * e * (p2x + tx - to.x) +
         e * e * e * tx;
-      let yy = mix(fy, ty, e);
+      // Out of the header the mark first drops out of the bar, then drifts sideways.
+      let yy = mix(fy, ty, a.dock.id === 'header' ? 1 - (1 - e) * (1 - e) : e);
       if (footer && y > b.start - drop) {
         const home = viewportTop(b.dock, y) + b.dock.height / 2;
         x = b.dock.left + b.dock.width / 2;
@@ -643,7 +661,8 @@ export function prepareLanes(
               y1: b.start,
               base: (t, y) => path.at(t, y),
               obstacles,
-              viewport,
+              // Out of the header logo the lane starts in the header band itself.
+              viewport: a.dock.id === 'header' ? { ...viewport, insetTop: 0 } : viewport,
               min: Math.max(LANE_MIN_PX, LANE_MIN_SHARE * Math.min(path.from.scale, path.to.scale)),
             }),
           };
@@ -717,11 +736,13 @@ export function domSpin(pose: Pose): number {
 
 /**
  * How much of the idle motion (the breath, the slow turn) shows: none at the footer, where the
- * mark must land exactly on the playground's part, fading out on the way there.
+ * mark must land exactly on the playground's part, fading out on the way there, and none as it
+ * leaves the header logo, fading in on the way to D2.
  */
 export function idleAmount(pose: Pose): number {
   if (pose.hidden || pose.dock === 'footer') return 0;
-  return pose.to === 'footer' ? 1 - pose.travel : 1;
+  if (pose.to === 'footer') return 1 - pose.travel;
+  return pose.to === 'services' ? pose.travel : 1;
 }
 
 /**

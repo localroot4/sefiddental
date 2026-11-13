@@ -40,7 +40,7 @@ export function SiteHeader(props: { nav: NavTree; contact: FooterData }) {
             prefetch={false}
             className="inline-flex min-h-target shrink-0 items-center text-ink lg:me-2"
           >
-            <BrandLogo label={t('brand.homeLink')} className="h-8 w-auto" />
+            <BrandLogo label={t('brand.homeLink')} className="h-8 w-auto" dock />
           </Link>
           <nav aria-label={t('nav.primary')} className="max-lg:hidden">
             <ul className="flex items-center gap-1">

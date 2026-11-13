@@ -103,16 +103,8 @@ export function HomeHero(props: {
       <div className="contents lg:relative lg:block lg:overflow-clip lg:bg-surface-sunken">
         <div
           data-above-courier=""
-          className="relative z-[2] col-start-1 row-start-1 mx-auto grid min-h-[calc(100svh-65px)] w-full max-w-content content-start gap-4 px-gutter pt-2 pb-8 md:min-h-0 md:grid-cols-[minmax(0,1fr)_minmax(0,21rem)] md:content-center md:items-center md:gap-8 md:py-12 md:pb-[13rem] lg:min-h-[min(calc(100svh-var(--nav-h)),52rem)] lg:pb-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]"
+          className="relative z-[2] col-start-1 row-start-1 mx-auto grid min-h-[calc(100svh-65px)] w-full max-w-content content-start gap-4 px-gutter pt-2 pb-8 md:min-h-0 md:grid-cols-[minmax(0,1fr)_minmax(0,21rem)] md:content-center md:items-center md:gap-8 md:py-12 lg:min-h-[min(calc(100svh-var(--nav-h)),52rem)] lg:pb-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,22rem)] lg:gap-12 xl:grid-cols-[minmax(0,1fr)_minmax(0,26rem)]"
         >
-          {/* D1 of the journey (docs/experience/journey.md): the courier's first dock, on the
-              photo's floor under the gap between the two cards, from 744 px. Not one of the
-              cards: the courier paints above the photo and below them. */}
-          <div
-            data-dock="hero"
-            aria-hidden="true"
-            className="pointer-events-none absolute bottom-[2.5rem] hidden size-[8rem] end-[calc(var(--gutter)+21rem+1rem-4rem)] md:block lg:bottom-[clamp(1rem,5svh,3rem)] lg:size-[min(9rem,16svh)] lg:end-[calc(var(--gutter)+22rem+1.5rem-min(9rem,16svh)/2)] xl:end-[calc(var(--gutter)+26rem+1.5rem-min(9rem,16svh)/2)]"
-          />
           <div className="grid content-start gap-4 rounded-sheet bg-surface/88 p-6 xl:p-8">
             <h1
               id="hero-h1"
@@ -182,14 +174,6 @@ export function HomeHero(props: {
             </p>
           ) : null}
         </div>
-        {/* D1 under 744 px: in the 4:5 photo band under the form, above the trust band. */}
-        {band ? (
-          <div
-            data-dock="hero"
-            aria-hidden="true"
-            className="pointer-events-none col-start-1 row-start-2 mt-[14vw] size-[min(8rem,34vw)] self-start justify-self-center md:hidden"
-          />
-        ) : null}
         {heroRelief(props.relief, image) ? (
           <Icon
             name="mark"

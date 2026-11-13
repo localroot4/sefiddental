@@ -21,7 +21,7 @@ import { applyStyle } from '../core/applyStyle';
 import { levelFromChoice } from '../scenes/webgl/math';
 
 import { ARCH_SLOT, archLayout, footprintAngle, projectArch } from './arch';
-import { COURIER_Z, LEAD_Z } from './attrs';
+import { COURIER_Z, HEADER_Z, LEAD_Z } from './attrs';
 import {
   createJourney,
   MARK_SHARE,
@@ -171,7 +171,7 @@ export default function JourneyLayer(props: {
     let fading = false;
     let topShown = false;
     let placed: Frame['bands'] | null = null;
-    let led: boolean | null = null;
+    let led: string | null = null;
     const render = ({
       pose,
       shown,
@@ -181,6 +181,7 @@ export default function JourneyLayer(props: {
       webgl,
       born,
       lead,
+      overHeader,
       holeOut,
     }: Frame): void => {
       // A hand-off that cannot glide clear: the mark fades out in the intro's hole with its frame.
@@ -189,11 +190,17 @@ export default function JourneyLayer(props: {
         layer.current?.toggleAttribute('data-courier-hole-out', holeOut);
         if (holeOut) withFrame(layer.current);
       }
-      // The intro hand-off: above the hero's cards from the intro mark's hole until clear of them.
-      if (lead !== led) {
-        led = lead;
-        layer.current?.toggleAttribute('data-courier-lead', lead);
-        layer.current?.style.setProperty('z-index', lead ? LEAD_Z : COURIER_Z);
+      // Above the header while in its band (out of the logo, home into it); the intro hand-off
+      // above the hero's cards from the intro mark's hole until clear of them. Both layers: the
+      // WebGL canvas draws the same courier.
+      const z = overHeader ? HEADER_Z : lead ? LEAD_Z : COURIER_Z;
+      layer.current?.toggleAttribute('data-courier-lead', lead);
+      if (z !== led) {
+        led = z;
+        layer.current?.style.setProperty('z-index', z);
+        document
+          .querySelector<HTMLElement>('[data-experience-layer]')
+          ?.style.setProperty('z-index', z);
       }
       // The bands scroll with the page (document coordinates in `.site`): written only when a
       // measure moved them, never per frame, so a native fling never slides them.

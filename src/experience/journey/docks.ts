@@ -109,6 +109,34 @@ export function measureDocks(root: ParentNode = document): Dock[] {
   return docks;
 }
 
+/**
+ * The header logo's mark (journey D1) and the header's own controls: the header sticks at the top
+ * at every scroll, so each box is pinned over the whole scroll range (its viewport top never
+ * changes; pose.ts viewportTop). The controls keep the lane out of the header off the nav (the
+ * page's obstacles skip the header). No logo with a dock (another page): no dock.
+ */
+export function measureHeader(): { dock: Dock | null; obstacles: Box[] } {
+  const header = document.querySelector('header');
+  const mark = header?.querySelector('[data-dock="header"]');
+  if (!header || !mark || mark.getClientRects().length === 0) return { dock: null, obstacles: [] };
+  const pin = { start: 0, end: Infinity };
+  const box = (r: DOMRect): Box => ({
+    left: r.left + window.scrollX,
+    top: r.top,
+    width: r.width,
+    height: r.height,
+    pin,
+  });
+  const rect = mark.getBoundingClientRect();
+  if (!(rect.width > 0 && rect.height > 0)) return { dock: null, obstacles: [] };
+  const logo = mark.closest('a');
+  const obstacles = Array.from(header.querySelectorAll('a[href], button'))
+    .filter((el) => el !== logo && el.getClientRects().length > 0)
+    .map((el) => box(el.getBoundingClientRect()))
+    .filter((b) => b.width > 0 && b.height > 0);
+  return { dock: { id: 'header', ...box(rect) }, obstacles };
+}
+
 /** What the courier never covers: the controls and fields, and every line of shown text. */
 const CONTROLS = 'a[href], button, input, select, textarea, summary, [role="button"]';
 /**
