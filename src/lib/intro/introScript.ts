@@ -43,7 +43,8 @@ export const INTRO_SCRIPT_SHA256 = '0tNx+ymxQkGkApZU+SDpYkR81K0zFKuZhAiPdVaXOc8=
  * origin, «سفید» at .9x below it as in prototype 0a. The frame `.i-f` is one evenodd path (a
  * 10 000 unit square minus the mark) in a 1 px `<svg>` whose user unit is 1 px and whose
  * origin is the mark's centre, at 1.6k (the hole exactly under the mark pieces). At s3 the frame
- * fades out over 400 ms while the lockup (`.i-lk`, as one) settles back (.9) and fades with it: a calm
+ * fades out over 400 ms and the lockup (`.i-lk`, as one) fades with it, in place (under 1024 px the
+ * courier fills the frame's hole under the mark, so the mark must not move off it): a calm
  * reveal of the page and its header logo (owner, 2026-11-13: the 28x zoom was abrupt). The
  * diamonds fly in from 20 vw / 20 vh on the ease-out token, without an overshoot. `will-change` only on the
  * current stage's parts. `i-fade` has no `from`: every part it hides keeps an underlying
@@ -94,7 +95,7 @@ export const INTRO_CSS =
   '@keyframes i-fade{to{opacity:0}}' +
   '#intro.s3 .i-f{animation:i-fade .4s linear both}' +
   '#intro.s3 .i-m{animation:none;opacity:0}' +
-  '#intro.s3 .i-lk{animation:i-out .4s var(--ease-in-out) both;will-change:transform,opacity}' +
+  '#intro.s3 .i-lk{animation:i-out .4s linear both;will-change:opacity}' +
   '#intro.s3 .i-skip{animation:i-fade .4s linear both}' +
-  '@keyframes i-out{from{opacity:1}to{transform:scale(calc(.9*var(--k)));opacity:0}}' +
+  '@keyframes i-out{from{opacity:1}to{opacity:0}}' +
   'html[data-intro=playing] #intro{animation:i-fade 0s 1400ms forwards}';
