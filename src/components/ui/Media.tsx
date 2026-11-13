@@ -106,10 +106,10 @@ function DemoPicture(props: { photo: DemoPhotoKey; className: string }) {
 }
 
 /**
- * A missing client photo (freeze F3): a calm brand panel (PLACEHOLDER_SURFACE) that names the
- * photo it waits for. The mark sits in it as a quiet relief, porcelain white in light and teal
- * glass in dark (decorative, non-text), and steps back (invisible, its row kept) when the panel is
- * under 10rem tall, where it would shrink to a stray icon. The caption «جای عکس: …» tells the
+ * A missing client photo (freeze F3): a calm neutral panel (PLACEHOLDER_SURFACE) that names the
+ * photo it waits for, with a small photo glyph (decorative). Never the brand mark: the mark is
+ * the courier and the logo only, one look everywhere (owner, 2026-11-13). The glyph steps back
+ * (invisible, its row kept) when the panel is under 6rem tall. The caption «جای عکس: …» tells the
  * clinic which photo goes where, so it shows on the client preview only (DEMO_CONTENT): a small
  * label in its own row at the bottom start, visible text in Persian digits. Elsewhere the panel
  * is decorative and keeps the caption in `data-photo-slot` for QA. Nothing moves. The
@@ -146,9 +146,9 @@ export function MediaPlaceholder(props: {
       )}
     >
       <Icon
-        name="mark"
+        name="image"
         size="custom"
-        className="aspect-[184/223] h-[min(56%,10rem)] w-auto max-w-full place-self-center text-surface-raised/75 dark:text-brand/15 [@container(height<10rem)]:invisible"
+        className="size-[min(24%,3rem)] place-self-center text-ink-faint [@container(height<6rem)]:invisible"
       />
       {onPreview() ? (
         <p className="max-w-[30ch]">

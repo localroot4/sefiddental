@@ -16,6 +16,7 @@ export const ICONS = {
   'check-circle': 'phosphor/regular/check-circle',
   clock: 'phosphor/regular/clock',
   close: 'phosphor/regular/x',
+  image: 'phosphor/regular/image',
   info: 'phosphor/regular/info',
   instagram: 'phosphor/regular/instagram-logo',
   'map-pin': 'phosphor/regular/map-pin',
@@ -51,4 +52,4 @@ export const MIRRORED_ICONS: readonly IconName[] = ['arrow-forward', 'caret-back
  * The sync script and test IS1 fail when it no longer matches, so a changed name list or package
  * version can never serve a stale sprite from the week-long /brand cache.
  */
-export const ICON_SPRITE_HASH = 'cd963cb9';
+export const ICON_SPRITE_HASH = '81d38e27';

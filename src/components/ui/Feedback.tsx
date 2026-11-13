@@ -10,8 +10,7 @@ import { Icon } from './Icon';
  * brand-strong prefixes hold AA on it (DESIGN.md 1.1). Here, not in Media.tsx, so the island-safe
  * HoursBadge (which imports Skeleton) never reaches the message table.
  */
-export const PLACEHOLDER_SURFACE =
-  'bg-[color-mix(in_srgb,var(--color-brand)_14%,var(--color-surface-raised))]';
+export const PLACEHOLDER_SURFACE = 'bg-surface-sunken';
 
 /**
  * Transient message (DESIGN.md toast): fixed above the sticky bar under 1024 px, 24 px from the
@@ -88,7 +87,7 @@ export function EmptyState(props: { children: ReactNode; action?: ReactNode; cla
         props.className,
       )}
     >
-      <Icon name="mark" size="custom" className="h-[2.75rem] w-[2.25rem] text-brand/45" />
+      <Icon name="info" size="custom" className="size-[2rem] text-ink-faint" />
       <p className="text-small text-ink-muted">{props.children}</p>
       {props.action}
     </div>

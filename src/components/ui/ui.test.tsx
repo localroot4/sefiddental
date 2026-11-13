@@ -217,7 +217,7 @@ describe('ui components: content, media, cards', () => {
     expect(panel.className).toContain('aspect-[4/5]');
   });
 
-  it('UM5 every placeholder variant is a brand panel: the mark relief, then the caption row (preview), no outline', () => {
+  it('UM5 every placeholder variant is a neutral panel: a photo glyph (never the mark), then the caption row (preview), no outline', () => {
     preview(true);
     for (const variant of ['fill', 'card', 'standalone'] as const) {
       const { container, unmount } = render(
@@ -225,7 +225,7 @@ describe('ui components: content, media, cards', () => {
       );
       const panel = container.firstElementChild!;
       expect(panel.className).toContain(PLACEHOLDER_SURFACE);
-      expect(PLACEHOLDER_SURFACE).toContain('var(--color-brand)_14%');
+      expect(PLACEHOLDER_SURFACE).toBe('bg-surface-sunken');
       expect(panel.className).toContain(
         variant === 'standalone' ? 'rounded-media aspect-[4/3]' : 'absolute inset-0',
       );
@@ -236,7 +236,7 @@ describe('ui components: content, media, cards', () => {
       const [mark, caption] = panel.children;
       expect(mark!.getAttribute('aria-hidden')).toBe('true');
       expect(mark!.querySelector('use')!.getAttribute('href')).toMatch(
-        /^\/brand\/icons\.svg\?v=\w+#mark$/,
+        /^\/brand\/icons\.svg\?v=\w+#image$/,
       );
       expect(mark!.getAttribute('class')).toMatch(/\[@container\(height<[\d.]+rem\)\]:invisible/);
       expect(caption!.tagName).toBe('P');

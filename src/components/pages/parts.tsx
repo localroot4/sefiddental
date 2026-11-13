@@ -93,11 +93,7 @@ export function TextPlaceholder(props: { caption: string; className?: string }) 
         props.className,
       )}
     >
-      <Icon
-        name="mark"
-        size="custom"
-        className="aspect-[184/223] h-[1.3rem] w-auto text-brand/45"
-      />
+      <Icon name="info" size="custom" className="size-[1.3rem] shrink-0 text-ink-faint" />
       <span>
         <span className="font-semibold text-brand-strong">{t('pages.textPlaceholder')}</span>{' '}
         {props.caption}

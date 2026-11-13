@@ -685,8 +685,9 @@ export function createCourierRig(
       enamel.material.color.set(ivory);
       archEnamel.material.color.set(ivory);
       enamel.uniforms.uBuildEdge.value.set(brand);
-      // The logo's teal (--color-brand-logo), lifted on navy so the mark keeps its presence.
-      glaze.color.set(dark ? '#14A296' : '#00827A');
+      // The logo's teal (--color-brand-logo) in both themes, as the header logo: on navy a faint
+      // emissive lift keeps its presence without changing its colour.
+      glaze.color.set('#00827A');
       glaze.emissive.set(dark ? '#06302D' : '#000000');
       rim.value.set(dark ? '#7FE3D9' : '#CFF5F1');
       wireMaterial.color.set(brand);

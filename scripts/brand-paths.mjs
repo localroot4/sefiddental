@@ -23,9 +23,9 @@ const ICON_INSET = 24;
 /** A turn sharper than this at a vertex is a corner the resampling keeps. */
 const CORNER_DEG = 30;
 
-/** The simplified mark: the prototype 0a clip outline (design/prototypes/0a-intro.html). */
+/** The mark: the clean logo outline (design/tools/clean-mark.mjs), as everywhere else. */
 export const MARK_PATH =
-  'M990.5 333.7L990.5 163C990.5 143 1007 127 1027 127L1083.5 127L1047 191.5L1088 137Q1104 125 1125 127C1145 129 1158 145 1158 163L1158 333.7L1128 333.7L1080 276L1113.8 216.7L1018 333.8Z';
+  'M990.3 333.9L990.3 168.6A42 42 0 0 1 1032.3 126.6L1083.8 126.6L1046.44 190.35A0.6 0.6 0 0 0 1047.44 191.01L1083.45 143A41 41 0 0 1 1116.25 126.6L1116.3 126.6A42 42 0 0 1 1158.3 168.6L1158.3 333.9L1134.52 333.9A23 23 0 0 1 1116.12 324.7L1080.24 276.86A1.5 1.5 0 0 1 1080.15 275.2L1113.21 218.79A0.6 0.6 0 0 0 1112.21 218.12L1032.28 324.7A23 23 0 0 1 1013.88 333.9Z';
 
 /** Accent to its default duotone Phosphor icon, as src/components/ui/Cards.tsx resolves it. */
 export const GLYPHS = {

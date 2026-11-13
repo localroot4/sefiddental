@@ -371,18 +371,10 @@
   background-image: radial-gradient(50% 100% at 50% 0%, rgb(43 181 170 / 0.14), transparent);
 }
 
-/* The footer's mark part has the courier glaze's colour of the page theme (courierRig.ts
-   setTheme), not the dark stage's brand teal, so the landing hands over without a colour jump. */
+/* The footer's mark part is the logo's teal in both themes, the colour of the header logo and of
+   the courier (one look everywhere, owner 2026-11-13), so the landing hands over without a jump. */
 [data-playground-part='mark'] {
   color: var(--color-brand-logo);
-}
-:root[data-theme='dark'] [data-playground-part='mark'] {
-  color: #14a296;
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) [data-playground-part='mark'] {
-    color: #14a296;
-  }
 }
 
 /* The journey (docs/experience/journey.md, src/experience/journey): the footer's mark part stays
