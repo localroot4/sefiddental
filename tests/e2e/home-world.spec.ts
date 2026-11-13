@@ -95,8 +95,8 @@ test('T-WD2 the hero is not a render cover: the canvas draws the courier on the 
   await page.goto('/?tier=2&debug=1');
   await page.waitForLoadState('load');
   await expect(page.locator('[data-experience-layer]')).toHaveCount(1, { timeout: 20_000 });
-  // The courier waits on the hero photo (D1, docs/experience/journey.md): the gate is open and
-  // frames are drawn without a scroll.
+  // The world draws from the first view, without a scroll (the courier itself is home in the
+  // header logo at the top, docs/experience/journey.md D1): the gate is open and frames are drawn.
   await expect.poll(async () => (await snapshot(page)).gate, { timeout: 20_000 }).toBe('open');
   await expect.poll(async () => (await snapshot(page)).framesRendered).toBeGreaterThan(0);
 });

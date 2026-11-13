@@ -113,9 +113,10 @@ describe('courierPose: docks', () => {
 
   it('J3 at the top the mark is home in the header logo (hidden); any scroll lifts it out at the logo mark, its size, dropping out of the bar before it drifts sideways', () => {
     const header = page()[0]!;
-    const home = at(0);
-    expect(home.dock).toBe('header');
-    expect(home.hidden).toBe(true);
+    const [home, services] = holdsOf();
+    expect([home!.start, home!.end]).toEqual([0, 0]);
+    expect(at(0).dock).toBe('header');
+    expect(at(0).hidden).toBe(true);
     // One pixel down: on the logo mark exactly, at the logo's own size, not clamped under the bar.
     const lift = at(1);
     expect(lift.hidden).toBe(false);
@@ -126,15 +127,14 @@ describe('courierPose: docks', () => {
     expect(lift.rotation).toBeCloseTo(0, 1);
     // A third into the travel the mark has dropped further (share of its way down) than it has
     // moved sideways.
-    const services = holdsOf()[1]!;
-    const to = at(services.start);
-    const p = at(services.start * 0.3);
+    const to = at(services!.start);
+    const p = at(services!.start * 0.3);
     const down = (p.y - lift.y) / (to.y - lift.y);
     const across = (p.x - lift.x) / (to.x - lift.x);
     expect(down).toBeGreaterThan(across);
     // No breath while it leaves the logo; it comes in on the way to D2.
-    expect(idleAmount(at(1))).toBeLessThan(0.01);
-    expect(idleAmount(at(services.start * 0.9))).toBeGreaterThan(0.5);
+    expect(idleAmount(lift)).toBeLessThan(0.01);
+    expect(idleAmount(at(services!.start * 0.9))).toBeGreaterThan(0.5);
   });
 
   it('J4 the footer dock hands the mark to the playground: hidden once the courier is home', () => {

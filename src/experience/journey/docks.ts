@@ -113,9 +113,14 @@ export function measureDocks(root: ParentNode = document): Dock[] {
  * The header logo's mark (journey D1) and the header's own controls: the header sticks at the top
  * at every scroll, so each box is pinned over the whole scroll range (its viewport top never
  * changes; pose.ts viewportTop). The controls keep the lane out of the header off the nav (the
- * page's obstacles skip the header). No logo with a dock (another page): no dock.
+ * page's obstacles skip the header). No logo with a dock (another page): no dock. Under 1024 px
+ * neither: there the hero's cards span the screen under the header, so no lane leads out of the
+ * logo without crossing text; the logo keeps its mark and the courier starts at D2.
  */
+const HEADER_DOCK_MIN_WIDTH = 1024;
 export function measureHeader(): { dock: Dock | null; obstacles: Box[] } {
+  if (document.documentElement.clientWidth < HEADER_DOCK_MIN_WIDTH)
+    return { dock: null, obstacles: [] };
   const header = document.querySelector('header');
   const mark = header?.querySelector('[data-dock="header"]');
   if (!header || !mark || mark.getClientRects().length === 0) return { dock: null, obstacles: [] };

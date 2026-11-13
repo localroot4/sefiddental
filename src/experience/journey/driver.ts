@@ -311,7 +311,8 @@ export function createJourney(opts: {
     // Each mark is away while the courier carries it: the footer's until it lands there, the
     // logo's from the moment it lifts out of the header. Without a courier (NO_POSE) both show.
     const nextAway = !(pose.hidden && pose.dock !== 'header');
-    const nextLogoAway = !(pose.hidden && pose.dock !== 'footer');
+    // Only where the logo is a dock (from 1024 px, docks.ts measureHeader): else it keeps its mark.
+    const nextLogoAway = docks[0]?.id === 'header' && !(pose.hidden && pose.dock !== 'footer');
     if (logoMark && nextLogoAway !== logoAway) {
       logoMark.toggleAttribute(AWAY_ATTR, nextLogoAway);
       logoAway = nextLogoAway;

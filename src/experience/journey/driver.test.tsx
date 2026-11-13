@@ -207,6 +207,48 @@ describe('journey driver', () => {
     journey.destroy();
   });
 
+  it('DR17 the header logo (D1 from 1024 px): its mark is away only while the courier is out of it; the footer part keeps its own state; under 1024 px the logo keeps its mark', () => {
+    const header = document.createElement('header');
+    header.innerHTML = '<a href="/"><svg><svg data-dock="header"></svg></svg></a>';
+    document.body.prepend(header);
+    const mark = header.querySelector('[data-dock="header"]')!;
+    place(mark, 20, 24, 1290, 19);
+    const width = (w: number) =>
+      Object.defineProperty(document.documentElement, 'clientWidth', {
+        configurable: true,
+        value: w,
+      });
+    const part = document.querySelector('[data-dock="footer"]')!;
+    width(1440);
+    const { journey } = start();
+    // At the top the courier is home in the logo: both marks in place (the footer's away).
+    expect(journey.pose()).toMatchObject({ dock: 'header', hidden: true });
+    expect(mark.hasAttribute(AWAY_ATTR)).toBe(false);
+    expect(part.hasAttribute(AWAY_ATTR)).toBe(true);
+    // Out of the logo: the logo's mark is away.
+    layout(400);
+    journey.measure();
+    expect(journey.pose().hidden).toBe(false);
+    expect(mark.hasAttribute(AWAY_ATTR)).toBe(true);
+    // Home in the footer: the footer part has it, the logo still not.
+    layout(DOC_H - VIEW_H);
+    journey.measure();
+    expect(journey.pose()).toMatchObject({ dock: 'footer', hidden: true });
+    expect(part.hasAttribute(AWAY_ATTR)).toBe(false);
+    expect(mark.hasAttribute(AWAY_ATTR)).toBe(true);
+    journey.destroy();
+    expect(mark.hasAttribute(AWAY_ATTR)).toBe(false);
+    // Under 1024 px the logo is no dock: its mark never steps aside.
+    width(1023);
+    layout(0);
+    const narrow = start();
+    layout(400);
+    narrow.journey.measure();
+    expect(narrow.journey.pose().hidden).toBe(false);
+    expect(mark.hasAttribute(AWAY_ATTR)).toBe(false);
+    narrow.journey.destroy();
+  });
+
   it('DR4 the smile photo follows the pose; the WebGL courier takes over and hands back at the same pose', () => {
     const { journey, last } = start(2);
     layout(DOC_H - VIEW_H - 400);

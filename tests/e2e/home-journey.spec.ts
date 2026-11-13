@@ -131,7 +131,7 @@ test.describe('desktop, WebGL courier', () => {
   }) => {
     const holds = await open(page, 'tier=2');
     expect(holds.map((h) => h.id)).toEqual([
-      'hero',
+      'header',
       'services',
       'restoration',
       'workflow',
@@ -141,15 +141,32 @@ test.describe('desktop, WebGL courier', () => {
       'footer',
     ]);
     // The WebGL courier takes over once its canvas draws.
-    await scrollToY(page, (holds[0]!.start + holds[0]!.end) / 2);
+    await scrollToY(page, (holds[1]!.start + holds[1]!.end) / 2);
     await expect.poll(() => probe<boolean>(page, 'webgl'), { timeout: 60_000 }).toBe(true);
+    // D1 is the header logo's mark: the logo has it while the hero scrolls by; one pixel past its
+    // hold the courier is on it, above the header, and the logo's mark is away.
+    const logoMark = page.locator('header [data-dock="header"]');
+    for (const y of [0, holds[0]!.end]) {
+      await scrollToY(page, y);
+      expect((await probe<Pose>(page, 'pose')).hidden, 'the header logo has the mark').toBe(true);
+      await expect(logoMark).not.toHaveAttribute('data-courier-away');
+    }
+    await scrollToY(page, holds[0]!.end + 1);
+    const lifted = await probe<Pose>(page, 'pose');
+    const mark = (await logoMark.boundingBox())!;
+    expect(lifted.hidden).toBe(false);
+    expect(Math.abs(lifted.x - (mark.x + mark.width / 2)), 'on the logo mark').toBeLessThan(2);
+    expect(Math.abs(lifted.y - (mark.y + mark.height / 2)), 'on the logo mark').toBeLessThan(2);
+    await expect(logoMark).toHaveAttribute('data-courier-away', '');
+    await expect(page.locator('[data-courier-layer]')).toHaveCSS('z-index', '31');
     for (const stop of stops(holds).filter((s) => s.dock !== null)) {
       await scrollToY(page, stop.y);
       const pose = await probe<Pose>(page, 'pose');
       expect(pose.dock, stop.name).toBe(stop.dock);
-      if (stop.dock !== 'footer') expect(pose.opacity, `${stop.name}: whole at its dock`).toBe(1);
-      if (stop.dock === 'footer') {
-        expect(pose.hidden, 'the playground has the mark').toBe(true);
+      if (stop.dock !== 'footer' && stop.dock !== 'header')
+        expect(pose.opacity, `${stop.name}: whole at its dock`).toBe(1);
+      if (stop.dock === 'footer' || stop.dock === 'header') {
+        expect(pose.hidden, `the ${stop.dock}'s own mark shows`).toBe(true);
         continue;
       }
       if (stop.dock === 'smile') continue;
@@ -171,7 +188,7 @@ test.describe('desktop, WebGL courier', () => {
     page,
   }) => {
     const holds = await open(page, 'tier=2');
-    await scrollToY(page, (holds[0]!.start + holds[0]!.end) / 2);
+    await scrollToY(page, (holds[1]!.start + holds[1]!.end) / 2);
     await expect.poll(() => probe<boolean>(page, 'webgl'), { timeout: 60_000 }).toBe(true);
     for (const stop of stops(holds)) {
       await scrollToY(page, stop.y);
@@ -182,6 +199,7 @@ test.describe('desktop, WebGL courier', () => {
           (svg) => getComputedStyle(svg).visibility !== 'hidden',
         ).length,
         part: getComputedStyle(document.querySelector('[data-playground-part="mark"]')!).visibility,
+        logo: getComputedStyle(document.querySelector('header [data-dock="header"]')!).visibility,
         servicesMark: getComputedStyle(
           document.querySelector('[data-scene="services"] [data-mark]')!,
         ).visibility,
@@ -192,8 +210,10 @@ test.describe('desktop, WebGL courier', () => {
       expect(state.molarArt, `${stop.name}: the stepper's own molar hides`).toBe(0);
       // D2 is the services mark's own box: the courier stands in for it, one mark on screen.
       expect(state.servicesMark, `${stop.name}: the services SVG mark steps aside`).toBe('hidden');
-      // The footer's mark part shows only once the courier is home, never beside it.
-      expect(state.part === 'visible', stop.name).toBe(pose.hidden);
+      // The footer's mark part and the header logo's mark show only while the courier is home in
+      // them, never beside it.
+      expect(state.part === 'visible', stop.name).toBe(pose.hidden && pose.dock === 'footer');
+      expect(state.logo === 'visible', stop.name).toBe(pose.hidden && pose.dock === 'header');
     }
   });
 
@@ -383,11 +403,12 @@ test.describe('phone, DOM courier', () => {
         three.push(response.url());
     });
     const holds = await open(page, 'tier=1');
-    // D1 is in the hero's 4:5 photo band whenever the hero shows one (a real photo, or the
-    // client preview); without the band there is no box for it.
-    const band = await page.locator('[data-hero-photo]').isVisible();
+    // Under 1024 px the header logo keeps its mark (docks.ts measureHeader): the courier starts at
+    // D2, and the logo's mark never steps aside.
+    await expect(page.locator('header [data-dock="header"]')).not.toHaveAttribute(
+      'data-courier-away',
+    );
     expect(holds.map((h) => h.id)).toEqual([
-      ...(band ? ['hero'] : []),
       'services',
       'restoration',
       'smile',
@@ -546,12 +567,11 @@ test.describe('tablet, DOM courier', () => {
     test.setTimeout(180_000);
   });
 
-  test('T-JN11 tablet portrait: the courier docks at all eight stations, clear of text', async ({
+  test('T-JN11 tablet portrait: the courier docks at all seven stations after the header (the logo keeps its mark under 1024 px), clear of text', async ({
     page,
   }) => {
     const holds = await open(page, 'tier=1');
     expect(holds.map((h) => h.id)).toEqual([
-      'hero',
       'services',
       'restoration',
       'workflow',

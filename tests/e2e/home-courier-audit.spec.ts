@@ -63,7 +63,8 @@ function check(): Omit<Sample, 'y'> | null {
   const problems: string[] = [];
   if (p.opacity < 0.95) problems.push(`opacity ${p.opacity.toFixed(2)}`);
   const docked = p.dock !== null;
-  const skip = `[aria-hidden="true"], [data-dev-overlay], [data-courier-layer]${docked ? ', header, [data-sticky-bar]' : ''}`;
+  // The header logo's link is the courier's own home (D1): it lifts out of the logo inside it.
+  const skip = `[aria-hidden="true"], [data-dev-overlay], [data-courier-layer], header a:has([data-dock="header"])${docked ? ', header, [data-sticky-bar]' : ''}`;
   const shown = (el: Element): boolean =>
     el.closest(skip) === null &&
     getComputedStyle(el).visibility !== 'hidden' &&

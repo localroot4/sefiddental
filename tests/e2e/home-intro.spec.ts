@@ -514,19 +514,12 @@ type HandoffFrame = {
   frame: number | null;
   state: 'hole' | 'glide' | null;
   mode: 'glide' | 'fade' | null;
-};
-
-/** The driver's glide clock (driver.ts): frame time, at most a 30 fps frame each (ms). */
-const glideClock = (frames: HandoffFrame[], from: number) => {
-  const clock = [0];
-  for (let i = from + 1; i < frames.length; i += 1) {
-    clock.push(clock.at(-1)! + Math.min(frames[i]!.t - frames[i - 1]!.t, 1000 / 30));
-  }
-  return (ms: number) => from + clock.findIndex((c) => c >= ms);
+  /** The header logo's mark is away (the courier carries it). */
+  logoAway: boolean | null;
 };
 
 for (const tier of [1, 2] as const) {
-  test(`T-IN12 ?tier=${tier}: the courier is born in the intro mark's hole; it glides to D1 only where no frame of the glide touches text or a card (never on a phone), else its mark fades out in the hole with the intro and it shows on its pose`, async ({
+  test(`T-IN12 ?tier=${tier}: the intro hands the mark to the header logo (D1): through the intro and after it, at the top, the courier stays home there, hidden and never raised, and the logo shows its mark`, async ({
     page,
   }, testInfo) => {
     if (tier === 1) only(testInfo, 'phone-light', 'tablet-light', 'desktop-light');
@@ -578,6 +571,10 @@ for (const tier of [1, 2] as const) {
               : null,
             state: j.handoff(),
             mode: j.handoffMode(),
+            logoAway:
+              document
+                .querySelector('header [data-dock="header"]')
+                ?.hasAttribute('data-courier-away') ?? null,
           });
           if (frames.at(-1)!.intro === 'done') {
             liftAt ??= frames.at(-1)!.t;
@@ -602,69 +599,23 @@ for (const tier of [1, 2] as const) {
     const frames = await page.evaluate(
       () => (window as unknown as { __handoff: HandoffFrame[] }).__handoff,
     );
-    const phone = testInfo.project.name.startsWith('phone');
-    const born = frames.filter((f) => f.intro === 'playing' && f.hole !== null);
     const lift = frames.findIndex((f) => f.intro === 'done');
     expect(lift, 'frames after the lift').toBeGreaterThan(-1);
-    if (born.length === 0) {
-      // The journey came after the intro: a glide where it keeps clear (never on a phone), or
-      // no hand-off at all, the courier on its own layer from its first frame.
-      const late = frames[0]!.state === 'glide';
-      testInfo.annotations.push({ type: 'hand-off', description: late ? 'late glide' : 'none' });
-      if (!late) {
-        expect(frames.every((f) => !f.lead && f.z === '1' && f.off < 0.5)).toBe(true);
-        return;
-      }
-      expect(phone, 'no glide on a phone').toBe(false);
-    } else {
-      // Born while the overlay is up: the courier's mark (92 % of its box) fills the hole
-      // exactly, above the cards.
-      for (const f of born) {
-        expect(f.courier.shown, 'shown in the hole').toBe(true);
-        expect(Math.abs(f.courier.x - f.hole!.x), 'x on the hole').toBeLessThan(1);
-        expect(Math.abs(f.courier.y - f.hole!.y), 'y on the hole').toBeLessThan(1);
-        expect(Math.abs(f.courier.h * 0.92 - f.hole!.h), 'the mark fills the hole').toBeLessThan(
-          1.5,
-        );
-        expect(f.lead, 'above everything').toBe(true);
-        expect(Number(f.z), 'above the cards (z 2)').toBeGreaterThan(2);
-      }
-    }
-    const mode = frames[lift]!.mode;
-    testInfo.annotations.push({ type: 'hand-off', description: mode ?? 'none' });
-    if (phone) expect(mode, 'a phone never glides').toBe('fade');
-    if (mode === 'fade') {
-      // The mark fades out in the hole with the frame's own fade, frame for frame (on the
-      // frame's clock even when the journey came up while the frame was already opening).
-      const opening = born.filter((f) => f.opening && f.state === 'hole' && f.mode === 'fade');
-      expect(opening.length, 'frames while the frame opens').toBeGreaterThan(0);
-      for (const f of opening) {
-        expect(Math.abs(f.layer - f.frame!), 'faded with the intro').toBeLessThan(0.12);
-      }
-      // Then, from the first frame after the lift, it is on its pose and its own layer, whole: no
-      // glide.
-      for (const f of frames.slice(lift)) {
-        expect(f.off, 'on its pose').toBeLessThan(0.5);
-        expect(f.lead).toBe(false);
-        expect(f.z).toBe('1');
-        expect(f.layer).toBe(1);
-      }
+    if (testInfo.project.name !== 'desktop-light') {
+      // Under 1024 px the logo is no dock (the hero's cards span the screen): it keeps its mark
+      // all along, and after the intro the courier is on its own layer at its own z.
+      for (const f of frames) expect(f.logoAway, 'the logo keeps its mark').toBe(false);
+      for (const f of frames.slice(lift)) expect(f.z).toBe('1');
       return;
     }
-    // The glide, counted in frames on the driver's own clock (its steps are capped frame times).
-    expect(mode).toBe('glide');
-    const glideStart = born.length > 0 ? lift : 0;
-    const at = glideClock(frames, glideStart);
-    const start = frames[glideStart]!;
-    expect(start.off, 'D1 is away from the hole').toBeGreaterThan(40);
-    expect(frames[at(150)]!.off, 'mid-glide').toBeGreaterThan(1);
-    expect(frames[at(150)]!.off, 'mid-glide').toBeLessThan(start.off);
-    expect(frames[at(750)]!.off, 'landed on D1').toBeLessThan(0.5);
-    const dropped = frames.findIndex((f, i) => i >= glideStart && !f.lead);
-    expect(dropped, 'drops to its layer').toBeGreaterThan(at(500));
-    for (const f of frames.slice(dropped)) {
-      expect(f.lead).toBe(false);
+    // The page is at the top: the courier is home in the header logo from the first frame, so
+    // nothing of it shows in the intro's hole or over the page, and its layer stays at its own z.
+    for (const f of frames) {
+      expect(f.courier.shown, 'the courier is home in the logo').toBe(false);
+      expect(f.lead, 'never raised over the cards').toBe(false);
       expect(f.z).toBe('1');
     }
+    // Once the intro is over the header logo shows its own mark.
+    for (const f of frames.slice(lift)) expect(f.logoAway, 'the logo has its mark').toBe(false);
   });
 }

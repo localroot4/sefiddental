@@ -38,7 +38,7 @@ over the scroll between them.
 
 | # | Dock | Section | Form at the dock | What happens while docked |
 |---|---|---|---|---|
-| D1 | `hero` | The hero photo's floor under the gap between the title card and the form card (from 744 px); under 744 px in the 4:5 photo band under the form | mark | Visible from the first view on the photo, above it and below the cards; slow float and turn, a light across the glaze; the first scroll takes it down from where it is. After the intro (tiers 1 to 3; never under reduced motion or at tier 0) it is born in the intro mark's hole, filling it exactly above the cards. As the frame opens it glides to D1 once the overlay lifts (600 ms on a critically damped spring, frame-timed) only where every frame of the glide keeps its form clear of text, controls and cards; else, and on every phone, its mark fades out in the hole with the intro's own fade and it shows here after the lift (on today's layout every width fades). A journey that comes up to 800 ms after the lift glides from the mark's place where that is clear. The canvas mounts once the hand-off is over |
+| D1 | `header` | The header logo's own mark (from 1024 px; owner, 2026-11-13) | mark | Home in the logo at the top: the logo shows whole and the courier is hidden. Any scroll lifts the mark out of the logo at its own size, above the header (z 31): it drops out of the bar first, then drifts down beside the hero's cards to D2, growing; the header shows only the wordmark until the mark comes home at the top. Under 1024 px the hero's cards span the screen under the header, so no lane leads out of the logo without crossing text: the logo keeps its mark and the courier starts at D2. The intro ends with a calm fade of its veil and lockup (400 ms, no zoom) onto the page and the whole header logo |
 | D2 | `services` | Services stage, above the track | mark | Turns a little per service as the track moves (the SVG icon morph stays the readable part) |
 | D3 | `restoration` | Restoration stage, the molar slot | tooth | The phase 8 restoration rig drives it: the three levels (filling, inlay, crown). The tooth turns its chewing surface to the reader (tier 1 a top view, WebGL a three-quarter view) and plays the level's restoration on it as it comes in and on every chip or pin step: plain, a cavity outline then one composite fill; VIP, a ceramic inlay that comes down turned and seats with a click, then a gloss; CIP, dentine, a translucent enamel layer, the fissures stained by hand and a slow shimmer (restore.ts, the same keyframes at both tiers) |
 | D4 | `workflow` | Workflow diagonal | tooth | The beats on the tooth itself: point cloud, wireframe, solid, lit |
@@ -52,11 +52,11 @@ Docks per width (a dock that is not rendered is skipped):
 | Width | Docks |
 |---|---|
 | From 1024 px | All eight. D4 is the pinned diagonal's strip at tiers 2-3 with pins; otherwise the empty box at the end of the workflow header row |
-| 744-1023 px (tablets in portrait) | All eight: D1 on the hero photo under the cards, D4 the header box, D7 under the hours (closing the stacked column) |
-| Under 744 px (phones) | D1 (in the 4:5 photo band, when the hero has one), D2, D3, D5, D6 (the heading's emblem), D8 |
+| 744-1023 px (tablets in portrait) | All but D1 (the logo keeps its mark): D4 the header box, D7 under the hours (closing the stacked column) |
+| Under 744 px (phones) | D2, D3, D5, D6 (the heading's emblem), D8 |
 
 Travel between docks: a cubic path from one dock's centre to the next, eased
-(`power2.inOut` on the scroll between them), with a small arc toward the page's
+(smoothstep on the scroll between them, at least 60 vh of scroll), with a small arc toward the page's
 middle and a turn of at most 180 degrees. Scale follows the dock size. Speed is
 bounded: a travel spans at least 45 vh of scroll (less where docks stand closer than that).
 

@@ -46,6 +46,10 @@ describe('measureHeader', () => {
         <a id="nav" href="/x">x</a><button id="menu">m</button><a id="gone" href="/y">y</a>
       </header>`;
     scrollTo(2400);
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      value: 1440,
+    });
     place(document.getElementById('logo')!, { top: 12, left: 1200, w: 120, h: 44 });
     place(document.getElementById('mark')!, { top: 16, left: 1290, w: 19, h: 24 });
     place(document.getElementById('nav')!, { top: 14, left: 900, w: 80, h: 44 });
@@ -60,9 +64,25 @@ describe('measureHeader', () => {
     ]);
   });
 
-  it('DK12 no logo with a dock (another page, a hidden header): no D1 and no obstacles', () => {
+  it('DK12 no logo with a dock (another page), or under 1024 px (the hero cards span the screen): no D1 and no obstacles', () => {
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      value: 1440,
+    });
     document.body.innerHTML = `<header><a href="/"><svg></svg></a></header>`;
     expect(measureHeader()).toEqual({ dock: null, obstacles: [] });
+    document.body.innerHTML = `<header><a href="/"><svg><svg id="mark" data-dock="header"></svg></svg></a></header>`;
+    place(document.getElementById('mark')!, { top: 16, left: 300, w: 19, h: 24 });
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      value: 1023,
+    });
+    expect(measureHeader()).toEqual({ dock: null, obstacles: [] });
+    Object.defineProperty(document.documentElement, 'clientWidth', {
+      configurable: true,
+      value: 1024,
+    });
+    expect(measureHeader().dock).not.toBeNull();
   });
 });
 

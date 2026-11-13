@@ -42,8 +42,10 @@ export const INTRO_SCRIPT_SHA256 = '0tNx+ymxQkGkApZU+SDpYkR81K0zFKuZhAiPdVaXOc8=
  * 744 px, .5 from 1280 px), so their offsets are lockup units: the mark at 1.6x around the
  * origin, «سفید» at .9x below it as in prototype 0a. The frame `.i-f` is one evenodd path (a
  * 10 000 unit square minus the mark) in a 1 px `<svg>` whose user unit is 1 px and whose
- * origin is the mark's centre: scaled by transform from 1.6k (the hole exactly under the mark
- * pieces) to 28.8k (the hole past every viewport edge), then faded. `will-change` only on the
+ * origin is the mark's centre, at 1.6k (the hole exactly under the mark pieces). At s3 the frame
+ * fades out over 400 ms while the lockup settles back (scale .9) and fades with it: a calm
+ * reveal of the page and its header logo (owner, 2026-11-13: the 28x zoom was abrupt). The
+ * diamonds fly in from 20 vw / 20 vh on the ease-out token, without an overshoot. `will-change` only on the
  * current stage's parts. `i-fade` has no `from`: every part it hides keeps an underlying
  * opacity of 1, so the diamonds and the word enter through their own delayed animation
  * (`both` holds the first keyframe) instead of a base `opacity: 0` that the fade would start from.
@@ -75,11 +77,11 @@ export const INTRO_CSS =
   '.i-sl,.i-sr{fill:var(--color-brand-logo);opacity:0}' +
   '.i-w{left:-365.49px;top:274.65px;width:345.89px;height:154.97px;fill:currentColor;animation:i-in .4s var(--ease-in-out) .5s both;will-change:transform,opacity}' +
   '.i-b{left:-19.6px;top:288.37px;width:385.47px;height:127.53px;fill:currentColor;transform-origin:100% 50%;transform:scaleX(var(--intro-p,0));transition:transform .12s linear;will-change:transform}' +
-  '.i-d{fill:currentColor;animation:i-fly .5s cubic-bezier(.34,1.4,.64,1) both;will-change:transform}' +
-  '.i-d1{left:-227.32px;top:437.77px;width:26.37px;height:26.46px;--x:calc(-60vw/var(--k));--y:0px}' +
-  '.i-d2{left:-199.78px;top:437.77px;width:26.55px;height:26.46px;--x:0px;--y:calc(60vh/var(--k));animation-delay:40ms}' +
-  '.i-d3{left:-110.14px;top:338.23px;width:27.81px;height:27.9px;--x:calc(60vw/var(--k));--y:0px;animation-delay:80ms}' +
-  '.i-d4{left:-109.33px;top:226.63px;width:26.1px;height:26.37px;--x:0px;--y:calc(-60vh/var(--k));animation-delay:120ms}' +
+  '.i-d{fill:currentColor;animation:i-fly .5s var(--ease-out) both;will-change:transform}' +
+  '.i-d1{left:-227.32px;top:437.77px;width:26.37px;height:26.46px;--x:calc(-20vw/var(--k));--y:0px}' +
+  '.i-d2{left:-199.78px;top:437.77px;width:26.55px;height:26.46px;--x:0px;--y:calc(20vh/var(--k));animation-delay:40ms}' +
+  '.i-d3{left:-110.14px;top:338.23px;width:27.81px;height:27.9px;--x:calc(20vw/var(--k));--y:0px;animation-delay:80ms}' +
+  '.i-d4{left:-109.33px;top:226.63px;width:26.1px;height:26.37px;--x:0px;--y:calc(-20vh/var(--k));animation-delay:120ms}' +
   '@keyframes i-fly{from{transform:translate(var(--x),var(--y));opacity:0}30%{opacity:1}to{transform:none;opacity:1}}' +
   '.i-skip{position:absolute;left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);min-width:44px;min-height:44px;padding:0 16px;border:1px solid transparent;border-radius:var(--radius-pill);background:none;color:var(--color-ink-muted);font:inherit;font-size:var(--text-small);cursor:pointer}' +
   '.i-skip:hover{color:var(--color-brand-strong);border-color:var(--color-line)}' +
@@ -90,11 +92,9 @@ export const INTRO_CSS =
   '@keyframes i-r{from{transform:translateX(18px);opacity:0}to{transform:none;opacity:1}}' +
   '@keyframes i-in{from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1}}' +
   '@keyframes i-fade{to{opacity:0}}' +
-  '#intro.s3 .i-f{animation:i-grow .4s cubic-bezier(.6,0,.9,.4) both,i-fade .15s linear .25s both}' +
+  '#intro.s3 .i-f{animation:i-fade .4s linear both}' +
   '#intro.s3 .i-m{animation:none;opacity:0}' +
-  '#intro.s3 :is(.i-sl,.i-sr){animation:i-piece .4s cubic-bezier(.6,0,.9,.4) both;will-change:transform,opacity}' +
-  '#intro.s3 :is(.i-w,.i-b,.i-d){animation:i-fade .2s linear both;will-change:opacity}' +
-  '#intro.s3 .i-skip{animation:i-fade .15s linear .25s both}' +
-  '@keyframes i-grow{from{transform:scale(calc(1.6*var(--k)))}to{transform:scale(calc(28.8*var(--k)))}}' +
-  '@keyframes i-piece{from{transform:none;opacity:1}40%{opacity:0}to{transform:scale(18);opacity:0}}' +
+  '#intro.s3 :is(.i-sl,.i-sr,.i-w,.i-b,.i-d){animation:i-out .4s var(--ease-in-out) both;will-change:transform,opacity}' +
+  '#intro.s3 .i-skip{animation:i-fade .4s linear both}' +
+  '@keyframes i-out{to{transform:scale(.9);opacity:0}}' +
   'html[data-intro=playing] #intro{animation:i-fade 0s 1400ms forwards}';

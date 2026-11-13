@@ -439,7 +439,7 @@
    phone): its mark fades out in the intro's hole with the frame's own fade (introScript.ts INTRO_CSS,
    `#intro.s3 .i-f`: i-fade .15s linear .25s), and it shows on its pose after the lift. */
 [data-courier-hole-out] {
-  animation: courier-hole-out 0.15s linear 0.25s both;
+  animation: courier-hole-out 0.4s linear both;
 }
 @keyframes courier-hole-out {
   to {
