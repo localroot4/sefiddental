@@ -11,8 +11,8 @@ import { gsap } from 'gsap';
 
 import { phoneMotion } from './phone';
 
-/** `--dur-3` (320 ms), the reveal token; the engine never runs under reduced motion. */
-const DURATION_S = 0.32;
+/** A calm reveal (owner, 2026-11-13: no snap); the engine never runs under reduced motion. */
+const DURATION_S = 0.56;
 const STAGGER_S = 0.06;
 
 export function reveal(
@@ -31,7 +31,7 @@ export function reveal(
     y: 16,
     opacity: 0,
     duration: DURATION_S,
-    ease: 'expo.out',
+    ease: 'power2.out',
     stagger: STAGGER_S,
     scrollTrigger: { trigger, start: 'top 80%', once: true },
   });

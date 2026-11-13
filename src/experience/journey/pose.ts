@@ -109,7 +109,7 @@ export interface Pose {
 }
 
 /** A travel spans at least this share of the viewport height in scroll. */
-export const MIN_TRAVEL_VH = 0.45;
+export const MIN_TRAVEL_VH = 0.6;
 /**
  * An unpinned dock holds while its centre is within this share of the viewport's middle; the
  * smile station holds longer, for the seat, the pull-back and the dissolve.
@@ -179,9 +179,6 @@ const clamp01 = (t: number): number => (t <= 0 ? 0 : t >= 1 ? 1 : t);
 const mix = (a: number, b: number, t: number): number => a + (b - a) * t;
 const span = (t: number, [a, b]: readonly [number, number]): number => clamp01((t - a) / (b - a));
 export const smoothstep = (t: number): number => t * t * (3 - 2 * t);
-/** gsap power2.inOut. */
-export const easeInOut = (t: number): number =>
-  t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
 /** gsap bounce.out. */
 export function bounceOut(t: number): number {
   const n = 7.5625;
@@ -472,7 +469,8 @@ function placePose(
   const b = holds[next]!;
   const t = clamp01((y - a.end) / (b.start - a.end));
   const path = travelPath(a, b, viewport);
-  const e = easeInOut(t);
+  // Smoothstep, not power2: a peak 1.5 times the average speed instead of 2 (owner: calmer moves).
+  const e = smoothstep(t);
   const formA = FORM.get(a.dock.id) ?? 'mark';
   const formB = FORM.get(b.dock.id) ?? 'mark';
   let rotation = mix(path.from.rotation, path.to.rotation, e);
@@ -552,7 +550,7 @@ function travelPath(a: Hold, b: Hold, viewport: Viewport): Path {
       const ty = mix(end.y, to.y, reach) - (footer ? FOOTER_DROP_PX : 0);
       // Into the footer the path ends 40 px above the box, and the rest is the drop.
       const pathT = footer ? clamp01((y - a.end) / Math.max(1e-6, length - drop)) : t;
-      const e = easeInOut(pathT);
+      const e = smoothstep(pathT);
       const u = 1 - e;
       // The control points move with the ends.
       let x =

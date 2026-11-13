@@ -71,7 +71,7 @@ export function RestorationSection(props: {
       family="D"
       copy={props.copy}
       split
-      pin={1}
+      pin={2}
     >
       <div data-choices="" className="group/tiers grid gap-6">
         {/* The molar beside the steps, except in the split's content column from 1024 to 1279 px,

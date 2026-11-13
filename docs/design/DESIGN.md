@@ -362,7 +362,8 @@ per section 4. Numbers formatted with `Intl.NumberFormat('fa-IR')`.
 
 Durations `--dur-1` 120 ms (micro), `--dur-2` 200 ms (UI), `--dur-3` 320 ms
 (reveals), `--dur-4` 600 ms (choreography), `--dur-5` 1250 ms (the intro only, hard cap 1400 ms); easings `--ease-out`
-`cubic-bezier(0.16, 1, 0.3, 1)` and `--ease-in-out`
+`cubic-bezier(0.33, 1, 0.68, 1)` (ease-out cubic; the expo-like `0.16, 1, 0.3, 1` snapped, owner
+2026-11-13) and `--ease-in-out`
 `cubic-bezier(0.65, 0, 0.35, 1)`; all durations become 0 under reduced
 motion (the token file does this). Rules: motivated only; transform and
 opacity only in the DOM; no scroll event listeners; pinned sections only at

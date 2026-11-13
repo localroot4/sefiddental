@@ -16,7 +16,7 @@ import type { DomScene } from '../types';
 /** Dispatched on `document` by `bookingRoute.ts` with `detail.target` (the engine's event name). */
 const SCROLL_TO = 'sefid:scroll-to';
 /** `--dur-4`, in seconds. */
-const RISE_S = 0.6;
+const RISE_S = 0.7;
 /** The card enters once its top crosses this line of the viewport. */
 const ENTER = 'top 85%';
 const PHONE_MAX_PX = 743;
@@ -36,7 +36,7 @@ const scene: DomScene = {
     const rise = gsap.fromTo(
       card,
       { y: riseDistance(window.innerWidth), opacity: 0 },
-      { y: 0, opacity: 1, duration: RISE_S, ease: 'expo.out', paused: true },
+      { y: 0, opacity: 1, duration: RISE_S, ease: 'power2.out', paused: true },
     );
     const trigger = ScrollTrigger.create({
       trigger: card,

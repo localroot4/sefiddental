@@ -9,7 +9,7 @@
 import { viewportTop, type Box, type Pose } from './pose';
 
 /** The spring's angular frequency (1/s): about 0.3 s to settle, critically damped. */
-const OMEGA = 24;
+const OMEGA = 16;
 /** Under this distance (px) and speed (px/s) the shown place is the pose. */
 const REST_PX = 0.05;
 const REST_SPEED = 1;

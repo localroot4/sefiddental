@@ -551,7 +551,7 @@ export function createScrollEngine(opts: {
         // No `stopInertiaOnNavigate`: its click listener resets the scroll on any link to another
         // path, which kills the engine's own scroll for the in-page booking routes (every CTA
         // links to /رزرو-نوبت); a link that does navigate unloads the document anyway.
-        const instance = new Lenis({ autoRaf: false, anchors: true });
+        const instance = new Lenis({ autoRaf: false, anchors: true, lerp: 0.075 });
         // Lenis 1.3.26 rewrites html's class list at every scroll start and stop
         // (`lenis-scrolling`, `lenis-smooth`); each rewrite forces a full style recalculation of
         // the page on the next layout read, 60 to 110 ms at 4x on home (the 83 ms hero frame of
