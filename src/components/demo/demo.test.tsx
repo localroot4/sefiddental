@@ -169,7 +169,6 @@ describe('demo content of the client preview (DEMO_CONTENT)', () => {
     expect(photos).toEqual([
       'dentist-1',
       'dentist-2',
-      'dentist-3',
       'voice-1',
       'voice-2',
       'voice-3',

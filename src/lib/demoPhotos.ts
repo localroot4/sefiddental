@@ -1,5 +1,5 @@
 /*
- * Stock photos of the client preview (DEMO_CONTENT, src/lib/env.ts, refused on the live site):
+ * Photos of the client preview (the clinic's own since 2026-11-13, scripts/clinic-photos.mjs) (DEMO_CONTENT, src/lib/env.ts, refused on the live site):
  * free Pexels photos in the photo slots, so the client sees the site with photos before the clinic
  * sends its own (shot list, docs/content/gaps.md rows 36, 44, 45, 48, 52). Each file is
  * self-hosted under /demo-photos (CSP img-src 'self'); public/demo-photos/CREDITS.md names the
@@ -33,66 +33,65 @@ export const DEMO_KINDS = {
 export const DEMO_PHOTOS = {
   'services-hub': {
     kind: 'frame',
-    alt: 'اتاق درمان دندانپزشکی با دو یونیت آبی و سفید در نور روز؛ عکس نمایشی',
+    alt: 'اتاق درمان کلینیک سفید با یونیت و نور روز از پنجره؛ عکس نمایشی',
   },
   cosmetic: {
     kind: 'frame',
-    alt: 'راهنمای رنگ دندان‌های سرامیکی روی میز سفید؛ عکس نمایشی',
+    alt: 'معاینهٔ دندان بیمار با آینه و سوند در کلینیک؛ عکس نمایشی',
   },
   'surgery-replacement': {
     kind: 'frame',
-    alt: 'ابزار استریل دندانپزشکی روی پارچهٔ آبی کنار دستگاه استریل؛ عکس نمایشی',
+    alt: 'قطعه‌های رنگی کیت ایمپلنت در نور آبی از نزدیک؛ عکس نمایشی',
   },
   restorative: {
     kind: 'frame',
-    alt: 'یونیت دندانپزشکی سفید و سرمه‌ای در اتاقی روشن؛ عکس نمایشی',
+    alt: 'سخت کردن ترمیم با نور آبی پشت محافظ نارنجی؛ عکس نمایشی',
   },
   orthodontics: {
     kind: 'frame',
-    alt: 'دست‌های دستکش‌پوش با مدل دندان و براکت ارتودنسی؛ عکس نمایشی',
+    alt: 'دندان‌های با براکت ارتودنسی و آینهٔ دندانپزشکی از نزدیک؛ عکس نمایشی',
   },
   pediatric: {
     kind: 'frame',
-    alt: 'مدل‌های آموزشی دندان و فک روی میز؛ عکس نمایشی',
+    alt: 'میز کار کلینیک با اسباب‌بازی‌ها و مدل دندان برای کودکان؛ عکس نمایشی',
   },
   about: {
     kind: 'frame',
-    alt: 'سالن انتظار روشن و خالی با صندلی‌های آبی؛ عکس نمایشی',
+    alt: 'سالن انتظار کلینیک با نیمکت چوبی و گلدان‌های سبز؛ عکس نمایشی',
   },
   'guide-hub': {
     kind: 'frame',
-    alt: 'دندانپزشک با دستکش آبی روی مدل دندان توضیح می‌دهد؛ عکس نمایشی',
+    alt: 'دندانپزشک کلینیک کنار صفحهٔ رایانه در حال درمان بیمار؛ عکس نمایشی',
   },
   'dentists-hub': {
     kind: 'frame',
-    alt: 'دندانپزشک با ماسک و عینک بزرگ‌نما در حال معاینه؛ عکس نمایشی',
+    alt: 'دندانپزشک کلینیک با روپوش آبی در حال درمان بیمار؛ عکس نمایشی',
   },
   'workflow-scan': {
     kind: 'card',
-    alt: 'تصویر سه‌بعدی فک و دندان روی صفحهٔ رایانه؛ عکس نمایشی',
+    alt: 'دندانپزشک در کنار تصویر سه‌بعدی دندان روی صفحه؛ عکس نمایشی',
   },
   'workflow-design': {
     kind: 'card',
-    alt: 'طراحی دیجیتال قوس دندان روی صفحهٔ رایانه در لابراتوار؛ عکس نمایشی',
+    alt: 'بررسی رادیوگرافی دندان روی صفحهٔ رایانه؛ عکس نمایشی',
   },
   'workflow-make': {
     kind: 'card',
-    alt: 'دست‌های دستکش‌پوش تکنسین در حال ساخت روکش دندان؛ عکس نمایشی',
+    alt: 'قطعه‌های کیت ایمپلنت آمادهٔ کار؛ عکس نمایشی',
   },
   'workflow-smile': {
     kind: 'card',
-    alt: 'لبخند زنی از نزدیک در نور روز؛ عکس نمایشی',
+    alt: 'لبخند بیمار روی یونیت پس از معاینه؛ عکس نمایشی',
   },
   'shade-guide': {
     kind: 'card',
-    alt: 'ردیف دندان‌های سرامیکی راهنمای رنگ از نزدیک؛ عکس نمایشی',
+    alt: 'سینی ابزار استریل دندانپزشکی از نزدیک؛ عکس نمایشی',
   },
-  'dentist-1': { kind: 'portrait', alt: 'پرترهٔ زنی با روپوش سفید؛ عکس نمایشی' },
-  'dentist-2': { kind: 'portrait', alt: 'پرترهٔ زنی با روپوش سفید و پوشه؛ عکس نمایشی' },
-  'dentist-3': { kind: 'portrait', alt: 'پرترهٔ مردی با روپوش سفید؛ عکس نمایشی' },
-  'voice-1': { kind: 'portrait', alt: 'لبخند زنی جوان از نزدیک؛ عکس نمایشی' },
-  'voice-2': { kind: 'portrait', alt: 'لبخند زنی در نور آفتاب از نزدیک؛ عکس نمایشی' },
-  'voice-3': { kind: 'portrait', alt: 'لبخند مردی جوان با ریش کوتاه از نزدیک؛ عکس نمایشی' },
+  'dentist-1': { kind: 'portrait', alt: 'پرترهٔ دندانپزشک کلینیک با روپوش آبی؛ عکس نمایشی' },
+  'dentist-2': { kind: 'portrait', alt: 'پرترهٔ دندانپزشک کلینیک با روپوش سبز و لوپ؛ عکس نمایشی' },
+  'voice-1': { kind: 'portrait', alt: 'لبخند بیمار با براکت ارتودنسی از نزدیک؛ عکس نمایشی' },
+  'voice-2': { kind: 'portrait', alt: 'معاینهٔ دندان بیمار با آینه از نزدیک؛ عکس نمایشی' },
+  'voice-3': { kind: 'portrait', alt: 'بیمار پشت محافظ نارنجی نور ترمیم؛ عکس نمایشی' },
 } as const satisfies Record<string, { kind: keyof typeof DEMO_KINDS; alt: string }>;
 
 export type DemoPhotoKey = keyof typeof DEMO_PHOTOS;
@@ -110,7 +109,7 @@ export const DEMO_CATEGORY_PHOTOS: Partial<Record<string, DemoPhotoKey>> = {
 export const DEMO_HERO = {
   wide: [1280, 1600, 1920, 2560],
   tall: [640, 828, 1080],
-  alt: 'اتاق درمان دندانپزشکی خالی و مرتب با یونیت تیره و نور روز از پنجره؛ عکس نمایشی',
+  alt: 'دندانپزشک کلینیک سفید در حال درمان بیمار کنار صفحهٔ رایانه؛ عکس نمایشی',
 } as const;
 
 /** A file's URL: the 3:2 crop at `width`, or the 4:5 crop (`tall`). */
