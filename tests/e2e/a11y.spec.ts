@@ -312,8 +312,11 @@ async function revealsAtRest(page: Page): Promise<void> {
 
 for (const tier of HOME_SCAN_TIERS) {
   test(`T-A11Y home at ?tier=${tier}, at load and after a full scroll`, async ({ page }) => {
-    // Two scans of a page that the arch band (D5) made 1.2 screens longer.
-    test.setTimeout(90_000);
+    // Two scans of a page that the arch band (D5) made 1.2 screens longer. With the WebGL world
+    // (tiers 2 and 3) a tablet took 72 s and 90 s before the calmer reveals (560 ms, 2026-11-13;
+    // measured on 2 cores at 4d8d49d), then 90 s and 102 s after (CI run 151 timed out): its time, not
+    // its checks, grew.
+    test.setTimeout(tier >= 2 ? 150_000 : 90_000);
     await openHome(page, tier);
     await expectAccessible(page, { offscreenReveals: tier > 0 });
     // Down the page most of a viewport at a time, so every reveal and pinned scene runs.
