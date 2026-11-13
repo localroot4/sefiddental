@@ -437,7 +437,7 @@
 
 /* The intro hand-off where the courier cannot glide clear of the text and the cards (and on every
    phone): its mark fades out in the intro's hole with the frame's own fade (introScript.ts INTRO_CSS,
-   `#intro.s3 .i-f`: i-fade .15s linear .25s), and it shows on its pose after the lift. */
+   `#intro.s3 .i-f`: i-fade .4s linear), and it shows on its pose after the lift. */
 [data-courier-hole-out] {
   animation: courier-hole-out 0.4s linear both;
 }

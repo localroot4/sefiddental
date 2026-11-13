@@ -195,8 +195,9 @@ export default function JourneyLayer(props: {
       // WebGL canvas draws the same courier.
       const z = overHeader ? HEADER_Z : lead ? LEAD_Z : COURIER_Z;
       layer.current?.toggleAttribute('data-courier-lead', lead);
-      if (z !== led) {
-        led = z;
+      // Again when WebGL takes over: the canvas layer may have mounted since (CanvasRoot sets z 1).
+      if (`${z}|${webgl}` !== led) {
+        led = `${z}|${webgl}`;
         layer.current?.style.setProperty('z-index', z);
         document
           .querySelector<HTMLElement>('[data-experience-layer]')
@@ -373,6 +374,9 @@ export default function JourneyLayer(props: {
       if (debug) delete probe.__sefidJourney;
       onJourney(null);
       journey.destroy();
+      document
+        .querySelector<HTMLElement>('[data-experience-layer]')
+        ?.style.setProperty('z-index', COURIER_Z);
     };
   }, [root, engine, tier, debug, onJourney]);
 

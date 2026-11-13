@@ -317,8 +317,13 @@ export function createJourney(opts: {
       logoMark.toggleAttribute(AWAY_ATTR, nextLogoAway);
       logoAway = nextLogoAway;
     }
+    // Only on the travel out of the header logo (to D2, either way): any other travel keeps under
+    // the bar, as its lanes do.
     const overHeader =
-      !pose.hidden && shown.y - (shown.scale * FORM_SHARE) / 2 < (viewport.insetTop ?? 0);
+      docks[0]?.id === 'header' &&
+      pose.to === 'services' &&
+      !pose.hidden &&
+      shown.y - (shown.scale * FORM_SHARE) / 2 < (viewport.insetTop ?? 0);
     if (part && nextAway !== away) {
       part.toggleAttribute(AWAY_ATTR, nextAway);
       // Lifting off a part the reader may have thrown: it goes home while it is hidden.

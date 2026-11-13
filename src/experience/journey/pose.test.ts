@@ -170,12 +170,12 @@ describe('courierPose: docks', () => {
 });
 
 describe('courierPose: travel', () => {
-  it('J6 every travel spans at least 45 vh of scroll, and holds never overlap', () => {
+  it('J6 every travel spans at least 60 vh of scroll (the drop into the footer 45 vh), and holds never overlap', () => {
     const holds = holdsOf();
+    expect(MIN_TRAVEL_VH).toBe(0.6);
     for (let i = 1; i < holds.length; i += 1) {
-      expect(holds[i]!.start - holds[i - 1]!.end).toBeGreaterThanOrEqual(
-        MIN_TRAVEL_VH * VIEW.height - 1e-6,
-      );
+      const min = holds[i]!.dock.id === 'footer' ? 0.45 : MIN_TRAVEL_VH;
+      expect(holds[i]!.start - holds[i - 1]!.end).toBeGreaterThanOrEqual(min * VIEW.height - 1e-6);
       expect(holds[i]!.start).toBeGreaterThanOrEqual(
         holds[i]!.dock === holds[i - 1]!.dock ? 0 : holds[i - 1]!.end,
       );

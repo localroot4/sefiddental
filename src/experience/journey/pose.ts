@@ -114,6 +114,8 @@ export interface Pose {
 
 /** A travel spans at least this share of the viewport height in scroll. */
 export const MIN_TRAVEL_VH = 0.6;
+/** The travel into the footer (a 40 px drop at its end) spans at least this share. */
+const FOOTER_TRAVEL_VH = 0.45;
 /**
  * An unpinned dock holds while its centre is within this share of the viewport's middle; the
  * smile station holds longer, for the seat, the pull-back and the dissolve.
@@ -257,6 +259,10 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
       };
     });
   const min = MIN_TRAVEL_VH * viewport.height;
+  // The last travel is a short drop into the footer's lockup: its own minimum, so the reader who
+  // has the footer in view finds the mark home.
+  const minInto = (b: Hold): number =>
+    b.dock.id === 'footer' ? FOOTER_TRAVEL_VH * viewport.height : min;
   // A hold keeps a short stretch of its own, so a station's sequence (the smile) never cuts.
   const keep = MIN_HOLD_VH * viewport.height;
   const room = (h: Hold): number => Math.max(0, h.end - h.start - keep);
@@ -266,7 +272,7 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
     // A hold never starts before the previous one ends (docks out of order line up after it).
     if (b.start < a.start) b.start = a.start;
     if (b.end < b.start + keep) b.end = Math.min(top, b.start + keep);
-    let need = min - (b.start - a.end);
+    let need = minInto(b) - (b.start - a.end);
     if (need <= 0) continue;
     // Half from each side, then the rest from whichever side still has room.
     const giveA = Math.min(need / 2, room(a));

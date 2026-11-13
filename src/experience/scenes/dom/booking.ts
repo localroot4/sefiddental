@@ -15,7 +15,7 @@ import type { DomScene } from '../types';
 
 /** Dispatched on `document` by `bookingRoute.ts` with `detail.target` (the engine's event name). */
 const SCROLL_TO = 'sefid:scroll-to';
-/** `--dur-4`, in seconds. */
+/** A calm rise (owner, 2026-11-13), in seconds. */
 const RISE_S = 0.7;
 /** The card enters once its top crosses this line of the viewport. */
 const ENTER = 'top 85%';

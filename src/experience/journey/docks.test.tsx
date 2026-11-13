@@ -26,6 +26,13 @@ function place(
   });
 }
 
+/** The viewport's width as the CSS breakpoints see it (matchMedia `min-width`). */
+const viewWidth = (w: number) =>
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (q: string) => ({ matches: w >= Number(/min-width:\s*(\d+)px/.exec(q)?.[1] ?? 0) }),
+  });
+
 const scrollTo = (y: number) =>
   Object.defineProperty(window, 'scrollY', { configurable: true, value: y });
 
@@ -44,17 +51,17 @@ describe('measureHeader', () => {
       <header>
         <a id="logo" href="/"><svg><svg id="mark" data-dock="header"></svg></svg></a>
         <a id="nav" href="/x">x</a><button id="menu">m</button><a id="gone" href="/y">y</a>
+        <div popover><a id="mega" href="/z">z</a></div>
       </header>`;
     scrollTo(2400);
-    Object.defineProperty(document.documentElement, 'clientWidth', {
-      configurable: true,
-      value: 1440,
-    });
+    viewWidth(1440);
     place(document.getElementById('logo')!, { top: 12, left: 1200, w: 120, h: 44 });
     place(document.getElementById('mark')!, { top: 16, left: 1290, w: 19, h: 24 });
     place(document.getElementById('nav')!, { top: 14, left: 900, w: 80, h: 44 });
     place(document.getElementById('menu')!, { top: 14, left: 40, w: 44, h: 44 });
     place(document.getElementById('gone')!, { top: 14 }, false);
+    // An open mega-menu's link is no obstacle: it is gone at the next measure.
+    place(document.getElementById('mega')!, { top: 80, left: 600, w: 200, h: 44 });
     const { dock, obstacles } = measureHeader();
     const pin = { start: 0, end: Infinity };
     expect(dock).toEqual({ id: 'header', left: 1290, top: 16, width: 19, height: 24, pin });
@@ -65,23 +72,14 @@ describe('measureHeader', () => {
   });
 
   it('DK12 no logo with a dock (another page), or under 1024 px (the hero cards span the screen): no D1 and no obstacles', () => {
-    Object.defineProperty(document.documentElement, 'clientWidth', {
-      configurable: true,
-      value: 1440,
-    });
+    viewWidth(1440);
     document.body.innerHTML = `<header><a href="/"><svg></svg></a></header>`;
     expect(measureHeader()).toEqual({ dock: null, obstacles: [] });
     document.body.innerHTML = `<header><a href="/"><svg><svg id="mark" data-dock="header"></svg></svg></a></header>`;
     place(document.getElementById('mark')!, { top: 16, left: 300, w: 19, h: 24 });
-    Object.defineProperty(document.documentElement, 'clientWidth', {
-      configurable: true,
-      value: 1023,
-    });
+    viewWidth(1023);
     expect(measureHeader()).toEqual({ dock: null, obstacles: [] });
-    Object.defineProperty(document.documentElement, 'clientWidth', {
-      configurable: true,
-      value: 1024,
-    });
+    viewWidth(1024);
     expect(measureHeader().dock).not.toBeNull();
   });
 });

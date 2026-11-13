@@ -214,9 +214,11 @@ describe('journey driver', () => {
     const mark = header.querySelector('[data-dock="header"]')!;
     place(mark, 20, 24, 1290, 19);
     const width = (w: number) =>
-      Object.defineProperty(document.documentElement, 'clientWidth', {
+      Object.defineProperty(window, 'matchMedia', {
         configurable: true,
-        value: w,
+        value: (q: string) => ({
+          matches: w >= Number(/min-width:\s*(\d+)px/.exec(q)?.[1] ?? 0),
+        }),
       });
     const part = document.querySelector('[data-dock="footer"]')!;
     width(1440);

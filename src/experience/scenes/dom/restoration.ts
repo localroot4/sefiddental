@@ -33,8 +33,8 @@ const RADIOS = 'input[name="home-tier"]';
 const WIDE = '(min-width: 1024px)';
 /** Inactive layer scale (a transform). */
 const SCALE_OUT = 0.94;
-/** Width of one crossfade in pin progress, centred on the third it crosses. */
-const FADE = 0.12;
+/** Width of one crossfade in pin progress, centred on the third it crosses (soft, not a cut). */
+const FADE = 0.2;
 /** How long a user choice owns the chip: longer than any smooth scroll of at most one viewport. */
 export const LOCK_MS = 1500;
 

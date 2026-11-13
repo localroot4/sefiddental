@@ -119,11 +119,12 @@ export function measureDocks(root: ParentNode = document): Dock[] {
  */
 const HEADER_DOCK_MIN_WIDTH = 1024;
 export function measureHeader(): { dock: Dock | null; obstacles: Box[] } {
-  if (document.documentElement.clientWidth < HEADER_DOCK_MIN_WIDTH)
-    return { dock: null, obstacles: [] };
   const header = document.querySelector('header');
   const mark = header?.querySelector('[data-dock="header"]');
   if (!header || !mark || mark.getClientRects().length === 0) return { dock: null, obstacles: [] };
+  // The CSS breakpoint's own test (the viewport with its scrollbar), as the header's layout.
+  if (!window.matchMedia(`(min-width: ${HEADER_DOCK_MIN_WIDTH}px)`).matches)
+    return { dock: null, obstacles: [] };
   const pin = { start: 0, end: Infinity };
   const box = (r: DOMRect): Box => ({
     left: r.left + window.scrollX,
@@ -136,7 +137,10 @@ export function measureHeader(): { dock: Dock | null; obstacles: Box[] } {
   if (!(rect.width > 0 && rect.height > 0)) return { dock: null, obstacles: [] };
   const logo = mark.closest('a');
   const obstacles = Array.from(header.querySelectorAll('a[href], button'))
-    .filter((el) => el !== logo && el.getClientRects().length > 0)
+    // Not an open mega-menu's links: they are gone at the next measure.
+    .filter(
+      (el) => el !== logo && el.closest('[popover]') === null && el.getClientRects().length > 0,
+    )
     .map((el) => box(el.getBoundingClientRect()))
     .filter((b) => b.width > 0 && b.height > 0);
   return { dock: { id: 'header', ...box(rect) }, obstacles };
