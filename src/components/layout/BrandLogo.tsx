@@ -15,7 +15,9 @@ export const LOCKUP_VIEW = `0 0 ${width} ${height}`;
  * The footer logo's size (SiteFooter), shared with the home playground's field, which lays its
  * parts over this logo (PlaygroundSection): one string, so the two boxes never drift apart.
  */
-export const FOOTER_LOGO_CLASS = 'h-[4.5rem] w-auto md:h-[5rem]';
+// By width (72 and 80 px tall at a 16 px root), never wider than its column: at a 200 % root
+// font a height in rem widened the phone page past the screen (T-PH6).
+export const FOOTER_LOGO_CLASS = 'h-auto w-[16.9375rem] max-w-full md:w-[18.8125rem]';
 
 /** The mark's box in the logo's own coordinates (the lockup's mark less the viewBox origin). */
 const MARK = { x: 876.6, y: 43.9, width: 168, height: 207.3 };
