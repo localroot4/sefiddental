@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { createFollow, GLIDE_S, glide, glideClear } from './motion';
-import { NO_POSE, type Pose } from './pose';
+import { createFollow, createTurn, GLIDE_S, glide, glideClear, WHIP_RATE } from './motion';
+import { NO_POSE, whipTurn, type Pose } from './pose';
 
 const pose = (x: number, y: number, scale = 100): Pose => ({
   ...NO_POSE,
@@ -113,5 +113,63 @@ describe('the drawn form stays in its lane', () => {
     // Obstacles in document px: scrolled 400 down, a box at 900 is on the way at 500.
     expect(glideClear(from, to, [box(300, 900, 300, 20)], 400)).toBe(false);
     expect(glideClear(from, to, [box(300, 900, 300, 20)], 0)).toBe(true);
+  });
+});
+
+describe('the shown turn (owner 2026-11-14: turns too fast to see)', () => {
+  // A travel from the tooth to the mark at `whip`, the docks' own turn 0.3.
+  const swap = (whip: number): Pose => ({
+    ...pose(100, 400),
+    whip,
+    form: whip < 0.5 ? 'tooth' : 'mark',
+    rotation: whipTurn(0.3, whip),
+    swap: { from: 'tooth', to: 'mark', base: 0.3 },
+  });
+
+  it('M7 a whip the scroll finishes in one frame plays out at WHIP_RATE, the form swapping at edge-on', () => {
+    const turn = createTurn();
+    turn.step(swap(0), 1 / 60, 900);
+    const shown = turn.step(swap(1), 1 / 60, 900);
+    expect(shown.whip).toBeCloseTo(WHIP_RATE / 60);
+    expect(shown.form).toBe('tooth');
+    expect(shown.rotation).toBeCloseTo(whipTurn(0.3, WHIP_RATE / 60));
+    expect(turn.settled()).toBe(false);
+    let frames = 1;
+    // The turn as one angle: the new form's is the old one's less a half turn.
+    const angle = (p: Pose): number => p.rotation + (p.form === 'mark' ? Math.PI : 0);
+    let last = angle(shown);
+    let most = 0;
+    for (; frames < 120 && !turn.settled(); frames += 1) {
+      const next = turn.step(swap(1), 1 / 60, 900);
+      most = Math.max(most, Math.abs(angle(next) - last));
+      last = angle(next);
+      expect(next.form).toBe(next.whip < 0.5 ? 'tooth' : 'mark');
+    }
+    // At least 0.6 s for the half turn, never more than 0.12 rad in a 60 Hz frame.
+    expect(frames / 60).toBeGreaterThanOrEqual(0.6 - 1 / 60);
+    expect(most).toBeLessThan(0.12);
+    expect(turn.step(swap(1), 1 / 60, 900).whip).toBe(1);
+  });
+
+  it('M8 a swap the scroll left for the next hold still plays out, with the hold turn as its base; then the pose is shown as it is', () => {
+    const turn = createTurn();
+    turn.step(swap(0.2), 1 / 60, 900);
+    const hold: Pose = { ...pose(100, 400), form: 'mark', rotation: -0.2, whip: 0 };
+    const mid = turn.step(hold, 1 / 60, 900);
+    expect(mid.whip).toBeCloseTo(0.2 + WHIP_RATE / 60);
+    expect(mid.form).toBe('tooth');
+    expect(mid.rotation).toBeCloseTo(whipTurn(-0.2, mid.whip));
+    for (let i = 0; i < 120 && !turn.settled(); i += 1) turn.step(hold, 1 / 60, 900);
+    expect(turn.step(hold, 1 / 60, 900)).toEqual(hold);
+  });
+
+  it('M9 the first frame, a jump and a hidden courier take the pose at once', () => {
+    const turn = createTurn();
+    expect(turn.step(swap(0.9), 1 / 60, 900)).toEqual(swap(0.9));
+    turn.step(swap(0), 1 / 60, 900);
+    expect(turn.step({ ...swap(1), y: 1400 }, 1 / 60, 900).whip).toBe(1);
+    turn.step(swap(0), 1 / 60, 900);
+    expect(turn.step({ ...swap(1), hidden: true }, 1 / 60, 900).whip).toBe(1);
+    expect(turn.settled()).toBe(true);
   });
 });

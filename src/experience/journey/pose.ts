@@ -79,6 +79,11 @@ export interface Pose {
   form: Form;
   /** 0..1 through the half turn that swaps the form (0 outside a swap). */
   whip: number;
+  /**
+   * Inside a travel that swaps the form: the two forms and the turn without the whip (the
+   * docks' own turns mixed), so the shown turn can trail the scroll's (motion.ts createTurn).
+   */
+  swap?: { from: Form; to: Form; base: number };
   /** 0..1 presence of the arch at the smile station (1 after it). */
   arch: number;
   /** 0..1 the arch dissolves into the smile photo (1 after the smile station). */
@@ -113,7 +118,7 @@ export interface Pose {
 }
 
 /** A travel spans at least this share of the viewport height in scroll. */
-export const MIN_TRAVEL_VH = 0.6;
+export const MIN_TRAVEL_VH = 0.8;
 /** The travel into the footer (a 40 px drop at its end) spans at least this share. */
 const FOOTER_TRAVEL_VH = 0.45;
 /**
@@ -141,9 +146,18 @@ export const FOOTER_DROP_PX = 40;
 const DROP_SHARE = 0.22;
 
 /** The whip window inside a travel (share of the travel), by the pair of forms. */
-const WHIP_MIDDLE = [0.38, 0.62] as const;
+const WHIP_MIDDLE = [0.25, 0.75] as const;
 /** The courier leaves the smile as a mark: the whip comes at the start of that travel. */
-const WHIP_START = [0, 0.28] as const;
+const WHIP_START = [0, 0.45] as const;
+
+/**
+ * The turn at `whip` through a swap from the turn `base`: the old form turns to edge-on, the new
+ * one comes out of the same spin; the docks' own turn fades out toward the swap, so both forms
+ * are exactly edge-on there.
+ */
+export function whipTurn(base: number, whip: number): number {
+  return base * (1 - Math.sin(Math.PI * whip)) + Math.PI * whip - (whip < 0.5 ? 0 : Math.PI);
+}
 
 /** Base turn of the form at each dock (radians): a three-quarter view, flat at the footer. */
 const BASE_YAW: Record<DockId, number> = {
@@ -157,7 +171,7 @@ const BASE_YAW: Record<DockId, number> = {
   footer: 0,
 };
 /** The services mark turns this far across the pin, as the track moves. */
-const SERVICES_TURN = 0.6;
+const SERVICES_TURN = 0.4;
 
 /**
  * The smile station: the arch fades in, the tooth seats, the camera pulls back, the arch (and the
@@ -496,18 +510,16 @@ function placePose(
   const e = smoothstep(t);
   const formA = FORM.get(a.dock.id) ?? 'mark';
   const formB = FORM.get(b.dock.id) ?? 'mark';
-  let rotation = mix(path.from.rotation, path.to.rotation, e);
+  const base = mix(path.from.rotation, path.to.rotation, e);
+  let rotation = base;
   let form = formA;
   let whip = 0;
   if (formA !== formB) {
     whip = smoothstep(
       span(t, formA === 'tooth' && a.dock.id === 'smile' ? WHIP_START : WHIP_MIDDLE),
     );
-    // The old form turns to edge-on, the new one comes out of the same spin: the docks' own
-    // turn fades out toward the swap, so both forms are exactly edge-on there.
     form = whip < 0.5 ? formA : formB;
-    rotation =
-      rotation * (1 - Math.sin(Math.PI * whip)) + Math.PI * whip - (whip < 0.5 ? 0 : Math.PI);
+    rotation = whipTurn(base, whip);
   }
   const route = lanes?.route(a, b) ?? null;
   const place = route ? placeOn(route, y) : { ...path.at(t, y), o: 1 };
@@ -519,6 +531,7 @@ function placePose(
     rotation,
     form,
     whip,
+    ...(formA !== formB ? { swap: { from: formA, to: formB, base } } : {}),
     ...station,
     presence: 1,
     hidden: false,

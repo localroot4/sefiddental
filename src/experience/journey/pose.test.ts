@@ -170,9 +170,9 @@ describe('courierPose: docks', () => {
 });
 
 describe('courierPose: travel', () => {
-  it('J6 every travel spans at least 60 vh of scroll (the drop into the footer 45 vh), and holds never overlap', () => {
+  it('J6 every travel spans at least 80 vh of scroll (the drop into the footer 45 vh), and holds never overlap', () => {
     const holds = holdsOf();
-    expect(MIN_TRAVEL_VH).toBe(0.6);
+    expect(MIN_TRAVEL_VH).toBe(0.8);
     for (let i = 1; i < holds.length; i += 1) {
       const min = holds[i]!.dock.id === 'footer' ? 0.45 : MIN_TRAVEL_VH;
       expect(holds[i]!.start - holds[i - 1]!.end).toBeGreaterThanOrEqual(min * VIEW.height - 1e-6);
@@ -263,8 +263,8 @@ describe('courierPose: travel', () => {
     const b = holds.find((h) => h.dock.id === 'dentists')!;
     const y = (t: number) => a.end + (b.start - a.end) * t;
     expect(at(y(0.05)).form).toBe('tooth');
-    expect(at(y(0.2)).form).toBe('mark');
-    expect(at(y(0.3)).whip).toBe(1);
+    expect(at(y(0.3)).form).toBe('mark');
+    expect(at(y(0.5)).whip).toBe(1);
   });
 
   it('J12 into the footer the last stretch is a 40 px drop with the bounce, straight down', () => {

@@ -56,7 +56,7 @@ Docks per width (a dock that is not rendered is skipped):
 | Under 744 px (phones) | D2, D3, D5, D6 (the heading's emblem), D8 |
 
 Travel between docks: a cubic path from one dock's centre to the next, eased
-(smoothstep on the scroll between them, at least 60 vh of scroll), with a small arc toward the page's
+(smoothstep on the scroll between them, at least 80 vh of scroll), with a small arc toward the page's
 middle and a turn of at most 180 degrees. Scale follows the dock size. Speed is
 bounded: a travel spans at least 45 vh of scroll (less where docks stand closer than that).
 
@@ -87,9 +87,16 @@ critically damped spring (about 0.3 s, no overshoot), leans into a sideways move
 squashes a little with the scroll's speed, and stretches through the whip; at rest it
 lands on the pose exactly, and a jump of more than half a screen is taken at once.
 
+The shown turn (owner, 2026-11-14: «the turns are so fast I can't see them»): the whip that
+swaps the forms spans the middle half of its travel (the first 45 % leaving the smile), and the
+shown whip follows the scroll's at most `WHIP_RATE` (a half turn in no less than 0.6 s), so a
+fast scroll never blurs it; a swap the scroll has already finished still plays out on the
+clock, the form swapping at edge-on (`createTurn`). Lenis glides with `lerp` 0.09 and
+`wheelMultiplier` 0.9.
+
 ## 4. Footer hand-off
 
-D8 is the home box of the mark part of the footer playground
+D8 is the home box of the mark part of the footer playground, which lies on the footer logo's mark (footer.md section 4)
 (`scenes/dom/footer.ts`). When the courier reaches it, it drops the last 40 px with
 the playground's bounce, then the DOM mark part takes its place in the same frame
 (courier `hidden`, the part visible) and the playground runs as in phase 7: drag,

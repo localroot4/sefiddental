@@ -25,7 +25,7 @@ import {
   measureObstacles,
   measureViewport,
 } from './docks';
-import { createFollow, glide, glideClear, type Place, type Shown } from './motion';
+import { createFollow, createTurn, glide, glideClear, type Place, type Shown } from './motion';
 import {
   courierPose,
   FORM_SHARE,
@@ -261,6 +261,7 @@ export function createJourney(opts: {
   };
 
   const spring = createFollow();
+  const turner = createTurn();
   let shown: Shown = { x: 0, y: 0, scale: 0, tilt: 0, sx: 1, sy: 1 };
   let lastOpacity = '';
   let lastSweep = '';
@@ -269,7 +270,12 @@ export function createJourney(opts: {
   const apply = (dt = 0): void => {
     const scrollY = window.scrollY;
     lanes?.use(scrollY);
-    const pose = courierPose(scrollY, docks, viewport, tier, lanes);
+    // The turn on the clock (a whip never faster than motion.ts WHIP_RATE), then the place.
+    const pose = turner.step(
+      courierPose(scrollY, docks, viewport, tier, lanes),
+      dt,
+      viewport.height,
+    );
     shown = spring.step(pose, dt, viewport.height);
     let born = 1;
     if (handoff !== null) {
@@ -360,7 +366,12 @@ export function createJourney(opts: {
       apply(delta);
       // Until the spring has landed on the pose (motion.ts) and the intro glide is over, then
       // the tick sleeps (in the hole too: it holds still until the overlay lifts).
-      if (still >= STILL_FRAMES && spring.settled() && typeof handoff !== 'number') {
+      if (
+        still >= STILL_FRAMES &&
+        spring.settled() &&
+        turner.settled() &&
+        typeof handoff !== 'number'
+      ) {
         off?.();
         off = null;
       }

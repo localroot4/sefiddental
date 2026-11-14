@@ -6,7 +6,7 @@
  * onto the pose exactly, so reverse scrolling and a reload stay exact; a jump (a reload, an anchor,
  * a programmatic scroll of more than half a viewport) is taken at once, not chased.
  */
-import { viewportTop, type Box, type Pose } from './pose';
+import { viewportTop, whipTurn, type Box, type Form, type Pose } from './pose';
 
 /** The spring's angular frequency (1/s): about 0.3 s to settle, critically damped. */
 const OMEGA = 16;
@@ -204,5 +204,65 @@ export function createFollow(): Follow {
     reset() {
       primed = false;
     },
+  };
+}
+
+/**
+ * At most this many whips a second (owner 2026-11-14: «the turns are so fast I can't see them»):
+ * a half turn that swaps the form never takes less than 0.6 s, however fast the scroll.
+ */
+export const WHIP_RATE = 1 / 0.6;
+
+export interface Turn {
+  /** The pose with its shown turn: `whip`, `form` and `rotation` trail the scroll's swap. */
+  step(pose: Pose, dt: number, viewportHeight: number): Pose;
+  /** The shown turn is the pose's (no frame is needed for it). */
+  settled(): boolean;
+}
+
+/**
+ * The shown whip follows the pose's at most WHIP_RATE per second, and the form and the turn are
+ * drawn from it (pose.ts whipTurn). A swap the scroll has finished (the next hold, or another
+ * travel) still plays out on the clock, with the forms it began with, the dock's turn as its base.
+ * The first frame, a jump (as createFollow's), a hidden courier or a form unknown to the swap take
+ * the pose at once.
+ */
+export function createTurn(): Turn {
+  let w: number | null = null;
+  let pair: { from: Form; to: Form } | null = null;
+  let done = true;
+  let lastX = 0;
+  let lastY = 0;
+  return {
+    step(pose, dt, viewportHeight) {
+      const jump = Math.abs(pose.x - lastX) + Math.abs(pose.y - lastY) > JUMP_VH * viewportHeight;
+      lastX = pose.x;
+      lastY = pose.y;
+      if (pose.swap) pair = { from: pose.swap.from, to: pose.swap.to };
+      const known = pair !== null && (pose.form === pair.from || pose.form === pair.to);
+      if (pair === null || !known || pose.hidden || jump || dt <= 0 || w === null) {
+        w = pose.swap ? pose.whip : null;
+        if (!pose.swap) pair = null;
+        done = true;
+        return pose;
+      }
+      const target = pose.swap ? pose.whip : pose.form === pair.to ? 1 : 0;
+      const most = WHIP_RATE * Math.min(dt, 0.05);
+      w += Math.max(-most, Math.min(most, target - w));
+      done = w === target;
+      if (!pose.swap && done) {
+        w = null;
+        pair = null;
+        return pose;
+      }
+      const base = pose.swap?.base ?? pose.rotation;
+      return {
+        ...pose,
+        whip: w,
+        form: w < 0.5 ? pair.from : pair.to,
+        rotation: whipTurn(base, w),
+      };
+    },
+    settled: () => done,
   };
 }
