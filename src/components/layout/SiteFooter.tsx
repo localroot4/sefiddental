@@ -96,7 +96,8 @@ export function SiteFooter(props: { contact: FooterData; now?: Date }) {
   return (
     // One dark section in both themes (docs/experience/footer.md): the dark tokens apply inside it.
     <footer data-theme="dark" className="mt-auto bg-surface-sunken text-ink">
-      <div className="mx-auto grid w-full max-w-content gap-6 px-gutter py-12 md:grid-cols-3 md:gap-8 lg:grid-cols-[2fr_1fr_1fr_1fr]">
+      {/* pb-16: a thrown mark (59 px) rests on the floor below the last link row, not over it. */}
+      <div className="mx-auto grid w-full max-w-content gap-6 px-gutter pt-12 pb-16 md:grid-cols-3 md:gap-8 lg:grid-cols-[2fr_1fr_1fr_1fr]">
         <div data-sticky-hide="" className="grid content-start gap-3 md:col-span-3 lg:col-span-1">
           {/* The footer's anchor on every page; on home the playground's parts lie over it. */}
           <div data-footer-logo="" className="mb-3 justify-self-start">

@@ -34,7 +34,7 @@ import { COURIER } from './courier';
 import { COURIER_OFF_ATTR } from './attrs';
 import { BOX_GROW, createCourierRig, type CourierRig } from './courierRig';
 import type { Journey } from './driver';
-import { archFrame, idleAmount, smoothstep, viewportTop } from './pose';
+import { archFrame, idleAmount, smoothstep, viewportTop, type Pose } from './pose';
 import { RESTORE_S, restoreParts } from './restore';
 /** Seconds of idle float and turn at a dock after the last move (then the canvas sleeps). */
 const IDLE_S = 12;
@@ -159,6 +159,12 @@ export function WebglCourier(props: {
     // level easing to a chip, the canvas still fading in), and the idle float and turn at a dock
     // for IDLE_S after the last move, easing out to the rest pose: then the canvas keeps its last
     // frame and the ticker sleeps.
+    // The pose with the shown turn while it trails the scroll's swap (the DOM courier's too).
+    const posed = (): Pose => {
+      const p = journey.pose();
+      const turn = journey.turn();
+      return turn ? { ...p, whip: turn.whip, form: turn.form, rotation: turn.rotation } : p;
+    };
     let signature = '';
     let quietSince = performance.now();
     const idleEnvelope = (): number => {
@@ -166,7 +172,7 @@ export function WebglCourier(props: {
       return 1 - smoothstep(Math.min(1, Math.max(0, (quiet - IDLE_S + 3) / 3)));
     };
     const offAsk = addEffect(() => {
-      const p = journey.pose();
+      const p = posed();
       const sh = journey.shown();
       const next = [
         sh.x,
@@ -208,7 +214,7 @@ export function WebglCourier(props: {
       const { gl, size } = get();
       const dt = last < 0 ? 0 : Math.min(0.1, Math.max(0, time - last));
       last = time;
-      const pose = journey.pose();
+      const pose = posed();
       const scrollY = window.scrollY;
 
       // A check of the page's own pixels switches the courier off (COURIER_OFF_ATTR).

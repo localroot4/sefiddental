@@ -238,7 +238,12 @@ export function createTurn(): Turn {
       const jump = Math.abs(pose.x - lastX) + Math.abs(pose.y - lastY) > JUMP_VH * viewportHeight;
       lastX = pose.x;
       lastY = pose.y;
-      if (pose.swap) pair = { from: pose.swap.from, to: pose.swap.to };
+      if (pose.swap) {
+        // The way back mid-turn (a fling into the next travel): the same shown turn, counted
+        // from the other form.
+        if (w !== null && pair?.from === pose.swap.to && pair.to === pose.swap.from) w = 1 - w;
+        pair = { from: pose.swap.from, to: pose.swap.to };
+      }
       const known = pair !== null && (pose.form === pair.from || pose.form === pair.to);
       if (pair === null || !known || pose.hidden || jump || dt <= 0 || w === null) {
         w = pose.swap ? pose.whip : null;

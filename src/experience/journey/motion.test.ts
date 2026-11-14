@@ -163,6 +163,24 @@ describe('the shown turn (owner 2026-11-14: turns too fast to see)', () => {
     expect(turn.step(hold, 1 / 60, 900)).toEqual(hold);
   });
 
+  it('M10 a fling into the way back mid-turn keeps the shown form: the turn counts from the other form', () => {
+    const turn = createTurn();
+    turn.step(swap(0), 1 / 60, 900);
+    const mid = turn.step(swap(1), 1 / 60, 900);
+    expect(mid.form).toBe('tooth');
+    // The next travel swaps back (mark to tooth), its whip at 0.
+    const back: Pose = {
+      ...pose(100, 400),
+      whip: 0,
+      form: 'mark',
+      rotation: whipTurn(-0.1, 0),
+      swap: { from: 'mark', to: 'tooth', base: -0.1 },
+    };
+    const next = turn.step(back, 1 / 60, 900);
+    expect(next.form).toBe('tooth');
+    expect(next.whip).toBeCloseTo(1 - mid.whip - WHIP_RATE / 60);
+  });
+
   it('M9 the first frame, a jump and a hidden courier take the pose at once', () => {
     const turn = createTurn();
     expect(turn.step(swap(0.9), 1 / 60, 900)).toEqual(swap(0.9));

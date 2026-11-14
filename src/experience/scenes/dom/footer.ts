@@ -162,15 +162,28 @@ const scene: DomScene = {
     const logo = footer?.querySelector<HTMLElement>('[data-footer-logo]') ?? null;
     const floor = footer?.querySelector<HTMLElement>('[data-footer-floor]') ?? null;
     // The field over the footer, from its top down to the floor (layout px, never per frame).
-    const place = (): void => {
-      if (footer == null || floor === null) return;
+    // True when its height changed.
+    let height = -1;
+    const place = (): boolean => {
+      if (footer === null || floor === null) return false;
       const top = footer.getBoundingClientRect().top - el.getBoundingClientRect().top;
-      const height = floor.getBoundingClientRect().top - footer.getBoundingClientRect().top;
+      const next = Math.max(
+        0,
+        floor.getBoundingClientRect().top - footer.getBoundingClientRect().top,
+      );
       field.style.top = `${top}px`;
-      field.style.height = `${Math.max(0, height)}px`;
+      field.style.height = `${next}px`;
+      const changed = height >= 0 && next !== height;
+      height = next;
+      return changed;
     };
     place();
-    const sizes = new ResizeObserver(place);
+    // A footer that grows or shrinks (a disclosure, a breakpoint) moves the floor: the parts
+    // resting on the old one go home rather than float or sink (resetParts, below).
+    let resetParts = (): void => {};
+    const sizes = new ResizeObserver(() => {
+      if (place()) resetParts();
+    });
     if (footer) sizes.observe(footer);
     // The parts and the letters drawn here are the logo now: one drawing, never two.
     logo?.style.setProperty('opacity', '0');
@@ -206,6 +219,12 @@ const scene: DomScene = {
     const killAll = (): void => {
       for (const part of parts) stopFall(part);
       for (const tween of gsap.getTweensOf(parts)) tween.kill();
+    };
+    resetParts = (): void => {
+      if (drags.some((drag) => drag.isPressed)) return;
+      clearHomeTimer();
+      killAll();
+      gsap.set(parts, { x: 0, y: 0 });
     };
     const goHome = (): void => {
       homeTimer = 0;

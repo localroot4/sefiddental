@@ -101,6 +101,8 @@ export interface Journey {
   pose(): Pose;
   /** The place the courier shows at in the last frame the driver applied (motion.ts). */
   shown(): Shown;
+  /** The shown turn while it trails the scroll's swap (motion.ts createTurn), else null. */
+  turn(): Pick<Pose, 'whip' | 'form' | 'rotation'> | null;
   /** The lanes of the last measure (planned in idle time). */
   lanes(): Lanes | null;
   docks(): readonly Dock[];
@@ -269,6 +271,7 @@ export function createJourney(opts: {
 
   const spring = createFollow();
   const turner = createTurn();
+  let turned: Pose | null = null;
   let shown: Shown = { x: 0, y: 0, scale: 0, tilt: 0, sx: 1, sy: 1 };
   let lastOpacity = '';
   let lastSweep = '';
@@ -283,6 +286,7 @@ export function createJourney(opts: {
       dt,
       viewport.height,
     );
+    turned = turner.settled() ? null : pose;
     shown = spring.step(pose, dt, viewport.height);
     let born = 1;
     if (handoff !== null) {
@@ -462,6 +466,7 @@ export function createJourney(opts: {
     pose: () => courierPose(window.scrollY, docks, viewport, tier, lanes),
     lanes: () => lanes,
     shown: () => shown,
+    turn: () => turned,
     docks: () => docks,
     viewport: () => viewport,
     setWebgl(on) {
