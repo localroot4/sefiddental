@@ -472,6 +472,12 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
   await scrollToStage(page);
   await dropSettled(page);
   await expect.poll(() => draggableParts(page)).toBe(5);
+  // The whole field, logo to floor: the bar thrown to the floor stays in view for the next
+  // touch (on the 820 px tablet the floor is below the viewport while the logo is centred).
+  await page
+    .locator(FIELD)
+    .evaluate((el) => el.scrollIntoView({ block: 'end', behavior: 'instant' }));
+  await frames(page);
   const bar = page.locator(PARTS).nth(1);
   const cdp = input === 'touch' ? await page.context().newCDPSession(page) : null;
   const pointer = {

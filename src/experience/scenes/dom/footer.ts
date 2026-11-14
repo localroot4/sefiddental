@@ -220,11 +220,12 @@ const scene: DomScene = {
       for (const part of parts) stopFall(part);
       for (const tween of gsap.getTweensOf(parts)) tween.kill();
     };
+    // Only the parts at rest away from home: a drop, a fall or the way home is left to finish
+    // (a font swap after a reload resized the footer mid-drop).
     resetParts = (): void => {
       if (drags.some((drag) => drag.isPressed)) return;
-      clearHomeTimer();
-      killAll();
-      gsap.set(parts, { x: 0, y: 0 });
+      const resting = parts.filter((part) => !falls.has(part) && !gsap.isTweening(part));
+      if (resting.length > 0) gsap.set(resting, { x: 0, y: 0 });
     };
     const goHome = (): void => {
       homeTimer = 0;
@@ -264,7 +265,12 @@ const scene: DomScene = {
     const onLiftoff = (event: Event): void => {
       const part = event.currentTarget as HTMLElement;
       stopFall(part);
-      for (const tween of gsap.getTweensOf(part)) tween.kill();
+      // Only this part leaves a shared tween (the drop, the way home): killed whole, it froze
+      // the other parts in mid-air (a liftoff during the drop after a reload).
+      for (const tween of gsap.getTweensOf(part)) {
+        if (tween.targets().length > 1) tween.kill(part);
+        else tween.kill();
+      }
       gsap.set(part, { x: 0, y: 0 });
     };
     for (const part of parts) part.addEventListener(LIFTOFF_EVENT, onLiftoff);

@@ -7,6 +7,7 @@ import type { TierSettings } from '@/lib/qualityTier';
 import type { ScrollEngine } from '../../engine/scrollEngine';
 import type { SceneContext } from '../types';
 
+import { LIFTOFF_EVENT } from '../../journey/attrs';
 import scene, { boundsOf, fallSegments, floorY, GRAVITY, playgroundRuns } from './footer';
 
 /** The brief's number, written here so a drift in the module shows. */
@@ -578,6 +579,21 @@ describe('footer scene', () => {
     await settled();
     expect(mocks.chunkLoads).toBe(1);
     for (const part of parts) expect(Number(gsap.getProperty(part, 'y'))).toBeLessThan(0);
+    (cleanup as () => void)();
+  });
+
+  it('a liftoff during the drop takes the mark home and leaves the others falling', async () => {
+    const cleanup = scene.setup(ctx());
+    replay.click();
+    await settled();
+    const [mark, ...others] = parts;
+    mark!.dispatchEvent(new CustomEvent(LIFTOFF_EVENT));
+    const y = (part: HTMLElement) => Number(gsap.getProperty(part, 'y'));
+    const before = others.map(y);
+    await new Promise((r) => setTimeout(r, 300));
+    // The mark waits at home; the drop (a bounce) goes on for the others, never frozen.
+    expect(y(mark!)).toBe(0);
+    others.forEach((part, i) => expect(y(part)).not.toBe(before[i]));
     (cleanup as () => void)();
   });
 
