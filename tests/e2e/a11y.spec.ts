@@ -92,7 +92,12 @@ async function openHome(page: Page, tier: number): Promise<void> {
   if (tier > 0) {
     await page.waitForFunction(() => performance.getEntriesByName('sefid:engine-init').length > 0);
   }
+  await footerControls(page);
 }
+
+/** The footer's «کیفیت» radios: a client portal after hydration (FooterControls), at every tier. */
+const footerControls = (page: Page) =>
+  expect(page.locator('footer [data-footer-controls] input[type="radio"]')).toHaveCount(5);
 
 // ---------------------------------------------------------------------------------------------
 // Contrast on the pixels. axe reports text over an image as «incomplete» (it cannot know the
@@ -481,6 +486,7 @@ test('T-A11Y reduced motion gives the tier-0 page', async ({ page }) => {
   await expect(html).toHaveAttribute('data-tier-reason', 'reduced-motion');
   expect(await html.getAttribute('data-pins')).toBeNull();
   await expect(page.locator('#intro')).toHaveCount(0);
+  await footerControls(page);
   expect(await shape()).toEqual(tier0);
   const height = await page.evaluate(() => document.documentElement.scrollHeight);
   for (let y = 0; y < height; y += 600) {

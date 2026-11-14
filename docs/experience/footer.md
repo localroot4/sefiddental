@@ -55,3 +55,33 @@ premium composition.
   moving the stage between the columns and the bottom bar would put the footer landmark inside
   `<main>` or need a client portal (a layout shift and no tier 0 markup). The parts therefore
   never pass over a column.
+
+## 4. As built (2026-11-14): the logo is the playground
+
+Owner, 2026-11-14: the stage and the footer still read as two things stacked; they must be one,
+and the logo comes into the footer.
+
+- Every page: the footer's brand column opens with a large lockup (`FOOTER_LOGO_CLASS` in
+  `BrandLogo.tsx`: 72 px tall on phones, 80 px from 744 px). From 744 to 1023 px the brand
+  column spans the row and the three link columns sit under it; from 1024 px it is the first of
+  four columns (`2fr 1fr 1fr 1fr`). A fine lit horizon (`.footer-floor`) runs over the bottom bar.
+- Home: there is no stage band any more. `PlaygroundSection` renders a zero-height root at the
+  end of `<main>` and its field lies over the footer (`top-full`). The field's inner box repeats
+  the footer's container and logo box, so the five parts (mark, bar, diamonds 1, 2 and 4) and
+  the static letters sit exactly on the logo's pieces in CSS alone, as shares of the lockup's
+  viewBox. Diamond 3 is the hole in the «ف» disc and stays with the letters. The journey docks
+  at the mark part (D8) from the first measure.
+- Tiers 1 to 3: `scenes/dom/footer.ts` sizes the field from the footer's top to the horizon,
+  hides the footer's own logo (`opacity: 0`, so its accessible name stays) and shows the field.
+  The parts drop in from the footer's top edge, can be dragged and thrown over the whole footer,
+  fall onto the horizon and drift home into the logo 6 s after the last touch. The field lets
+  every pointer through except the parts; each part's touch area is its `::before`, at least
+  44 px square round its art.
+- «کیفیت جلوه‌ها» and «پخش دوباره» are in the bottom bar, under the horizon
+  (`[data-footer-controls]`), through a client portal (`FooterControls`): they need the tier
+  store inside `ExperienceRoot`. They appear after hydration; the footer is below the first
+  screen, so nothing the reader sees moves.
+- Tier 0, reduced motion, no script: the field stays hidden and the footer's own static logo
+  shows. Nothing moves, nothing shifts.
+- The lanes keep the courier off the footer's text and controls as well (`driver.ts` measures
+  the footer's obstacles with the root's).

@@ -1,120 +1,103 @@
+import { FooterControls } from '@/components/home/FooterControls';
 import { QualityControlDeferred } from '@/components/home/QualityControlDeferred';
+import { FOOTER_LOGO_CLASS, LOCKUP_VIEW } from '@/components/layout/BrandLogo';
 import { Button } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
 import { t } from '@/i18n/fa';
 
 /**
- * The six lockup parts at home, as logical positions in the field. From 1024 px prototype 0e: the
- * mark at the start side, the bar beside it, the four diamonds clustered at the bar's end. Under
- * 1024 px (phone spec scene 11) they rest as a pile on the inline-end half (the left in RTL): the
- * bar on the floor, the mark standing on it at the end edge, the diamonds in a column beside the
- * mark; the inline-start half, under the right thumb, holds no part, so a swipe there scrolls the
- * page. The pile spans 4% + 132 px, inside half of a 320 px field, and 220 px of height. From
- * 1024 px the lockup rests at a quiet scale (the mark 90 px tall, the bar 192 px): an object on
- * the footer's floor, not a banner. Every part is at least 44 px (BR5: the bar's box keeps that
- * height at every width; its artwork stays centred); the mark's svg fills its box, the bar's
- * too, a diamond sits centred in its 44 px hit area. Whole class strings only, from the token scale (globals.css resets Tailwind's
- * spacing: `bottom-11` would be no CSS at all): Tailwind reads them from the source, so an
- * interpolated name generates no CSS either.
+ * The five moving parts of the lockup, each at its own place in the footer logo: its symbol's
+ * viewBox (LockupParts.tsx) less the lockup's origin, as a share of the lockup (113.7 82.7 1052.6
+ * 280). Physical `left`: these are drawing coordinates, the same in both directions. Diamond 3 is
+ * the hole in the «ف» disc, so it stays with the letters. Whole class strings only: Tailwind reads
+ * them from the source. Every part is a 44 px touch target (its `::before`, centred on the art,
+ * at least the art's own box; T-BF5b).
  */
-const PARTS: readonly { part: string; box: string; svg: string }[] = [
-  {
-    part: 'mark',
-    box: 'end-[4%] bottom-[44px] h-[90px] w-[72px] lg:start-[4%] lg:end-auto lg:bottom-0 lg:h-[90px] lg:w-[72px]',
-    svg: 'size-full',
-  },
-  {
-    part: 'bar',
-    box: 'end-[4%] bottom-0 min-h-target h-target w-[132px] lg:start-[calc(4%+88px)] lg:end-auto lg:bottom-0 lg:h-[64px] lg:w-[192px]',
-    svg: 'size-full',
-  },
-  {
-    part: 'diamond-1',
-    box: 'end-[calc(4%+76px)] bottom-[44px] size-target lg:start-[calc(4%+288px)] lg:end-auto lg:bottom-0',
-    svg: 'size-[1.25rem]',
-  },
-  {
-    part: 'diamond-2',
-    box: 'end-[calc(4%+76px)] bottom-[88px] size-target lg:start-[calc(4%+316px)] lg:end-auto lg:bottom-[44px]',
-    svg: 'size-[1.25rem]',
-  },
-  {
-    part: 'diamond-3',
-    box: 'end-[calc(4%+76px)] bottom-[132px] size-target lg:start-[calc(4%+344px)] lg:end-auto lg:bottom-0',
-    svg: 'size-[1.25rem]',
-  },
-  {
-    part: 'diamond-4',
-    box: 'end-[calc(4%+76px)] bottom-[176px] size-target lg:start-[calc(4%+316px)] lg:end-auto lg:bottom-[88px]',
-    svg: 'size-[1.25rem]',
-  },
+const PARTS: readonly { part: string; box: string }[] = [
+  { part: 'mark', box: 'left-[83.277%] top-[15.693%] w-[15.963%] h-[74.036%]' },
+  { part: 'bar', box: 'left-[37.270%] top-[27.357%] w-[40.690%] h-[50.607%]' },
+  { part: 'diamond-1', box: 'left-[15.343%] top-[86.643%] w-[2.784%] h-[10.500%]' },
+  { part: 'diamond-2', box: 'left-[18.250%] top-[86.643%] w-[2.803%] h-[10.500%]' },
+  { part: 'diamond-4', box: 'left-[27.798%] top-[2.857%] w-[2.755%] h-[10.464%]' },
 ];
+
+const HIT =
+  'before:absolute before:top-1/2 before:left-1/2 before:size-target before:min-w-full before:min-h-full before:-translate-x-1/2 before:-translate-y-1/2';
 
 /**
  * Scene 11, the footer playground and the «کیفیت جلوه‌ها» control (phase 7 report D9, D15;
  * docs/experience/footer.md): the last child inside `ExperienceRoot`, `data-scene="footer"`, no
- * `data-home-section`. It opens the footer: the same dark ground (`data-theme="dark"`, as
- * SiteFooter), no band edge between them, so the two read as one section. Server markup only: the
- * field with the six lockup parts (`<use>` of the sprite in `page.tsx`, `aria-hidden`: pointer
- * toys) standing on a lit horizon, then the control and a quiet «پخش دوباره» at the floor's edge
- * (the keyboard path; its box is there at every tier, invisible and inert until
- * scenes/dom/footer.ts shows it at tiers 1 to 3, D24). The parts are `touch-action: none`, the
- * field is not, so the page still scrolls on it; the field is 220 px tall on phones (the pile's
- * height), 240 px on tablets and 320 px from 1024 px: room for a throw, and the scroll the
- * courier needs from the booking dock to land here (journey travel minimum, pose.ts). Tier 0 and
- * reduced motion: this HTML, static, the parts at rest on the floor, no chunk.
+ * `data-home-section`. The playground is the footer's own logo (owner 2026-11-14: one footer, the
+ * logo inside it): the field lies over SiteFooter right after this root (`top-full`), and its
+ * inner box repeats the footer's container and logo size, so the parts sit on the logo's own
+ * pieces in CSS alone; the journey measures the mark's box (D8) at its place from the first frame.
+ * The field stays invisible and lets every pointer through until scenes/dom/footer.ts runs (tiers
+ * 1 to 3): it then sizes the field down to the footer's floor, hides the footer's logo under the
+ * letters and parts drawn here, and shows the field. Tier 0, reduced motion and no script: the
+ * footer's own static logo. Nothing in flow: the control and a quiet «پخش دوباره» (the keyboard
+ * path; its box is there at every tier, invisible and inert until the scene shows it at tiers 1 to
+ * 3, D24) sit in the footer's bottom bar (FooterControls).
  */
 export function PlaygroundSection() {
   return (
-    <div data-scene="footer" data-theme="dark" className="overflow-clip bg-surface-sunken text-ink">
-      <div className="mx-auto grid w-full max-w-content gap-4 px-gutter pt-12 pb-12 lg:pt-16">
-        <div
-          data-playground-field=""
-          data-world-slot="playground"
-          aria-hidden="true"
-          className="relative h-[220px] md:h-[240px] lg:h-[320px]"
-        >
-          <div className="playground-glow pointer-events-none absolute inset-0" />
-          <div className="playground-floor pointer-events-none absolute inset-x-0 bottom-0" />
-          {PARTS.map(({ part, box, svg }) => (
-            <div
-              key={part}
-              data-playground-part={part}
-              // D8 of the journey: the courier lands on the mark's home box and hands over.
-              data-dock={part === 'mark' ? 'footer' : undefined}
-              className={cx(
-                'absolute grid touch-none place-items-center select-none',
-                // The mark's colour is the courier glaze's (globals.css), so the hand-off shows no jump.
-                part !== 'mark' && 'text-ink',
-                box,
-              )}
+    <div data-scene="footer" data-theme="dark" className="relative">
+      <FooterControls>
+        <QualityControlDeferred
+          labels={{
+            legend: t('home.quality.label'),
+            auto: t('home.quality.auto'),
+            tiers: [
+              t('home.quality.tier0'),
+              t('home.quality.tier1'),
+              t('home.quality.tier2'),
+              t('home.quality.tier3'),
+            ],
+            reducedMotion: t('home.quality.reducedMotion'),
+            siteCap: t('home.quality.siteCap'),
+            device: t('home.quality.device'),
+            saveData: t('home.quality.saveData'),
+          }}
+        />
+        <Button variant="ghost" data-playground-replay="" inert className="invisible">
+          {t('home.playground.replay')}
+        </Button>
+      </FooterControls>
+      <div
+        data-playground-field=""
+        data-world-slot="playground"
+        aria-hidden="true"
+        className="pointer-events-none invisible absolute inset-x-0 top-full z-10 overflow-clip"
+      >
+        {/* The footer's container and logo box (SiteFooter): the same place, the same size. */}
+        <div className="mx-auto w-full max-w-content px-gutter pt-12">
+          <div className="relative w-fit">
+            <svg viewBox={LOCKUP_VIEW} className={cx('block', FOOTER_LOGO_CLASS)} />
+            <svg
+              className="absolute top-[21.911%] left-[0.758%] h-[61.496%] w-[36.512%] text-ink"
+              fill="currentColor"
             >
-              <svg className={cx('pointer-events-none block', svg)} fill="currentColor">
-                <use href={`#lockup-${part}`} />
-              </svg>
-            </div>
-          ))}
-        </div>
-        <div className="relative flex flex-wrap items-start justify-between gap-x-6 gap-y-2 text-ink-muted">
-          <QualityControlDeferred
-            labels={{
-              legend: t('home.quality.label'),
-              auto: t('home.quality.auto'),
-              tiers: [
-                t('home.quality.tier0'),
-                t('home.quality.tier1'),
-                t('home.quality.tier2'),
-                t('home.quality.tier3'),
-              ],
-              reducedMotion: t('home.quality.reducedMotion'),
-              siteCap: t('home.quality.siteCap'),
-              device: t('home.quality.device'),
-              saveData: t('home.quality.saveData'),
-            }}
-          />
-          <Button variant="ghost" data-playground-replay="" inert className="invisible">
-            {t('home.playground.replay')}
-          </Button>
+              <use href="#lockup-wordmark" />
+            </svg>
+            {PARTS.map(({ part, box }) => (
+              <div
+                key={part}
+                data-playground-part={part}
+                // D8 of the journey: the courier lands on the mark's home box and hands over.
+                data-dock={part === 'mark' ? 'footer' : undefined}
+                className={cx(
+                  'pointer-events-auto absolute touch-none select-none',
+                  // The mark's colour is the courier glaze's (globals.css), so the hand-off shows no jump.
+                  part !== 'mark' && 'text-ink',
+                  HIT,
+                  box,
+                )}
+              >
+                <svg className="pointer-events-none block size-full" fill="currentColor">
+                  <use href={`#lockup-${part}`} />
+                </svg>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

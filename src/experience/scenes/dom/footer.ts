@@ -62,6 +62,33 @@ export function boundsOf(
   };
 }
 
+/**
+ * A part's home box in the field's own px, in the offsets' shape: the parts lie in the logo's box
+ * inside the field, not at its corner. Layout offsets up the offset parents to the field (a
+ * transform moves none of them).
+ */
+export function homeIn(
+  field: HTMLElement,
+  part: HTMLElement,
+): { offsetLeft: number; offsetTop: number; offsetWidth: number; offsetHeight: number } {
+  let left = 0;
+  let top = 0;
+  for (
+    let node: HTMLElement | null = part;
+    node !== null && node !== field;
+    node = node.offsetParent as HTMLElement | null
+  ) {
+    left += node.offsetLeft;
+    top += node.offsetTop;
+  }
+  return {
+    offsetLeft: left,
+    offsetTop: top,
+    offsetWidth: part.offsetWidth,
+    offsetHeight: part.offsetHeight,
+  };
+}
+
 /** Gravity of the playground (px/s²): a part dropped from the field's height lands in ~0.45 s. */
 export const GRAVITY = 4200;
 /** A sideways throw slides at least this long (s), also along the floor (friction, power2.out). */
@@ -125,10 +152,29 @@ export function playgroundRuns(
 const scene: DomScene = {
   setup({ el, settings, conditions, nearViewport }) {
     const field = el.querySelector<HTMLElement>('[data-playground-field]');
-    const replay = el.querySelector<HTMLElement>('[data-playground-replay]');
-    if (field === null || replay === null || !playgroundRuns(settings, conditions.reduce)) return;
+    // In the footer's bottom bar (FooterControls' portal), outside the stage.
+    const replay = document.querySelector<HTMLElement>('[data-playground-replay]');
+    if (field === null || !playgroundRuns(settings, conditions.reduce)) return;
     const parts = Array.from(field.querySelectorAll<HTMLElement>('[data-playground-part]'));
     if (parts.length === 0) return;
+    // The footer after the stage: its logo hides under the parts, its floor is the field's.
+    const footer = document.querySelector<HTMLElement>('footer');
+    const logo = footer?.querySelector<HTMLElement>('[data-footer-logo]') ?? null;
+    const floor = footer?.querySelector<HTMLElement>('[data-footer-floor]') ?? null;
+    // The field over the footer, from its top down to the floor (layout px, never per frame).
+    const place = (): void => {
+      if (footer == null || floor === null) return;
+      const top = footer.getBoundingClientRect().top - el.getBoundingClientRect().top;
+      const height = floor.getBoundingClientRect().top - footer.getBoundingClientRect().top;
+      field.style.top = `${top}px`;
+      field.style.height = `${Math.max(0, height)}px`;
+    };
+    place();
+    const sizes = new ResizeObserver(place);
+    if (footer) sizes.observe(footer);
+    // The parts and the letters drawn here are the logo now: one drawing, never two.
+    logo?.style.setProperty('opacity', '0');
+    field.classList.remove('invisible');
 
     let gone = false;
     let armFrame = 0;
@@ -182,7 +228,10 @@ const scene: DomScene = {
       killAll();
       gsap.set(falling, {
         x: 0,
-        y: (_: number, part: HTMLElement) => -(part.offsetTop + part.offsetHeight + DROP_ABOVE_PX),
+        y: (_: number, part: HTMLElement) => {
+          const home = homeIn(field, part);
+          return -(home.offsetTop + home.offsetHeight + DROP_ABOVE_PX);
+        },
       });
       gsap.to(falling, {
         y: 0,
@@ -259,7 +308,7 @@ const scene: DomScene = {
         y: Number(gsap.getProperty(part, 'y')),
       };
       const { vx, vy } = velocity(part, end ?? drawn);
-      const bounds = boundsOf(field, part);
+      const bounds = boundsOf(field, homeIn(field, part));
       const x = Number(gsap.getProperty(part, 'x'));
       const y = Number(gsap.getProperty(part, 'y'));
       const done = (): void => {
@@ -292,7 +341,7 @@ const scene: DomScene = {
         zIndexBoost: false,
         // Before the press is measured: the bounds of this part, fresh after any resize.
         onPressInit(this: DraggableInstance) {
-          this.vars.bounds = boundsOf(field, this.target as HTMLElement);
+          this.vars.bounds = boundsOf(field, homeIn(field, this.target as HTMLElement));
         },
         onPress(this: DraggableInstance) {
           const part = this.target as HTMLElement;
@@ -352,22 +401,27 @@ const scene: DomScene = {
     const onReplay = (): void => {
       load().then(() => drop(), failed);
     };
-    replay.addEventListener('click', onReplay);
+    replay?.addEventListener('click', onReplay);
     // Its box is there at every tier (D24): only its visibility and its inertness change.
-    replay.classList.remove('invisible');
-    replay.removeAttribute('inert');
+    replay?.classList.remove('invisible');
+    replay?.removeAttribute('inert');
 
     return () => {
       gone = true;
+      sizes.disconnect();
+      field.classList.add('invisible');
+      field.style.removeProperty('top');
+      field.style.removeProperty('height');
+      logo?.style.removeProperty('opacity');
       cancelNear();
       cancelAnimationFrame(armFrame);
       enter.kill();
       clearHomeTimer();
-      replay.removeEventListener('click', onReplay);
+      replay?.removeEventListener('click', onReplay);
       listen(false);
       for (const part of parts) part.removeEventListener(LIFTOFF_EVENT, onLiftoff);
-      replay.classList.add('invisible');
-      replay.setAttribute('inert', '');
+      replay?.classList.add('invisible');
+      replay?.setAttribute('inert', '');
       for (const drag of drags) drag.kill();
       drags = [];
       killAll();

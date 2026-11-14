@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { pageLink, type ChromeLink } from '@/components/chrome/links';
 import { SocialLinks } from '@/components/chrome/social';
-import { BrandLogo } from '@/components/layout/BrandLogo';
+import { BrandLogo, FOOTER_LOGO_CLASS } from '@/components/layout/BrandLogo';
 import { DirectionsLinks, PhoneNumber } from '@/components/ui/Contact';
 import { Icon } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
@@ -84,8 +84,8 @@ function Line(props: { icon: 'map-pin' | 'phone' | 'clock'; children: ReactNode 
  * disclosures on phones and open columns from 744 px, then socials, legal lines once provided
  * and the copyright. Every value comes from FooterData; with the database down it is the fallback.
  * The phones here are NAP: they dial without the closed-hours sheet (C13). Dark in both themes
- * (`data-theme="dark"` scopes the dark tokens), so on the home page it continues the playground
- * stage above it as one section.
+ * (`data-theme="dark"` scopes the dark tokens). The large logo opens the brand column on every
+ * page; on home the playground's parts lie over it (PlaygroundSection), so the two are one.
  */
 export function SiteFooter(props: { contact: FooterData; now?: Date }) {
   const { contact } = props;
@@ -96,12 +96,12 @@ export function SiteFooter(props: { contact: FooterData; now?: Date }) {
   return (
     // One dark section in both themes (docs/experience/footer.md): the dark tokens apply inside it.
     <footer data-theme="dark" className="mt-auto bg-surface-sunken text-ink">
-      <div className="mx-auto grid w-full max-w-content gap-6 px-gutter py-12 md:grid-cols-[1.6fr_1fr_1fr_1fr] md:gap-8">
-        <div data-sticky-hide="" className="grid content-start gap-3">
-          <BrandLogo
-            label={contact.name}
-            className="h-[2.5rem] w-auto justify-self-start text-ink"
-          />
+      <div className="mx-auto grid w-full max-w-content gap-6 px-gutter py-12 md:grid-cols-3 md:gap-8 lg:grid-cols-[2fr_1fr_1fr_1fr]">
+        <div data-sticky-hide="" className="grid content-start gap-3 md:col-span-3 lg:col-span-1">
+          {/* The footer's anchor on every page; on home the playground's parts lie over it. */}
+          <div data-footer-logo="" className="mb-3 justify-self-start">
+            <BrandLogo label={contact.name} className={cx('block text-ink', FOOTER_LOGO_CLASS)} />
+          </div>
           {contact.line ? <p className="text-small text-ink-muted">{contact.line}</p> : null}
           {contact.address ? <Line icon="map-pin">{contact.address}</Line> : null}
           {contact.phones.landline || contact.phones.mobile ? (
@@ -152,7 +152,13 @@ export function SiteFooter(props: { contact: FooterData; now?: Date }) {
           ]}
         />
       </div>
-      <div className="border-t border-line">
+      {/* The footer's floor (globals.css): a fine lit horizon; the playground's parts land on it. */}
+      <div data-footer-floor="" className="footer-floor relative">
+        {/* The home page's «کیفیت جلوه‌ها» and «پخش دوباره» (FooterControls); empty elsewhere. */}
+        <div
+          data-footer-controls=""
+          className="mx-auto flex w-full max-w-content flex-wrap items-end justify-between gap-x-6 gap-y-2 px-gutter pt-6 text-ink-muted empty:hidden"
+        />
         <div className="mx-auto flex w-full max-w-content flex-col gap-3 px-gutter py-6 text-caption text-ink-muted md:grid md:grid-cols-[auto_1fr_auto] md:items-center md:gap-6">
           <div className="flex flex-wrap items-center gap-1 empty:hidden">
             <SocialLinks social={contact.social} whatsapp={contact.whatsapp} location="footer" />

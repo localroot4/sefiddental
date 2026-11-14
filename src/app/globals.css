@@ -346,29 +346,32 @@
   background-color: transparent;
 }
 
-/* The footer playground's ground (docs/experience/footer.md 1): a fine lit horizon the parts
-   stand on, fading out at both ends, a soft reflection under it, and a faint teal glow behind
-   the parts. Light only, no shapes: the stage reads as the dark footer's own floor. */
-.playground-glow {
-  background-image: radial-gradient(45% 60% at 50% 100%, rgb(43 181 170 / 0.13), transparent 70%);
+/* The footer's floor (docs/experience/footer.md 1), on every page: a fine lit horizon over the
+   bottom bar, fading out at both ends, with a soft reflection under it. On home the playground's
+   parts land on it. Light only, no shapes. */
+.footer-floor::before,
+.footer-floor::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
 }
-.playground-floor {
+.footer-floor::before {
+  inset-inline: 0;
+  top: 0;
   height: 1px;
   background-image: linear-gradient(
     to right,
     transparent,
-    rgb(127 227 217 / 0.5) 18%,
-    rgb(127 227 217 / 0.5) 82%,
+    rgb(127 227 217 / 0.45) 18%,
+    rgb(127 227 217 / 0.45) 82%,
     transparent
   );
 }
-.playground-floor::after {
-  content: '';
-  position: absolute;
+.footer-floor::after {
   inset-inline: 12%;
   top: 1px;
   height: 2.5rem;
-  background-image: radial-gradient(50% 100% at 50% 0%, rgb(43 181 170 / 0.14), transparent);
+  background-image: radial-gradient(50% 100% at 50% 0%, rgb(43 181 170 / 0.12), transparent);
 }
 
 /* The footer's mark part is the logo's teal in both themes, the colour of the header logo and of

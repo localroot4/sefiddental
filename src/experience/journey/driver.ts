@@ -192,7 +192,14 @@ export function createJourney(opts: {
   const measure = (): void => {
     const header = measureHeader();
     docks = header.dock ? [header.dock, ...measureDocks(root)] : measureDocks(root);
-    obstacles = [...header.obstacles, ...measureObstacles(root)];
+    // The footer is outside the root, and the courier lands in its logo (D8): its text and
+    // controls are in the lanes' way too.
+    const footer = document.querySelector('footer');
+    obstacles = [
+      ...header.obstacles,
+      ...measureObstacles(root),
+      ...(footer ? measureObstacles(footer) : []),
+    ];
     bands = measureBands(root);
     viewport = measureViewport();
     lanes = prepareLanes(docks, viewport, obstacles);

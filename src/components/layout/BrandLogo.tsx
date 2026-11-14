@@ -9,6 +9,13 @@ const href = `/brand/lockup.svg?v=${createHash('sha256').update(LOCKUP_SPRITE).d
 // The symbol maps its own viewBox onto the box `<use>` gives it, which starts at 0 0: the outer
 // viewBox keeps the size only, or its offset crops the top and the start of the drawing.
 const [, , width, height] = BRAND_LOCKUP.viewBox.split(' ');
+/** The logo's own viewBox: the lockup's size from 0 0. */
+export const LOCKUP_VIEW = `0 0 ${width} ${height}`;
+/**
+ * The footer logo's size (SiteFooter), shared with the home playground's field, which lays its
+ * parts over this logo (PlaygroundSection): one string, so the two boxes never drift apart.
+ */
+export const FOOTER_LOGO_CLASS = 'h-[4.5rem] w-auto md:h-[5rem]';
 
 /** The mark's box in the logo's own coordinates (the lockup's mark less the viewBox origin). */
 const MARK = { x: 876.6, y: 43.9, width: 168, height: 207.3 };
@@ -23,12 +30,7 @@ const MARK = { x: 876.6, y: 43.9, width: 168, height: 207.3 };
 export function BrandLogo(props: { className?: string; label: string; dock?: boolean }) {
   const use = <use href={href} width={width} height={height} />;
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      role="img"
-      aria-label={props.label}
-      className={props.className}
-    >
+    <svg viewBox={LOCKUP_VIEW} role="img" aria-label={props.label} className={props.className}>
       <svg width="860" height={height} viewBox={`0 0 860 ${height}`}>
         {use}
       </svg>

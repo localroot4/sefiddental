@@ -27,7 +27,9 @@ type Hook = { snapshot(): Snapshot; setUserOverride(o: number | 'auto'): void };
 const STAGE = '[data-scene="footer"]';
 const FIELD = `${STAGE} [data-playground-field]`;
 const PARTS = `${STAGE} [data-playground-part]`;
-const REPLAY = `${STAGE} [data-playground-replay]`;
+// In the footer's bottom bar (FooterControls), outside the stage.
+const CONTROLS = 'footer [data-footer-controls]';
+const REPLAY = `${CONTROLS} [data-playground-replay]`;
 const CARD = '[data-scene="booking"] [data-booking-card]';
 const BOOKING = '/رزرو-نوبت';
 /** A string only the Draggable library's code holds (its registration warning). */
@@ -71,11 +73,14 @@ const frames = (page: Page) =>
     () => new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r()))),
   );
 
-/** Scrolls the stage into view (the page bottom): the drop runs once the chunk is in. */
+/**
+ * Scrolls the playground into view: the footer logo, where the parts rest, in the viewport's
+ * middle (the courier has landed by then); the drop runs once the chunk is in.
+ */
 async function scrollToStage(page: Page): Promise<void> {
   await page
-    .locator(STAGE)
-    .evaluate((el) => el.scrollIntoView({ block: 'end', behavior: 'instant' }));
+    .locator(`${STAGE} [data-playground-part="mark"]`)
+    .evaluate((el) => el.scrollIntoView({ block: 'center', behavior: 'instant' }));
   await frames(page);
 }
 
@@ -390,7 +395,7 @@ test('T-BF4 drop on enter, mouse drag and throw inside the field, home 6 s after
   await page.waitForLoadState('load');
   await scrollToStage(page);
   await dropSettled(page);
-  await expect.poll(() => draggableParts(page)).toBe(6);
+  await expect.poll(() => draggableParts(page)).toBe(5);
   const field = (await page.locator(FIELD).boundingBox())!;
   const mark = page.locator(PARTS).first();
   const before = (await mark.boundingBox())!;
@@ -466,7 +471,7 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
   await needsWebgl2(page);
   await scrollToStage(page);
   await dropSettled(page);
-  await expect.poll(() => draggableParts(page)).toBe(6);
+  await expect.poll(() => draggableParts(page)).toBe(5);
   const bar = page.locator(PARTS).nth(1);
   const cdp = input === 'touch' ? await page.context().newCDPSession(page) : null;
   const pointer = {
@@ -591,7 +596,7 @@ test('T-BF10b the same with a finger on a tablet', async ({ page, browserName },
 });
 
 test.describe('390 px touch', () => {
-  test('T-BF5 a touch drag moves a part; the parts rest on the inline-end half and a swipe on the inline-start half scrolls the page', async ({
+  test('T-BF5 a touch drag moves a part; the parts rest in the footer logo and a swipe beside it scrolls the page', async ({
     page,
     browserName,
   }, testInfo) => {
@@ -601,7 +606,7 @@ test.describe('390 px touch', () => {
     await page.waitForLoadState('load');
     await scrollToStage(page);
     await dropSettled(page);
-    await expect.poll(() => draggableParts(page)).toBe(6);
+    await expect.poll(() => draggableParts(page)).toBe(5);
     const cdp = await page.context().newCDPSession(page);
     const mark = page.locator(PARTS).first();
     const before = (await mark.boundingBox())!;
@@ -622,17 +627,22 @@ test.describe('390 px touch', () => {
     expect(Math.hypot(after.x - before.x, after.y - before.y)).toBeGreaterThan(30);
     expect(inside(after, (await page.locator(FIELD).boundingBox())!)).toBe(true);
 
-    // The parts rest on the inline-end half (the left in RTL, phone spec scene 11); a finger
-    // swipe down on the inline-start half, under the right thumb, scrolls the page up: the field
-    // has no touch-action of its own.
+    // The parts rest in the footer logo (owner 2026-11-14); a finger swipe down under the logo,
+    // on the footer's text, scrolls the page up: the field lets every touch through but the
+    // parts' own.
     const field = (await page.locator(FIELD).boundingBox())!;
+    const logo = (await page.locator('footer [data-footer-logo]').boundingBox())!;
     await expect.poll(() => allHome(page), { timeout: 8000 }).toBe(true);
-    const rights = await page
+    const boxes = await page
       .locator(PARTS)
-      .evaluateAll((els) => els.map((el) => el.getBoundingClientRect().right));
-    for (const right of rights) expect(right).toBeLessThanOrEqual(field.x + field.width / 2);
+      .evaluateAll((els) =>
+        els
+          .map((el) => el.getBoundingClientRect())
+          .map((r) => ({ x: r.x, y: r.y, width: r.width, height: r.height })),
+      );
+    for (const box of boxes) expect(inside(box, logo)).toBe(true);
     const scrollBefore = await page.evaluate(() => window.scrollY);
-    const free = { x: field.x + field.width - 24, y: field.y + 40 };
+    const free = { x: field.x + field.width - 24, y: logo.y + logo.height + 40 };
     await touch('touchStart', free.x, free.y);
     for (let i = 1; i <= 8; i += 1) {
       await touch('touchMove', free.x, free.y + 25 * i);
@@ -643,24 +653,45 @@ test.describe('390 px touch', () => {
     await cdp.detach();
   });
 
-  // The bar's box is a third of its fluid width; under 367 px wide that is less than 44 px
-  // without its min-height (360 px is the common Android width).
+  // A diamond is 8 px of art in the footer logo: its touch area is the part's `::before`, at
+  // least 44 px square round the art (360 px is the common Android width).
   test('T-BF5b every part is a 44 px touch target on a 360 px phone', async ({
     page,
   }, testInfo) => {
     only(testInfo, 'phone-light');
     await page.setViewportSize({ width: 360, height: 780 });
-    await page.goto('/?tier=0');
+    await page.goto('/?tier=1');
+    await page.waitForLoadState('load');
+    await scrollToStage(page);
+    await dropSettled(page);
     const boxes = await page.locator(PARTS).evaluateAll((els) =>
       els.map((el) => {
         const r = el.getBoundingClientRect();
-        return { part: el.getAttribute('data-playground-part'), w: r.width, h: r.height };
+        const hit = getComputedStyle(el, '::before');
+        const w = Math.max(parseFloat(hit.width), r.width);
+        const h = Math.max(parseFloat(hit.height), r.height);
+        // The touch area answers for the part: 20 px off the art's centre, each way.
+        const cx = r.x + r.width / 2;
+        const cy = r.y + r.height / 2;
+        const hits = [
+          [cx - 20, cy],
+          [cx + 20, cy],
+          [cx, cy - 20],
+          [cx, cy + 20],
+        ].map(([x, y]) => document.elementFromPoint(x!, y!)?.closest('[data-playground-part]'));
+        return {
+          part: el.getAttribute('data-playground-part'),
+          w,
+          h,
+          own: hits.every((p) => p !== null),
+        };
       }),
     );
-    expect(boxes).toHaveLength(6);
+    expect(boxes).toHaveLength(5);
     for (const box of boxes) {
       expect(box.w, box.part!).toBeGreaterThanOrEqual(44);
       expect(box.h, box.part!).toBeGreaterThanOrEqual(44);
+      expect(box.own, `${box.part}: a part answers 20 px round its centre`).toBe(true);
     }
   });
 });
@@ -727,7 +758,7 @@ test('T-BF7 a relatch to tier 0 and a route change leave no Draggable and no tra
   await engineReady(page);
   await scrollToStage(page);
   await dropSettled(page);
-  await expect.poll(async () => (await snapshot(page)).draggables).toBe(6);
+  await expect.poll(async () => (await snapshot(page)).draggables).toBe(5);
   // Mid-drop: the relatch must kill the tween and reset the parts.
   await page.getByRole('button', { name: t('home.playground.replay') }).click();
   await expect.poll(() => anyDropping(page)).toBe(true);
@@ -740,7 +771,7 @@ test('T-BF7 a relatch to tier 0 and a route change leave no Draggable and no tra
   await page.evaluate(() => (window as unknown as { __sefid?: Hook }).__sefid?.setUserOverride(1));
   await engineReady(page);
   await scrollToStage(page);
-  await expect.poll(async () => (await snapshot(page)).draggables).toBe(6);
+  await expect.poll(async () => (await snapshot(page)).draggables).toBe(5);
   const fresh = await snapshot(page);
 
   // The soft route changes of this site (T-EN2): a content page -> home, back and forward.
@@ -750,7 +781,7 @@ test('T-BF7 a relatch to tier 0 and a route change leave no Draggable and no tra
   await page.waitForURL((url) => url.pathname === '/');
   await engineReady(page);
   await scrollToStage(page);
-  await expect.poll(async () => (await snapshot(page)).draggables).toBe(6);
+  await expect.poll(async () => (await snapshot(page)).draggables).toBe(5);
   await page.goBack();
   await page.waitForURL((url) => url.pathname === encodeURI('/خدمات'));
   await expect.poll(() => page.evaluate(() => '__sefid' in window)).toBe(false);
@@ -770,29 +801,42 @@ test('T-BF8 the «کیفیت» radios move html[data-tier] at once, keep the foo
   await page.goto('/?debug=1');
   await page.waitForLoadState('load');
   await scrollToStage(page);
+  // The controls end the footer, under the debug overlay's corner: the page's end, the overlay
+  // let through to the pointer (it is the test's own, `?debug=1`).
+  const toControls = async (): Promise<void> => {
+    await page.evaluate(() => {
+      window.scrollTo({ top: 1e6, behavior: 'instant' });
+      document
+        .querySelector<HTMLElement>('[data-dev-overlay]')
+        ?.style.setProperty('pointer-events', 'none');
+    });
+    await frames(page);
+  };
+  await toControls();
   const radio = (name: string) => page.getByRole('radio', { name });
   await expect(radio(t('home.quality.auto'))).toBeChecked();
   await expect(radio(t('home.quality.tier1'))).toBeEnabled();
-  await expectNoA11yViolations(page, { include: STAGE });
+  await expectNoA11yViolations(page, { include: CONTROLS });
 
   await radio(t('home.quality.tier1')).check();
   const html = page.locator('html');
   await expect(html).toHaveAttribute('data-tier', '1');
   await expect(html).toHaveAttribute('data-tier-reason', 'user-override');
   expect(await page.evaluate(() => localStorage.getItem('sefid-quality'))).toBe('1');
-  const line = page.locator(`${STAGE} fieldset p`);
+  const line = page.locator(`${CONTROLS} fieldset p`);
   await expect(line).toHaveText(t('home.quality.tier1'));
   await engineReady(page);
   await frames(page);
-  const stage = (await page.locator(STAGE).boundingBox())!;
+  const controls = (await page.locator(CONTROLS).boundingBox())!;
   const viewport = page.viewportSize()!;
-  expect(stage.y).toBeLessThan(viewport.height);
-  expect(stage.y + stage.height).toBeGreaterThan(0);
+  expect(controls.y).toBeLessThan(viewport.height);
+  expect(controls.y + controls.height).toBeGreaterThan(0);
   await expect(page.locator(REPLAY)).toBeVisible();
 
   await page.reload();
   await page.waitForLoadState('load');
   await expect(radio(t('home.quality.tier1'))).toBeChecked();
+  await toControls();
   await expect(html).toHaveAttribute('data-tier', '1');
 
   // Reduced motion wins over the choice; the line says so.
@@ -843,7 +887,7 @@ async function roundTrips(page: Page, move: (dy: number) => Promise<void>): Prom
     });
   // What the canvas adds over the footer: nothing, once the part has the mark.
   const canvasDraws = async (): Promise<boolean> => {
-    const clip = (await page.locator(STAGE).boundingBox())!;
+    const clip = (await page.locator('footer [data-footer-logo]').boundingBox())!;
     const on = await page.screenshot({ clip });
     await page.evaluate(() =>
       document.querySelector('canvas')?.style.setProperty('visibility', 'hidden'),

@@ -135,6 +135,14 @@ beforeEach(() => {
     window.setTimeout(() => cb(performance.now()), 0),
   );
   vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
+  // jsdom has no ResizeObserver: the field's size is the browser suites' (T-BF3 and on).
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe(): void {}
+      disconnect(): void {}
+    },
+  );
   el = stage();
   field = el.querySelector('[data-playground-field]')!;
   replay = el.querySelector('button')!;
