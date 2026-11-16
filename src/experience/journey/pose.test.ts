@@ -170,7 +170,7 @@ describe('courierPose: docks', () => {
 });
 
 describe('courierPose: travel', () => {
-  it('J6 every travel spans at least 80 vh of scroll (the drop into the footer 45 vh), and holds never overlap', () => {
+  it('J6 every travel spans at least 80 vh of scroll (into the footer, where the booking box sits close above it, at least 45 vh), and holds never overlap', () => {
     const holds = holdsOf();
     expect(MIN_TRAVEL_VH).toBe(0.8);
     for (let i = 1; i < holds.length; i += 1) {
@@ -181,6 +181,22 @@ describe('courierPose: travel', () => {
       );
       expect(holds[i]!.end).toBeGreaterThanOrEqual(holds[i]!.start);
     }
+  });
+
+  it('J6b with room before the booking box, its hold moves earlier, as far as its box shows, cut to its minimum: the drop into the footer gets the rest; the landing stays where the footer box shows', () => {
+    // The live page: the booking box far below the dentists, the footer right under it.
+    const docks = page().map((d) =>
+      d.id === 'dentists' ? { ...d, top: 8_900 } : d.id === 'booking' ? { ...d, top: 11_700 } : d,
+    );
+    const holds = holdRanges(docks, VIEW);
+    const booking = holds.find((h) => h.dock.id === 'booking')!;
+    const footer = holds.at(-1)!;
+    // Without the move it was 0.45 vh, the old minimum; the box shows 0.8 vh before the landing.
+    expect(booking.end - booking.start).toBeCloseTo(0.2 * VIEW.height, 5);
+    expect(footer.start - booking.end).toBeGreaterThan(0.65 * VIEW.height);
+    expect(footer.start).toBeCloseTo(12_500 + 120 - 0.92 * VIEW.height, 5);
+    const dentists = holds.find((h) => h.dock.id === 'dentists')!;
+    expect(booking.start - dentists.end).toBeGreaterThanOrEqual(VIEW.height - 1e-6);
   });
 
   it('J7 both travel ends meet the dock poses: no jump leaving or reaching a dock', () => {

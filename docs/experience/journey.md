@@ -44,7 +44,7 @@ over the scroll between them.
 | D4 | `workflow` | Workflow diagonal | tooth | The beats on the tooth itself: point cloud, wireframe, solid, lit |
 | D5 | `smile` | The arch band between workflow and before/after, a stage that sticks while the journey runs | tooth, then the arch | The upper arch seen from below (section 9), its teeth where the photo's are. The tooth flies into the empty first molar and seats with a soft click, the camera pulls back, the arch cross-fades into the occlusal photo registered; a glint runs along the teeth and the tooth condenses at the first molar and lifts off toward the reader while the photo dims and settles back |
 | D6 | `dentists` | An emblem a small gap after the dentists heading, 1.3 em square, on its line (every width) | mark | As it arrives a soft teal light sweeps the cards' portraits from the left, on their top edge only; then it rests as the heading's emblem |
-| D7 | `booking` | The empty slot under the hours | mark | Breathes beside the form (phase 8 booking stage rules stay: the stage is transparent only while the courier paints there) |
+| D7 | `booking` | Removed (owner, 2026-11-16) | | Its slot sat right above the footer, so the last travel was a rushed 200 px; from D6 the courier now settles into the footer logo over more than three screens |
 | D8 | `footer` | The footer playground's mark home | mark | Falls into the footer field and hands over to the playground (section 4) |
 
 Docks per width (a dock that is not rendered is skipped):
@@ -52,7 +52,7 @@ Docks per width (a dock that is not rendered is skipped):
 | Width | Docks |
 |---|---|
 | From 1024 px | All eight. D4 is the pinned diagonal's strip at tiers 2-3 with pins; otherwise the empty box at the end of the workflow header row |
-| 744-1023 px (tablets in portrait) | All but D1 (the logo keeps its mark): D4 the header box, D7 under the hours (closing the stacked column) |
+| 744-1023 px (tablets in portrait) | All but D1 (the logo keeps its mark): D4 the header box |
 | Under 744 px (phones) | D2, D3, D5, D6 (the heading's emblem), D8 |
 
 Travel between docks: a cubic path from one dock's centre to the next, eased
@@ -87,11 +87,20 @@ critically damped spring (about 0.3 s, no overshoot), leans into a sideways move
 squashes a little with the scroll's speed, and stretches through the whip; at rest it
 lands on the pose exactly, and a jump of more than half a screen is taken at once.
 
+Scroll per travel (owner, 2026-11-16: «from the footer the mark leapt away in two notches»):
+every travel spans at least 80 vh (`MIN_TRAVEL_VH`), the one out of the header 1.4 screens
+where D2 is pinned (taken from the start of its pin, where the page stands still), and the one
+into the footer a full screen where the page has room: the hold before it moves earlier as a
+whole, never before its dock shows. Measured at tier 2 on a 1366 x 680 laptop, a wheel notch
+moves the courier at most about 170 px on the travels out of the header and into the footer
+(390 and 780 px before). Nothing moves on its own for more than 5 s (WCAG 2.2.2): the DOM
+courier breathes once, the WebGL courier's idle motion ends 5 s after the last move.
+
 The shown turn (owner, 2026-11-14: «the turns are so fast I can't see them»): the whip that
 swaps the forms spans the middle half of its travel (the first 45 % leaving the smile), and the
 shown whip follows the scroll's at most `WHIP_RATE` (a half turn in no less than 0.6 s), so a
 fast scroll never blurs it; a swap the scroll has already finished still plays out on the
-clock, the form swapping at edge-on (`createTurn`). Lenis glides with `lerp` 0.09 and
+clock, the form swapping at edge-on (`createTurn`). Lenis glides with `lerp` 0.07 and
 `wheelMultiplier` 0.9.
 
 ## 4. Footer hand-off

@@ -119,8 +119,15 @@ export interface Pose {
 
 /** A travel spans at least this share of the viewport height in scroll. */
 export const MIN_TRAVEL_VH = 0.8;
+/**
+ * Out of the header logo the mark grows from the logo's size to D2's across the screen: it spans
+ * at least this share (owner 2026-11-16: «it comes here and suddenly goes left»), taken from the
+ * start of D2's pin, where the page stands still (tier 2 and up from 1024 px). Without a pin the
+ * room would come from the next travel, which then found no lane (T-CA1 at tier 1).
+ */
+const HEADER_TRAVEL_VH = 1.4;
 /** The travel into the footer (a 40 px drop at its end) spans at least this share. */
-const FOOTER_TRAVEL_VH = 0.45;
+const FOOTER_TRAVEL_VH = 1;
 /**
  * An unpinned dock holds while its centre is within this share of the viewport's middle; the
  * smile station holds longer, for the seat, the pull-back and the dissolve.
@@ -241,6 +248,8 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
   const top = Math.max(0, viewport.maxScroll - 1);
   const clampY = (y: number): number => Math.min(top, Math.max(0, y));
   const limits = new Map<Dock, number>();
+  // The scroll where an unpinned dock comes into view: no hold starts before its dock shows.
+  const firsts = new Map<Dock, number>();
   const holds = docks
     .filter((d) => ORDER.has(d.id) && d.width > 0 && d.height > 0)
     .sort((a, b) => (ORDER.get(a.id) ?? 0) - (ORDER.get(b.id) ?? 0))
@@ -266,6 +275,7 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
       const last = dock.top + dock.height / 2 - ((viewport.insetTop ?? 0) + reach);
       // Not the smile: its sequence needs its whole hold.
       if (dock.id !== 'smile') limits.set(dock, Math.max(last, centre));
+      firsts.set(dock, clampY(first));
       return {
         dock,
         start: clampY(Math.max(centre - half, Math.min(first, centre))),
@@ -275,8 +285,12 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
   const min = MIN_TRAVEL_VH * viewport.height;
   // The last travel is a short drop into the footer's lockup: its own minimum, so the reader who
   // has the footer in view finds the mark home.
-  const minInto = (b: Hold): number =>
-    b.dock.id === 'footer' ? FOOTER_TRAVEL_VH * viewport.height : min;
+  const minInto = (b: Hold, a?: Hold): number =>
+    b.dock.id === 'footer'
+      ? FOOTER_TRAVEL_VH * viewport.height
+      : a?.dock.id === 'header' && b.dock.pin
+        ? HEADER_TRAVEL_VH * viewport.height
+        : min;
   // A hold keeps a short stretch of its own, so a station's sequence (the smile) never cuts.
   const keep = MIN_HOLD_VH * viewport.height;
   const room = (h: Hold): number => Math.max(0, h.end - h.start - keep);
@@ -286,7 +300,7 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
     // A hold never starts before the previous one ends (docks out of order line up after it).
     if (b.start < a.start) b.start = a.start;
     if (b.end < b.start + keep) b.end = Math.min(top, b.start + keep);
-    let need = minInto(b) - (b.start - a.end);
+    let need = minInto(b, a) - (b.start - a.end);
     if (need <= 0) continue;
     // Half from each side, then the rest from whichever side still has room.
     const giveA = Math.min(need / 2, room(a));
@@ -300,9 +314,21 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
     const moreA = Math.max(0, Math.min(need, room(a)));
     a.end -= moreA;
     need -= moreA;
+    // Into the footer, whose landing is fixed near the end of the scroll range (owner
+    // 2026-11-16: «from the footer the mark leapt away in two notches»): the hold before it
+    // moves earlier as a whole, as far as its own travel keeps its minimum and its dock shows.
+    const prev = holds[i - 2];
+    if (need > 0 && b.dock.id === 'footer' && prev && !a.dock.pin) {
+      const earliest = Math.max(prev.end + minInto(a, prev), firsts.get(a.dock) ?? a.start);
+      const shift = Math.max(0, Math.min(need, a.start - earliest));
+      a.start -= shift;
+      a.end -= shift;
+      need -= shift;
+    }
     // Docks too close or out of order to make room: the next hold moves later, so the travel
     // still spans its minimum (up to the end of the scroll range), never a cut.
-    if (need > 0) {
+    // The footer's landing stays where its box comes into view (J4b): a shorter travel instead.
+    if (need > 0 && b.dock.id !== 'footer') {
       // Never past the scroll where the dock reaches the header: a shorter travel, not a hold
       // pushed under it (docks close together on a tablet).
       const cap = Math.min(top, limits.get(b.dock) ?? top);

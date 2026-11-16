@@ -554,7 +554,7 @@ export function createScrollEngine(opts: {
         const instance = new Lenis({
           autoRaf: false,
           anchors: true,
-          lerp: 0.09,
+          lerp: 0.07,
           wheelMultiplier: 0.9,
         });
         // Lenis 1.3.26 rewrites html's class list at every scroll start and stop

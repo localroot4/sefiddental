@@ -137,7 +137,6 @@ test.describe('desktop, WebGL courier', () => {
       'workflow',
       'smile',
       'dentists',
-      'booking',
       'footer',
     ]);
     // The WebGL courier takes over once its canvas draws.
@@ -567,7 +566,7 @@ test.describe('tablet, DOM courier', () => {
     test.setTimeout(180_000);
   });
 
-  test('T-JN11 tablet portrait: the courier docks at all seven stations after the header (the logo keeps its mark under 1024 px), clear of text', async ({
+  test('T-JN11 tablet portrait: the courier docks at all six stations after the header (the logo keeps its mark under 1024 px), clear of text', async ({
     page,
   }) => {
     const holds = await open(page, 'tier=1');
@@ -577,7 +576,6 @@ test.describe('tablet, DOM courier', () => {
       'workflow',
       'smile',
       'dentists',
-      'booking',
       'footer',
     ]);
     for (const stop of stops(holds)) {
@@ -592,21 +590,6 @@ test.describe('tablet, DOM courier', () => {
         controls: [],
       });
     }
-  });
-
-  test('T-JN12 tablet: the empty D7 box collapses where no courier comes (tier 0, reduced motion)', async ({
-    page,
-  }) => {
-    const d7 = page.locator('[data-dock="booking"]');
-    await page.goto('/?tier=1');
-    await expect(page.locator('html')).toHaveAttribute('data-tier', '1');
-    await expect(d7).toBeVisible();
-    await page.goto('/?tier=0');
-    await expect(page.locator('html')).toHaveAttribute('data-tier', '0');
-    await expect(d7).toBeHidden();
-    await page.emulateMedia({ reducedMotion: 'reduce' });
-    await page.goto('/');
-    await expect(d7).toBeHidden();
   });
 
   test('T-JN10 tier 1 tablet: the DOM courier and its arch sit centred on the pose, in their boxes', async ({
