@@ -49,7 +49,7 @@ test('T-T02 tier 0: the footer logo is static, «پخش دوباره» hidden, n
   expect(draggable).toEqual([]);
   await expect(page.locator('footer [data-playground-replay]')).toBeHidden();
   const parts = stage.locator('[data-playground-part]');
-  await expect(parts).toHaveCount(5);
+  await expect(parts).toHaveCount(6);
   for (const transform of await parts.evaluateAll((els) =>
     els.map((el) => getComputedStyle(el).transform),
   ))

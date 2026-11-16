@@ -1,11 +1,11 @@
 /**
  * Scene 11, the footer playground (phase 7 report D9, D12, D15; prototype 0e). Motivation: the
  * brand plays with the reader at the end, and comes home on its own. At tiers 1 to 3 the six
- * lockup parts drop from the header line into the field when the stage enters (`bounce.out`,
- * one stagger), the reader drags and throws them with Draggable inside the field, a release
- * falls at once under gravity with the throw's speed (fallSegments) and bounces on the field's
- * floor, and 6 s after the last interaction
- * they drift home (`expo.out`); «پخش دوباره» replays the drop (the keyboard path). Transform
+ * lockup parts of the footer logo (the letters too) drop in from the footer's top edge when the
+ * stage enters (`bounce.out`, one stagger), the reader drags and throws them with Draggable inside
+ * the field, a release falls at once under gravity with the throw's speed (fallSegments) and
+ * bounces on the field's floor, and 6 s after the last interaction they glide home into the logo
+ * (HOME_GLIDE); «پخش دوباره» replays the drop (the keyboard path). Transform
  * only: the pressed part rises through a class that sets `z-index`, once per press (D12), and
  * `will-change` is set on press and cleared when its fall completes. Tier 0, reduced motion and
  * a static playground setting run nothing and load no chunk.
@@ -29,6 +29,11 @@ type DraggableInstance = InstanceType<DraggableClass>;
 
 /** The parts drift home this long after the last interaction (brief: 6 seconds). */
 const HOME_AFTER_MS = 6000;
+/**
+ * The way home (owner 2026-11-16: «نرم و قشنگ، یهویی نباشه»): a gentle start and a gentle
+ * landing, one part after another, instead of `expo.out`, which leapt off the floor.
+ */
+const HOME_GLIDE = { ease: 'power2.inOut', duration: 1.6, stagger: 0.07 } as const;
 /** The drop starts this far above the part's home, past the header line (prototype 0e). */
 const DROP_ABOVE_PX = 56;
 /** The pressed part rises above the others (D12: a class, once per press). */
@@ -225,11 +230,11 @@ const scene: DomScene = {
     resetParts = (): void => {
       if (drags.some((drag) => drag.isPressed)) return;
       const resting = parts.filter((part) => !falls.has(part) && !gsap.isTweening(part));
-      if (resting.length > 0) gsap.set(resting, { x: 0, y: 0 });
+      if (resting.length > 0) gsap.to(resting, { x: 0, y: 0, ...HOME_GLIDE, stagger: 0 });
     };
     const goHome = (): void => {
       homeTimer = 0;
-      gsap.to(parts, { x: 0, y: 0, ease: 'expo.out', duration: 1.2, stagger: 0.04 });
+      gsap.to(parts, { x: 0, y: 0, ...HOME_GLIDE });
     };
     // Not while a part is held: the drop or another part's floor bounce may complete under a
     // press, and the way home must never write x/y against the pointer; that press re-arms it.

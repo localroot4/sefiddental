@@ -395,7 +395,7 @@ test('T-BF4 drop on enter, mouse drag and throw inside the field, home 6 s after
   await page.waitForLoadState('load');
   await scrollToStage(page);
   await dropSettled(page);
-  await expect.poll(() => draggableParts(page)).toBe(5);
+  await expect.poll(() => draggableParts(page)).toBe(6);
   const field = (await page.locator(FIELD).boundingBox())!;
   const mark = page.locator(PARTS).first();
   const before = (await mark.boundingBox())!;
@@ -471,7 +471,7 @@ async function fallsAtOnce(page: Page, input: 'mouse' | 'touch'): Promise<void> 
   await needsWebgl2(page);
   await scrollToStage(page);
   await dropSettled(page);
-  await expect.poll(() => draggableParts(page)).toBe(5);
+  await expect.poll(() => draggableParts(page)).toBe(6);
   // The whole field, logo to floor: the bar thrown to the floor stays in view for the next
   // touch (on the 820 px tablet the floor is below the viewport while the logo is centred).
   await page
@@ -612,7 +612,7 @@ test.describe('390 px touch', () => {
     await page.waitForLoadState('load');
     await scrollToStage(page);
     await dropSettled(page);
-    await expect.poll(() => draggableParts(page)).toBe(5);
+    await expect.poll(() => draggableParts(page)).toBe(6);
     const cdp = await page.context().newCDPSession(page);
     const mark = page.locator(PARTS).first();
     const before = (await mark.boundingBox())!;
@@ -693,7 +693,7 @@ test.describe('390 px touch', () => {
         };
       }),
     );
-    expect(boxes).toHaveLength(5);
+    expect(boxes).toHaveLength(6);
     for (const box of boxes) {
       expect(box.w, box.part!).toBeGreaterThanOrEqual(44);
       expect(box.h, box.part!).toBeGreaterThanOrEqual(44);
@@ -764,7 +764,7 @@ test('T-BF7 a relatch to tier 0 and a route change leave no Draggable and no tra
   await engineReady(page);
   await scrollToStage(page);
   await dropSettled(page);
-  await expect.poll(async () => (await snapshot(page)).draggables).toBe(5);
+  await expect.poll(async () => (await snapshot(page)).draggables).toBe(6);
   // Mid-drop: the relatch must kill the tween and reset the parts.
   await page.getByRole('button', { name: t('home.playground.replay') }).click();
   await expect.poll(() => anyDropping(page)).toBe(true);
@@ -777,7 +777,7 @@ test('T-BF7 a relatch to tier 0 and a route change leave no Draggable and no tra
   await page.evaluate(() => (window as unknown as { __sefid?: Hook }).__sefid?.setUserOverride(1));
   await engineReady(page);
   await scrollToStage(page);
-  await expect.poll(async () => (await snapshot(page)).draggables).toBe(5);
+  await expect.poll(async () => (await snapshot(page)).draggables).toBe(6);
   const fresh = await snapshot(page);
 
   // The soft route changes of this site (T-EN2): a content page -> home, back and forward.
@@ -787,7 +787,7 @@ test('T-BF7 a relatch to tier 0 and a route change leave no Draggable and no tra
   await page.waitForURL((url) => url.pathname === '/');
   await engineReady(page);
   await scrollToStage(page);
-  await expect.poll(async () => (await snapshot(page)).draggables).toBe(5);
+  await expect.poll(async () => (await snapshot(page)).draggables).toBe(6);
   await page.goBack();
   await page.waitForURL((url) => url.pathname === encodeURI('/خدمات'));
   await expect.poll(() => page.evaluate(() => '__sefid' in window)).toBe(false);

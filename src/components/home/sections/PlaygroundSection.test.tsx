@@ -31,7 +31,7 @@ describe('scene 11 markup (phone spec scene 11, D24)', () => {
     document.body.innerHTML = '';
   });
 
-  it('PG2 the field is the footer logo: five parts at their place in the lockup, the letters static, hidden and inert to the pointer until the scene runs', () => {
+  it('PG2 the field is the footer logo: six parts at their place in the lockup, the letters too, hidden and inert to the pointer until the scene runs', () => {
     const root = document.createElement('div');
     root.innerHTML = renderToStaticMarkup(<PlaygroundSection />);
     const field = root.querySelector('[data-playground-field]')!;
@@ -42,6 +42,7 @@ describe('scene 11 markup (phone spec scene 11, D24)', () => {
     expect(parts.map((p) => p.getAttribute('data-playground-part'))).toEqual([
       'mark',
       'bar',
+      'wordmark',
       'diamond-1',
       'diamond-2',
       'diamond-4',

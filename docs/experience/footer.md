@@ -67,14 +67,16 @@ and the logo comes into the footer.
   four columns (`2fr 1fr 1fr 1fr`). A fine lit horizon (`.footer-floor`) runs over the bottom bar.
 - Home: there is no stage band any more. `PlaygroundSection` renders a zero-height root at the
   end of `<main>` and its field lies over the footer (`top-full`). The field's inner box repeats
-  the footer's container and logo box, so the five parts (mark, bar, diamonds 1, 2 and 4) and
-  the static letters sit exactly on the logo's pieces in CSS alone, as shares of the lockup's
-  viewBox. Diamond 3 is the hole in the «ف» disc and stays with the letters. The journey docks
+  the footer's container and logo box, so the six parts (mark, bar, the letters «سفید»,
+  diamonds 1, 2 and 4; owner 2026-11-16: the letters move too) sit exactly on the logo's pieces
+  in CSS alone, as shares of the lockup's viewBox. Diamond 3 is the hole in the «ف» disc and
+  moves with the letters. The journey docks
   at the mark part (D8) from the first measure.
 - Tiers 1 to 3: `scenes/dom/footer.ts` sizes the field from the footer's top to the horizon,
   hides the footer's own logo (`opacity: 0`, so its accessible name stays) and shows the field.
   The parts drop in from the footer's top edge, can be dragged and thrown over the whole footer,
-  fall onto the horizon and drift home into the logo 6 s after the last touch. The field lets
+  fall onto the horizon and glide home into the logo 6 s after the last touch (`power2.inOut`,
+  1.6 s, one part after another: a soft start and a soft landing, never a leap). The field lets
   every pointer through except the parts; each part's touch area is its `::before`, at least
   44 px square round its art.
 - «کیفیت جلوه‌ها» and «پخش دوباره» are in the bottom bar, under the horizon

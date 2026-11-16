@@ -6,16 +6,19 @@ import { cx } from '@/components/ui/cx';
 import { t } from '@/i18n/fa';
 
 /**
- * The five moving parts of the lockup, each at its own place in the footer logo: its symbol's
+ * The six moving parts of the lockup (owner 2026-11-16: the letters move too), each at its own place in the footer logo: its symbol's
  * viewBox (LockupParts.tsx) less the lockup's origin, as a share of the lockup (113.7 82.7 1052.6
  * 280). Physical `left`: these are drawing coordinates, the same in both directions. Diamond 3 is
- * the hole in the «ف» disc, so it stays with the letters. Whole class strings only: Tailwind reads
+ * the hole in the «ف» disc, so it moves with the letters. Whole class strings only: Tailwind reads
  * them from the source. Every part is a 44 px touch target (its `::before`, centred on the art,
  * at least the art's own box; T-BF5b).
  */
 const PARTS: readonly { part: string; box: string }[] = [
   { part: 'mark', box: 'left-[83.277%] top-[15.693%] w-[15.963%] h-[74.036%]' },
   { part: 'bar', box: 'left-[37.270%] top-[27.357%] w-[40.690%] h-[50.607%]' },
+  // The letters «سفید» (the disc keeps the diamond-3 hole): before the diamonds, which sit on
+  // their edges and must stay on top to be taken.
+  { part: 'wordmark', box: 'left-[0.758%] top-[21.911%] w-[36.512%] h-[61.496%]' },
   { part: 'diamond-1', box: 'left-[15.343%] top-[86.643%] w-[2.784%] h-[10.500%]' },
   { part: 'diamond-2', box: 'left-[18.250%] top-[86.643%] w-[2.803%] h-[10.500%]' },
   { part: 'diamond-4', box: 'left-[27.798%] top-[2.857%] w-[2.755%] h-[10.464%]' },
@@ -33,7 +36,7 @@ const HIT =
  * pieces in CSS alone; the journey measures the mark's box (D8) at its place from the first frame.
  * The field stays invisible and lets every pointer through until scenes/dom/footer.ts runs (tiers
  * 1 to 3): it then sizes the field down to the footer's floor, hides the footer's logo under the
- * letters and parts drawn here, and shows the field. Tier 0, reduced motion and no script: the
+ * parts drawn here, and shows the field. Tier 0, reduced motion and no script: the
  * footer's own static logo. Nothing in flow: the control and a quiet «پخش دوباره» (the keyboard
  * path; its box is there at every tier, invisible and inert until the scene shows it at tiers 1 to
  * 3, D24) sit in the footer's bottom bar (FooterControls).
@@ -72,12 +75,6 @@ export function PlaygroundSection() {
         <div className="mx-auto w-full max-w-content px-gutter pt-12">
           <div className="relative w-fit">
             <svg viewBox={LOCKUP_VIEW} className={cx('block', FOOTER_LOGO_CLASS)} />
-            <svg
-              className="absolute top-[21.911%] left-[0.758%] h-[61.496%] w-[36.512%] text-ink"
-              fill="currentColor"
-            >
-              <use href="#lockup-wordmark" />
-            </svg>
             {PARTS.map(({ part, box }) => (
               <div
                 key={part}
