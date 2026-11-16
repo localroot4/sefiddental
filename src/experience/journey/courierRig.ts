@@ -285,11 +285,13 @@ function createGlaze(): {
   // The idle glint along the bevel: its offset (off the form at both ends) and its strength.
   const sweep = { value: 0 };
   const glint = { value: 0 };
+  // Satin porcelain, not lacquer (owner 2026-11-16: the mark looked like glossy plastic): a
+  // rougher body under a thin, soft coat, so the light lies on the bevel instead of glaring.
   const material = new MeshPhysicalMaterial({
-    roughness: 0.3,
+    roughness: 0.45,
     metalness: 0,
-    clearcoat: 1,
-    clearcoatRoughness: 0.12,
+    clearcoat: 0.5,
+    clearcoatRoughness: 0.28,
     // Always in the transparent pass: the courier fades out over text (pose.opacity).
     transparent: true,
   });
@@ -309,17 +311,18 @@ function createGlaze(): {
   float facing = saturate(dot(normal, geometryViewDir));
   vec3 r = reflect(-geometryViewDir, normal);
   float edge = 1.0 - facing;
-  float boxes = smoothstep(0.35, 0.9, r.y) * 0.45 + smoothstep(0.55, 0.95, r.x) * smoothstep(-0.3, 0.5, r.y) * 0.25;
+  float boxes = smoothstep(0.35, 0.9, r.y) * 0.3 + smoothstep(0.55, 0.95, r.x) * smoothstep(-0.3, 0.5, r.y) * 0.15;
   float fresnel = 0.04 + 0.96 * pow(edge, 4.0);
   outgoingLight *= 0.94 + 0.1 * smoothstep(-0.6, 0.6, mv.y);
   float glint = exp(-pow((mv.x * 0.62 + mv.y * 0.78 - uSweep) / 0.16, 2.0)) * smoothstep(0.08, 0.5, edge);
-  outgoingLight += vec3(boxes) * (0.2 + fresnel) + vec3(0.35 * uGlint * glint);
-  outgoingLight += uRim * pow(edge, 3.0) * 0.22;
+  // The softboxes in the teal of the rim, not white: a white sheen greys the glaze.
+  outgoingLight += mix(vec3(1.0), uRim, 0.6) * boxes * (0.12 + 0.7 * fresnel) + vec3(0.3 * uGlint * glint);
+  outgoingLight += uRim * pow(edge, 3.0) * 0.12;
 }
 #include <opaque_fragment>`,
       );
   };
-  material.customProgramCacheKey = () => 'sefid-glaze-4';
+  material.customProgramCacheKey = () => 'sefid-glaze-6';
   return { material, rim, sweep, glint };
 }
 
@@ -674,7 +677,7 @@ export function createCourierRig(
       // Not the arch's scene: its pass covers the whole smile box (see the arch above).
       scene.environment = env;
       // A soft studio: the reflections carry the form, the fake softboxes stay as the accent.
-      glaze.envMapIntensity = 0.55;
+      glaze.envMapIntensity = 0.35;
       enamel.material.envMapIntensity = 0.45;
     },
     setTheme(dark, brand) {
@@ -687,8 +690,13 @@ export function createCourierRig(
       enamel.uniforms.uBuildEdge.value.set(brand);
       // The logo's teal (--color-brand-logo) in both themes, as the header logo: on navy a faint
       // emissive lift keeps its presence without changing its colour.
-      glaze.color.set('#00827A');
-      glaze.emissive.set(dark ? '#06302D' : '#000000');
+      // A deeper base than the logo's #00827A: the studio light and the tone mapping lift it, so
+      // the lit face reads as the logo's teal, not a pale turquoise (owner 2026-11-16).
+      glaze.color.set(dark ? '#006B63' : '#00675F');
+      glaze.emissive.set(dark ? '#00221E' : '#000000');
+      // A light contact shadow under the mark, not a dark blot (the tooth scenes keep their own).
+      const shade = (studio.shadow.material as ShaderMaterial).uniforms.uOpacity;
+      if (shade) shade.value = dark ? 0.26 : 0.14;
       rim.value.set(dark ? '#7FE3D9' : '#CFF5F1');
       wireMaterial.color.set(brand);
       pointUniforms.uColor.value.set(brand);
