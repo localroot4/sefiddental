@@ -36,8 +36,11 @@ import { BOX_GROW, createCourierRig, type CourierRig } from './courierRig';
 import type { Journey } from './driver';
 import { archFrame, idleAmount, smoothstep, viewportTop, type Pose } from './pose';
 import { RESTORE_S, restoreParts } from './restore';
-/** Seconds of idle float and turn at a dock after the last move (then the canvas sleeps). */
-const IDLE_S = 12;
+/**
+ * Seconds of idle float and turn at a dock after the last move (then the canvas sleeps): never
+ * more than 5 s of motion on its own (WCAG 2.2.2, as the DOM courier's one breath).
+ */
+const IDLE_S = 5;
 
 /** The WebGL courier draws from this tier; tier 1 keeps the DOM courier. */
 export const WEBGL_COURIER_TIER = COURIER.minTier;

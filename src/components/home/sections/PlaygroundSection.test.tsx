@@ -1,34 +1,14 @@
-import { act } from 'react';
-import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { PlaygroundSection } from './PlaygroundSection';
 
-// The control reads the tier store (QualityControl.test.tsx covers it); the markup is the subject.
-vi.mock('@/components/home/QualityControlDeferred', () => ({
-  QualityControlDeferred: () => null,
-}));
-
 describe('scene 11 markup (phone spec scene 11, D24)', () => {
-  it('PG1 «پخش دوباره» lands in the footer bottom bar and keeps its box at every tier: invisible and inert, never display none', async () => {
+  it('PG1 the server HTML has no inline style (CSP) and no controls row (owner 2026-11-16)', () => {
     const markup = renderToStaticMarkup(<PlaygroundSection />);
     expect(markup).not.toContain('style=');
-    // The portal's slot is the footer's (SiteFooter); the server HTML has no controls.
-    expect(markup).not.toContain('data-playground-replay');
-    document.body.innerHTML =
-      '<div id="app"></div><footer><div data-footer-controls=""></div></footer>';
-    const root = createRoot(document.getElementById('app')!);
-    await act(async () => root.render(<PlaygroundSection />));
-    const replay = document.querySelector(
-      'footer [data-footer-controls] [data-playground-replay]',
-    )!;
-    expect(replay).not.toBeNull();
-    expect(replay.hasAttribute('hidden')).toBe(false);
-    expect(replay.hasAttribute('inert')).toBe(true);
-    expect(replay.classList.contains('invisible')).toBe(true);
-    await act(async () => root.unmount());
-    document.body.innerHTML = '';
+    expect(markup).not.toContain('<button');
+    expect(markup).not.toContain('<fieldset');
   });
 
   it('PG2 the field is the footer logo: six parts at their place in the lockup, the letters too, hidden and inert to the pointer until the scene runs', () => {

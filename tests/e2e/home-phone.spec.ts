@@ -1,8 +1,8 @@
 // The phone scroll set and the light notice (phone spec sections 2, 3 and 5.2; step 4b) for the
 // scenes landed so far: hero (Drift of the 4:5 band's img), trust (still) and services (Slide of
 // the snap row, Settle of the mark). T-PH1 to T-PH9, T-PH11 and T-PH12 run in phone-light and
-// phone-dark; T-PH10 in tablet-light. Rows that need a scene of a later step (the voices row, the
-// replay box, the «کیفیت» control) wait for that step.
+// phone-dark; T-PH10 in tablet-light. Rows that need a scene of a later step (the voices row)
+// wait for that step.
 //
 // Headless Chromium renders WebGL in software, so a phone without `?tier` is class W
 // ('software-renderer') after the probe. Where a row needs a capable phone in auto mode it uses
@@ -552,8 +552,6 @@ test('T-PH6 a weak phone at load (2 GB, no ?tier): no engine, no benchmark; the 
   await expect(toggle).toHaveText(t('home.light.turnOff'));
   await expect(toggle).toBeFocused();
   expect(await page.evaluate(() => localStorage.getItem('sefid-quality'))).toBe('1');
-  // The «کیفیت» control in the footer follows the same saved choice (step 8).
-  await expect(page.getByRole('radio', { name: t('home.quality.tier1') })).toBeChecked();
   await expect.poll(() => seen.engine.size, { timeout: 15_000 }).toBeGreaterThan(0);
   const frame = await docTop(page, PHOTO);
   const height = viewportHeight(page);
@@ -569,7 +567,6 @@ test('T-PH6 a weak phone at load (2 GB, no ?tier): no engine, no benchmark; the 
   await expect(toggle).toHaveText(t('home.light.turnOn'));
   await expect(toggle).toBeFocused();
   expect(await page.evaluate(() => localStorage.getItem('sefid-quality'))).toBe('0');
-  await expect(page.getByRole('radio', { name: t('home.quality.tier0') })).toBeChecked();
 
   // «بستن» by keyboard: focus goes to main; the notice closes.
   await page.keyboard.press('Tab');

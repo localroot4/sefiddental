@@ -5,8 +5,6 @@
 // the «کیفیت» radios. Rows that read `window.__sefid.snapshot()` open `?debug=1`.
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
 
-import { t } from '@/i18n/fa';
-
 import { expectNoA11yViolations } from '../helpers/axe';
 import { formsHydrated } from '../helpers/booking';
 import { watchConsoleErrors } from '../helpers/console';
@@ -28,8 +26,6 @@ const STAGE = '[data-scene="footer"]';
 const FIELD = `${STAGE} [data-playground-field]`;
 const PARTS = `${STAGE} [data-playground-part]`;
 // In the footer's bottom bar (FooterControls), outside the stage.
-const CONTROLS = 'footer [data-footer-controls]';
-const REPLAY = `${CONTROLS} [data-playground-replay]`;
 const CARD = '[data-scene="booking"] [data-booking-card]';
 const BOOKING = '/رزرو-نوبت';
 /** A string only the Draggable library's code holds (its registration warning). */
@@ -200,7 +196,7 @@ function watchScripts(
 
 /** What a relatch to tier 0 or a teardown must leave of the playground (T-EN3's list, here). */
 async function expectStaticPlayground(page: Page): Promise<void> {
-  await expect(page.locator(REPLAY)).toBeHidden();
+  await expect(page.locator(FIELD)).toBeHidden();
   const leftovers = await page.locator(PARTS).evaluateAll((els) =>
     els.flatMap((el) => {
       const out: string[] = [];
@@ -702,59 +698,12 @@ test.describe('390 px touch', () => {
   });
 });
 
-test('T-BF9 390 touch: «پخش دوباره» keeps its box at every tier (D24): invisible and inert at ?tier=0, shown at ?tier=1 in the same place', async ({
-  page,
-}, testInfo) => {
-  only(testInfo, 'phone-light', 'phone-dark');
-  const box = () =>
-    page.locator(REPLAY).evaluate((el) => {
-      let top = 0;
-      for (let e = el as HTMLElement | null; e; e = e.offsetParent as HTMLElement | null) {
-        top += e.offsetTop;
-      }
-      const r = el.getBoundingClientRect();
-      return [top, Math.round(r.left), Math.round(r.width), Math.round(r.height)];
-    });
-  // Both boxes are read in one state, scrolled to the stage with the fonts in: the tier 1 read
-  // came 21 px lower once (WebKit phone, CI run 95), read scrolled against one read at the top.
-  await page.goto('/?tier=0');
-  await page.waitForLoadState('load');
-  await scrollToStage(page);
-  await page.evaluate(() => document.fonts.ready);
-  await expect(page.locator(REPLAY)).toHaveAttribute('inert', '');
-  await expect(page.locator(REPLAY)).toBeHidden();
-  const atZero = await box();
-  expect(atZero[3]).toBeGreaterThan(0);
-  await page.goto('/?tier=1');
-  await page.waitForLoadState('load');
-  await scrollToStage(page);
-  await page.evaluate(() => document.fonts.ready);
-  await expect(page.locator(REPLAY)).toBeVisible({ timeout: 15_000 });
-  await expect(page.locator(REPLAY)).not.toHaveAttribute('inert');
-  expect(await box()).toEqual(atZero);
-});
-
-test('T-BF6 «پخش دوباره» by keyboard replays the drop', async ({ page }, testInfo) => {
-  only(testInfo, 'desktop-light');
-  await needsWebgl2(page);
-  await page.goto('/?debug=1&tier=1');
-  await engineReady(page);
-  await scrollToStage(page);
-  await dropSettled(page);
-  const replay = page.getByRole('button', { name: t('home.playground.replay') });
-  await expect(replay).toBeVisible();
-  await replay.focus();
-  await page.keyboard.press('Enter');
-  await dropSettled(page);
-  await expect(replay).toBeFocused();
-});
-
 test('T-BF7 a relatch to tier 0 and a route change leave no Draggable and no transform behind', async ({
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
   await needsWebgl2(page);
-  // The saved choice decides the tier (a `?tier=` query would outrank the control).
+  // The saved choice decides the tier (a `?tier=` query would outrank the debug hook's override).
   await page.addInitScript(() => {
     localStorage.setItem('sefid-quality', '1');
     sessionStorage.setItem('sefid-debug', '1');
@@ -765,8 +714,12 @@ test('T-BF7 a relatch to tier 0 and a route change leave no Draggable and no tra
   await scrollToStage(page);
   await dropSettled(page);
   await expect.poll(async () => (await snapshot(page)).draggables).toBe(6);
-  // Mid-drop: the relatch must kill the tween and reset the parts.
-  await page.getByRole('button', { name: t('home.playground.replay') }).click();
+  // Mid-fall: a part thrown up, the relatch must kill its fall and reset the parts.
+  const bar = (await page.locator(PARTS).nth(1).boundingBox())!;
+  await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(bar.x + bar.width / 2, bar.y - 120, { steps: 4 });
+  await page.mouse.up();
   await expect.poll(() => anyDropping(page)).toBe(true);
   await page.evaluate(() => (window as unknown as { __sefid?: Hook }).__sefid?.setUserOverride(0));
   await expect(page.locator('html')).toHaveAttribute('data-tier', '0');
@@ -799,64 +752,26 @@ test('T-BF7 a relatch to tier 0 and a route change leave no Draggable and no tra
   expect(errors().filter((line) => !line.includes('/api/events'))).toEqual([]);
 });
 
-test('T-BF8 the «کیفیت» radios move html[data-tier] at once, keep the footer in view, survive a reload, and pass axe', async ({
+test('T-BF8 reduced motion switched on at the footer: tier 0 at once, the playground static, the footer passes axe', async ({
   page,
 }, testInfo) => {
   only(testInfo, 'desktop-light');
   await needsWebgl2(page);
-  await page.goto('/?debug=1');
-  await page.waitForLoadState('load');
-  await scrollToStage(page);
-  // The controls end the footer, under the debug overlay's corner: the page's end, the overlay
-  // let through to the pointer (it is the test's own, `?debug=1`).
-  const toControls = async (): Promise<void> => {
-    await page.evaluate(() => {
-      window.scrollTo({ top: 1e6, behavior: 'instant' });
-      document
-        .querySelector<HTMLElement>('[data-dev-overlay]')
-        ?.style.setProperty('pointer-events', 'none');
-    });
-    await frames(page);
-  };
-  await toControls();
-  const radio = (name: string) => page.getByRole('radio', { name });
-  await expect(radio(t('home.quality.auto'))).toBeChecked();
-  await expect(radio(t('home.quality.tier1'))).toBeEnabled();
-  await expectNoA11yViolations(page, { include: CONTROLS });
-
-  await radio(t('home.quality.tier1')).check();
-  const html = page.locator('html');
-  await expect(html).toHaveAttribute('data-tier', '1');
-  await expect(html).toHaveAttribute('data-tier-reason', 'user-override');
-  expect(await page.evaluate(() => localStorage.getItem('sefid-quality'))).toBe('1');
-  const line = page.locator(`${CONTROLS} fieldset p`);
-  await expect(line).toHaveText(t('home.quality.tier1'));
+  // A saved choice, not `?tier=`: reduced motion wins over the reader's choice, not a query.
+  await page.addInitScript(() => {
+    localStorage.setItem('sefid-quality', '1');
+    sessionStorage.setItem('sefid-debug', '1');
+  });
+  await page.goto('/');
   await engineReady(page);
-  await frames(page);
-  const controls = (await page.locator(CONTROLS).boundingBox())!;
-  const viewport = page.viewportSize()!;
-  expect(controls.y).toBeLessThan(viewport.height);
-  expect(controls.y + controls.height).toBeGreaterThan(0);
-  await expect(page.locator(REPLAY)).toBeVisible();
-
-  await page.reload();
-  await page.waitForLoadState('load');
-  await expect(radio(t('home.quality.tier1'))).toBeChecked();
-  await toControls();
-  await expect(html).toHaveAttribute('data-tier', '1');
-
-  // Reduced motion wins over the choice; the line says so.
+  await scrollToStage(page);
+  await dropSettled(page);
+  await expectNoA11yViolations(page, { include: 'footer' });
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(html).toHaveAttribute('data-tier', '0');
-  await expect(line).toHaveText(`${t('home.quality.tier0')} · ${t('home.quality.reducedMotion')}`);
-  await expect(radio(t('home.quality.tier1'))).toBeChecked();
+  await expect(page.locator('html')).toHaveAttribute('data-tier', '0');
   await expectStaticPlayground(page);
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-
-  await radio(t('home.quality.auto')).check();
-  // The choice is saved after the next paint (QualityControl), so poll.
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('sefid-quality'))).toBeNull();
-  await expect(radio(t('home.quality.auto'))).toBeChecked();
+  // The footer's own logo shows again, whole.
+  await expect(page.locator('footer [data-footer-logo]')).toHaveCSS('opacity', '1');
 });
 
 /**

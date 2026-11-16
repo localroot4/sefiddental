@@ -1,9 +1,5 @@
-import { FooterControls } from '@/components/home/FooterControls';
-import { QualityControlDeferred } from '@/components/home/QualityControlDeferred';
 import { FOOTER_LOGO_CLASS, LOCKUP_VIEW } from '@/components/layout/BrandLogo';
-import { Button } from '@/components/ui/Button';
 import { cx } from '@/components/ui/cx';
-import { t } from '@/i18n/fa';
 
 /**
  * The six moving parts of the lockup (owner 2026-11-16: the letters move too), each at its own place in the footer logo: its symbol's
@@ -28,8 +24,7 @@ const HIT =
   'before:absolute before:top-1/2 before:left-1/2 before:size-target before:min-w-full before:min-h-full before:-translate-x-1/2 before:-translate-y-1/2';
 
 /**
- * Scene 11, the footer playground and the «کیفیت جلوه‌ها» control (phase 7 report D9, D15;
- * docs/experience/footer.md): the last child inside `ExperienceRoot`, `data-scene="footer"`, no
+ * Scene 11, the footer playground (phase 7 report D9; docs/experience/footer.md): the last child inside `ExperienceRoot`, `data-scene="footer"`, no
  * `data-home-section`. The playground is the footer's own logo (owner 2026-11-14: one footer, the
  * logo inside it): the field lies over SiteFooter right after this root (`top-full`), and its
  * inner box repeats the footer's container and logo size, so the parts sit on the logo's own
@@ -37,34 +32,12 @@ const HIT =
  * The field stays invisible and lets every pointer through until scenes/dom/footer.ts runs (tiers
  * 1 to 3): it then sizes the field down to the footer's floor, hides the footer's logo under the
  * parts drawn here, and shows the field. Tier 0, reduced motion and no script: the
- * footer's own static logo. Nothing in flow: the control and a quiet «پخش دوباره» (the keyboard
- * path; its box is there at every tier, invisible and inert until the scene shows it at tiers 1 to
- * 3, D24) sit in the footer's bottom bar (FooterControls).
+ * footer's own static logo. Nothing in flow (owner 2026-11-16: no
+ * «کیفیت جلوه‌ها» or «پخش دوباره» row).
  */
 export function PlaygroundSection() {
   return (
     <div data-scene="footer" data-theme="dark" className="relative">
-      <FooterControls>
-        <QualityControlDeferred
-          labels={{
-            legend: t('home.quality.label'),
-            auto: t('home.quality.auto'),
-            tiers: [
-              t('home.quality.tier0'),
-              t('home.quality.tier1'),
-              t('home.quality.tier2'),
-              t('home.quality.tier3'),
-            ],
-            reducedMotion: t('home.quality.reducedMotion'),
-            siteCap: t('home.quality.siteCap'),
-            device: t('home.quality.device'),
-            saveData: t('home.quality.saveData'),
-          }}
-        />
-        <Button variant="ghost" data-playground-replay="" inert className="invisible">
-          {t('home.playground.replay')}
-        </Button>
-      </FooterControls>
       <div
         data-playground-field=""
         data-world-slot="playground"

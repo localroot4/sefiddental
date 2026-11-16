@@ -29,7 +29,7 @@ test('T-T01 without WebGL 2, ?tier=3 gives tier 0 (no-webgl2), no canvas and no 
   await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
 });
 
-test('T-T02 tier 0: the footer logo is static, «پخش دوباره» hidden, no Draggable chunk at the footer', async ({
+test('T-T02 tier 0: the footer logo is static, no Draggable chunk at the footer', async ({
   page,
 }) => {
   const draggable: string[] = [];
@@ -47,7 +47,6 @@ test('T-T02 tier 0: the footer logo is static, «پخش دوباره» hidden, n
   await stage.evaluate((el) => el.scrollIntoView({ block: 'end', behavior: 'instant' }));
   await page.waitForTimeout(3000);
   expect(draggable).toEqual([]);
-  await expect(page.locator('footer [data-playground-replay]')).toBeHidden();
   const parts = stage.locator('[data-playground-part]');
   await expect(parts).toHaveCount(6);
   for (const transform of await parts.evaluateAll((els) =>
@@ -57,6 +56,4 @@ test('T-T02 tier 0: the footer logo is static, «پخش دوباره» hidden, n
   // The footer's own logo is the lockup at rest; the field over it stays hidden.
   await expect(page.locator('footer [data-footer-logo] svg[role="img"]')).toBeVisible();
   await expect(stage.locator('[data-playground-field]')).toBeHidden();
-  // The «کیفیت» control is the accessible path: enabled after hydration.
-  await expect(page.getByRole('radio', { name: 'خودکار' })).toBeEnabled();
 });

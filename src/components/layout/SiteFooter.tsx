@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { pageLink, type ChromeLink } from '@/components/chrome/links';
 import { SocialLinks } from '@/components/chrome/social';
-import { BrandLogo, FOOTER_LOGO_CLASS } from '@/components/layout/BrandLogo';
+import { BrandLogo, FOOTER_LOGO_CLASS, FooterEmblem } from '@/components/layout/BrandLogo';
 import { DirectionsLinks, PhoneNumber } from '@/components/ui/Contact';
 import { Icon } from '@/components/ui/Icon';
 import { cx } from '@/components/ui/cx';
@@ -95,7 +95,15 @@ export function SiteFooter(props: { contact: FooterData; now?: Date }) {
   const { licenseNumber, technicalSupervisor } = contact.legal;
   return (
     // One dark section in both themes (docs/experience/footer.md): the dark tokens apply inside it.
-    <footer data-theme="dark" className="mt-auto bg-surface-sunken text-ink">
+    <footer
+      data-theme="dark"
+      className="relative isolate mt-auto overflow-clip bg-surface-sunken text-ink"
+    >
+      {/* The emblem (owner 2026-11-16: a background that shows the brand): the mark drawn as one
+          fine line, monumental, standing on the footer's floor at its inline-end corner and
+          fading out upward (globals.css .footer-emblem). Under the content: the footer isolates
+          its layers. */}
+      <FooterEmblem className="footer-emblem pointer-events-none absolute end-[2%] -bottom-12 -z-10 h-[18rem] w-auto md:-bottom-16 md:h-[28rem] lg:end-[1%]" />
       {/* pb-16: a thrown mark (59 px) rests on the floor below the last link row, not over it. */}
       <div className="mx-auto grid w-full max-w-content gap-6 px-gutter pt-12 pb-16 md:grid-cols-3 md:gap-8 lg:grid-cols-[2fr_1fr_1fr_1fr]">
         <div data-sticky-hide="" className="grid content-start gap-3 md:col-span-3 lg:col-span-1">
@@ -155,11 +163,6 @@ export function SiteFooter(props: { contact: FooterData; now?: Date }) {
       </div>
       {/* The footer's floor (globals.css): a fine lit horizon; the playground's parts land on it. */}
       <div data-footer-floor="" className="footer-floor relative">
-        {/* The home page's «کیفیت جلوه‌ها» and «پخش دوباره» (FooterControls); empty elsewhere. */}
-        <div
-          data-footer-controls=""
-          className="mx-auto flex w-full max-w-content flex-wrap items-end justify-between gap-x-6 gap-y-2 px-gutter pt-6 text-ink-muted empty:hidden"
-        />
         <div className="mx-auto flex w-full max-w-content flex-col gap-3 px-gutter py-6 text-caption text-ink-muted md:grid md:grid-cols-[auto_1fr_auto] md:items-center md:gap-6">
           <div className="flex flex-wrap items-center gap-1 empty:hidden">
             <SocialLinks social={contact.social} whatsapp={contact.whatsapp} location="footer" />

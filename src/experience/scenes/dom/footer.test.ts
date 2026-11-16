@@ -75,10 +75,6 @@ const SETTINGS = { footerPlayground: 'dom' } as TierSettings;
 
 let el: HTMLElement;
 let field: HTMLElement;
-let replay: HTMLButtonElement;
-/** «پخش دوباره» as the reader meets it; its box stays at every tier (D24). */
-const shown = (button: HTMLElement): boolean =>
-  !button.classList.contains('invisible') && !button.hasAttribute('inert') && !button.hidden;
 let parts: HTMLElement[];
 let near: (() => void) | null;
 let cancelNear: ReturnType<typeof vi.fn<() => void>>;
@@ -90,8 +86,7 @@ function stage(): HTMLElement {
       <div data-playground-part="mark"></div>
       <div data-playground-part="bar"></div>
       <div data-playground-part="diamond-1"></div>
-    </div>
-    <button data-playground-replay="" inert class="invisible" type="button">replay</button>`;
+    </div>`;
   document.body.append(root);
   return root;
 }
@@ -146,7 +141,6 @@ beforeEach(() => {
   );
   el = stage();
   field = el.querySelector('[data-playground-field]')!;
-  replay = el.querySelector('button')!;
   parts = Array.from(el.querySelectorAll('[data-playground-part]'));
   near = null;
   cancelNear = vi.fn<() => void>();
@@ -235,7 +229,7 @@ describe('playgroundRuns', () => {
 });
 
 describe('footer scene', () => {
-  it('tier 0 (static) and reduced motion: no chunk, no trigger, the replay stays hidden', () => {
+  it('tier 0 (static) and reduced motion: no chunk, no trigger, the field stays hidden', () => {
     expect(scene.setup(ctx({ settings: { footerPlayground: 'static' } as TierSettings }))).toBe(
       undefined,
     );
@@ -245,14 +239,13 @@ describe('footer scene', () => {
     expect(near).toBeNull();
     expect(mocks.chunkLoads).toBe(0);
     expect(mocks.triggers).toEqual([]);
-    expect(shown(replay)).toBe(false);
+    expect(field.style.height).toBe('');
   });
 
   it('loads the chunk near the viewport, drops on enter, and times the way home at 6000 ms', async () => {
     const timeout = vi.spyOn(window, 'setTimeout');
     const cleanup = scene.setup(ctx());
     expect(typeof cleanup).toBe('function');
-    expect(shown(replay)).toBe(true);
     expect(mocks.chunkLoads).toBe(0);
 
     near!();
@@ -290,14 +283,13 @@ describe('footer scene', () => {
     for (const drag of mocks.instances) expect(drag.kill).toHaveBeenCalledTimes(1);
     expect(mocks.triggers[0]!.kill).toHaveBeenCalledTimes(1);
     expect(cancelNear).toHaveBeenCalledTimes(1);
-    expect(shown(replay)).toBe(false);
     for (const part of parts) {
       expect(part.style.transform).toBe('');
       expect(part.style.willChange).toBe('');
       expect(part.classList.contains('z-10')).toBe(false);
     }
     // After the cleanup nothing answers: the chunk is not requested again, no drop runs.
-    replay.click();
+    mocks.triggers[0]!.vars.onEnter();
     await settled();
     expect(gsap.getTweensOf(parts)).toEqual([]);
   });
@@ -573,18 +565,9 @@ describe('footer scene', () => {
     (cleanup as () => void)();
   });
 
-  it('«پخش دوباره» replays the drop through the same chunk', async () => {
-    const cleanup = scene.setup(ctx());
-    replay.click();
-    await settled();
-    expect(mocks.chunkLoads).toBe(1);
-    for (const part of parts) expect(Number(gsap.getProperty(part, 'y'))).toBeLessThan(0);
-    (cleanup as () => void)();
-  });
-
   it('a liftoff during the drop takes the mark home and leaves the others falling', async () => {
     const cleanup = scene.setup(ctx());
-    replay.click();
+    mocks.triggers[0]!.vars.onEnter();
     await settled();
     const [mark, ...others] = parts;
     mark!.dispatchEvent(new CustomEvent(LIFTOFF_EVENT));
@@ -615,16 +598,16 @@ describe('footer scene', () => {
     (cleanup as () => void)();
   });
 
-  it('a failed chunk is reported once and requested again by the next replay', async () => {
+  it('a failed chunk is reported once and requested again by the next try', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
     const cleanup = scene.setup(ctx());
     mocks.failNext = true;
-    replay.click();
+    mocks.triggers[0]!.vars.onEnter();
     await settled();
     expect(error).toHaveBeenCalledTimes(1);
     expect(gsap.getTweensOf(parts)).toEqual([]);
 
-    replay.click();
+    mocks.triggers[0]!.vars.onEnter();
     await settled();
     expect(error).toHaveBeenCalledTimes(1);
     for (const part of parts) expect(Number(gsap.getProperty(part, 'y'))).toBeLessThan(0);

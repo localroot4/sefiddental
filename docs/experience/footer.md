@@ -79,7 +79,7 @@ and the logo comes into the footer.
   1.6 s, one part after another: a soft start and a soft landing, never a leap). The field lets
   every pointer through except the parts; each part's touch area is its `::before`, at least
   44 px square round its art.
-- «کیفیت جلوه‌ها» and «پخش دوباره» are in the bottom bar, under the horizon
+- (Until 2026-11-16, section 5.) «کیفیت جلوه‌ها» and «پخش دوباره» are in the bottom bar, under the horizon
   (`[data-footer-controls]`), through a client portal (`FooterControls`): they need the tier
   store inside `ExperienceRoot`. They appear after hydration; the footer is below the first
   screen, so nothing the reader sees moves.
@@ -87,3 +87,15 @@ and the logo comes into the footer.
   shows. Nothing moves, nothing shifts.
 - The lanes keep the courier off the footer's text and controls as well (`driver.ts` measures
   the footer's obstacles with the root's).
+
+## 5. As built (2026-11-16)
+
+- The letters «سفید» are a sixth part: they can be taken and thrown like the others. The way
+  home is `power2.inOut` over 1.6 s, one part after another.
+- No «کیفیت جلوه‌ها» or «پخش دوباره» row (owner: not needed). The tier is chosen automatically;
+  reduced motion still gives the static page, and phones keep the light notice's switch.
+  Nothing moves on its own for more than 5 s (journey.md section 3), so no stop control is
+  needed for WCAG 2.2.2.
+- The emblem: on every page the footer's inline-end corner holds the mark's outline as one
+  fine line (`FooterEmblem`, `.footer-emblem`), 28 rem tall from 744 px, standing on the floor
+  and fading out upward, under the content.

@@ -101,17 +101,6 @@ export const HOME_MESSAGES = {
   'home.intro.skip': 'رد کردن انیمیشن',
   // BOOKING+FOOTER: the «کیفیت» control, its five options and the three reasons the effective tier
   // differs from the choice.
-  'home.quality.label': 'کیفیت جلوه‌ها',
-  'home.quality.auto': 'خودکار',
-  'home.quality.tier0': 'بدون جلوه',
-  'home.quality.tier1': 'سبک',
-  'home.quality.tier2': 'متوسط',
-  'home.quality.tier3': 'کامل',
-  'home.quality.reducedMotion': 'حرکت کمتر فعال است',
-  'home.quality.siteCap': 'محدودیت سایت',
-  'home.quality.device': 'دستگاه',
-  'home.quality.saveData': 'صرفه‌جویی داده فعال است',
-  'home.playground.replay': 'پخش دوباره',
   // COMPARE+DENTISTS+VOICES+LIGHT: the voices carousel buttons.
   'home.voices.prev': 'قبلی',
   'home.voices.next': 'بعدی',

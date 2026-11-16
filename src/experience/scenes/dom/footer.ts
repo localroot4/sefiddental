@@ -5,7 +5,7 @@
  * stage enters (`bounce.out`, one stagger), the reader drags and throws them with Draggable inside
  * the field, a release falls at once under gravity with the throw's speed (fallSegments) and
  * bounces on the field's floor, and 6 s after the last interaction they glide home into the logo
- * (HOME_GLIDE); «پخش دوباره» replays the drop (the keyboard path). Transform
+ * (HOME_GLIDE). Transform
  * only: the pressed part rises through a class that sets `z-index`, once per press (D12), and
  * `will-change` is set on press and cleared when its fall completes. Tier 0, reduced motion and
  * a static playground setting run nothing and load no chunk.
@@ -157,8 +157,6 @@ export function playgroundRuns(
 const scene: DomScene = {
   setup({ el, settings, conditions, nearViewport }) {
     const field = el.querySelector<HTMLElement>('[data-playground-field]');
-    // In the footer's bottom bar (FooterControls' portal), outside the stage.
-    const replay = document.querySelector<HTMLElement>('[data-playground-replay]');
     if (field === null || !playgroundRuns(settings, conditions.reduce)) return;
     const parts = Array.from(field.querySelectorAll<HTMLElement>('[data-playground-part]'));
     if (parts.length === 0) return;
@@ -202,7 +200,7 @@ const scene: DomScene = {
     let chunk: Promise<DraggableClass> | null = null;
     const load = (): Promise<DraggableClass> =>
       (chunk ??= import('./playground.lazy').then((mod) => mod.default));
-    // A failed import is not kept: the next enter or replay requests the chunk again.
+    // A failed import is not kept: the next arming requests the chunk again.
     const failed = (error: unknown): void => {
       chunk = null;
       console.error('[experience] playground chunk failed to load; the parts stay home.', error);
@@ -245,9 +243,9 @@ const scene: DomScene = {
     };
     // The journey's courier delivers the mark (docs/experience/journey.md section 4): while it
     // has not landed, the mark part waits at home, hidden, and the enter drop leaves it out.
-    const drop = (enter = false): void => {
+    const drop = (): void => {
       if (gone) return;
-      const falling = enter ? parts.filter((part) => !part.hasAttribute(AWAY_ATTR)) : parts;
+      const falling = parts.filter((part) => !part.hasAttribute(AWAY_ATTR));
       if (falling.length === 0) return;
       clearHomeTimer();
       killAll();
@@ -425,16 +423,9 @@ const scene: DomScene = {
       start: ENTER,
       once: true,
       onEnter: () => {
-        load().then(() => drop(true), failed);
+        load().then(drop, failed);
       },
     });
-    const onReplay = (): void => {
-      load().then(() => drop(), failed);
-    };
-    replay?.addEventListener('click', onReplay);
-    // Its box is there at every tier (D24): only its visibility and its inertness change.
-    replay?.classList.remove('invisible');
-    replay?.removeAttribute('inert');
 
     return () => {
       gone = true;
@@ -447,11 +438,8 @@ const scene: DomScene = {
       cancelAnimationFrame(armFrame);
       enter.kill();
       clearHomeTimer();
-      replay?.removeEventListener('click', onReplay);
       listen(false);
       for (const part of parts) part.removeEventListener(LIFTOFF_EVENT, onLiftoff);
-      replay?.classList.add('invisible');
-      replay?.setAttribute('inert', '');
       for (const drag of drags) drag.kill();
       drags = [];
       killAll();

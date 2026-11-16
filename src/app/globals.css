@@ -346,6 +346,13 @@
   background-color: transparent;
 }
 
+/* The footer's emblem: the mark's outline in the horizon's light, strongest at the floor and
+   gone before the content's top (docs/experience/footer.md 5). */
+.footer-emblem {
+  color: rgb(127 227 217 / 0.45);
+  mask-image: linear-gradient(to top, #000 35%, rgb(0 0 0 / 0.25) 80%, transparent);
+}
+
 /* The footer's floor (docs/experience/footer.md 1), on every page: a fine lit horizon over the
    bottom bar, fading out at both ends, with a soft reflection under it. On home the playground's
    parts land on it. Light only, no shapes. */
@@ -390,8 +397,10 @@
 [data-courier-here] {
   visibility: hidden;
 }
+/* One breath, never a loop: nothing on the page moves on its own for more than 5 s (WCAG 2.2.2;
+   the «کیفیت جلوه‌ها» control that could stop it is gone, owner 2026-11-16). */
 [data-courier-breathe] {
-  animation: courier-breathe 6s var(--ease-in-out) infinite;
+  animation: courier-breathe 5s var(--ease-in-out) 1;
 }
 [data-courier-breathe]:not([data-shown]) {
   animation-play-state: paused;

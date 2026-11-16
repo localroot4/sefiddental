@@ -49,3 +49,25 @@ export function BrandLogo(props: { className?: string; label: string; dock?: boo
     </svg>
   );
 }
+
+/**
+ * The footer's emblem (owner 2026-11-16: a background that shows the brand): the mark's own
+ * outline as one fine line, like an architect's drawing of the logo, over a whisper of its fill.
+ * The line keeps 1 px at any size (`non-scaling-stroke`). Decorative (`aria-hidden`); its colour
+ * and fade are globals.css `.footer-emblem`.
+ */
+export function FooterEmblem(props: { className?: string }) {
+  return (
+    <svg viewBox="986 122 176 216" aria-hidden="true" className={props.className}>
+      <path
+        d={BRAND_LOCKUP.markPath}
+        fill="currentColor"
+        fillOpacity="0.05"
+        stroke="currentColor"
+        strokeOpacity="0.5"
+        strokeWidth="1"
+        vectorEffect="non-scaling-stroke"
+      />
+    </svg>
+  );
+}
