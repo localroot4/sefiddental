@@ -193,7 +193,9 @@ test('T-RS6 a chip checked before the engine keeps its layer until the scroll ta
   );
   release();
   const range = await pinRange(page);
-  await page.unroute(/\.js(\?|$)/);
+  // Wait for a handler still fetching: a plain unroute let that request through by itself, and
+  // the handler's late fulfill threw «Route is already handled» (CI run 156).
+  await page.unrouteAll({ behavior: 'wait' });
   // Above the pin the engine seeds the chosen layer; the first third hands the layers to the scroll.
   expect(await checkedKey(page)).toBe('vip');
   expect((await layerState(page)).opacity).toEqual([0, 1, 0]);
