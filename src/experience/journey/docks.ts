@@ -187,8 +187,10 @@ export function measureObstacles(root: Element): Box[] {
     }
     if (!(right > left && bottom > top)) return;
     // A scroll-scrubbed entrance (`[data-scrub]`: a rise, a slide, a settle) may be mid-way now:
-    // the box is taken where the element comes to rest, its transform undone.
-    const scrub = el.closest<HTMLElement>('[data-scrub]');
+    // the box is taken where the element comes to rest, its transform undone. The booking card
+    // too: it waits 24 px low for its rise on enter (scenes/dom/booking.ts), and the travel into
+    // the footer passes it (CI run 157: planned around a heading 24 px low, crossed in WebKit).
+    const scrub = el.closest<HTMLElement>('[data-scrub], [data-booking-card]');
     const style = scrub ? getComputedStyle(scrub) : null;
     const m = style ? new DOMMatrixReadOnly(style.transform) : null;
     if (scrub && style && m && !m.isIdentity) {

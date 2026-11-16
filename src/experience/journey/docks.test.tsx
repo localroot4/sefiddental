@@ -205,6 +205,42 @@ describe('measureDocks', () => {
     expect(boxes).toEqual([{ left: 20, top: 300, width: 120, height: 44, pin: null }]);
   });
 
+  it('DK13 a control in the booking card waiting for its rise (24 px low) is measured where it comes to rest', () => {
+    document.body.innerHTML = `
+      <main id="root">
+        <div id="card" data-booking-card="" style="transform: matrix(1, 0, 0, 1, 0, 24)">
+          <a id="send" href="/b"></a>
+        </div>
+      </main>`;
+    scrollTo(0);
+    const card = document.getElementById('card')!;
+    place(card, { top: 224, left: 0, w: 400, h: 300 });
+    place(document.getElementById('send')!, { top: 324, left: 20, w: 120, h: 44 });
+    // jsdom has no DOMMatrix: a translation only, read from the matrix() string.
+    class Matrix {
+      a = 1;
+      e: number;
+      f: number;
+      isIdentity: boolean;
+      constructor(text: string) {
+        const n = (text.match(/-?[\d.]+/g) ?? []).map(Number);
+        this.e = n[4] ?? 0;
+        this.f = n[5] ?? 0;
+        this.isIdentity = this.e === 0 && this.f === 0;
+      }
+    }
+    const real = globalThis.DOMMatrixReadOnly;
+    globalThis.DOMMatrixReadOnly = Matrix as unknown as typeof DOMMatrixReadOnly;
+    Object.defineProperty(Range.prototype, 'getClientRects', {
+      configurable: true,
+      value: () => [],
+    });
+    const boxes = measureObstacles(document.getElementById('root')!);
+    delete (Range.prototype as { getClientRects?: unknown }).getClientRects;
+    globalThis.DOMMatrixReadOnly = real;
+    expect(boxes).toEqual([{ left: 20, top: 300, width: 120, height: 44, pin: null }]);
+  });
+
   it('DK3 the viewport is the client width, the window height and the scroll range', () => {
     Object.defineProperty(document.documentElement, 'scrollHeight', {
       configurable: true,
