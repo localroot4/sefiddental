@@ -90,8 +90,14 @@ function check(): Omit<Sample, 'y'> | null {
     const el = node.parentElement;
     if (!el || !node.textContent?.trim() || !shown(el)) continue;
     range.selectNodeContents(node);
-    if ([...range.getClientRects()].some(hit)) {
-      problems.push(`over text «${node.textContent.trim().slice(0, 24)}»`);
+    const over = [...range.getClientRects()].find(hit);
+    if (over) {
+      // Where, so a failure on a slow CI host shows its geometry (CI run 155, WebKit).
+      const at = (l: number, t: number, r: number, b: number): string =>
+        [l, t, r, b].map(Math.round).join(',');
+      problems.push(
+        `over text «${node.textContent.trim().slice(0, 24)}» [${at(over.left, over.top, over.right, over.bottom)}] under [${at(box.l, box.t, box.r, box.b)}]`,
+      );
       break;
     }
   }

@@ -36,7 +36,7 @@ export interface Route {
 const FORM = 0.8;
 /** Clear space kept around the form (px). */
 // The drawn form's growth past the pose (motion.ts: MAX_LAG, the lean, the squash and the whip's
-// stretch, about 13 % of half the form) stays inside it.
+// stretch, about 13 % of half the form) stays inside it. 24 px left no lane into D3 at tier 1.
 export const LANE_MARGIN = 18;
 /** At most this many scroll px between two samples. */
 const STEP_PX = 16;

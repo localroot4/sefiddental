@@ -92,7 +92,19 @@ async function openHome(page: Page, tier: number): Promise<void> {
   if (tier > 0) {
     await page.waitForFunction(() => performance.getEntriesByName('sefid:engine-init').length > 0);
   }
+  await hydrated(page);
 }
+
+/**
+ * Hydrated: the booking forms switch to their own validation. A read before it can miss a link
+ * an island renders (CI run 155: one phone link more in the second of two reads).
+ */
+const hydrated = (page: Page) =>
+  page.waitForFunction(() =>
+    [...document.querySelectorAll('[data-booking-form] form')].every(
+      (form) => (form as HTMLFormElement).noValidate,
+    ),
+  );
 
 // ---------------------------------------------------------------------------------------------
 // Contrast on the pixels. axe reports text over an image as «incomplete» (it cannot know the
@@ -481,6 +493,7 @@ test('T-A11Y reduced motion gives the tier-0 page', async ({ page }) => {
   await expect(html).toHaveAttribute('data-tier-reason', 'reduced-motion');
   expect(await html.getAttribute('data-pins')).toBeNull();
   await expect(page.locator('#intro')).toHaveCount(0);
+  await hydrated(page);
   expect(await shape()).toEqual(tier0);
   const height = await page.evaluate(() => document.documentElement.scrollHeight);
   for (let y = 0; y < height; y += 600) {
