@@ -33,6 +33,20 @@ const viewWidth = (w: number) =>
     value: (q: string) => ({ matches: w >= Number(/min-width:\s*(\d+)px/.exec(q)?.[1] ?? 0) }),
   });
 
+/** jsdom has no DOMMatrix: a translation only, read from the matrix() string. */
+class Matrix {
+  a = 1;
+  e: number;
+  f: number;
+  isIdentity: boolean;
+  constructor(text: string) {
+    const n = (text.match(/-?[\d.]+/g) ?? []).map(Number);
+    this.e = n[4] ?? 0;
+    this.f = n[5] ?? 0;
+    this.isIdentity = this.e === 0 && this.f === 0;
+  }
+}
+
 const scrollTo = (y: number) =>
   Object.defineProperty(window, 'scrollY', { configurable: true, value: y });
 
@@ -216,19 +230,6 @@ describe('measureDocks', () => {
     const card = document.getElementById('card')!;
     place(card, { top: 224, left: 0, w: 400, h: 300 });
     place(document.getElementById('send')!, { top: 324, left: 20, w: 120, h: 44 });
-    // jsdom has no DOMMatrix: a translation only, read from the matrix() string.
-    class Matrix {
-      a = 1;
-      e: number;
-      f: number;
-      isIdentity: boolean;
-      constructor(text: string) {
-        const n = (text.match(/-?[\d.]+/g) ?? []).map(Number);
-        this.e = n[4] ?? 0;
-        this.f = n[5] ?? 0;
-        this.isIdentity = this.e === 0 && this.f === 0;
-      }
-    }
     const real = globalThis.DOMMatrixReadOnly;
     globalThis.DOMMatrixReadOnly = Matrix as unknown as typeof DOMMatrixReadOnly;
     Object.defineProperty(Range.prototype, 'getClientRects', {
@@ -239,6 +240,48 @@ describe('measureDocks', () => {
     delete (Range.prototype as { getClientRects?: unknown }).getClientRects;
     globalThis.DOMMatrixReadOnly = real;
     expect(boxes).toEqual([{ left: 20, top: 300, width: 120, height: 44, pin: null }]);
+  });
+
+  it('DK14 a card of the pinned services track is a wall only where it slides: its own height, from its place at rest to the slide end, within the rail', () => {
+    document.body.innerHTML = `
+      <main id="root"><div>
+        <div id="stage" style="position: sticky">
+          <div id="rail" data-courier-wall="">
+            <div id="track" data-track="" style="transform: matrix(1, 0, 0, 1, 300, 0)">
+              <a id="tall" href="/a"></a><a id="short" href="/b"></a><a id="last" href="/c"></a>
+            </div>
+          </div>
+        </div>
+        <div id="room" data-pin-room=""></div>
+      </div></main>`;
+    scrollTo(0);
+    const rail = document.getElementById('rail')!;
+    Object.defineProperty(rail, 'scrollWidth', { configurable: true, value: 2464 });
+    Object.defineProperty(rail, 'clientWidth', { configurable: true, value: 1216 });
+    place(document.getElementById('stage')!, { top: 1000, h: 828 });
+    place(document.getElementById('room')!, { top: 1828, h: 1800 });
+    place(rail, { top: 1200, left: 112, w: 1216, h: 417 });
+    // Measured 300 px into the slide (a slide of 2464 - 1216 = 1248 px).
+    place(document.getElementById('track')!, { top: 1200, left: -836, w: 2464, h: 417 });
+    place(document.getElementById('tall')!, { top: 1200, left: 1158, w: 470, h: 417 });
+    place(document.getElementById('short')!, { top: 1200, left: 688, w: 458, h: 170 });
+    place(document.getElementById('last')!, { top: 1200, left: -300, w: 900, h: 200 });
+    const real = globalThis.DOMMatrixReadOnly;
+    globalThis.DOMMatrixReadOnly = Matrix as unknown as typeof DOMMatrixReadOnly;
+    Object.defineProperty(Range.prototype, 'getClientRects', {
+      configurable: true,
+      value: () => [],
+    });
+    const boxes = measureObstacles(document.getElementById('root')!);
+    delete (Range.prototype as { getClientRects?: unknown }).getClientRects;
+    globalThis.DOMMatrixReadOnly = real;
+    const pin = { start: 1000 - 64, end: 1000 - 64 + 1800 };
+    expect(boxes).toEqual([
+      // At rest at the rail's end, it only leaves past the rail's edge.
+      { left: 858, top: 1200, width: 470, height: 417, pin },
+      { left: 388, top: 1200, width: 940, height: 170, pin },
+      { left: 112, top: 1200, width: 1216, height: 200, pin },
+    ]);
   });
 
   it('DK3 the viewport is the client width, the window height and the scroll range', () => {

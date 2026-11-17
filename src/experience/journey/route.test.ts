@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Box, Viewport } from './pose';
-import { LANE_MARGIN, placeOn, planRoute } from './route';
+import { LANE_MARGIN, laneMargin, placeOn, planRoute } from './route';
 
 const VIEW: Viewport = { width: 1440, height: 900, maxScroll: 20_000, insetTop: 72 };
 const line =
@@ -95,7 +95,15 @@ describe('planRoute and placeOn', () => {
         );
       }
     }
-    expect(least).toBeGreaterThanOrEqual(LANE_MARGIN - 0.01);
+    expect(least).toBeGreaterThanOrEqual(laneMargin(94) - 0.01);
+  });
+
+  it('RT7 the lane margin follows the form: the trail and 13 % of half the form, at most LANE_MARGIN', () => {
+    // The header's 26 px mark (a 21 px form) keeps 11 px: it fits a 32 px gutter at 1280 px.
+    expect(laneMargin(26)).toBeCloseTo(8 + 2 + 0.065 * 26 * 0.8, 6);
+    expect(laneMargin(26)).toBeLessThan(12);
+    expect(laneMargin(94)).toBeLessThan(LANE_MARGIN);
+    expect(laneMargin(160)).toBe(LANE_MARGIN);
   });
 
   it('RT3 placeOn interpolates between samples and holds the ends outside the range', () => {

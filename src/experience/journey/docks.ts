@@ -192,7 +192,10 @@ const TIER_PANEL = '[data-tier-panel]';
 export function measureObstacles(root: Element): Box[] {
   const nav = navHeight();
   const out: Box[] = [];
-  const add = (el: Element, rects: Iterable<DOMRect>): void => {
+  const add = (
+    el: Element,
+    rects: Iterable<Pick<DOMRect, 'left' | 'top' | 'right' | 'bottom' | 'width' | 'height'>>,
+  ): void => {
     let left = Infinity;
     let top = Infinity;
     let right = -Infinity;
@@ -240,7 +243,31 @@ export function measureObstacles(root: Element): Box[] {
   }
   for (const el of root.querySelectorAll(`[${ABOVE_ATTR}] > :not([data-dock])`))
     add(el, el.getClientRects());
-  for (const el of walls) add(el, el.getClientRects());
+  for (const el of walls) {
+    // The services track in its stuck stage slides one way only, by its overflow
+    // (scenes/dom/services.ts: x from 0 to `trackDistance`): each card sweeps its own height from
+    // its place at rest to the slide's end, within the rail. The tall first card made the whole
+    // rail a wall: the courier hugged the screen's edge beside the empty space under the short
+    // cards, then dashed (owner 2026-11-17: «it still jumps»). Any other wall is its whole box.
+    const track = el.querySelector<HTMLElement>(':scope > [data-track]');
+    if (track === null || stickyStage(el) === null) {
+      add(el, el.getClientRects());
+      continue;
+    }
+    const clip = el.getBoundingClientRect();
+    const transform = getComputedStyle(track).transform;
+    const x = transform === '' || transform === 'none' ? 0 : new DOMMatrixReadOnly(transform).e;
+    const slide = Math.max(0, track.getBoundingClientRect().width - el.clientWidth);
+    for (const card of track.children) {
+      const r = card.getBoundingClientRect();
+      const left = Math.max(clip.left, r.left - x);
+      const right = Math.min(clip.right, r.right - x + slide);
+      if (right > left && r.height > 0)
+        add(card, [
+          { left, right, top: r.top, bottom: r.bottom, width: right - left, height: r.height },
+        ]);
+    }
+  }
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
   const range = document.createRange();
   for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {

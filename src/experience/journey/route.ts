@@ -11,6 +11,7 @@
  * a lane opens (`offstage` counts those samples); it never fades over text. `faded` counts the
  * samples with no clear place at all (none, with the sides always open).
  */
+import { MAX_LAG } from './motion';
 import type { Box, Viewport } from './pose';
 
 /** A place of the courier: centre (viewport px), side of its box (px) and opacity. */
@@ -34,10 +35,30 @@ export interface Route {
 
 /** The share of the courier's box its form fills (pose.ts FORM_SHARE). */
 const FORM = 0.8;
-/** Clear space kept around the form (px). */
+/** Clear space kept around a large form (px). */
 // The drawn form's growth past the pose (motion.ts: MAX_LAG, the lean, the squash and the whip's
 // stretch, about 13 % of half the form) stays inside it. 24 px left no lane into D3 at tier 1.
 export const LANE_MARGIN = 18;
+/**
+ * The clear space round a form of box size `s`: its trail (at most MAX_LAG), 13 % of half the form
+ * for the lean, the squash and the stretch, and 2 px; at most LANE_MARGIN. With the full margin the
+ * header's 26 px mark found no lane in the 32 px gutter beside the hero at 1280 px and dived off
+ * the screen's edge (owner 2026-11-17: «leaving the header looks fake»).
+ */
+export const laneMargin = (s: number): number =>
+  Math.min(LANE_MARGIN, MAX_LAG + 2 + 0.065 * s * FORM);
+/**
+ * The cost of motion beyond the eased path's own, per sample (in cells squared): high enough that
+ * a lane trails the eased path at its own speed rather than waits and then dashes to catch up.
+ */
+const MOVE_WEIGHT = 2;
+/**
+ * Smoothing passes over a planned lane (each keeps every sample clear). The motion cost alone
+ * catches up with the eased path fastest right at the corner of a box (it eases out); 120 passes
+ * spread that start over about 11 samples (40 left a 3 px per scroll px burst past the services
+ * cards, owner 2026-11-17). They cost little next to the search.
+ */
+const SMOOTH_PASSES = 120;
 /** At most this many scroll px between two samples. */
 const STEP_PX = 16;
 const MAX_SAMPLES = 160;
@@ -217,9 +238,9 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
   const nodes = grid + 1; // node `grid` is the eased path itself
   const at = (k: number): number => y0 + ((y1 - y0) * k) / n;
   // Next to its docks the courier rides with them and does not trail (motion.ts): the margin
-  // there is the dock's own, growing to the full lane margin over the first and last samples.
+  // there is the dock's own, growing to the lane margin over the first and last samples.
   const marginAt = (k: number): number =>
-    Math.max(2, LANE_MARGIN * Math.min(1, Math.min(k, n - k) / 4));
+    Math.max(2, laneMargin(bases[k]!.s) * Math.min(1, Math.min(k, n - k) / 12));
 
   const px = new Float64Array((n + 1) * nodes);
   const py = new Float64Array((n + 1) * nodes);
@@ -390,7 +411,7 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
     const b1 = bases[k]!;
     const mx = (px[j]! - px[i]! - (b1.x - b0.x)) / cellW;
     const my = (py[j]! - py[i]! - (b1.y - b0.y)) / cellH;
-    return 0.02 * (mx * mx + my * my);
+    return MOVE_WEIGHT * (mx * mx + my * my);
   };
 
   // k = 0: the travel starts on its dock.
@@ -485,8 +506,10 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
     o: free[i] ? 1 : 0,
   }));
 
-  // Smooth the corners where the smoother place is still clear.
-  for (let pass = 0; pass < 3; pass += 1) {
+  // Smooth the corners where the smoother place is still clear. Many passes, not a few: the
+  // samples are even in scroll, so each pass also evens the speed, and the grid's steps and a
+  // wait-then-dash round a box became one even glide (owner 2026-11-17: «it waits, then jumps»).
+  for (let pass = 0; pass < SMOOTH_PASSES; pass += 1) {
     for (let k = 1; k < n; k += 1) {
       if (due()) yield;
       const a = samples[k - 1]!;

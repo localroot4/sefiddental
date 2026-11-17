@@ -88,13 +88,48 @@ squashes a little with the scroll's speed, and stretches through the whip; at re
 lands on the pose exactly, and a jump of more than half a screen is taken at once.
 
 Scroll per travel (owner, 2026-11-16: «from the footer the mark leapt away in two notches»):
-every travel spans at least 80 vh (`MIN_TRAVEL_VH`), the one out of the header 1.4 screens
+every travel spans at least 80 vh (`MIN_TRAVEL_VH`), the one out of the header 2.2 screens
 where D2 is pinned (taken from the start of its pin, where the page stands still), and the one
 into the footer a full screen where the page has room: the hold before it moves earlier as a
 whole, never before its dock shows. Measured at tier 2 on a 1366 x 680 laptop, a wheel notch
 moves the courier at most about 170 px on the travels out of the header and into the footer
 (390 and 780 px before). Nothing moves on its own for more than 5 s (WCAG 2.2.2): the DOM
 courier breathes once, the WebGL courier's idle motion ends 5 s after the last move.
+
+The hand-offs and the lanes (owner, 2026-11-17: «it still jumps; leaving the header and landing
+in the footer look fake»). Measured, not guessed: the pose was continuous, the jumps were these.
+
+- D1 is the logo mark's own window (`docks.ts` `markWindow`, through the logo's screen transform):
+  the nested `<svg>`'s client rect is the whole lockup in Chrome, so the courier left the logo's
+  middle, 30 px off the mark.
+- The courier docks in a logo (D1, D8) at the logo mark's own height (`MARK_SHARE` of its box);
+  in the footer it landed a third smaller and grew at the hand-off.
+- `flatAmount`: where it leaves the header logo and lands in the footer logo the courier is drawn
+  as the flat logo mark (the WebGL glaze mixes to #00827A after the tone mapping; the DOM courier
+  lays the flat mark over its porcelain), no shadow; it turns into the lit object over the first
+  35 % of the travel out of the header and the last 30 % into the footer.
+- The mark leaves the header logo at the first pixel of scroll: a hold (65 % of a screen, while
+  the hero's text went under the header) was tried and removed; at 1024 px with no pin it left no
+  lane, and at 1440 px the services heading rising under the logo forced a dash. Out of the logo
+  the mark sinks first (30 % of the travel) and drifts sideways after (from 25 %); where D2 is
+  pinned the travel spans 2.2 screens (`HEADER_TRAVEL_VH`).
+- Lanes (`route.ts`): motion beyond the eased path's own costs `MOVE_WEIGHT` 2 (was 0.02), the
+  margin grows over 12 samples next to a dock (was 4), and a planned lane is smoothed 120 times
+  (was 3), every sample kept clear: the grid's steps and a wait-then-dash became one glide where
+  the page leaves room.
+- The lane margin follows the form's size: `MAX_LAG` + 2 px + 13 % of half the form, at most
+  `LANE_MARGIN` (the drawn form's growth past the pose is the trail, the lean, the squash and the
+  stretch). The header's 26 px mark found no lane in the 32 px gutter beside the hero at 1280 px
+  with the full 18 px and dived off the screen's edge; now it slides down the gutter.
+- The services track is a wall per card (`docks.ts`): each card sweeps its own height from its
+  place at rest to the slide's end. The tall first card made the whole rail a wall, so the courier
+  hugged the screen's edge beside the empty space under the short cards and then dashed.
+
+Measured with a 2 px scroll sweep at tier 2, the most the courier moves on screen in 100 px of
+scroll, worst travel per width (before → after the per-card wall, the sized margin and the 120
+passes): 1280×800 367 → 179, 1366×768 261 →
+210, 1440×900 316 → 211, 1920×1080 241 → 210, 390×844 242 → 229. At 1024×768 the hero and the
+workflow still force 3 to 4.5 px per scroll px where the content leaves only a narrow lane.
 
 The shown turn (owner, 2026-11-14: «the turns are so fast I can't see them»): the whip that
 swaps the forms spans the middle half of its travel (the first 45 % leaving the smile), and the
