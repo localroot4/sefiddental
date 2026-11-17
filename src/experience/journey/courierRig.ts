@@ -42,7 +42,7 @@ import { createStudio } from '../scenes/webgl/studio';
 
 import { ARCH_DEPTH, ARCH_ELEVATION, ARCH_SLOT, archLayout } from './arch';
 import type { Beats } from './beats';
-import { seatAmount, type Pose } from './pose';
+import { flatAmount, seatAmount, type Pose } from './pose';
 import type { RestoreParts } from './restore';
 import { createRestoreDecal } from './restoreDecal';
 
@@ -280,11 +280,16 @@ function createGlaze(): {
   rim: { value: Color };
   sweep: { value: number };
   glint: { value: number };
+  flat: { value: number };
 } {
   const rim = { value: new Color('#CFF5F1') };
   // The idle glint along the bevel: its offset (off the form at both ends) and its strength.
   const sweep = { value: 0 };
   const glint = { value: 0 };
+  // 0..1 toward the logo's flat teal (pose.ts flatAmount), mixed in after the tone mapping, so at
+  // 1 the pixel is exactly #00827A: the flat logo mark it leaves or lands in.
+  const flat = { value: 0 };
+  const flatColor = { value: new Color('#00827A') };
   // Satin porcelain, not lacquer (owner 2026-11-16: the mark looked like glossy plastic): a
   // rougher body under a thin, soft coat, so the light lies on the bevel instead of glaring.
   const material = new MeshPhysicalMaterial({
@@ -299,10 +304,16 @@ function createGlaze(): {
     shader.uniforms.uRim = rim;
     shader.uniforms.uSweep = sweep;
     shader.uniforms.uGlint = glint;
+    shader.uniforms.uFlat = flat;
+    shader.uniforms.uFlatColor = flatColor;
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
-        '#include <common>\nuniform vec3 uRim;\nuniform float uSweep;\nuniform float uGlint;',
+        '#include <common>\nuniform vec3 uRim;\nuniform float uSweep;\nuniform float uGlint;\nuniform float uFlat;\nuniform vec3 uFlatColor;',
+      )
+      .replace(
+        '#include <colorspace_fragment>',
+        'gl_FragColor.rgb = mix(gl_FragColor.rgb, uFlatColor, uFlat);\n#include <colorspace_fragment>',
       )
       .replace(
         '#include <opaque_fragment>',
@@ -322,8 +333,8 @@ function createGlaze(): {
 #include <opaque_fragment>`,
       );
   };
-  material.customProgramCacheKey = () => 'sefid-glaze-6';
-  return { material, rim, sweep, glint };
+  material.customProgramCacheKey = () => 'sefid-glaze-7';
+  return { material, rim, sweep, glint, flat };
 }
 
 export interface CourierFrame {
@@ -401,7 +412,9 @@ export function createCourierRig(
   tilt.add(spin);
   scene.add(holder);
 
-  const { material: glaze, rim, sweep, glint } = createGlaze();
+  const { material: glaze, rim, sweep, glint, flat } = createGlaze();
+  // The contact shadow's strength for the theme (setTheme); the flat look takes it away.
+  let shadowBase = 0.14;
   const mark = new Mesh(geometry.mark, glaze);
   mark.scale.setScalar(MARK_FILL / MARK_HEIGHT);
   spin.add(mark);
@@ -598,6 +611,9 @@ export function createCourierRig(
       glaze.opacity = fade;
       enamel.material.opacity = fade;
       studio.shadow.visible = (!isTooth || seat < 0.5) && fade > 0.99 && pose.presence > 0.5;
+      flat.value = isTooth ? 0 : flatAmount(pose);
+      const shade = (studio.shadow.material as ShaderMaterial).uniforms.uOpacity;
+      if (shade) shade.value = shadowBase * (1 - flat.value);
       if (isTooth) {
         if (nextLevel !== level) {
           const { refine, character } = levelBlend(nextLevel);
@@ -695,8 +711,7 @@ export function createCourierRig(
       glaze.color.set(dark ? '#006B63' : '#00675F');
       glaze.emissive.set(dark ? '#00221E' : '#000000');
       // A light contact shadow under the mark, not a dark blot (the tooth scenes keep their own).
-      const shade = (studio.shadow.material as ShaderMaterial).uniforms.uOpacity;
-      if (shade) shade.value = dark ? 0.26 : 0.14;
+      shadowBase = dark ? 0.26 : 0.14;
       rim.value.set(dark ? '#7FE3D9' : '#CFF5F1');
       wireMaterial.color.set(brand);
       pointUniforms.uColor.value.set(brand);

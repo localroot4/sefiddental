@@ -30,7 +30,15 @@ import {
   type EngineTicks,
   type Journey,
 } from './driver';
-import { archFrame, CROWN_SHARE, domSpin, holdRanges, idleAmount, seatAmount } from './pose';
+import {
+  archFrame,
+  CROWN_SHARE,
+  domSpin,
+  flatAmount,
+  holdRanges,
+  idleAmount,
+  seatAmount,
+} from './pose';
 
 /** The courier's box before its scale (px). */
 const BOX = 100;
@@ -156,6 +164,7 @@ export default function JourneyLayer(props: {
   const courier = useRef<SVGGElement>(null);
   const hitbox = useRef<SVGRectElement>(null);
   const spin = useRef<SVGGElement>(null);
+  const flatMark = useRef<SVGUseElement>(null);
   const mark = useRef<SVGSVGElement>(null);
   const tooth = useRef<SVGSVGElement>(null);
   const crown = useRef<SVGSVGElement>(null);
@@ -253,10 +262,12 @@ export default function JourneyLayer(props: {
         const fade = pose.presence;
         // The mark has no back: it hides once turned past edge-on.
         mark.current?.style.setProperty('opacity', isTooth || turn < 0 ? '0' : String(fade));
+        const flat = isTooth ? 0 : flatAmount(pose);
+        flatMark.current?.setAttribute('opacity', String(Math.round(flat * 1000) / 1000));
         const seat = seatAmount(pose);
         tooth.current?.style.setProperty('opacity', String(isTooth ? fade * (1 - seat) : 0));
         crown.current?.style.setProperty('opacity', String(isTooth ? fade * seat : 0));
-        shadow.current?.style.setProperty('opacity', String(fade * (1 - seat)));
+        shadow.current?.style.setProperty('opacity', String(fade * (1 - seat) * (1 - flat)));
         // The chips' level at the restoration dock, plain everywhere else.
         const level =
           pose.dock === 'restoration'
@@ -480,6 +491,16 @@ export default function JourneyLayer(props: {
                     stroke="url(#courier-bevel)"
                     strokeWidth="3"
                     strokeLinejoin="round"
+                  />
+                  {/* The logo's flat teal over the porcelain where it leaves or lands in a logo
+                      (pose.ts flatAmount): the hand-off swaps two identical pictures. */}
+                  <use
+                    ref={flatMark}
+                    href="#lockup-mark"
+                    width="168.03"
+                    height="207.3"
+                    fill="#00827A"
+                    opacity="0"
                   />
                 </svg>
                 <svg

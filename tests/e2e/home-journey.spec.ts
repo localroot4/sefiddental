@@ -152,7 +152,14 @@ test.describe('desktop, WebGL courier', () => {
     }
     await scrollToY(page, holds[0]!.end + 1);
     const lifted = await probe<Pose>(page, 'pose');
-    const mark = (await logoMark.boundingBox())!;
+    // The mark's own window on the lockup, through the logo's screen transform: a nested <svg>'s
+    // box is the whole lockup in Chrome (the courier left the logo's middle, 30 px off the mark).
+    const mark = await logoMark.evaluate((el) => {
+      const w = el as SVGSVGElement;
+      const m = w.ownerSVGElement!.getScreenCTM()!;
+      const [x, y, width, height] = [w.x, w.y, w.width, w.height].map((a) => a.baseVal.value);
+      return { x: m.a * x! + m.e, y: m.d * y! + m.f, width: m.a * width!, height: m.d * height! };
+    });
     expect(lifted.hidden).toBe(false);
     expect(Math.abs(lifted.x - (mark.x + mark.width / 2)), 'on the logo mark').toBeLessThan(2);
     expect(Math.abs(lifted.y - (mark.y + mark.height / 2)), 'on the logo mark').toBeLessThan(2);

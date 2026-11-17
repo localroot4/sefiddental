@@ -9,6 +9,7 @@ import {
   courierPose,
   CROWN_SHARE,
   FOOTER_DROP_PX,
+  flatAmount,
   FORM_SHARE,
   holdRanges,
   domSpin,
@@ -89,6 +90,14 @@ describe('courierPose: docks', () => {
       if (id === 'smile') continue;
       expect(pose.x, id).toBeCloseTo(dock.left + dock.width / 2, 5);
       expect(pose.y, id).toBeCloseTo(viewportTop(dock, y) + dock.height / 2, 5);
+      if (id === 'footer') {
+        // In the footer logo the courier lands at the logo mark's own height (MARK_SHARE of its
+        // box), so the hand-off swaps two pictures of one size; the drawn mark (168:207) is the
+        // box's width there.
+        expect(pose.scale, id).toBeCloseTo(dock.height / MARK_SHARE, 5);
+        expect(pose.scale * MARK_SHARE).toBeCloseTo(dock.height, 5);
+        continue;
+      }
       expect(pose.scale, id).toBeCloseTo(Math.min(dock.width, dock.height) * 0.86, 5);
       // The form stays inside its box: no text around the box is ever under it at rest.
       expect(pose.x - pose.scale / 2).toBeGreaterThanOrEqual(dock.left);
@@ -96,10 +105,15 @@ describe('courierPose: docks', () => {
     }
   });
 
-  it('J2 a pinned dock holds still on screen for its whole pin; an unpinned one rides with the page', () => {
+  it('J2 a pinned dock holds still on screen from the arrival to the end of its pin; an unpinned one rides with the page', () => {
     const services = page()[1]!;
-    const a = at(1600);
-    const b = at(3000);
+    // Out of the header the courier arrives within D2's pin (HEADER_TRAVEL_VH), then holds.
+    const hold = holdsOf().find((h) => h.dock.id === 'services')!;
+    expect(hold.start).toBeGreaterThan(1500);
+    expect(hold.end).toBeLessThanOrEqual(3300);
+    expect(hold.end - hold.start).toBeGreaterThan(0.2 * VIEW.height);
+    const a = at(hold.start + 10);
+    const b = at(hold.end - 10);
     expect(a.dock).toBe('services');
     expect(b.dock).toBe('services');
     expect(a.y).toBeCloseTo(b.y, 5);
@@ -111,7 +125,7 @@ describe('courierPose: docks', () => {
     expect(at(dentists + 50).y).toBeCloseTo(at(dentists).y - 50, 5);
   });
 
-  it('J3 at the top the mark is home in the header logo (hidden); any scroll lifts it out at the logo mark, its size, dropping out of the bar before it drifts sideways', () => {
+  it('J3 at the top the mark is home in the header logo (hidden); any scroll lifts it out at the logo mark, its size, sinking out of the bar before it drifts sideways', () => {
     const header = page()[0]!;
     const [home, services] = holdsOf();
     expect([home!.start, home!.end]).toEqual([0, 0]);
@@ -128,13 +142,13 @@ describe('courierPose: docks', () => {
     // A third into the travel the mark has dropped further (share of its way down) than it has
     // moved sideways.
     const to = at(services!.start);
-    const p = at(services!.start * 0.3);
+    const p = at(home!.end + (services!.start - home!.end) * 0.3);
     const down = (p.y - lift.y) / (to.y - lift.y);
     const across = (p.x - lift.x) / (to.x - lift.x);
     expect(down).toBeGreaterThan(across);
     // No breath while it leaves the logo; it comes in on the way to D2.
     expect(idleAmount(lift)).toBeLessThan(0.01);
-    expect(idleAmount(at(services!.start * 0.9))).toBeGreaterThan(0.5);
+    expect(idleAmount(at(home!.end + (services!.start - home!.end) * 0.9))).toBeGreaterThan(0.5);
   });
 
   it('J4 the footer dock hands the mark to the playground: hidden once the courier is home', () => {
@@ -614,5 +628,20 @@ describe('the occlusal photo is registered to the arch', () => {
     const back = ARCH_PHOTO.teeth.at(-1)!.v;
     expect(ARCH_PHOTO.centre.v).toBeCloseTo((front + back) / 2, 3);
     expect(ARCH_PHOTO.archWidth).toBeCloseTo(2 * (ARCH_PHOTO.teeth.at(-1)!.u - 0.5), 3);
+  });
+});
+
+describe('the hand-off look (owner 2026-11-17: leaving and landing looked fake)', () => {
+  const travel = (to: DockId, t: number): Pose => ({ ...NO_POSE, hidden: false, to, travel: t });
+  it('J14 the courier is the flat logo mark where it leaves the header and lands in the footer, lit everywhere else', () => {
+    expect(flatAmount(NO_POSE)).toBe(1);
+    expect(flatAmount(travel('services', 0))).toBe(1);
+    expect(flatAmount(travel('services', 0.2))).toBeGreaterThan(0);
+    expect(flatAmount(travel('services', 0.2))).toBeLessThan(1);
+    expect(flatAmount(travel('services', 0.35))).toBe(0);
+    expect(flatAmount(travel('footer', 0.7))).toBe(0);
+    expect(flatAmount(travel('footer', 1))).toBe(1);
+    expect(flatAmount(travel('restoration', 0))).toBe(0);
+    expect(flatAmount({ ...NO_POSE, hidden: false, dock: 'smile' })).toBe(0);
   });
 });

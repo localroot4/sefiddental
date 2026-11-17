@@ -110,6 +110,25 @@ export function measureDocks(root: ParentNode = document): Dock[] {
 }
 
 /**
+ * The box of the logo's mark: a nested `<svg>` window on the lockup (BrandLogo.tsx). Its client
+ * rect is not that box: Chrome gives the bounds of its content, the whole lockup it clips, so the
+ * courier left the logo's middle, 30 px off the mark (owner 2026-11-17: «it jumps left»). The
+ * window's own x, y, width and height, through the logo's screen transform.
+ */
+function markWindow(el: Element): { left: number; top: number; width: number; height: number } {
+  const owner = el instanceof SVGSVGElement ? el.ownerSVGElement : null;
+  const m = typeof owner?.getScreenCTM === 'function' ? owner.getScreenCTM() : null;
+  if (!m || !(el instanceof SVGSVGElement)) return el.getBoundingClientRect();
+  const [x, y, w, h] = [el.x, el.y, el.width, el.height].map((a) => a.baseVal.value) as [
+    number,
+    number,
+    number,
+    number,
+  ];
+  return { left: m.a * x + m.e, top: m.d * y + m.f, width: m.a * w, height: m.d * h };
+}
+
+/**
  * The header logo's mark (journey D1) and the header's own controls: the header sticks at the top
  * at every scroll, so each box is pinned over the whole scroll range (its viewport top never
  * changes; pose.ts viewportTop). The controls keep the lane out of the header off the nav (the
@@ -126,14 +145,14 @@ export function measureHeader(): { dock: Dock | null; obstacles: Box[] } {
   if (!window.matchMedia(`(min-width: ${HEADER_DOCK_MIN_WIDTH}px)`).matches)
     return { dock: null, obstacles: [] };
   const pin = { start: 0, end: Infinity };
-  const box = (r: DOMRect): Box => ({
+  const box = (r: { left: number; top: number; width: number; height: number }): Box => ({
     left: r.left + window.scrollX,
     top: r.top,
     width: r.width,
     height: r.height,
     pin,
   });
-  const rect = mark.getBoundingClientRect();
+  const rect = markWindow(mark);
   if (!(rect.width > 0 && rect.height > 0)) return { dock: null, obstacles: [] };
   const logo = mark.closest('a');
   const obstacles = Array.from(header.querySelectorAll('a[href], button'))

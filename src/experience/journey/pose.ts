@@ -119,13 +119,16 @@ export interface Pose {
 
 /** A travel spans at least this share of the viewport height in scroll. */
 export const MIN_TRAVEL_VH = 0.8;
+/** Out of the header: the share of the travel that sinks, and the share that drifts sideways. */
+const HEADER_SINK = [0, 0.3] as const;
+const HEADER_SIDEWAYS = [0.25, 1] as const;
 /**
  * Out of the header logo the mark grows from the logo's size to D2's across the screen: it spans
  * at least this share (owner 2026-11-16: «it comes here and suddenly goes left»), taken from the
  * start of D2's pin, where the page stands still (tier 2 and up from 1024 px). Without a pin the
  * room would come from the next travel, which then found no lane (T-CA1 at tier 1).
  */
-const HEADER_TRAVEL_VH = 1.4;
+const HEADER_TRAVEL_VH = 2.2;
 /** The travel into the footer (a 40 px drop at its end) spans at least this share. */
 const FOOTER_TRAVEL_VH = 1;
 /**
@@ -254,7 +257,9 @@ export function holdRanges(docks: readonly Dock[], viewport: Viewport): Hold[] {
     .filter((d) => ORDER.has(d.id) && d.width > 0 && d.height > 0)
     .sort((a, b) => (ORDER.get(a.id) ?? 0) - (ORDER.get(b.id) ?? 0))
     .map((dock): Hold => {
-      // The header logo has the mark at the very top only: any scroll lifts it out.
+      // The header logo has the mark at the very top only: any scroll lifts it out. (A hold of
+      // 65 % of a screen was tried: where the air below the header opens differs per screen, and
+      // on 1440 x 900 the mark then darted off at the side, 6 px per px of scroll.)
       if (dock.id === 'header') return { dock, start: 0, end: 0 };
       if (dock.pin) return { dock, start: clampY(dock.pin.start), end: clampY(dock.pin.end) };
       // The footer hands the mark over as soon as its box is in view: the reader can take it.
@@ -400,8 +405,9 @@ function docked(dock: Dock, y: number, local: number): Docked {
       rotation: SLOT.yaw,
     };
   }
-  // In the logo the mark is drawn at the logo's own size: the courier's box is that mark's height.
-  if (dock.id === 'header') {
+  // In a logo the mark is drawn at the logo's own size: the courier's box is that mark's height
+  // (the footer's too: by its width the courier landed a third smaller and grew at the hand-off).
+  if (dock.id === 'header' || dock.id === 'footer') {
     return {
       x: dock.left + dock.width / 2,
       y: viewportTop(dock, y) + dock.height / 2,
@@ -613,15 +619,20 @@ function travelPath(a: Hold, b: Hold, viewport: Viewport): Path {
       // Into the footer the path ends 40 px above the box, and the rest is the drop.
       const pathT = footer ? clamp01((y - a.end) / Math.max(1e-6, length - drop)) : t;
       const e = smoothstep(pathT);
-      const u = 1 - e;
+      // Out of the header the mark first sinks out of the bar, then drifts sideways: two eases
+      // that overlap a little, each gentle at both ends (the lanes follow this; with one ease
+      // the header's links forced a 134 px fall in 32 px of scroll, owner 2026-11-17).
+      const header = a.dock.id === 'header';
+      const ex = header ? smoothstep(span(pathT, HEADER_SIDEWAYS)) : e;
+      const ey = header ? smoothstep(span(pathT, HEADER_SINK)) : e;
+      const u = 1 - ex;
       // The control points move with the ends.
       let x =
         u * u * u * fx +
-        3 * u * u * e * (p1x + fx - from.x) +
-        3 * u * e * e * (p2x + tx - to.x) +
-        e * e * e * tx;
-      // Out of the header the mark first drops out of the bar, then drifts sideways.
-      let yy = mix(fy, ty, a.dock.id === 'header' ? 1 - (1 - e) * (1 - e) : e);
+        3 * u * u * ex * (p1x + fx - from.x) +
+        3 * u * ex * ex * (p2x + tx - to.x) +
+        ex * ex * ex * tx;
+      let yy = mix(fy, ty, ey);
       if (footer && y > b.start - drop) {
         const home = viewportTop(b.dock, y) + b.dock.height / 2;
         x = b.dock.left + b.dock.width / 2;
@@ -778,6 +789,22 @@ export function seatAmount(pose: Pose): number {
 export function domSpin(pose: Pose): number {
   return pose.rotation * (1 - seatAmount(pose));
 }
+
+/**
+ * 0..1 how flat the courier is drawn: the logo's own teal, no light, no bevel, no shadow. 1 where
+ * it leaves the header logo and where it lands in the footer logo, so each hand-off swaps two
+ * identical pictures (owner 2026-11-17: «it leaves the header and lands in the footer like a
+ * fake»); it turns into the lit object over the first and the last part of those travels.
+ */
+export function flatAmount(pose: Pose): number {
+  if (pose.hidden) return 1;
+  if (pose.to === 'services') return 1 - smoothstep(span(pose.travel, FLAT_OUT));
+  if (pose.to === 'footer') return smoothstep(span(pose.travel, FLAT_IN));
+  return 0;
+}
+/** The share of the travel out of the header, and into the footer, that the flat look takes. */
+const FLAT_OUT = [0, 0.35] as const;
+const FLAT_IN = [0.7, 1] as const;
 
 /**
  * How much of the idle motion (the breath, the slow turn) shows: none at the footer, where the

@@ -228,7 +228,7 @@ describe('journey driver', () => {
     expect(mark.hasAttribute(AWAY_ATTR)).toBe(false);
     expect(part.hasAttribute(AWAY_ATTR)).toBe(true);
     // Out of the logo: the logo's mark is away.
-    layout(400);
+    layout(VIEW_H);
     journey.measure();
     expect(journey.pose().hidden).toBe(false);
     expect(mark.hasAttribute(AWAY_ATTR)).toBe(true);
