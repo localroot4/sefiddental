@@ -1,3 +1,4 @@
+import { LOCKUP_MARK_PATH } from '@/components/brand/LockupParts';
 import { FOOTER_LOGO_CLASS, LOCKUP_VIEW } from '@/components/layout/BrandLogo';
 import { cx } from '@/components/ui/cx';
 
@@ -65,6 +66,20 @@ export function PlaygroundSection() {
                 <svg className="pointer-events-none block size-full" fill="currentColor">
                   <use href={`#lockup-${part}`} />
                 </svg>
+                {part === 'mark' ? (
+                  // Its socket while the courier carries the mark, and the echo as it lands
+                  // (globals.css `[data-logo-socket]`): the `lockup-mark` symbol's own viewBox.
+                  <svg
+                    viewBox="990.27 126.64 168.03 207.3"
+                    className="pointer-events-none absolute inset-0 size-full overflow-visible"
+                  >
+                    <path
+                      data-logo-socket=""
+                      d={LOCKUP_MARK_PATH}
+                      vectorEffect="non-scaling-stroke"
+                    />
+                  </svg>
+                ) : null}
               </div>
             ))}
           </div>

@@ -1,6 +1,18 @@
 import { describe, expect, it } from 'vitest';
 
-import { createFollow, createTurn, GLIDE_S, glide, glideClear, WHIP_RATE } from './motion';
+import {
+  createFollow,
+  createPointerTilt,
+  createSettle,
+  createTurn,
+  GLIDE_S,
+  glide,
+  glideClear,
+  MAX_PITCH,
+  MAX_YAW,
+  SETTLE_S,
+  WHIP_RATE,
+} from './motion';
 import { NO_POSE, whipTurn, type Pose } from './pose';
 
 const pose = (x: number, y: number, scale = 100): Pose => ({
@@ -35,6 +47,8 @@ describe('secondary motion', () => {
       tilt: 0,
       sx: 1,
       sy: 1,
+      yaw: 0,
+      pitch: 0,
     });
   });
 
@@ -189,5 +203,81 @@ describe('the shown turn (owner 2026-11-14: turns too fast to see)', () => {
     turn.step(swap(0), 1 / 60, 900);
     expect(turn.step({ ...swap(1), hidden: true }, 1 / 60, 900).whip).toBe(1);
     expect(turn.settled()).toBe(true);
+  });
+});
+
+describe('pointer tilt and the seat at a dock', () => {
+  const docked = (dock: Pose['dock']): Pose => ({ ...pose(500, 400), dock });
+  const run = (
+    tilt: ReturnType<typeof createPointerTilt>,
+    p: Pose,
+    seconds: number,
+  ): { yaw: number; pitch: number } => {
+    let out = { yaw: 0, pitch: 0 };
+    for (let t = 0; t < seconds; t += 1 / 60)
+      out = tilt.step(p, { x: 500, y: 400, scale: 100 }, 1 / 60);
+    return out;
+  };
+
+  it('M10 at a dock it turns toward a near pointer within its limits, eases back as it leaves, and rests', () => {
+    const tilt = createPointerTilt();
+    tilt.aim({ x: 680, y: 560 }); // right of it and below: the face turns right and down
+    const near = run(tilt, docked('services'), 1.5);
+    expect(near.yaw).toBeGreaterThan(0.2);
+    expect(near.yaw).toBeLessThanOrEqual(MAX_YAW + 1e-9);
+    expect(near.pitch).toBeGreaterThan(0.1);
+    expect(near.pitch).toBeLessThanOrEqual(MAX_PITCH + 1e-9);
+    expect(tilt.settled()).toBe(true);
+    // Eases, never snaps: one frame moves it a little.
+    tilt.aim({ x: 100, y: 400 });
+    const next = tilt.step(docked('services'), { x: 500, y: 400, scale: 100 }, 1 / 60);
+    expect(Math.abs(next.yaw - near.yaw)).toBeLessThan(0.05);
+    // Far away (past four boxes) nothing pulls: back to 0.
+    tilt.aim({ x: 1400, y: 400 });
+    expect(run(tilt, docked('services'), 1.5)).toEqual({ yaw: 0, pitch: 0 });
+    expect(tilt.settled()).toBe(true);
+  });
+
+  it('M11 no turn in a travel, at the logos, at the smile or hidden', () => {
+    for (const p of [
+      { ...pose(500, 400), dock: null, to: 'restoration' as const },
+      docked('header'),
+      docked('footer'),
+      docked('smile'),
+      { ...docked('services'), hidden: true },
+    ]) {
+      const tilt = createPointerTilt();
+      tilt.aim({ x: 600, y: 450 });
+      expect(run(tilt, p, 0.5)).toEqual({ yaw: 0, pitch: 0 });
+    }
+  });
+
+  it('M12 arriving at a dock from a travel the size rings once, under 4.5 %, and rests within SETTLE_S', () => {
+    const settle = createSettle();
+    const travel = { ...pose(500, 400), dock: null, to: 'services' as const };
+    for (let t = 0; t < 0.5; t += 1 / 60) expect(settle.step(travel, 1 / 60)).toBe(1);
+    let most = 1;
+    let least = 1;
+    let t = 0;
+    for (; t < SETTLE_S + 0.1; t += 1 / 60) {
+      const k = settle.step(docked('services'), 1 / 60);
+      most = Math.max(most, k);
+      least = Math.min(least, k);
+    }
+    expect(most).toBeGreaterThan(1.02);
+    expect(most).toBeLessThan(1.045);
+    expect(least).toBeGreaterThan(0.98);
+    expect(settle.settled()).toBe(true);
+    expect(settle.step(docked('services'), 1 / 60)).toBe(1);
+  });
+
+  it('M13 no ring after a short waver off the dock, at a load on a dock, or landing in a logo', () => {
+    const settle = createSettle();
+    const travel = { ...pose(500, 400), dock: null, to: 'services' as const };
+    expect(settle.step(docked('services'), 1 / 60)).toBe(1); // a load at the dock
+    for (let i = 0; i < 6; i += 1) settle.step(travel, 1 / 60); // 0.1 s off its edge
+    for (let i = 0; i < 30; i += 1) expect(settle.step(docked('services'), 1 / 60)).toBe(1);
+    for (let i = 0; i < 60; i += 1) settle.step(travel, 1 / 60);
+    for (let i = 0; i < 30; i += 1) expect(settle.step(docked('footer'), 1 / 60)).toBe(1);
   });
 });

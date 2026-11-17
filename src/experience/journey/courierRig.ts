@@ -357,6 +357,38 @@ export interface CourierFrame {
   idle: number;
   /** Device px per CSS px of the box side, for the point size. */
   pixels: number;
+  /** The turn toward the pointer (radians; motion.ts createPointerTilt). */
+  pointer?: { yaw: number; pitch: number };
+  /** A glint along the bevel led by the scroll or the pointer (glintOf); the idle one otherwise. */
+  light?: Glint | null;
+}
+
+/** The glint along the bevel: its offset across the form (off it past ±1.6) and its strength. */
+export interface Glint {
+  sweep: number;
+  strength: number;
+}
+
+/**
+ * This frame's glint: the stronger of the one led by the scroll or the pointer and the idle one
+ * (every 9 s at a dock, none in flight).
+ */
+export function glintOf(idle: number, time: number, light: Glint | null | undefined): Glint {
+  if (light && light.strength > idle) return light;
+  return { sweep: (((time / 9) % 1) * 2 - 1) * 1.6, strength: idle };
+}
+
+/**
+ * The glint of the turn toward the pointer: the reflection slides the way the face turns (right
+ * for a pointer on the right, up for one above), as strong as the turn is near its limits.
+ */
+export function pointerGlint(yaw: number, pitch: number, maxYaw: number, maxPitch: number): Glint {
+  const u = yaw / maxYaw;
+  const v = -pitch / maxPitch;
+  return {
+    sweep: Math.max(-1.6, Math.min(1.6, 0.6 * (0.62 * u + 0.78 * v))),
+    strength: Math.min(1, Math.hypot(u, v)) * 1.3,
+  };
 }
 
 export interface CourierRig {
@@ -589,8 +621,11 @@ export function createCourierRig(
       stretch,
       view = 0,
       restore = null,
+      pointer,
+      light,
     }) {
       holder.rotation.z = lean;
+      holder.rotation.x = pointer?.pitch ?? 0;
       holder.scale.set(stretch?.[0] ?? 1, stretch?.[1] ?? 1, 1);
       const isTooth = pose.form === 'tooth';
       mark.visible = !isTooth;
@@ -602,11 +637,12 @@ export function createCourierRig(
         : 0;
       const centre = (MOLAR_Y.min + MOLAR_Y.max) / 2;
       tooth.position.y = -(centre + (CROWN_Y - centre) * seat) * toothScale;
-      spin.rotation.y = pose.rotation + turn + idle * 0.12 * Math.sin(time * 0.45);
+      spin.rotation.y =
+        pose.rotation + turn + (pointer?.yaw ?? 0) + idle * 0.12 * Math.sin(time * 0.45);
       holder.position.y = idle * 0.02 * Math.sin((time / 6) * Math.PI * 2);
-      // Every 9 s a glint runs along the bevel while the mark rests at a dock; none in flight.
-      sweep.value = (((time / 9) % 1) * 2 - 1) * 1.6;
-      glint.value = idle;
+      const shine = glintOf(idle, time, light);
+      sweep.value = shine.sweep;
+      glint.value = shine.strength;
       const fade = pose.opacity;
       glaze.opacity = fade;
       enamel.material.opacity = fade;

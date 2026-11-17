@@ -397,6 +397,46 @@
 [data-courier-here] {
   visibility: hidden;
 }
+/* The mark's outline in the logos the courier leaves and lands in (BrandLogo, the footer's mark
+   part): a faint socket while the courier carries the mark, so a logo never looks broken, and an
+   echo that spreads from it once as the mark lands back (the driver's data-courier-landed). */
+[data-logo-socket] {
+  fill: none;
+  stroke: var(--color-brand-logo);
+  stroke-width: 1.25px;
+  opacity: 0;
+  visibility: visible;
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 250ms var(--ease-out);
+}
+/* On a dark ground the logo teal sinks: the line takes the courier's rim teal (the footer's emblem). */
+[data-theme='dark'] [data-logo-socket] {
+  stroke: rgb(127 227 217);
+}
+[data-courier-away] [data-logo-socket] {
+  opacity: 0.4;
+}
+[data-courier-landed] [data-logo-socket] {
+  animation: courier-echo 700ms var(--ease-out) 1;
+}
+@keyframes courier-echo {
+  from {
+    opacity: 0.75;
+    transform: scale(1);
+    stroke-width: 2px;
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.35);
+    stroke-width: 1px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-courier-landed] [data-logo-socket] {
+    animation: none;
+  }
+}
 /* One breath, never a loop: nothing on the page moves on its own for more than 5 s (WCAG 2.2.2;
    the «کیفیت جلوه‌ها» control that could stop it is gone, owner 2026-11-16). */
 [data-courier-breathe] {

@@ -142,6 +142,26 @@ fast scroll never blurs it; a swap the scroll has already finished still plays o
 clock, the form swapping at edge-on (`createTurn`). Lenis glides with `lerp` 0.07 and
 `wheelMultiplier` 0.9.
 
+Live details (owner, 2026-11-17: «make it much cooler»; each starts with the reader's own move
+and lasts under a second, so nothing moves on its own past 5 s, WCAG 2.2.2; none at tier 0 or
+under reduced motion, where the journey does not load):
+
+- The turn toward the pointer (`motion.ts` `createPointerTilt`): at D2 to D6 but the smile, a
+  fine pointer (`(hover: hover) and (pointer: fine)`) within two boxes turns the courier's face
+  toward it, at most 0.35 rad about the vertical and 0.22 about the horizontal, fading out by four
+  boxes, on a critically damped spring at 8/s. A pointer elsewhere wakes no tick. The WebGL
+  courier turns its form; the DOM courier foreshortens it. A turn in place moves no box.
+- The glint (`WebglCourier.tsx`, `courierRig.ts` `glintOf`): a thin line of light runs along the
+  bevel once every 700 px of scroll, as strong as the scroll is fast (200 to 1600 px/s), fading
+  over 0.3 s once it stops; at a dock the pointer's turn leads it (`pointerGlint`). Never on the
+  flat logo mark of a hand-off. WebGL only.
+- The seat (`createSettle`): arriving at D2 to D6 after at least 0.25 s on the way, the courier's
+  size rings once, about 3 % over and 1 % under, at rest within 0.5 s.
+- The logos (`BrandLogo.tsx`, the footer's mark part, globals.css `[data-logo-socket]`): while the
+  courier carries the mark, its outline stays in the logo at 40 %, so a logo never looks broken;
+  as the mark lands back (after at least 600 ms away) the outline spreads once from it and fades
+  (700 ms, the driver's `data-courier-landed`).
+
 ## 4. Footer hand-off
 
 D8 is the home box of the mark part of the footer playground, which lies on the footer logo's mark (footer.md section 4)

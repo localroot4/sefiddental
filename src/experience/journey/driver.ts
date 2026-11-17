@@ -17,7 +17,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
 import { introMarkBox } from '@/lib/intro/introMark';
 
-import { AWAY_ATTR, HERE_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
+import { AWAY_ATTR, HERE_ATTR, LANDED_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
 import {
   ABOVE_ATTR,
   measureDocks,
@@ -25,7 +25,17 @@ import {
   measureObstacles,
   measureViewport,
 } from './docks';
-import { createFollow, createTurn, glide, glideClear, type Place, type Shown } from './motion';
+import {
+  AT_REST,
+  createFollow,
+  createPointerTilt,
+  createSettle,
+  createTurn,
+  glide,
+  glideClear,
+  type Place,
+  type Shown,
+} from './motion';
 import {
   courierPose,
   FORM_SHARE,
@@ -43,6 +53,9 @@ import {
 const LIVE_ATTR = 'data-world-live';
 /** Still frames before the driver lets go of the tick. */
 const STILL_FRAMES = 12;
+/** The echo of a landing plays once the mark was away this long (ms), and lasts this long. */
+const ECHO_AFTER_MS = 600;
+const ECHO_MS = 800;
 export { MARK_SHARE };
 /**
  * A journey that starts this soon after the intro (an engine that came late) still glides from the
@@ -271,8 +284,26 @@ export function createJourney(opts: {
 
   const spring = createFollow();
   const turner = createTurn();
+  const settle = createSettle();
+  const tilt = createPointerTilt();
   let turned: Pose | null = null;
-  let shown: Shown = { x: 0, y: 0, scale: 0, tilt: 0, sx: 1, sy: 1 };
+  let shown: Shown = { x: 0, y: 0, scale: 0, ...AT_REST };
+  // The echo as a mark takes the courier back (the header logo, the footer part).
+  let logoAwaySince = 0;
+  let awaySince = 0;
+  const echoes = new Map<Element, number>();
+  const echo = (el: Element, since: number): void => {
+    if (performance.now() - since < ECHO_AFTER_MS) return;
+    window.clearTimeout(echoes.get(el));
+    // Again from its start: off for a frame first.
+    el.removeAttribute(LANDED_ATTR);
+    void (el as HTMLElement).getBoundingClientRect?.();
+    el.setAttribute(LANDED_ATTR, '');
+    echoes.set(
+      el,
+      window.setTimeout(() => el.removeAttribute(LANDED_ATTR), ECHO_MS),
+    );
+  };
   let lastOpacity = '';
   let lastSweep = '';
   let away: boolean | null = null;
@@ -305,9 +336,15 @@ export function createJourney(opts: {
           tilt: shown.tilt * born,
           sx: mix(1, shown.sx),
           sy: mix(1, shown.sy),
+          yaw: 0,
+          pitch: 0,
         };
       }
     }
+    // The seat's ring at a dock and the turn toward the pointer (motion.ts), on the shown place.
+    const ring = settle.step(pose, dt);
+    const toward = tilt.step(pose, shown, dt);
+    shown = { ...shown, scale: shown.scale * ring, yaw: toward.yaw, pitch: toward.pitch };
     // Back under the cards once the mark has faded, or once the glide is clear of them.
     if (lead && handoff === null && (mode !== 'glide' || !overCards(shown))) lead = false;
     const dim = Math.round(photoDim(pose) * 1000) / 1000;
@@ -347,6 +384,8 @@ export function createJourney(opts: {
       part.toggleAttribute(AWAY_ATTR, nextAway);
       // Lifting off a part the reader may have thrown: it goes home while it is hidden.
       if (nextAway && away === false) part.dispatchEvent(new CustomEvent(LIFTOFF_EVENT));
+      if (nextAway) awaySince = performance.now();
+      else if (away) echo(part, awaySince);
       away = nextAway;
     }
     render({
@@ -383,6 +422,8 @@ export function createJourney(opts: {
         still >= STILL_FRAMES &&
         spring.settled() &&
         turner.settled() &&
+        settle.settled() &&
+        tilt.settled() &&
         typeof handoff !== 'number'
       ) {
         off?.();
@@ -412,6 +453,24 @@ export function createJourney(opts: {
   const scroll = ScrollTrigger.create({ start: 0, end: 'max', onUpdate: follow });
   // A chip of the restoration levels changes the tooth without a scroll.
   root.addEventListener('change', follow);
+  // A fine pointer turns the courier toward it at a dock (motion.ts createPointerTilt).
+  const fine = window.matchMedia?.('(hover: hover) and (pointer: fine)').matches === true;
+  const onPointer = (event: PointerEvent): void => {
+    if (event.pointerType !== 'mouse') return;
+    tilt.aim({ x: event.clientX, y: event.clientY });
+    // A tick only near the courier, or to turn it back: a pointer elsewhere wakes nothing.
+    const near =
+      Math.hypot(event.clientX - shown.x, event.clientY - shown.y) < 4 * Math.max(60, shown.scale);
+    if (near || shown.yaw !== 0 || shown.pitch !== 0) follow();
+  };
+  const onLeave = (): void => {
+    tilt.aim(null);
+    follow();
+  };
+  if (fine) {
+    window.addEventListener('pointermove', onPointer, { passive: true });
+    document.documentElement.addEventListener('pointerleave', onLeave);
+  }
 
   measure();
   if (handoff === 'hole') measureHole();
@@ -503,6 +562,12 @@ export function createJourney(opts: {
       window.removeEventListener('resize', schedule);
       scroll.kill();
       root.removeEventListener('change', follow);
+      window.removeEventListener('pointermove', onPointer);
+      document.documentElement.removeEventListener('pointerleave', onLeave);
+      for (const [el, timer] of echoes) {
+        window.clearTimeout(timer);
+        el.removeAttribute(LANDED_ATTR);
+      }
       molar?.removeAttribute(LIVE_ATTR);
       servicesMark?.removeAttribute(HERE_ATTR);
       html.removeAttribute(STAGE_ATTR);

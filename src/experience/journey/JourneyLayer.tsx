@@ -243,7 +243,9 @@ export default function JourneyLayer(props: {
         // The shown place (the pose with its spring, lean and squash, motion.ts), about the
         // drawing's centre.
         const k = shown.scale / BOX;
-        const place = `translate(${shown.x} ${shown.y}) rotate(${deg(shown.tilt)}) scale(${k * shown.sx} ${k * shown.sy})`;
+        // The turn toward the pointer seen flat: its pitch foreshortens the height, its yaw adds to
+        // the spin below (motion.ts createPointerTilt).
+        const place = `translate(${shown.x} ${shown.y}) rotate(${deg(shown.tilt)}) scale(${k * shown.sx} ${k * shown.sy * Math.cos(shown.pitch)})`;
         box.setAttribute('transform', place);
         hitbox.current?.setAttribute('transform', place);
         // The breath moves the stage's HTML box about the courier, on the compositor (an animated
@@ -256,7 +258,7 @@ export default function JourneyLayer(props: {
         box.style.setProperty('opacity', String(Math.round(pose.opacity * 1000) / 1000));
         // The turn about the vertical axis, seen flat: seated in the arch the tooth is a crown
         // seen from above, whose turn is the footprint's.
-        const turn = Math.cos(domSpin(pose) * born);
+        const turn = Math.cos(domSpin(pose) * born + shown.yaw);
         spin.current?.setAttribute('transform', `scale(${turn} 1)`);
         const isTooth = pose.form === 'tooth';
         const fade = pose.presence;

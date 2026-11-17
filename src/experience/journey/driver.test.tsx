@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { AWAY_ATTR, HERE_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
+import { AWAY_ATTR, HERE_ATTR, LANDED_ATTR, LIFTOFF_EVENT, STAGE_ATTR } from './attrs';
 import { createJourney, type Frame } from './driver';
 
 const triggers = vi.hoisted(() => ({
@@ -205,6 +205,69 @@ describe('journey driver', () => {
     expect(part.hasAttribute(AWAY_ATTR)).toBe(true);
     expect(lift).toHaveBeenCalledTimes(1);
     journey.destroy();
+  });
+
+  it('DR18 landing in the footer part echoes once, only after the mark was away 600 ms; it ends after 800 ms', () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    const now = vi.spyOn(performance, 'now');
+    try {
+      now.mockReturnValue(1000);
+      const { journey } = start();
+      const part = document.querySelector('[data-dock="footer"]')!;
+      layout(3000);
+      journey.measure();
+      expect(part.hasAttribute(AWAY_ATTR)).toBe(true);
+      // Back on its edge after 200 ms (a scroll that wavers): no echo.
+      now.mockReturnValue(1200);
+      layout(DOC_H - VIEW_H);
+      journey.measure();
+      expect(part.hasAttribute(AWAY_ATTR)).toBe(false);
+      expect(part.hasAttribute(LANDED_ATTR)).toBe(false);
+      // Away, then landing after 700 ms: one echo, gone after 800 ms.
+      layout(3000);
+      journey.measure();
+      now.mockReturnValue(1900);
+      layout(DOC_H - VIEW_H);
+      journey.measure();
+      expect(part.hasAttribute(LANDED_ATTR)).toBe(true);
+      vi.advanceTimersByTime(799);
+      expect(part.hasAttribute(LANDED_ATTR)).toBe(true);
+      vi.advanceTimersByTime(1);
+      expect(part.hasAttribute(LANDED_ATTR)).toBe(false);
+      journey.destroy();
+    } finally {
+      now.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+
+  it('DR19 a fine pointer near the courier wakes the tick (the turn toward it); a touch or a far pointer wakes nothing', () => {
+    const move = (x: number, y: number, pointerType = 'mouse') =>
+      window.dispatchEvent(
+        Object.assign(new MouseEvent('pointermove', { clientX: x, clientY: y }), { pointerType }),
+      );
+    const media = (fine: boolean) =>
+      Object.defineProperty(window, 'matchMedia', {
+        configurable: true,
+        value: (q: string) => ({ matches: q.includes('pointer: fine') ? fine : false }),
+      });
+    media(true);
+    const { journey, last } = start();
+    const at = last().shown;
+    move(at.x + 4000, at.y + 4000);
+    expect(ticks).toHaveLength(0);
+    move(at.x + 400, at.y, 'touch');
+    expect(ticks).toHaveLength(0);
+    move(at.x + 40, at.y + 20);
+    expect(ticks).toHaveLength(1);
+    journey.destroy();
+    expect(ticks).toHaveLength(0);
+    // A coarse pointer (a phone): no listener at all.
+    media(false);
+    const touch = start();
+    move(at.x + 40, at.y + 20);
+    expect(ticks).toHaveLength(0);
+    touch.journey.destroy();
   });
 
   it('DR17 the header logo (D1 from 1280 px): its mark is away only while the courier is out of it; the footer part keeps its own state; under 1280 px the logo keeps its mark', () => {

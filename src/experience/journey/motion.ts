@@ -6,7 +6,7 @@
  * onto the pose exactly, so reverse scrolling and a reload stay exact; a jump (a reload, an anchor,
  * a programmatic scroll of more than half a viewport) is taken at once, not chased.
  */
-import { viewportTop, whipTurn, type Box, type Form, type Pose } from './pose';
+import { flatAmount, viewportTop, whipTurn, type Box, type Form, type Pose } from './pose';
 
 /** The spring's angular frequency (1/s): about 0.3 s to settle, critically damped. */
 const OMEGA = 16;
@@ -94,9 +94,18 @@ export interface Shown {
   /** Scale along x and y on top of `scale` (1 at rest). */
   sx: number;
   sy: number;
+  /** The turn toward the pointer about the vertical and the horizontal axis (createPointerTilt). */
+  yaw: number;
+  pitch: number;
 }
 
-export const AT_REST: Omit<Shown, 'x' | 'y' | 'scale'> = { tilt: 0, sx: 1, sy: 1 };
+export const AT_REST: Omit<Shown, 'x' | 'y' | 'scale'> = {
+  tilt: 0,
+  sx: 1,
+  sy: 1,
+  yaw: 0,
+  pitch: 0,
+};
 
 interface Channel {
   at: number;
@@ -104,12 +113,12 @@ interface Channel {
 }
 
 /** One critically damped step of `c` toward `target` over `dt` seconds (exact solution). */
-function spring(c: Channel, target: number, dt: number): void {
+function spring(c: Channel, target: number, dt: number, omega = OMEGA): void {
   const d = c.at - target;
-  const e = Math.exp(-OMEGA * dt);
-  const k = c.v + OMEGA * d;
+  const e = Math.exp(-omega * dt);
+  const k = c.v + omega * d;
   c.at = target + (d + k * dt) * e;
-  c.v = (c.v - OMEGA * k * dt) * e;
+  c.v = (c.v - omega * k * dt) * e;
 }
 
 export interface Follow {
@@ -198,6 +207,8 @@ export function createFollow(): Follow {
         tilt: lean,
         sx: (1 + squash / 2) * (1 + stretch),
         sy: (1 - squash) * (1 - stretch / 2),
+        yaw: 0,
+        pitch: 0,
       };
     },
     settled: () => rest,
@@ -269,5 +280,126 @@ export function createTurn(): Turn {
       };
     },
     settled: () => done,
+  };
+}
+
+/**
+ * The turn toward the pointer at a dock (owner 2026-11-17: «really playing with the mouse»): within
+ * two boxes of the courier it turns its face toward a fine pointer, at most MAX_YAW and MAX_PITCH,
+ * fading out by four boxes; on a slower critically damped spring than the place, so it eases, never
+ * snaps. None in a travel, at the logos (the hand-offs draw the flat logo mark), at the smile (the
+ * arch) or hidden: there it eases back to 0. A turn in place moves no box, so no lane changes.
+ */
+export const MAX_YAW = 0.35;
+export const MAX_PITCH = 0.22;
+const TILT_OMEGA = 8;
+
+export interface PointerTilt {
+  /** The pointer's place in the viewport (px), or null when it left the page. */
+  aim(at: { x: number; y: number } | null): void;
+  /** The shown turn toward the pointer for this frame; `dt` in seconds. */
+  step(pose: Pose, place: Place, dt: number): { yaw: number; pitch: number };
+  /** The turn has come to rest (no frame is needed for it). */
+  settled(): boolean;
+}
+
+export function createPointerTilt(): PointerTilt {
+  const yaw: Channel = { at: 0, v: 0 };
+  const pitch: Channel = { at: 0, v: 0 };
+  let pointer: { x: number; y: number } | null = null;
+  let rest = true;
+  return {
+    aim(at) {
+      pointer = at;
+    },
+    step(pose, place, dt) {
+      const free =
+        pointer !== null &&
+        !pose.hidden &&
+        pose.dock !== null &&
+        pose.dock !== 'header' &&
+        pose.dock !== 'footer' &&
+        pose.dock !== 'smile' &&
+        flatAmount(pose) === 0;
+      let ty = 0;
+      let tp = 0;
+      if (free && pointer) {
+        const r = Math.max(60, place.scale);
+        const dx = pointer.x - place.x;
+        const dy = pointer.y - place.y;
+        const near = 1 - smoothstep01((Math.hypot(dx, dy) - 2 * r) / (2 * r));
+        const unit = (v: number): number => Math.max(-1, Math.min(1, v / (2 * r)));
+        ty = MAX_YAW * unit(dx) * near;
+        tp = MAX_PITCH * unit(dy) * near;
+      }
+      const step = Math.min(Math.max(0, dt), 0.05);
+      spring(yaw, ty, step, TILT_OMEGA);
+      spring(pitch, tp, step, TILT_OMEGA);
+      rest =
+        Math.abs(yaw.at - ty) + Math.abs(pitch.at - tp) < 1e-3 &&
+        Math.abs(yaw.v) + Math.abs(pitch.v) < 1e-3;
+      if (rest) {
+        yaw.at = ty;
+        pitch.at = tp;
+        yaw.v = 0;
+        pitch.v = 0;
+      }
+      return { yaw: yaw.at, pitch: pitch.at };
+    },
+    settled: () => rest,
+  };
+}
+
+/** 0..1 eased, clamped. */
+const smoothstep01 = (t: number): number => {
+  const c = Math.max(0, Math.min(1, t));
+  return c * c * (3 - 2 * c);
+};
+
+/**
+ * The seat at a dock (owner 2026-11-17: «a springy settle»): arriving at D2 to D6 from a travel,
+ * the courier's size rings once, about 3 % over and 1 % under, and rests within SETTLE_S. Only after
+ * SETTLE_AFTER s on the way, so a load at a dock or a scroll that wavers on its edge rings nothing;
+ * never at the logos, where the hand-off draws the flat logo mark at its exact size.
+ */
+const SETTLE_AMP = 0.06;
+const SETTLE_TAU = 0.11;
+const SETTLE_PERIOD = 0.32;
+export const SETTLE_S = 0.5;
+const SETTLE_AFTER = 0.25;
+
+export interface Settle {
+  /** The factor on the shown size for this frame (1 at rest); `dt` in seconds. */
+  step(pose: Pose, dt: number): number;
+  settled(): boolean;
+}
+
+export function createSettle(): Settle {
+  let away = 0;
+  let docked = true;
+  let t = -1;
+  return {
+    step(pose, dt) {
+      const at = pose.hidden ? null : pose.dock;
+      if (at === null) {
+        away += Math.max(0, dt);
+        docked = false;
+        t = -1;
+      } else {
+        if (!docked && away >= SETTLE_AFTER && at !== 'header' && at !== 'footer') t = 0;
+        else if (t >= 0) t += Math.max(0, dt);
+        away = 0;
+        docked = true;
+      }
+      if (t < 0) return 1;
+      if (t >= SETTLE_S) {
+        t = -1;
+        return 1;
+      }
+      return (
+        1 + SETTLE_AMP * Math.exp(-t / SETTLE_TAU) * Math.sin((2 * Math.PI * t) / SETTLE_PERIOD)
+      );
+    },
+    settled: () => t < 0,
   };
 }

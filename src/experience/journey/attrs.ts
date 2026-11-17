@@ -4,6 +4,11 @@
 export const STAGE_ATTR = 'data-world-stage';
 /** On the footer's mark part while the courier has not landed on it (the hand-off). */
 export const AWAY_ATTR = 'data-courier-away';
+/**
+ * On a logo mark for a moment as the courier lands in it (the header's, the footer part): a soft
+ * outline echo spreads from it once (globals.css).
+ */
+export const LANDED_ATTR = 'data-courier-landed';
 /** Dispatched on the mark part when the courier lifts off it again (footer.ts sends it home). */
 export const LIFTOFF_EVENT = 'sefid:courier-liftoff';
 /** On the services mark while the courier stands in for it (D2 is the mark's own box). */

@@ -2,7 +2,14 @@ import { Box3, BoxGeometry, SphereGeometry, Vector3, type WebGLRenderer } from '
 import { describe, expect, it, vi } from 'vitest';
 
 import { SOLID, workflowBeats } from './beats';
-import { archTooth, createCourierRig, mulberry32, sampleSurface } from './courierRig';
+import {
+  archTooth,
+  createCourierRig,
+  glintOf,
+  mulberry32,
+  pointerGlint,
+  sampleSurface,
+} from './courierRig';
 import { courierPose, NO_POSE, type Pose } from './pose';
 import { restoreParts } from './restore';
 
@@ -75,6 +82,34 @@ describe('courier rig', () => {
     rig.update(frame(pose({ form: 'mark' })));
     expect(tilt()).toBe(0);
     expect(courierPose(0, [], { width: 1, height: 1, maxScroll: 0 }, 2)).toBe(NO_POSE);
+  });
+
+  it('R12 the turn toward the pointer: its yaw on the spin, its pitch on the holder; none without it', () => {
+    const rig = createCourierRig({ mark: mark(), molar: tooth() }, { particles: 10 });
+    const holder = rig.scene.children[1]!;
+    const spin = holder.children[0]!.children[0]!;
+    rig.update({ ...frame(pose({ form: 'mark' })), idle: 0 });
+    const base = spin.rotation.y;
+    rig.update({ ...frame(pose({ form: 'mark' })), idle: 0, pointer: { yaw: 0.3, pitch: 0.2 } });
+    expect(spin.rotation.y - base).toBeCloseTo(0.3, 6);
+    expect(holder.rotation.x).toBeCloseTo(0.2, 6);
+    rig.update({ ...frame(pose({ form: 'mark' })), idle: 0 });
+    expect(spin.rotation.y).toBeCloseTo(base, 6);
+    expect(holder.rotation.x).toBe(0);
+  });
+
+  it('R13 the glint: the scroll or pointer one where it is stronger than the idle one; the pointer one slides the way the face turns', () => {
+    expect(glintOf(0, 4.5, { sweep: 0.3, strength: 0.6 })).toEqual({ sweep: 0.3, strength: 0.6 });
+    // At rest at a dock the idle glint (every 9 s) wins over a fading one.
+    expect(glintOf(1, 4.5, { sweep: 0.3, strength: 0.2 })).toEqual({ sweep: 0, strength: 1 });
+    expect(glintOf(0, 4.5, null).strength).toBe(0);
+    const right = pointerGlint(0.35, 0, 0.35, 0.22);
+    const up = pointerGlint(0, -0.22, 0.35, 0.22);
+    expect(right.sweep).toBeGreaterThan(0);
+    expect(up.sweep).toBeGreaterThan(0);
+    expect(pointerGlint(-0.35, 0, 0.35, 0.22).sweep).toBeLessThan(0);
+    expect(right.strength).toBeCloseTo(1.3, 6);
+    expect(pointerGlint(0, 0, 0.35, 0.22)).toEqual({ sweep: 0, strength: 0 });
   });
 
   it('R4 surface samples lie on the mesh and repeat for the same seed', () => {

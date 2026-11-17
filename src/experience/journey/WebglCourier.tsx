@@ -32,9 +32,16 @@ import { damp, levelFromChoice, passViewport, ramp } from '../scenes/webgl/math'
 import { workflowBeats } from './beats';
 import { COURIER } from './courier';
 import { COURIER_OFF_ATTR } from './attrs';
-import { BOX_GROW, createCourierRig, type CourierRig } from './courierRig';
+import {
+  BOX_GROW,
+  createCourierRig,
+  pointerGlint,
+  type CourierRig,
+  type Glint,
+} from './courierRig';
 import type { Journey } from './driver';
-import { archFrame, idleAmount, smoothstep, viewportTop, type Pose } from './pose';
+import { MAX_PITCH, MAX_YAW } from './motion';
+import { archFrame, flatAmount, idleAmount, smoothstep, viewportTop, type Pose } from './pose';
 import { RESTORE_S, restoreParts } from './restore';
 /**
  * Seconds of idle float and turn at a dock after the last move (then the canvas sleeps): never
@@ -46,6 +53,19 @@ const IDLE_S = 5;
 export const WEBGL_COURIER_TIER = COURIER.minTier;
 /** Seconds: a level change eases in about 0.55 s, damped, never overshooting. */
 const LEVEL_TAU = 0.18;
+/**
+ * The glint led by the scroll (owner 2026-11-17: «light that goes with the scroll»): it runs along
+ * the bevel once every GLINT_PX of scroll, as strong as the scroll is fast (from GLINT_SLOW to
+ * GLINT_FAST px/s), and fades over GLINT_TAU s once the scroll stops.
+ */
+const GLINT_PX = 700;
+const GLINT_SLOW = 200;
+const GLINT_FAST = 1600;
+const GLINT_TAU = 0.3;
+/** Its peak against the idle glint's 1: a thin line on the bevel, seen in a moving form. */
+const GLINT_PEAK = 1.6;
+
+const brighter = (a: Glint, b: Glint): Glint => (a.strength >= b.strength ? a : b);
 
 function drawPass(
   gl: WebGLRenderer,
@@ -170,6 +190,11 @@ export function WebglCourier(props: {
     };
     let signature = '';
     let quietSince = performance.now();
+    // The scroll's speed (px/s, smoothed) and the glint it leads (0..1), read once a frame.
+    let askedAt = -1;
+    let askedY = window.scrollY;
+    let speed = 0;
+    let glow = 0;
     const idleEnvelope = (): number => {
       const quiet = (performance.now() - quietSince) / 1000;
       return 1 - smoothstep(Math.min(1, Math.max(0, (quiet - IDLE_S + 3) / 3)));
@@ -177,12 +202,27 @@ export function WebglCourier(props: {
     const offAsk = addEffect(() => {
       const p = posed();
       const sh = journey.shown();
+      const nowS = performance.now() / 1000;
+      const dts = askedAt < 0 ? 0 : Math.min(0.5, nowS - askedAt);
+      askedAt = nowS;
+      const y = window.scrollY;
+      if (dts > 0) {
+        speed += (Math.abs(y - askedY) / dts - speed) * Math.min(1, dts * 12);
+        const lit = Math.min(1, Math.max(0, (speed - GLINT_SLOW) / (GLINT_FAST - GLINT_SLOW)));
+        const want = p.hidden ? 0 : smoothstep(lit) * (1 - flatAmount(p));
+        glow = want >= glow ? want : glow * Math.exp(-dts / GLINT_TAU);
+        if (glow < 0.004) glow = 0;
+      }
+      askedY = y;
       const next = [
         sh.x,
         sh.y,
         sh.scale,
         sh.tilt,
         sh.sx,
+        sh.yaw,
+        sh.pitch,
+        glow,
         p.x,
         p.y,
         p.scale,
@@ -277,6 +317,11 @@ export function WebglCourier(props: {
           beats: workflowBeats(pose.dock === 'workflow' ? pose.local : null),
           idle: pose.dock !== null ? idleAmount(pose) * idleEnvelope() : 0,
           pixels: pose.scale * gl.getPixelRatio(),
+          pointer: { yaw: shown.yaw, pitch: shown.pitch },
+          light: brighter(pointerGlint(shown.yaw, shown.pitch, MAX_YAW, MAX_PITCH), {
+            sweep: ((scrollY / GLINT_PX) % 1) * 3.2 - 1.6,
+            strength: glow * GLINT_PEAK,
+          }),
         });
         drawPass(
           gl,

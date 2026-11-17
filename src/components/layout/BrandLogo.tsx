@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 
+import { LOCKUP_MARK_PATH } from '@/components/brand/LockupParts';
 import { BRAND_LOCKUP, LOCKUP_SPRITE } from '@/lib/system-pages/staticPage';
 
 // The sprite is a static file (scripts/sync-public-assets.mjs): inline path data rode in every
@@ -21,6 +22,7 @@ export const FOOTER_LOGO_CLASS = 'h-auto w-[16.9375rem] max-w-full md:w-[18.8125
 
 /** The mark's box in the logo's own coordinates (the lockup's mark less the viewBox origin). */
 const MARK = { x: 876.6, y: 43.9, width: 168, height: 207.3 };
+const [ORIGIN_X = 0, ORIGIN_Y = 0] = BRAND_LOCKUP.viewBox.split(' ').map(Number);
 
 /**
  * Brand lockup without the Latin line. The wordmark follows the theme ink (currentColor reaches
@@ -45,6 +47,14 @@ export function BrandLogo(props: { className?: string; label: string; dock?: boo
         viewBox={`${MARK.x} ${MARK.y} ${MARK.width} ${MARK.height}`}
       >
         {use}
+        {props.dock ? (
+          // The mark's outline: a faint socket while the courier carries the mark, and the echo
+          // as it lands back (globals.css `[data-logo-socket]`; the transform is the group's, the
+          // echo's scale the path's own).
+          <g transform={`translate(${-ORIGIN_X} ${-ORIGIN_Y})`}>
+            <path data-logo-socket="" d={LOCKUP_MARK_PATH} vectorEffect="non-scaling-stroke" />
+          </g>
+        ) : null}
       </svg>
     </svg>
   );
