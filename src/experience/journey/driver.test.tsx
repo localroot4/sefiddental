@@ -241,6 +241,47 @@ describe('journey driver', () => {
     }
   });
 
+  it('DR20 the header logo echoes only as the courier lands in it: a resize that takes the dock away shows the mark with none', () => {
+    const now = vi.spyOn(performance, 'now');
+    try {
+      const header = document.createElement('header');
+      header.innerHTML = '<a href="/"><svg><svg data-dock="header"></svg></svg></a>';
+      document.body.prepend(header);
+      const mark = header.querySelector('[data-dock="header"]')!;
+      place(mark, 20, 24, 1290, 19);
+      const width = (w: number) =>
+        Object.defineProperty(window, 'matchMedia', {
+          configurable: true,
+          value: (q: string) => ({
+            matches: w >= Number(/min-width:\s*(\d+)px/.exec(q)?.[1] ?? 0),
+          }),
+        });
+      width(1440);
+      now.mockReturnValue(1000);
+      const { journey } = start();
+      layout(VIEW_H);
+      journey.measure();
+      expect(mark.hasAttribute(AWAY_ATTR)).toBe(true);
+      now.mockReturnValue(3000);
+      width(1279);
+      journey.measure();
+      expect(mark.hasAttribute(AWAY_ATTR)).toBe(false);
+      expect(mark.hasAttribute(LANDED_ATTR)).toBe(false);
+      // Home at the top from 1280 px: the echo.
+      width(1440);
+      journey.measure();
+      now.mockReturnValue(5000);
+      layout(0);
+      journey.measure();
+      expect(journey.pose()).toMatchObject({ dock: 'header', hidden: true });
+      expect(mark.hasAttribute(LANDED_ATTR)).toBe(true);
+      journey.destroy();
+      expect(mark.hasAttribute(LANDED_ATTR)).toBe(false);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
   it('DR19 a fine pointer near the courier wakes the tick (the turn toward it); a touch or a far pointer wakes nothing', () => {
     const move = (x: number, y: number, pointerType = 'mouse') =>
       window.dispatchEvent(
@@ -260,6 +301,15 @@ describe('journey driver', () => {
     expect(ticks).toHaveLength(0);
     move(at.x + 40, at.y + 20);
     expect(ticks).toHaveLength(1);
+    // Home in a logo (hidden) it cannot turn: a pointer beside it wakes nothing.
+    runTicks(120);
+    expect(ticks).toHaveLength(0);
+    layout(DOC_H - VIEW_H);
+    journey.measure();
+    expect(journey.pose()).toMatchObject({ dock: 'footer', hidden: true });
+    const home = last().shown;
+    move(home.x + 20, home.y);
+    expect(ticks).toHaveLength(0);
     journey.destroy();
     expect(ticks).toHaveLength(0);
     // A coarse pointer (a phone): no listener at all.

@@ -34,7 +34,14 @@ const [ORIGIN_X = 0, ORIGIN_Y = 0] = BRAND_LOCKUP.viewBox.split(' ').map(Number)
 export function BrandLogo(props: { className?: string; label: string; dock?: boolean }) {
   const use = <use href={href} width={width} height={height} />;
   return (
-    <svg viewBox={LOCKUP_VIEW} role="img" aria-label={props.label} className={props.className}>
+    <svg
+      viewBox={LOCKUP_VIEW}
+      role="img"
+      aria-label={props.label}
+      className={props.className}
+      // The socket's echo spreads past the logo's edge (below).
+      overflow={props.dock ? 'visible' : undefined}
+    >
       <svg width="860" height={height} viewBox={`0 0 860 ${height}`}>
         {use}
       </svg>
@@ -47,15 +54,25 @@ export function BrandLogo(props: { className?: string; label: string; dock?: boo
         viewBox={`${MARK.x} ${MARK.y} ${MARK.width} ${MARK.height}`}
       >
         {use}
-        {props.dock ? (
-          // The mark's outline: a faint socket while the courier carries the mark, and the echo
-          // as it lands back (globals.css `[data-logo-socket]`; the transform is the group's, the
-          // echo's scale the path's own).
+      </svg>
+      {props.dock ? (
+        // The mark's outline, right after the mark's window and on its box: a faint socket while
+        // the courier carries the mark, and the echo as it lands back (globals.css
+        // `[data-logo-socket]`). Its own window may overflow: the mark's clips the lockup it shows
+        // (the transform is the group's, the echo's scale the path's own).
+        <svg
+          x={MARK.x}
+          y={MARK.y}
+          width={MARK.width}
+          height={MARK.height}
+          viewBox={`${MARK.x} ${MARK.y} ${MARK.width} ${MARK.height}`}
+          overflow="visible"
+        >
           <g transform={`translate(${-ORIGIN_X} ${-ORIGIN_Y})`}>
             <path data-logo-socket="" d={LOCKUP_MARK_PATH} vectorEffect="non-scaling-stroke" />
           </g>
-        ) : null}
-      </svg>
+        </svg>
+      ) : null}
     </svg>
   );
 }

@@ -405,7 +405,6 @@
   stroke: var(--color-brand-logo);
   stroke-width: 1.25px;
   opacity: 0;
-  visibility: visible;
   transform-box: fill-box;
   transform-origin: center;
   transition: opacity 250ms var(--ease-out);
@@ -414,9 +413,14 @@
 [data-theme='dark'] [data-logo-socket] {
   stroke: rgb(127 227 217);
 }
-[data-courier-away] [data-logo-socket] {
+/* The header's socket follows the mark's window; the footer's is inside the hidden part, shown
+   only while the playground's field is (footer.ts drops its `invisible`). */
+[data-courier-away] + svg [data-logo-socket],
+[data-playground-field]:not(.invisible) [data-courier-away] [data-logo-socket] {
   opacity: 0.4;
+  visibility: visible;
 }
+[data-courier-landed] + svg [data-logo-socket],
 [data-courier-landed] [data-logo-socket] {
   animation: courier-echo 700ms var(--ease-out) 1;
 }
@@ -433,6 +437,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
+  [data-courier-landed] + svg [data-logo-socket],
   [data-courier-landed] [data-logo-socket] {
     animation: none;
   }

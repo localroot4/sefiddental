@@ -27,6 +27,7 @@ import {
 } from './docks';
 import {
   AT_REST,
+  canTurn,
   createFollow,
   createPointerTilt,
   createSettle,
@@ -38,6 +39,7 @@ import {
 } from './motion';
 import {
   courierPose,
+  flatAmount,
   FORM_SHARE,
   MARK_SHARE,
   prepareLanes,
@@ -288,6 +290,8 @@ export function createJourney(opts: {
   const tilt = createPointerTilt();
   let turned: Pose | null = null;
   let shown: Shown = { x: 0, y: 0, scale: 0, ...AT_REST };
+  // The pose of the last frame may turn toward the pointer (motion.ts canTurn).
+  let turnable = false;
   // The echo as a mark takes the courier back (the header logo, the footer part).
   let logoAwaySince = 0;
   let awaySince = 0;
@@ -344,7 +348,16 @@ export function createJourney(opts: {
     // The seat's ring at a dock and the turn toward the pointer (motion.ts), on the shown place.
     const ring = settle.step(pose, dt);
     const toward = tilt.step(pose, shown, dt);
-    shown = { ...shown, scale: shown.scale * ring, yaw: toward.yaw, pitch: toward.pitch };
+    // Through the same gates as the rest of the motion: none in the intro's hole, in with its glide,
+    // and out before a logo's hand-off, which draws the flat logo mark exactly.
+    const gate = born * (1 - flatAmount(pose));
+    turnable = canTurn(pose);
+    shown = {
+      ...shown,
+      scale: shown.scale * ring,
+      yaw: toward.yaw * gate,
+      pitch: toward.pitch * gate,
+    };
     // Back under the cards once the mark has faded, or once the glide is clear of them.
     if (lead && handoff === null && (mode !== 'glide' || !overCards(shown))) lead = false;
     const dim = Math.round(photoDim(pose) * 1000) / 1000;
@@ -370,7 +383,8 @@ export function createJourney(opts: {
     if (logoMark && nextLogoAway !== logoAway) {
       logoMark.toggleAttribute(AWAY_ATTR, nextLogoAway);
       if (nextLogoAway) logoAwaySince = performance.now();
-      else if (logoAway) echo(logoMark, logoAwaySince);
+      // A landing only: a resize that takes the dock away is none.
+      else if (logoAway && pose.hidden && pose.dock === 'header') echo(logoMark, logoAwaySince);
       logoAway = nextLogoAway;
     }
     // Only on the travel out of the header logo (to D2, either way): any other travel keeps under
@@ -385,7 +399,7 @@ export function createJourney(opts: {
       // Lifting off a part the reader may have thrown: it goes home while it is hidden.
       if (nextAway && away === false) part.dispatchEvent(new CustomEvent(LIFTOFF_EVENT));
       if (nextAway) awaySince = performance.now();
-      else if (away) echo(part, awaySince);
+      else if (away && pose.hidden && pose.dock === 'footer') echo(part, awaySince);
       away = nextAway;
     }
     render({
@@ -461,7 +475,7 @@ export function createJourney(opts: {
     // A tick only near the courier, or to turn it back: a pointer elsewhere wakes nothing.
     const near =
       Math.hypot(event.clientX - shown.x, event.clientY - shown.y) < 4 * Math.max(60, shown.scale);
-    if (near || shown.yaw !== 0 || shown.pitch !== 0) follow();
+    if ((near && turnable) || shown.yaw !== 0 || shown.pitch !== 0) follow();
   };
   const onLeave = (): void => {
     tilt.aim(null);

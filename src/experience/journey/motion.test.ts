@@ -279,5 +279,8 @@ describe('pointer tilt and the seat at a dock', () => {
     for (let i = 0; i < 30; i += 1) expect(settle.step(docked('services'), 1 / 60)).toBe(1);
     for (let i = 0; i < 60; i += 1) settle.step(travel, 1 / 60);
     for (let i = 0; i < 30; i += 1) expect(settle.step(docked('footer'), 1 / 60)).toBe(1);
+    // A second home in the header logo (hidden) is no time on the way: a jump to D2 rings nothing.
+    for (let i = 0; i < 60; i += 1) settle.step({ ...docked('header'), hidden: true }, 1 / 60);
+    for (let i = 0; i < 30; i += 1) expect(settle.step(docked('services'), 1 / 60)).toBe(1);
   });
 });

@@ -158,11 +158,13 @@ describe('brand logo', () => {
     expect(html).toMatch(/<use href="\/brand\/lockup\.svg\?v=[0-9a-f]{8}#lockup"/);
   });
 
-  it("BL2 the header logo (a journey dock) carries the mark's socket in its mark window, at the window's origin; any other logo has none", () => {
+  it('BL2 the header logo (a journey dock) carries the mark socket right after its mark window, on its box, in a window that may overflow; any other logo has none', () => {
     expect(renderToStaticMarkup(<BrandLogo label="کلینیک" />)).not.toContain('data-logo-socket');
     const html = renderToStaticMarkup(<BrandLogo label="کلینیک" dock />);
+    // The mark's window clips the lockup it shows; the socket's echo spreads past the logo.
+    expect(html).toMatch(/^<svg [^>]*overflow="visible"/);
     expect(html).toMatch(
-      /<svg data-dock="header"[^>]*>.*<g transform="translate\(-113\.7 -82\.7\)"><path data-logo-socket=""/,
+      /<svg data-dock="header" x="876\.6" y="43\.9" width="168" height="207\.3"[^>]*><use [^>]*><\/use><\/svg><svg x="876\.6" y="43\.9" width="168" height="207\.3" viewBox="876\.6 43\.9 168 207\.3" overflow="visible"><g transform="translate\(-113\.7 -82\.7\)"><path data-logo-socket=""/,
     );
   });
 });

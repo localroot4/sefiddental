@@ -303,6 +303,18 @@ export interface PointerTilt {
   settled(): boolean;
 }
 
+/** Where the courier may turn toward the pointer: at a dock, but the logos, the smile or hidden. */
+export function canTurn(pose: Pose): boolean {
+  return (
+    !pose.hidden &&
+    pose.dock !== null &&
+    pose.dock !== 'header' &&
+    pose.dock !== 'footer' &&
+    pose.dock !== 'smile' &&
+    flatAmount(pose) === 0
+  );
+}
+
 export function createPointerTilt(): PointerTilt {
   const yaw: Channel = { at: 0, v: 0 };
   const pitch: Channel = { at: 0, v: 0 };
@@ -313,17 +325,9 @@ export function createPointerTilt(): PointerTilt {
       pointer = at;
     },
     step(pose, place, dt) {
-      const free =
-        pointer !== null &&
-        !pose.hidden &&
-        pose.dock !== null &&
-        pose.dock !== 'header' &&
-        pose.dock !== 'footer' &&
-        pose.dock !== 'smile' &&
-        flatAmount(pose) === 0;
       let ty = 0;
       let tp = 0;
-      if (free && pointer) {
+      if (pointer !== null && canTurn(pose)) {
         const r = Math.max(60, place.scale);
         const dx = pointer.x - place.x;
         const dy = pointer.y - place.y;
@@ -380,7 +384,14 @@ export function createSettle(): Settle {
   let t = -1;
   return {
     step(pose, dt) {
-      const at = pose.hidden ? null : pose.dock;
+      // Hidden (home in a logo, or no courier) is no time on the way: a jump from there rings nothing.
+      if (pose.hidden) {
+        away = 0;
+        docked = true;
+        t = -1;
+        return 1;
+      }
+      const at = pose.dock;
       if (at === null) {
         away += Math.max(0, dt);
         docked = false;
