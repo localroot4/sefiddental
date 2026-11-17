@@ -528,7 +528,7 @@ const glideClock = (frames: HandoffFrame[], from: number) => {
 };
 
 for (const tier of [1, 2] as const) {
-  test(`T-IN12 ?tier=${tier}: from 1024 px the intro hands the mark to the header logo (D1): the courier stays home there, hidden and never raised, and the logo shows its mark; under 1024 px the logo keeps its mark and the courier is born in the intro mark's hole, fading out with it (gliding to D2 only where clear, never on a phone)`, async ({
+  test(`T-IN12 ?tier=${tier}: from 1280 px the intro hands the mark to the header logo (D1): the courier stays home there, hidden and never raised, and the logo shows its mark; under 1280 px the logo keeps its mark and the courier is born in the intro mark's hole, fading out with it (gliding to D2 only where clear, never on a phone)`, async ({
     page,
   }, testInfo) => {
     if (tier === 1) only(testInfo, 'phone-light', 'tablet-light', 'desktop-light');
@@ -677,7 +677,7 @@ for (const tier of [1, 2] as const) {
     const lift = frames.findIndex((f) => f.intro === 'done');
     expect(lift, 'frames after the lift').toBeGreaterThan(-1);
     if (testInfo.project.name !== 'desktop-light') {
-      // Under 1024 px the logo is no dock (the hero's cards span the screen): it keeps its mark
+      // Under 1280 px the logo is no dock (no gutter beside the hero's cards): it keeps its mark
       // all along, and the hand-off of the hole runs as before, to D2.
       for (const f of frames) expect(f.logoAway, 'the logo keeps its mark').toBe(false);
       await handsOff();

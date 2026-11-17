@@ -409,7 +409,7 @@ test.describe('phone, DOM courier', () => {
         three.push(response.url());
     });
     const holds = await open(page, 'tier=1');
-    // Under 1024 px the header logo keeps its mark (docks.ts measureHeader): the courier starts at
+    // Under 1280 px the header logo keeps its mark (docks.ts measureHeader): the courier starts at
     // D2, and the logo's mark never steps aside.
     await expect(page.locator('header [data-dock="header"]')).not.toHaveAttribute(
       'data-courier-away',
@@ -573,7 +573,7 @@ test.describe('tablet, DOM courier', () => {
     test.setTimeout(180_000);
   });
 
-  test('T-JN11 tablet portrait: the courier docks at all six stations after the header (the logo keeps its mark under 1024 px), clear of text', async ({
+  test('T-JN11 tablet portrait: the courier docks at all six stations after the header (the logo keeps its mark under 1280 px), clear of text', async ({
     page,
   }) => {
     const holds = await open(page, 'tier=1');

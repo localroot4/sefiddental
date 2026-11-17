@@ -404,7 +404,9 @@ export function* routeSteps(opts: RouteInput): Generator<void, Route> {
     const half = ps[i]! * FORM * 0.5;
     const off = px[i]! + half < 0 || px[i]! - half > vp.width;
     const peek = !off && (px[i]! - half < 0 || px[i]! + half > vp.width);
-    return 4 * (dx * dx + dy * dy) + 1.2 * (1 - ps[i]! / b.s) + (peek ? 0.6 : 0) + (off ? 3 : 0);
+    // Off the screen costs 5 a sample (was 3): at 1280 px the travel into the footer slipped off
+    // the side beside the FAQ for 90 px of scroll where a lane past its card was clear.
+    return 4 * (dx * dx + dy * dy) + 1.2 * (1 - ps[i]! / b.s) + (peek ? 0.6 : 0) + (off ? 5 : 0);
   };
   const moveCost = (i: number, j: number, k: number): number => {
     // Motion beyond the eased path's own, per sample.

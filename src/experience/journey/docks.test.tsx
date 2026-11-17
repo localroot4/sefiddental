@@ -85,15 +85,15 @@ describe('measureHeader', () => {
     ]);
   });
 
-  it('DK12 no logo with a dock (another page), or under 1024 px (the hero cards span the screen): no D1 and no obstacles', () => {
+  it('DK12 no logo with a dock (another page), or under 1280 px (no gutter beside the hero cards): no D1 and no obstacles', () => {
     viewWidth(1440);
     document.body.innerHTML = `<header><a href="/"><svg></svg></a></header>`;
     expect(measureHeader()).toEqual({ dock: null, obstacles: [] });
     document.body.innerHTML = `<header><a href="/"><svg><svg id="mark" data-dock="header"></svg></svg></a></header>`;
     place(document.getElementById('mark')!, { top: 16, left: 300, w: 19, h: 24 });
-    viewWidth(1023);
+    viewWidth(1279);
     expect(measureHeader()).toEqual({ dock: null, obstacles: [] });
-    viewWidth(1024);
+    viewWidth(1280);
     expect(measureHeader().dock).not.toBeNull();
   });
 });

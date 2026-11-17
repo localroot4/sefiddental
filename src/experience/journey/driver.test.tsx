@@ -207,7 +207,7 @@ describe('journey driver', () => {
     journey.destroy();
   });
 
-  it('DR17 the header logo (D1 from 1024 px): its mark is away only while the courier is out of it; the footer part keeps its own state; under 1024 px the logo keeps its mark', () => {
+  it('DR17 the header logo (D1 from 1280 px): its mark is away only while the courier is out of it; the footer part keeps its own state; under 1280 px the logo keeps its mark', () => {
     const header = document.createElement('header');
     header.innerHTML = '<a href="/"><svg><svg data-dock="header"></svg></svg></a>';
     document.body.prepend(header);
@@ -240,8 +240,8 @@ describe('journey driver', () => {
     expect(mark.hasAttribute(AWAY_ATTR)).toBe(true);
     journey.destroy();
     expect(mark.hasAttribute(AWAY_ATTR)).toBe(false);
-    // Under 1024 px the logo is no dock: its mark never steps aside.
-    width(1023);
+    // Under 1280 px the logo is no dock: its mark never steps aside.
+    width(1279);
     layout(0);
     const narrow = start();
     layout(400);

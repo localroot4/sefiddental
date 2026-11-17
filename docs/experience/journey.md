@@ -38,7 +38,7 @@ over the scroll between them.
 
 | # | Dock | Section | Form at the dock | What happens while docked |
 |---|---|---|---|---|
-| D1 | `header` | The header logo's own mark (from 1024 px; owner, 2026-11-13) | mark | Home in the logo at the top: the logo shows whole and the courier is hidden. Any scroll lifts the mark out of the logo at its own size, above the header (z 31): it drops out of the bar first, then drifts down beside the hero's cards to D2, growing; the header shows only the wordmark until the mark comes home at the top. Under 1024 px the hero's cards span the screen under the header, so no lane leads out of the logo without crossing text: the logo keeps its mark and the courier starts at D2. The intro ends with a calm fade of its veil and lockup (400 ms, no zoom) onto the page and the whole header logo |
+| D1 | `header` | The header logo's own mark (from 1280 px; owner, 2026-11-13) | mark | Home in the logo at the top: the logo shows whole and the courier is hidden. Any scroll lifts the mark out of the logo at its own size, above the header (z 31): it drops out of the bar first, then drifts down beside the hero's cards to D2, growing; the header shows only the wordmark until the mark comes home at the top. Under 1280 px the hero's cards leave no gutter the mark fits beside (from 1024 to 1240 px it dived off the screen's edge and back, 2026-11-17): the logo keeps its mark and the courier starts at D2. The intro ends with a calm fade of its veil and lockup (400 ms, no zoom) onto the page and the whole header logo |
 | D2 | `services` | Services stage, above the track | mark | Turns a little per service as the track moves (the SVG icon morph stays the readable part) |
 | D3 | `restoration` | Restoration stage, the molar slot | tooth | The phase 8 restoration rig drives it: the three levels (filling, inlay, crown). The tooth turns its chewing surface to the reader (tier 1 a top view, WebGL a three-quarter view) and plays the level's restoration on it as it comes in and on every chip or pin step: plain, a cavity outline then one composite fill; VIP, a ceramic inlay that comes down turned and seats with a click, then a gloss; CIP, dentine, a translucent enamel layer, the fissures stained by hand and a slow shimmer (restore.ts, the same keyframes at both tiers) |
 | D4 | `workflow` | Workflow diagonal | tooth | The beats on the tooth itself: point cloud, wireframe, solid, lit |
@@ -51,7 +51,8 @@ Docks per width (a dock that is not rendered is skipped):
 
 | Width | Docks |
 |---|---|
-| From 1024 px | All eight. D4 is the pinned diagonal's strip at tiers 2-3 with pins; otherwise the empty box at the end of the workflow header row |
+| From 1280 px | All of them. D4 is the pinned diagonal's strip at tiers 2-3 with pins; otherwise the empty box at the end of the workflow header row |
+| 1024-1279 px | All but D1 (the logo keeps its mark: no gutter beside the hero's cards); D4 as from 1280 px |
 | 744-1023 px (tablets in portrait) | All but D1 (the logo keeps its mark): D4 the header box |
 | Under 744 px (phones) | D2, D3, D5, D6 (the heading's emblem), D8 |
 
@@ -128,8 +129,11 @@ in the footer look fake»). Measured, not guessed: the pose was continuous, the 
 Measured with a 2 px scroll sweep at tier 2, the most the courier moves on screen in 100 px of
 scroll, worst travel per width (before → after the per-card wall, the sized margin and the 120
 passes): 1280×800 367 → 179, 1366×768 261 →
-210, 1440×900 316 → 211, 1920×1080 241 → 210, 390×844 242 → 229. At 1024×768 the hero and the
-workflow still force 3 to 4.5 px per scroll px where the content leaves only a narrow lane.
+210, 1440×900 316 → 211, 1920×1080 241 → 210, 390×844 242 → 229. Off the screen costs a lane 5 a
+sample (was 3): at 1280 px the travel into the footer slipped off the side beside the FAQ where
+a lane past its card was clear. From 1024 to 1279 px the header logo is no dock (the mark dived
+off the screen's edge beside the hero's cards). At 1024×768 the travels into the workflow and the
+footer still force 3 to 3.5 px per scroll px where the content leaves only a narrow lane.
 
 The shown turn (owner, 2026-11-14: «the turns are so fast I can't see them»): the whip that
 swaps the forms spans the middle half of its travel (the first 45 % leaving the smile), and the
