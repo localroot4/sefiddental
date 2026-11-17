@@ -95,14 +95,15 @@ describe('planRoute and placeOn', () => {
         );
       }
     }
-    expect(least).toBeGreaterThanOrEqual(laneMargin(94) - 0.01);
+    expect(least).toBeGreaterThanOrEqual(LANE_MARGIN - 0.01);
   });
 
-  it('RT7 the lane margin follows the form: the trail and 13 % of half the form, at most LANE_MARGIN', () => {
-    // The header's 26 px mark (a 21 px form) keeps 11 px: it fits a 32 px gutter at 1280 px.
-    expect(laneMargin(26)).toBeCloseTo(8 + 2 + 0.065 * 26 * 0.8, 6);
-    expect(laneMargin(26)).toBeLessThan(12);
-    expect(laneMargin(94)).toBeLessThan(LANE_MARGIN);
+  it('RT7 the lane margin follows a small form: the trail and 30 % of half the form, at most LANE_MARGIN', () => {
+    // The header's 26 px mark (a 21 px form) keeps 13 px: it fits the 32 px gutter at 1280 px.
+    expect(laneMargin(26)).toBeCloseTo(8 + 2 + 0.15 * 26 * 0.8, 6);
+    expect(laneMargin(26)).toBeLessThan(14);
+    // A form from 53 px keeps the full margin (T-CA3: less let a 56 px form touch a caption).
+    expect(laneMargin(70)).toBe(LANE_MARGIN);
     expect(laneMargin(160)).toBe(LANE_MARGIN);
   });
 

@@ -117,9 +117,9 @@ in the footer look fake»). Measured, not guessed: the pose was continuous, the 
   margin grows over 12 samples next to a dock (was 4), and a planned lane is smoothed 120 times
   (was 3), every sample kept clear: the grid's steps and a wait-then-dash became one glide where
   the page leaves room.
-- The lane margin follows the form's size: `MAX_LAG` + 2 px + 13 % of half the form, at most
-  `LANE_MARGIN` (the drawn form's growth past the pose is the trail, the lean, the squash and the
-  stretch). The header's 26 px mark found no lane in the 32 px gutter beside the hero at 1280 px
+- The lane margin follows a small form's size: `MAX_LAG` + 2 px + 30 % of half the form, at
+  most `LANE_MARGIN`, which a form from 53 px keeps (13 % let a 56 px form touch a caption at
+  tier 1). The header's 26 px mark found no lane in the 32 px gutter beside the hero at 1280 px
   with the full 18 px and dived off the screen's edge; now it slides down the gutter.
 - The services track is a wall per card (`docks.ts`): each card sweeps its own height from its
   place at rest to the slide's end. The tall first card made the whole rail a wall, so the courier

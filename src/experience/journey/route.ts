@@ -40,13 +40,14 @@ const FORM = 0.8;
 // stretch, about 13 % of half the form) stays inside it. 24 px left no lane into D3 at tier 1.
 export const LANE_MARGIN = 18;
 /**
- * The clear space round a form of box size `s`: its trail (at most MAX_LAG), 13 % of half the form
- * for the lean, the squash and the stretch, and 2 px; at most LANE_MARGIN. With the full margin the
- * header's 26 px mark found no lane in the 32 px gutter beside the hero at 1280 px and dived off
- * the screen's edge (owner 2026-11-17: «leaving the header looks fake»).
+ * The clear space round a form of box size `s`: its trail (at most MAX_LAG), 2 px, and 30 % of
+ * half the form for the lean, the squash, the stretch and a wheel's step (13 % let a 56 px form
+ * touch a caption at tier 1, T-CA3); at most LANE_MARGIN, which a form from 53 px keeps. With the
+ * full margin the header's 26 px mark found no lane in the 32 px gutter beside the hero at 1280 px
+ * and dived off the screen's edge (owner 2026-11-17: «leaving the header looks fake»).
  */
 export const laneMargin = (s: number): number =>
-  Math.min(LANE_MARGIN, MAX_LAG + 2 + 0.065 * s * FORM);
+  Math.min(LANE_MARGIN, MAX_LAG + 2 + 0.15 * s * FORM);
 /**
  * The cost of motion beyond the eased path's own, per sample (in cells squared): high enough that
  * a lane trails the eased path at its own speed rather than waits and then dashes to catch up.
