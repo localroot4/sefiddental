@@ -360,7 +360,10 @@ with zod; the forms also work as plain HTML posts.
   GraphQL is off.
 - Uploads: type and size validation, re-encoding with sharp, no SVG from
   editors.
-- `npm audit` in CI; no secrets in the repository or logs; phones never in
+- `npm audit` in CI (`scripts/audit-prod.mjs`): a high or critical advisory in
+  the production tree fails, except one listed in its `ALLOWED` with the reason
+  it cannot reach the site and an expiry date at most 30 days ahead; past the
+  date it fails again. No secrets in the repository or logs; phones never in
   logs.
 - `package.json` `overrides` exist only because a parent pins an old
   version. The site never runs the vulnerable code of any of the three.

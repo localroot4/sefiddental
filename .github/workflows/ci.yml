@@ -56,7 +56,8 @@ jobs:
       # package.json overrides left only moderate esbuild advisories, under drizzle-kit's CLI loader.
       # docs/architecture.md section 8 says why each override exists and when to drop it.
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=high
+        # npm audit --omit=dev: high and critical fail, except a dated exception (the script).
+        run: node scripts/audit-prod.mjs
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
