@@ -41,8 +41,7 @@ import {
   seatAmount,
 } from './pose';
 
-/** The light's trail (motion.ts createTrail): segments, the head's width (of the box) and opacity. */
-const TRAIL_SEGMENTS = 24;
+/** The light's trail (motion.ts createTrail): the head's width (of the box) and opacity. */
 const TRAIL_WIDTH = 0.22;
 const TRAIL_OPACITY = 0.32;
 
@@ -180,7 +179,7 @@ export default function JourneyLayer(props: {
   const glint = useRef<HTMLDivElement>(null);
   const spark = useRef<HTMLDivElement>(null);
   const levels = useRef<(SVGGElement | null)[]>([]);
-  const trailLines = useRef<(SVGLineElement | null)[]>([]);
+  const trailCanvas = useRef<HTMLCanvasElement>(null);
   const burstBox = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -189,6 +188,8 @@ export default function JourneyLayer(props: {
     let topShown = false;
     let placed: Frame['bands'] | null = null;
     let led: string | null = null;
+    let drawnTrail = false;
+    let trailColor = '#5fd3c8';
     const render = ({
       pose,
       shown,
@@ -380,31 +381,46 @@ export default function JourneyLayer(props: {
       }
 
       // The light's trail behind the travelling courier (both tiers): each segment thinner and
-      // fainter with its age (motion.ts createTrail).
-      trailLines.current.forEach((line, i) => {
-        if (!line) return;
-        const a = trail[i];
-        const b = trail[i + 1];
-        if (!a || !b) {
-          line.style.setProperty('opacity', '0');
-          return;
+      // fainter with its age (motion.ts createTrail). Drawn on a canvas: an SVG or HTML box that
+      // moves each frame is a layout shift to the browser (T-PH4), pixels on a canvas are not.
+      const canvas = trailCanvas.current;
+      const pen = canvas?.getContext('2d');
+      if (canvas && pen && (trail.length > 1 || drawnTrail)) {
+        // Out of the layout while it holds no light; shown before it is measured.
+        if (trail.length > 1 && !drawnTrail) canvas.setAttribute('data-on', '');
+        const dpr = Math.min(2, window.devicePixelRatio || 1);
+        const w = Math.round(canvas.clientWidth * dpr);
+        const h = Math.round(canvas.clientHeight * dpr);
+        if (canvas.width !== w || canvas.height !== h) {
+          canvas.width = w;
+          canvas.height = h;
         }
-        const life = 1 - (a.age + b.age) / 2;
-        line.setAttribute('x1', String(a.x));
-        line.setAttribute('y1', String(a.y));
-        line.setAttribute('x2', String(b.x));
-        line.setAttribute('y2', String(b.y));
-        line.setAttribute('stroke-width', String(Math.max(1, b.s * TRAIL_WIDTH * life)));
-        line.style.setProperty(
-          'opacity',
-          String(Math.round(TRAIL_OPACITY * life ** 1.5 * 1000) / 1000),
-        );
-      });
+        pen.setTransform(dpr, 0, 0, dpr, 0, 0);
+        pen.clearRect(0, 0, w, h);
+        if (trail.length > 1 && !drawnTrail) trailColor = getComputedStyle(canvas).color;
+        pen.strokeStyle = trailColor;
+        pen.lineCap = 'round';
+        for (let i = 1; i < trail.length; i += 1) {
+          const a = trail[i - 1]!;
+          const b = trail[i]!;
+          const life = 1 - (a.age + b.age) / 2;
+          pen.globalAlpha = TRAIL_OPACITY * life ** 1.5;
+          pen.lineWidth = Math.max(1, b.s * TRAIL_WIDTH * life);
+          pen.beginPath();
+          pen.moveTo(a.x, a.y);
+          pen.lineTo(b.x, b.y);
+          pen.stroke();
+        }
+        drawnTrail = trail.length > 1;
+        if (!drawnTrail) canvas.removeAttribute('data-on');
+      }
       // The whip's burst where the form swapped (globals.css courier-burst), once.
       const flare = burstBox.current;
       if (burst && flare) {
         flare.style.setProperty('transform', `translate3d(${shown.x}px, ${shown.y}px, 0)`);
+        // Sizes by transforms only (a box that resizes is a layout shift, T-PH4).
         flare.style.setProperty('--d', `${Math.round(shown.scale * 0.5)}px`);
+        flare.style.setProperty('--k', String(Math.round(shown.scale) / 100));
         flare.removeAttribute('data-on');
         void flare.offsetWidth;
         flare.setAttribute('data-on', '');
@@ -463,6 +479,15 @@ export default function JourneyLayer(props: {
           className="invisible absolute inset-x-0 top-0 bg-surface-sunken"
         />
       </div>
+      {/* The light's trail, under the courier (render; its colour is globals.css's). Its own fixed
+          canvas, out of the courier's layer: a full-screen box in that layer is a layout shift to
+          the browser at times (T-PH4, 0.048 on a phone), one of its own is not. */}
+      <canvas
+        ref={trailCanvas}
+        data-courier-trail=""
+        aria-hidden="true"
+        className="pointer-events-none fixed inset-0 z-[1] size-full"
+      />
       <div ref={setLayer} data-courier-layer="" aria-hidden="true">
         <Paint />
         <svg
@@ -495,19 +520,6 @@ export default function JourneyLayer(props: {
           data-courier-spark=""
           className="invisible absolute top-0 left-0 size-[100px] origin-center rounded-full [background:radial-gradient(circle,rgb(255_255_255/0.95),rgb(207_245_241/0.5)_30%,transparent_68%)]"
         />
-        {/* The light's trail, behind the courier: a pool of segments (render). */}
-        <svg data-courier-trail="" className="absolute inset-0 size-full overflow-visible">
-          {Array.from({ length: TRAIL_SEGMENTS }, (_, i) => (
-            <line
-              key={i}
-              ref={(el) => {
-                trailLines.current[i] = el;
-              }}
-              strokeLinecap="round"
-              opacity="0"
-            />
-          ))}
-        </svg>
         {/* The whip's burst: a flash and eight motes of light (globals.css courier-burst). */}
         <div ref={burstBox} data-courier-burst="" className="absolute top-0 left-0 size-0">
           <span data-flash="" />
