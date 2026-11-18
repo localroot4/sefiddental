@@ -3,7 +3,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { PHONE_MOTION } from './phone';
-import { reveal } from './reveal';
+import { reveal, revealHeading } from './reveal';
 import { killAll, registerScrollTrigger } from './sceneTest';
 
 beforeAll(registerScrollTrigger);
@@ -57,5 +57,54 @@ describe('reveal', () => {
     reveal(items, el, true)();
     expect(items[0]!.getAttribute('style')).toBeNull();
     expect(ScrollTrigger.getAll()).toHaveLength(0);
+  });
+
+  it('RV5 the photos of the targets open with a curtain on the same trigger, only when asked; a focus ends it', () => {
+    const { el, items } = section(2);
+    const img = items[0]!.appendChild(document.createElement('img'));
+    const cleanup = reveal(items, el, true, 'y', true);
+    const opening = gsap.getTweensOf(img)[0];
+    expect(opening?.vars).toMatchObject({ clipPath: 'inset(100% 0% 0% 0%)', scale: 1.06 });
+    expect(opening?.scrollTrigger?.trigger).toBe(el);
+    el.dispatchEvent(new Event('focusin', { bubbles: true }));
+    expect(opening?.progress()).toBe(1);
+    cleanup();
+    const plain = section(1);
+    const other = plain.items[0]!.appendChild(document.createElement('img'));
+    reveal(plain.items, plain.el, true);
+    expect(gsap.getTweensOf(other)).toHaveLength(0);
+  });
+
+  it('RV6 a heading rises half its font size out of its own bottom edge (the clip moves with it), once at 85 %; none under 1024 px or behind the reader', () => {
+    const host = document.createElement('section');
+    const heading = host.appendChild(document.createElement('h2'));
+    heading.style.fontSize = '40px';
+    document.body.append(host);
+    const cleanup = revealHeading(heading, true);
+    expect(gsap.getProperty(heading, 'y')).toBe(20);
+    expect(heading.style.opacity).toBe('0');
+    expect(heading.style.clipPath).toBe('inset(0px 0px 20px 0px)');
+    const [trigger] = ScrollTrigger.getAll();
+    expect([trigger?.trigger, trigger?.vars.start, trigger?.vars.once]).toEqual([
+      heading,
+      'top 85%',
+      true,
+    ]);
+    // A focus in its section shows it at once, unclipped.
+    host.dispatchEvent(new Event('focusin', { bubbles: true }));
+    expect(heading.style.opacity).toBe('1');
+    expect(heading.style.clipPath).toBe('');
+    cleanup();
+    const narrow = document.createElement('h2');
+    document.body.append(narrow);
+    revealHeading(narrow, false)();
+    const seen = document.createElement('h2');
+    seen.getBoundingClientRect = () => ({ top: 100 }) as DOMRect;
+    document.body.append(seen);
+    revealHeading(seen, true)();
+    revealHeading(null, true)();
+    expect(ScrollTrigger.getAll()).toHaveLength(1);
+    expect(narrow.getAttribute('style')).toBeNull();
+    expect(seen.getAttribute('style')).toBeNull();
   });
 });

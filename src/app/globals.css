@@ -462,6 +462,37 @@
   }
 }
 
+/* Cards that turn toward a fine pointer (scenes/dom/cardTilt.ts sets data-tilt from 1024 px with
+   a fine pointer): a soft light follows the pointer over the card while data-lit is on. Above the
+   content, never its events. */
+[data-tilt] {
+  position: relative;
+}
+[data-tilt]::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--mx, 50%) var(--my, 50%),
+    rgb(95 211 200 / 0.16),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity var(--dur-3) var(--ease-out);
+}
+[data-theme='dark'] [data-tilt]::after {
+  background: radial-gradient(
+    circle at var(--mx, 50%) var(--my, 50%),
+    rgb(127 227 217 / 0.1),
+    transparent 60%
+  );
+}
+[data-tilt][data-lit]::after {
+  opacity: 1;
+}
+
 /* D6 of the journey (docs/experience/journey.md): as the courier's mark arrives at the dentists'
    heading, a soft teal light sweeps across the cards' portraits from the left, on their top edge
    only (away from the faces' eyes and from every text); the driver writes --sweep 0..1. */

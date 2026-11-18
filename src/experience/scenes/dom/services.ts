@@ -25,6 +25,7 @@ import { gsap } from 'gsap';
 import { applyStyle } from '../../core/applyStyle';
 import type { DomScene, SceneContext } from '../types';
 
+import { cardTilt } from './cardTilt';
 import { phoneMotion } from './phone';
 import { pinRange } from './pinRoom';
 
@@ -158,6 +159,9 @@ const scene: DomScene = {
         restore?.();
       });
     }
+
+    // The worlds turn toward a fine pointer (cardTilt.ts); the pin moves their track, never them.
+    cleanups.push(cardTilt(p.worlds, wide && ctx.conditions.fine && ctx.settings.pointerParallax));
 
     if (!wide) {
       const markBox = ctx.el.querySelector('[data-mark]');

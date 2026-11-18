@@ -97,7 +97,13 @@ describe('scene 7 dentists', () => {
     expect(subscribed()).toBe(true);
     if (typeof cleanup === 'function') cleanup();
     expect(off).toHaveBeenCalledTimes(1);
-    expect(remove.mock.calls.map(([type]) => type)).toEqual(['pointermove', 'pointerleave']);
+    // The parallax's pair and the card turn's (cardTilt.ts).
+    expect(remove.mock.calls.map(([type]) => type)).toEqual([
+      'pointermove',
+      'pointerleave',
+      'pointermove',
+      'pointerleave',
+    ]);
     expect(portrait.style.transform).toBe('');
     pointer(card, 300, 300);
     expect(subscribed()).toBe(false);

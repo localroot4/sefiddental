@@ -42,6 +42,13 @@ const LINE = '[data-workflow-line]';
 const PAN = { x: 0.9, y: -1.2 };
 /** Each step comes into focus over 0.2 of the pin before its centre time, and recedes 0.08 after. */
 const FOCUS = { in: 0.2, hold: 0.08, out: 0.12 };
+/**
+ * A step out of focus: the next one waits almost unseen, a passed one stays as a faint trace, so
+ * neither lays its photo over the step in focus (owner 2026-11-18: «the faded photos overlap»; it
+ * was 0.15 coming and 0.3 passed).
+ */
+const COMING = { opacity: 0.06, scale: 0.94 };
+const PASSED = { opacity: 0.12, scale: 0.94 };
 /** Warm overlay opacity of the last step; the first (the scan) stays cold. */
 const WARM_MAX = 0.36;
 /** Phones: a photo warms while its top moves from 80 % to 40 % of the viewport. */
@@ -98,18 +105,13 @@ const scene: DomScene = {
     steps.forEach((step, i) => {
       const at = i / last;
       if (i > 0) {
-        tl.fromTo(
-          step,
-          { opacity: 0.15, scale: 0.94 },
-          { opacity: 1, scale: 1, duration: FOCUS.in },
-          at - FOCUS.in,
-        );
+        tl.fromTo(step, { ...COMING }, { opacity: 1, scale: 1, duration: FOCUS.in }, at - FOCUS.in);
         const warm = step.querySelector<HTMLElement>(WARM);
         if (warm)
           tl.to(warm, { opacity: (WARM_MAX * i) / last, duration: FOCUS.in }, at - FOCUS.in);
       }
       if (i < last) {
-        tl.to(step, { opacity: 0.3, scale: 0.96, duration: FOCUS.out }, at + FOCUS.hold);
+        tl.to(step, { ...PASSED, duration: FOCUS.out }, at + FOCUS.hold);
       }
     });
   },

@@ -70,7 +70,10 @@ export function ServicesSection(props: { tree: CatalogCategory[]; copy: Copy }) 
       <Section labelledBy={props.copy ? id : undefined}>
         <div
           data-stage=""
-          className={`${PIN_STAGE} lg:[[data-pins]_&]:min-h-[calc(100svh-var(--nav-h))]`}
+          // Pinned, its content is centred in the screen: the room left over (about 170 px at
+          // 1440 x 900) was all under the link (owner 2026-11-18: «the empty spaces»). A column
+          // flex, not a grid: the rail's clipped track would widen a grid column to its own width.
+          className={`${PIN_STAGE} lg:[[data-pins]_&]:flex lg:[[data-pins]_&]:min-h-[calc(100svh-var(--nav-h))] lg:[[data-pins]_&]:flex-col lg:[[data-pins]_&]:justify-center`}
         >
           {props.copy ? (
             <SectionHeader

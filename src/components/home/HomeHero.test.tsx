@@ -58,7 +58,9 @@ describe('home hero markup', () => {
     expect(photo).toBeGreaterThan(-1);
     expect(band).toBeGreaterThan(photo);
     expect(html.slice(band)).toContain('data-world-slot="hero-exit"');
-    expect(html.slice(band)).toContain('lg:min-h-[40svh]');
+    // A compact row from 1024 px: no reserved world window (nothing draws there).
+    expect(html.slice(band)).not.toContain('min-h-[40svh]');
+    expect(html.slice(band)).toContain('lg:py-10');
     // The band leaves the photo's bounds: it is outside the clipping wrapper.
     const wrapper = html.indexOf('lg:overflow-clip');
     expect(wrapper).toBeLessThan(photo);

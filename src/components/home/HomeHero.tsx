@@ -43,8 +43,9 @@ const SETTLE_STEP = [
  * header on phones, make it the LCP and then shift it below the fold. The photo and the relief
  * sit behind the scrim by z-index in the section's own stacking context.
  *
- * From 1024 px (phase 7 D18) the trust band leaves the photo's edge and is a 40 vh row under it,
- * the world window where phase 8 draws behind the facts (`data-world-slot="hero-exit"`); the
+ * From 1024 px (phase 7 D18) the trust band leaves the photo's edge and is a compact row under it
+ * (it was a 40 vh world window, but nothing draws there: `data-world-slot="hero-exit"` only tells
+ * the World when to load, ExperienceRoot.tsx; owner 2026-11-18: «the empty spaces»); the
  * photo is bounded and clipped by the inner wrapper, so its exit parallax (scenes/dom/hero.ts
  * moves `[data-hero-photo]` at tiers 1 to 3) never slides under the band. Everything is server
  * HTML at every tier: nothing appears or grows after hydration (CLS 0). Under 1024 px the inner
@@ -188,9 +189,9 @@ export function HomeHero(props: {
           data-home-section="trust"
           data-family="B"
           data-world-slot="hero-exit"
-          className="relative col-start-1 row-start-2 self-end border-t border-line bg-surface-raised/90 lg:grid lg:min-h-[40svh] lg:content-center lg:bg-transparent"
+          className="relative col-start-1 row-start-2 self-end border-t border-line bg-surface-raised/90 lg:bg-transparent"
         >
-          <div className="mx-auto w-full max-w-content px-gutter py-6">
+          <div className="mx-auto w-full max-w-content px-gutter py-6 lg:py-10">
             <FactsRow facts={props.facts} label={t('home.trust.label')} />
           </div>
         </div>

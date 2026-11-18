@@ -20,12 +20,13 @@ export function SmileBand() {
   const demo = onPreview();
   return (
     <div data-smile-band="" className="py-section">
-      {/* A stage that sticks under the header, the arch centred in the screen, through a room
+      {/* A stage that sticks under the header, the arch centred in the screen and as large as the
+          screen's height lets it (34rem at most: at 26rem it sat in an empty screen), through a room
           of 1.2 screens: the seat, the pull-back, the cross-fade and the hand-off play on a
           still arch. Server HTML at every tier (D24: the boxes stand where tier 1 puts them, and
           nothing grows after hydration); at tier 0 the photo simply holds while the page goes on. */}
       <div className="sticky top-nav mx-auto grid min-h-[calc(100svh-var(--nav-h))] w-full max-w-content content-center justify-items-center gap-3 px-gutter max-lg:pb-sticky-bar print:static print:min-h-0">
-        <div className="relative aspect-[4/5] w-full max-w-[min(26rem,calc((100svh-var(--nav-h)-8rem)*0.8))]">
+        <div className="relative aspect-[4/5] w-full max-w-[min(34rem,calc((100svh-var(--nav-h)-8rem)*0.8))]">
           <div
             data-smile-photo=""
             className="absolute inset-0 overflow-hidden rounded-media bg-[#06090d]"
@@ -37,7 +38,7 @@ export function SmileBand() {
                     key={ext}
                     type={`image/${ext}`}
                     srcSet={srcSet(ext)}
-                    sizes="(min-width: 744px) 26rem, 100vw"
+                    sizes="(min-width: 744px) 34rem, 100vw"
                   />
                 ))}
                 <img

@@ -9,6 +9,7 @@
  */
 import type { DomScene, SceneContext } from '../types';
 
+import { cardTilt } from './cardTilt';
 import { reveal } from './reveal';
 
 const MAX_PX = 8;
@@ -98,10 +99,12 @@ const scene: DomScene = {
     const cards = Array.from(ctx.el.querySelectorAll<HTMLElement>('[role="region"] > *'));
     const { wide } = ctx.conditions;
     const cleanups = [
-      wide ? reveal(cards, ctx.el, true) : reveal(rail ? [rail] : [], ctx.el, false, 'x'),
+      wide
+        ? reveal(cards, ctx.el, true, 'y', true)
+        : reveal(rail ? [rail] : [], ctx.el, false, 'x'),
     ];
     if (ctx.settings.pointerParallax && ctx.conditions.fine && wide) {
-      cleanups.push(parallax(ctx.engine, cards));
+      cleanups.push(parallax(ctx.engine, cards), cardTilt(cards, true));
     }
     return () => cleanups.forEach((cleanup) => cleanup());
   },

@@ -23,6 +23,7 @@ import type { Tier, TierSettings } from '@/lib/qualityTier';
 
 import { coverRanges, isCovered } from '../core/gates';
 import { DOM_SCENES } from '../scenes/dom';
+import { revealHeading } from '../scenes/dom/reveal';
 import { isSceneId } from '../scenes/registry';
 import type { DomScene, SceneContext, SceneDefinition, SceneId } from '../scenes/types';
 import { createFrameMonitor, type MonitorWindow } from '../tier/frameMonitor';
@@ -651,6 +652,12 @@ export function createScrollEngine(opts: {
         nearViewport: nearViewport(el),
       };
       const cleanup = scene.setup(ctx);
+      // Every section's heading comes in the same way (reveal.ts), but one inside a block that
+      // has an entrance of its own (the booking card's rise).
+      const heading = el.querySelector<HTMLElement>('h2');
+      if (heading && !heading.closest('[data-booking-card], [data-enter]')) {
+        cleanups.push(revealHeading(heading, wide));
+      }
       let added = false;
       for (const child of timeline.getChildren(false, true, true)) {
         if (before.has(child)) continue;

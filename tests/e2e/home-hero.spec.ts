@@ -182,7 +182,7 @@ test.describe('without the intro', () => {
     expect(await page.locator(PHOTO).evaluate((el) => getComputedStyle(el).transform)).toBe('none');
   });
 
-  test('T-HR4 the trust band is the 40 vh world window from 1024 px in the server HTML: same rect at tier 0 and 2, no layout shift; under 1024 px it keeps its height', async ({
+  test('T-HR4 the trust band is a compact row from 1024 px in the server HTML (no empty world window): same rect at tier 0 and 2, no layout shift; under 1024 px it keeps its height', async ({
     page,
     request,
   }, testInfo) => {
@@ -228,9 +228,8 @@ test.describe('without the intro', () => {
         else await page.waitForLoadState('load');
         await page.waitForTimeout(500);
         rects[tier] = await rect();
-        expect(rects[tier]?.height, `tier ${tier} at ${height}`).toBeGreaterThanOrEqual(
-          0.4 * height - 1,
-        );
+        // Its facts and their padding only (owner 2026-11-18: the empty spaces).
+        expect(rects[tier]?.height, `tier ${tier} at ${height}`).toBeLessThan(0.22 * height);
         expect(
           await page.evaluate(() => (window as unknown as { __cls: number }).__cls),
           `layout shift at tier ${tier}, 1440x${height}`,

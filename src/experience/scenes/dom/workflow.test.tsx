@@ -141,11 +141,19 @@ describe('scene 5 workflow module (lanes WORKFLOW)', () => {
     const list = steps();
     const beats = (i: number) =>
       calls.filter((c) => c.target === list[i]).map((c) => [c.method, c.at, c.vars.opacity]);
-    expect(beats(0)).toEqual([['to', 0.08, 0.3]]);
+    // Out of focus a passed step keeps a faint trace (0.12) and the next waits almost unseen
+    // (from 0.06): neither lays its photo over the step in focus.
+    expect(beats(0)).toEqual([['to', 0.08, 0.12]]);
     expect(beats(1)).toEqual([
       ['fromTo', 1 / 3 - 0.2, 1],
-      ['to', 1 / 3 + 0.08, 0.3],
+      ['to', 1 / 3 + 0.08, 0.12],
     ]);
+    expect(
+      calls.find((c) => c.target === list[1] && c.method === 'fromTo')?.vars.from,
+    ).toMatchObject({
+      opacity: 0.06,
+      scale: 0.94,
+    });
     expect(beats(3)).toEqual([['fromTo', 1 - 0.2, 1]]);
     // The warm overlays: none on the first step, warmer with each step, opacity only.
     const warm = calls.filter((c) => c.target.hasAttribute('data-workflow-warm'));
