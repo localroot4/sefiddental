@@ -41,7 +41,9 @@ import {
   seatAmount,
 } from './pose';
 
-/** The light's trail (motion.ts createTrail): the head's width (of the box) and opacity. */
+/** The light's trail (motion.ts createTrail): segments (60 a second for TRAIL_S), the head's width
+ * (of the box) and opacity. */
+const TRAIL_SEGMENTS = 20;
 const TRAIL_WIDTH = 0.22;
 const TRAIL_OPACITY = 0.32;
 
@@ -179,7 +181,8 @@ export default function JourneyLayer(props: {
   const glint = useRef<HTMLDivElement>(null);
   const spark = useRef<HTMLDivElement>(null);
   const levels = useRef<(SVGGElement | null)[]>([]);
-  const trailCanvas = useRef<HTMLCanvasElement>(null);
+  const trailBox = useRef<SVGSVGElement>(null);
+  const trailLines = useRef<(SVGLineElement | null)[]>([]);
   const burstBox = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -189,7 +192,6 @@ export default function JourneyLayer(props: {
     let placed: Frame['bands'] | null = null;
     let led: string | null = null;
     let drawnTrail = false;
-    let trailColor = '#5fd3c8';
     const render = ({
       pose,
       shown,
@@ -381,38 +383,35 @@ export default function JourneyLayer(props: {
       }
 
       // The light's trail behind the travelling courier (both tiers): each segment thinner and
-      // fainter with its age (motion.ts createTrail). Drawn on a canvas: an SVG or HTML box that
-      // moves each frame is a layout shift to the browser (T-PH4), pixels on a canvas are not.
-      const canvas = trailCanvas.current;
-      const pen = canvas?.getContext('2d');
-      if (canvas && pen && (trail.length > 1 || drawnTrail)) {
-        // Out of the layout while it holds no light; shown before it is measured.
-        if (trail.length > 1 && !drawnTrail) canvas.setAttribute('data-on', '');
-        const dpr = Math.min(2, window.devicePixelRatio || 1);
-        const w = Math.round(canvas.clientWidth * dpr);
-        const h = Math.round(canvas.clientHeight * dpr);
-        if (canvas.width !== w || canvas.height !== h) {
-          canvas.width = w;
-          canvas.height = h;
-        }
-        pen.setTransform(dpr, 0, 0, dpr, 0, 0);
-        pen.clearRect(0, 0, w, h);
-        if (trail.length > 1 && !drawnTrail) trailColor = getComputedStyle(canvas).color;
-        pen.strokeStyle = trailColor;
-        pen.lineCap = 'round';
-        for (let i = 1; i < trail.length; i += 1) {
-          const a = trail[i - 1]!;
-          const b = trail[i]!;
+      // fainter with its age (motion.ts createTrail). Unit segments placed and thickened by their
+      // transforms (a moved or resized SVG box is a layout shift, T-PH4), in an SVG of its own out
+      // of the courier's layer, shown only while it holds light.
+      const streak = trailBox.current;
+      const lit = trail.length > 1;
+      if (streak && (lit || drawnTrail)) {
+        if (lit !== drawnTrail) streak.toggleAttribute('data-on', lit);
+        drawnTrail = lit;
+        trailLines.current.forEach((line, i) => {
+          if (!line) return;
+          const a = trail[i];
+          const b = trail[i + 1];
+          if (!a || !b) {
+            line.style.setProperty('opacity', '0');
+            return;
+          }
           const life = 1 - (a.age + b.age) / 2;
-          pen.globalAlpha = TRAIL_OPACITY * life ** 1.5;
-          pen.lineWidth = Math.max(1, b.s * TRAIL_WIDTH * life);
-          pen.beginPath();
-          pen.moveTo(a.x, a.y);
-          pen.lineTo(b.x, b.y);
-          pen.stroke();
-        }
-        drawnTrail = trail.length > 1;
-        if (!drawnTrail) canvas.removeAttribute('data-on');
+          const length = Math.hypot(b.x - a.x, b.y - a.y);
+          const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
+          const thick = Math.max(1, b.s * TRAIL_WIDTH * life);
+          line.setAttribute(
+            'transform',
+            `translate(${a.x} ${a.y}) rotate(${angle}) scale(${Math.max(0.01, length)} ${thick})`,
+          );
+          line.style.setProperty(
+            'opacity',
+            String(Math.round(TRAIL_OPACITY * life ** 1.5 * 1000) / 1000),
+          );
+        });
       }
       // The whip's burst where the form swapped (globals.css courier-burst), once.
       const flare = burstBox.current;
@@ -480,14 +479,26 @@ export default function JourneyLayer(props: {
         />
       </div>
       {/* The light's trail, under the courier (render; its colour is globals.css's). Its own fixed
-          canvas, out of the courier's layer: a full-screen box in that layer is a layout shift to
-          the browser at times (T-PH4, 0.048 on a phone), one of its own is not. */}
-      <canvas
-        ref={trailCanvas}
+          SVG, out of the courier's layer: a full-screen box in that layer is a layout shift to the
+          browser at times (T-PH4, 0.048 on a phone), one of its own is not. */}
+      <svg
+        ref={trailBox}
         data-courier-trail=""
         aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-[1] size-full"
-      />
+        className="pointer-events-none fixed inset-0 z-[1] size-full overflow-visible"
+      >
+        {Array.from({ length: TRAIL_SEGMENTS }, (_, i) => (
+          <line
+            key={i}
+            ref={(el) => {
+              trailLines.current[i] = el;
+            }}
+            x2="1"
+            strokeWidth="1"
+            opacity="0"
+          />
+        ))}
+      </svg>
       <div ref={setLayer} data-courier-layer="" aria-hidden="true">
         <Paint />
         <svg

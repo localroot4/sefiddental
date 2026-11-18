@@ -466,13 +466,13 @@
    flash and eight motes that fly out half the courier's size and fade, once (550 ms). */
 [data-courier-trail] {
   display: none;
-  color: #5fd3c8;
+  stroke: #5fd3c8;
 }
 [data-courier-trail][data-on] {
   display: block;
 }
 [data-theme='dark'] [data-courier-trail] {
-  color: #7fe3d9;
+  stroke: #7fe3d9;
 }
 [data-courier-burst] {
   visibility: hidden;
