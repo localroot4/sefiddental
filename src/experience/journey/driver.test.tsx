@@ -282,6 +282,41 @@ describe('journey driver', () => {
     }
   });
 
+  it('DR21 travelling, the frames carry the light trail; the form swaps mid-whip with one burst; at rest both are gone', () => {
+    const { journey, frames } = start();
+    const holds = () => journey.docks();
+    expect(holds().length).toBeGreaterThan(1);
+    // Down from D2 (the mark) to D3 (the tooth) a little at a time, as a wheel does.
+    for (let y = 0; y <= 1800; y += 12) {
+      layout(y);
+      triggers.created[0]!.onUpdate();
+      runTicks(1);
+    }
+    runTicks(90);
+    const bursts = frames.filter((f) => f.burst);
+    expect(bursts.length).toBe(1);
+    expect(bursts[0]!.pose.whip).toBeGreaterThan(0.3);
+    expect(bursts[0]!.pose.whip).toBeLessThan(0.7);
+    expect(frames.some((f) => f.trail.length > 3)).toBe(true);
+    // Every trail point is an earlier shown place of the courier, oldest first.
+    for (const f of frames) {
+      for (let i = 1; i < f.trail.length; i += 1)
+        expect(f.trail[i]!.age).toBeLessThanOrEqual(f.trail[i - 1]!.age);
+    }
+    expect(frames.at(-1)!.trail).toEqual([]);
+    expect(ticks).toHaveLength(0);
+    journey.destroy();
+    // A jump over the whole travel (an anchor, a restored scroll) swaps the form with no burst.
+    layout(0);
+    const jumped = start();
+    layout(1800);
+    triggers.created.at(-1)!.onUpdate();
+    runTicks(60);
+    expect(jumped.journey.pose().form).toBe('tooth');
+    expect(jumped.frames.some((f) => f.burst)).toBe(false);
+    jumped.journey.destroy();
+  });
+
   it('DR19 a fine pointer near the courier wakes the tick (the turn toward it); a touch or a far pointer wakes nothing', () => {
     const move = (x: number, y: number, pointerType = 'mouse') =>
       window.dispatchEvent(

@@ -221,11 +221,17 @@ export function bounceOut(t: number): number {
   return n * (t - 2.625 / d) * (t - 2.625 / d) + 0.984375;
 }
 /** gsap back.out(1.4): the seat's soft click. */
+const BACK = 1.4;
 const backOut = (t: number): number => {
-  const s = 1.4;
   const u = t - 1;
-  return 1 + (s + 1) * u * u * u + s * u * u;
+  return 1 + (BACK + 1) * u * u * u + BACK * u * u;
 };
+/**
+ * The smile hold's local time at which the dropping tooth first meets its slot in the arch
+ * (back.out reaches 1 at 1 - s/(s+1) of its span, before its overshoot): the seat's click
+ * (motion.ts createSeatClick).
+ */
+export const SEAT_CLICK = SMILE.seat[0] + (SMILE.seat[1] - SMILE.seat[0]) * (1 - BACK / (BACK + 1));
 
 /** The box's viewport top at scroll `y` (stuck while its stage is pinned). */
 export function viewportTop(dock: Box, y: number): number {

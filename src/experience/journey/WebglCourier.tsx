@@ -40,7 +40,7 @@ import {
   type Glint,
 } from './courierRig';
 import type { Journey } from './driver';
-import { MAX_PITCH, MAX_YAW } from './motion';
+import { CLICK_LIFT, MAX_PITCH, MAX_YAW } from './motion';
 import { archFrame, flatAmount, idleAmount, smoothstep, viewportTop, type Pose } from './pose';
 import { RESTORE_S, restoreParts } from './restore';
 /**
@@ -272,7 +272,9 @@ export function WebglCourier(props: {
             height: smile.height,
             archWidth: frame.width,
             offsetX: frame.cx - (smile.left + smile.width / 2),
-            offsetY: frame.cy - (top + smile.height / 2),
+            // The seat's click lifts the arch with its tooth (motion.ts createSeatClick).
+            offsetY:
+              frame.cy - journey.click() * CLICK_LIFT * frame.width - (top + smile.height / 2),
             // It appears out of the dissolve and leaves into it, as the smile photo comes in.
             dissolve: Math.max(1 - pose.arch, pose.smile),
           },

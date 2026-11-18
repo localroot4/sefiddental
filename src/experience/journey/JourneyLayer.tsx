@@ -30,6 +30,7 @@ import {
   type EngineTicks,
   type Journey,
 } from './driver';
+import { CLICK_LIFT } from './motion';
 import {
   archFrame,
   CROWN_SHARE,
@@ -39,6 +40,11 @@ import {
   idleAmount,
   seatAmount,
 } from './pose';
+
+/** The light's trail (motion.ts createTrail): segments, the head's width (of the box) and opacity. */
+const TRAIL_SEGMENTS = 24;
+const TRAIL_WIDTH = 0.22;
+const TRAIL_OPACITY = 0.32;
 
 /** The courier's box before its scale (px). */
 const BOX = 100;
@@ -174,6 +180,8 @@ export default function JourneyLayer(props: {
   const glint = useRef<HTMLDivElement>(null);
   const spark = useRef<HTMLDivElement>(null);
   const levels = useRef<(SVGGElement | null)[]>([]);
+  const trailLines = useRef<(SVGLineElement | null)[]>([]);
+  const burstBox = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let lastLevel = -1;
@@ -192,6 +200,9 @@ export default function JourneyLayer(props: {
       lead,
       overHeader,
       holeOut,
+      trail,
+      burst,
+      click,
     }: Frame): void => {
       // A hand-off that cannot glide clear: the mark fades out in the intro's hole with its frame.
       if (holeOut !== fading) {
@@ -313,9 +324,11 @@ export default function JourneyLayer(props: {
       svg?.style.setProperty('visibility', drawArch ? 'visible' : 'hidden');
       if (svg && drawArch) {
         const frame = archFrame(smileDock, scrollY, pose.local);
+        // The seat's click lifts the arch with its tooth (motion.ts createSeatClick).
+        const lift = click * CLICK_LIFT * frame.width;
         svg.style.setProperty(
           'transform',
-          `translate3d(${frame.cx - frame.width / 2}px, ${frame.cy - frame.width / 2}px, 0) scale(${frame.width / BOX})`,
+          `translate3d(${frame.cx - frame.width / 2}px, ${frame.cy - lift - frame.width / 2}px, 0) scale(${frame.width / BOX})`,
         );
         svg.style.setProperty('opacity', String(pose.arch * (1 - pose.smile)));
       }
@@ -324,7 +337,11 @@ export default function JourneyLayer(props: {
       // condenses into a spark on the first molar, out of which the tooth lifts off.
       const spot = glint.current;
       const flash = spark.current;
-      const sparkOn = pose.dock === 'smile' ? Math.sin(Math.PI * Math.min(1, pose.lift * 1.6)) : 0;
+      // The spark flashes with the seat's click too.
+      const sparkOn =
+        pose.dock === 'smile'
+          ? Math.max(Math.sin(Math.PI * Math.min(1, pose.lift * 1.6)), 0.85 * click)
+          : 0;
       const on = smileDock !== undefined && (pose.glint > 0 || sparkOn > 0.01);
       spot?.style.setProperty('visibility', on && pose.glint > 0 ? 'visible' : 'hidden');
       flash?.style.setProperty('visibility', on && sparkOn > 0.01 ? 'visible' : 'hidden');
@@ -352,6 +369,7 @@ export default function JourneyLayer(props: {
         }
         if (flash && sparkOn > 0.01) {
           const p = at(SLOT_AT);
+          p.y -= click * CLICK_LIFT * frame.width;
           const k = (crown * 1.6 * sparkOn) / BOX;
           flash.style.setProperty(
             'transform',
@@ -359,6 +377,37 @@ export default function JourneyLayer(props: {
           );
           flash.style.setProperty('opacity', String(sparkOn));
         }
+      }
+
+      // The light's trail behind the travelling courier (both tiers): each segment thinner and
+      // fainter with its age (motion.ts createTrail).
+      trailLines.current.forEach((line, i) => {
+        if (!line) return;
+        const a = trail[i];
+        const b = trail[i + 1];
+        if (!a || !b) {
+          line.style.setProperty('opacity', '0');
+          return;
+        }
+        const life = 1 - (a.age + b.age) / 2;
+        line.setAttribute('x1', String(a.x));
+        line.setAttribute('y1', String(a.y));
+        line.setAttribute('x2', String(b.x));
+        line.setAttribute('y2', String(b.y));
+        line.setAttribute('stroke-width', String(Math.max(1, b.s * TRAIL_WIDTH * life)));
+        line.style.setProperty(
+          'opacity',
+          String(Math.round(TRAIL_OPACITY * life ** 1.5 * 1000) / 1000),
+        );
+      });
+      // The whip's burst where the form swapped (globals.css courier-burst), once.
+      const flare = burstBox.current;
+      if (burst && flare) {
+        flare.style.setProperty('transform', `translate3d(${shown.x}px, ${shown.y}px, 0)`);
+        flare.style.setProperty('--d', `${Math.round(shown.scale * 0.5)}px`);
+        flare.removeAttribute('data-on');
+        void flare.offsetWidth;
+        flare.setAttribute('data-on', '');
       }
     };
     const journey = createJourney({ root, engine, tier, render });
@@ -446,6 +495,26 @@ export default function JourneyLayer(props: {
           data-courier-spark=""
           className="invisible absolute top-0 left-0 size-[100px] origin-center rounded-full [background:radial-gradient(circle,rgb(255_255_255/0.95),rgb(207_245_241/0.5)_30%,transparent_68%)]"
         />
+        {/* The light's trail, behind the courier: a pool of segments (render). */}
+        <svg data-courier-trail="" className="absolute inset-0 size-full overflow-visible">
+          {Array.from({ length: TRAIL_SEGMENTS }, (_, i) => (
+            <line
+              key={i}
+              ref={(el) => {
+                trailLines.current[i] = el;
+              }}
+              strokeLinecap="round"
+              opacity="0"
+            />
+          ))}
+        </svg>
+        {/* The whip's burst: a flash and eight motes of light (globals.css courier-burst). */}
+        <div ref={burstBox} data-courier-burst="" className="absolute top-0 left-0 size-0">
+          <span data-flash="" />
+          {Array.from({ length: 8 }, (_, i) => (
+            <span key={i} data-mote="" />
+          ))}
+        </div>
         {/* The courier is SVG geometry in one fixed, full-viewport SVG: a moved <g> is not a
             box to the browser's layout-shift tracker, which counted the moved HTML box as
             shifting during a touch scroll (T-PH4). Drawn about its centre, in a 100-unit box. */}

@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createFollow,
+  CLICK_S,
   createPointerTilt,
+  createSeatClick,
   createSettle,
+  createTrail,
   createTurn,
   GLIDE_S,
   glide,
@@ -11,6 +14,7 @@ import {
   MAX_PITCH,
   MAX_YAW,
   SETTLE_S,
+  TRAIL_S,
   WHIP_RATE,
 } from './motion';
 import { NO_POSE, whipTurn, type Pose } from './pose';
@@ -282,5 +286,69 @@ describe('pointer tilt and the seat at a dock', () => {
     // A second home in the header logo (hidden) is no time on the way: a jump to D2 rings nothing.
     for (let i = 0; i < 60; i += 1) settle.step({ ...docked('header'), hidden: true }, 1 / 60);
     for (let i = 0; i < 30; i += 1) expect(settle.step(docked('services'), 1 / 60)).toBe(1);
+    // At the smile the seat clicks instead (createSeatClick): no ring.
+    for (let i = 0; i < 60; i += 1) settle.step(travel, 1 / 60);
+    for (let i = 0; i < 30; i += 1) expect(settle.step(docked('smile'), 1 / 60)).toBe(1);
+  });
+
+  it('M14 the trail keeps the travelling places of the last TRAIL_S, oldest first, aged 0..1; none at a dock, flat, hidden or across a jump', () => {
+    const trail = createTrail();
+    const travel = { ...pose(0, 400), dock: null, to: 'restoration' as const };
+    let out: { x: number; age: number }[] = [];
+    for (let i = 0; i < 40; i += 1)
+      out = trail.step(travel, { x: i * 4, y: 400, scale: 100 }, 1 / 60, 900, true);
+    expect(out.length).toBeGreaterThan(10);
+    expect(out.length).toBeLessThanOrEqual(Math.ceil(TRAIL_S * 60) + 1);
+    expect(out.at(-1)!.age).toBe(0);
+    expect(out[0]!.age).toBeLessThan(1);
+    expect(out.map((p) => p.x)).toEqual([...out.map((p) => p.x)].sort((a, b) => a - b));
+    // Still: no new place; the old ones age out, then the trail is empty.
+    for (let i = 0; i < 30; i += 1)
+      out = trail.step(travel, { x: 156, y: 400, scale: 100 }, 1 / 60, 900, true);
+    expect(out).toEqual([]);
+    expect(trail.settled()).toBe(true);
+    // At a dock, in the flat hand-off out of the header, hidden or not live: nothing.
+    for (const p of [
+      docked('services'),
+      { ...travel, to: 'services' as const, travel: 0.1 },
+      { ...travel, hidden: true },
+    ]) {
+      const t = createTrail();
+      for (let i = 0; i < 10; i += 1)
+        out = t.step(p, { x: i * 6, y: 400, scale: 100 }, 1 / 60, 900, true);
+      expect(out).toEqual([]);
+    }
+    const intro = createTrail();
+    for (let i = 0; i < 10; i += 1)
+      out = intro.step(travel, { x: i * 6, y: 400, scale: 100 }, 1 / 60, 900, false);
+    expect(out).toEqual([]);
+    // A jump (half the viewport in a frame) clears it.
+    const jump = createTrail();
+    for (let i = 0; i < 10; i += 1)
+      jump.step(travel, { x: i * 6, y: 400, scale: 100 }, 1 / 60, 900, true);
+    expect(jump.step(travel, { x: 900, y: 400, scale: 100 }, 1 / 60, 900, true)).toEqual([]);
+  });
+
+  it('M15 the seat clicks once as the tooth meets its slot in a scroll down: up and back within CLICK_S; never on a load, a jump or a scroll back', () => {
+    const at = (local: number): Pose => ({ ...docked('smile'), form: 'tooth', local });
+    const click = createSeatClick(0.15);
+    expect(click.step(at(0.1), 1 / 60)).toBe(0);
+    expect(click.step(at(0.16), 1 / 60)).toBe(0); // the crossing frame starts it at 0
+    let most = 0;
+    for (let t = 0; t < CLICK_S + 0.05; t += 1 / 60)
+      most = Math.max(most, click.step(at(0.2), 1 / 60));
+    expect(most).toBeGreaterThan(0.95);
+    expect(click.settled()).toBe(true);
+    expect(click.step(at(0.2), 1 / 60)).toBe(0);
+    // A load at the smile past the slot, a scroll back across it, a jump over it: none.
+    const load = createSeatClick(0.15);
+    expect(load.step(at(0.3), 1 / 60)).toBe(0);
+    expect(load.step(at(0.31), 1 / 60)).toBe(0);
+    load.step(at(0.1), 1 / 60);
+    for (let i = 0; i < 10; i += 1) expect(load.step(at(0.12 + i * 0.001), 1 / 60)).toBe(0);
+    const jump = createSeatClick(0.15);
+    jump.step(at(0.0), 1 / 60);
+    jump.step(at(0.5), 1 / 60);
+    expect(jump.settled()).toBe(true);
   });
 });

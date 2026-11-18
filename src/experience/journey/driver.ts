@@ -28,16 +28,21 @@ import {
 import {
   AT_REST,
   canTurn,
+  CLICK_LIFT,
   createFollow,
   createPointerTilt,
+  createSeatClick,
   createSettle,
+  createTrail,
   createTurn,
   glide,
   glideClear,
   type Place,
   type Shown,
+  type TrailPoint,
 } from './motion';
 import {
+  archFrame,
   courierPose,
   flatAmount,
   FORM_SHARE,
@@ -108,6 +113,12 @@ export interface Frame {
   overHeader: boolean;
   /** The mark fades out in the intro's hole, with the frame's own fade. */
   holeOut: boolean;
+  /** The light's trail behind the travelling courier, oldest first (motion.ts createTrail). */
+  trail: readonly TrailPoint[];
+  /** The shown form swapped in this frame, mid-whip: a burst of light where it turned. */
+  burst: boolean;
+  /** 0..1 of the seat's click at the smile (motion.ts createSeatClick). */
+  click: number;
 }
 
 export interface Journey {
@@ -118,6 +129,8 @@ export interface Journey {
   shown(): Shown;
   /** The shown turn while it trails the scroll's swap (motion.ts createTurn), else null. */
   turn(): Pick<Pose, 'whip' | 'form' | 'rotation'> | null;
+  /** 0..1 of the seat's click at the smile in the last frame (the arch rises with the tooth). */
+  click(): number;
   /** The lanes of the last measure (planned in idle time). */
   lanes(): Lanes | null;
   docks(): readonly Dock[];
@@ -288,6 +301,10 @@ export function createJourney(opts: {
   const turner = createTurn();
   const settle = createSettle();
   const tilt = createPointerTilt();
+  const trail = createTrail();
+  const seatClick = createSeatClick();
+  let click = 0;
+  let lastForm: Pose['form'] | null = null;
   let turned: Pose | null = null;
   let shown: Shown = { x: 0, y: 0, scale: 0, ...AT_REST };
   // The pose of the last frame may turn toward the pointer (motion.ts canTurn).
@@ -358,6 +375,22 @@ export function createJourney(opts: {
       yaw: toward.yaw * gate,
       pitch: toward.pitch * gate,
     };
+    // The seat's click lifts the seated tooth with its arch (the renderers lift the arch).
+    click = seatClick.step(pose, dt);
+    const smileDock = click > 0 ? docks.find((d) => d.id === 'smile') : undefined;
+    if (smileDock) {
+      const arch = archFrame(smileDock, scrollY, pose.local);
+      shown = { ...shown, y: shown.y - click * CLICK_LIFT * arch.width };
+    }
+    const lights = trail.step(pose, shown, dt, viewport.height, born >= 1 && handoff === null);
+    // Mid-whip only: a jump takes the pose (and its form) at once, with no burst.
+    const burst =
+      lastForm !== null &&
+      pose.form !== lastForm &&
+      !pose.hidden &&
+      pose.whip > 0.3 &&
+      pose.whip < 0.7;
+    lastForm = pose.hidden ? null : pose.form;
     // Back under the cards once the mark has faded, or once the glide is clear of them.
     if (lead && handoff === null && (mode !== 'glide' || !overCards(shown))) lead = false;
     const dim = Math.round(photoDim(pose) * 1000) / 1000;
@@ -414,6 +447,9 @@ export function createJourney(opts: {
       lead,
       overHeader,
       holeOut,
+      trail: lights,
+      burst,
+      click,
     });
   };
 
@@ -438,6 +474,8 @@ export function createJourney(opts: {
         turner.settled() &&
         settle.settled() &&
         tilt.settled() &&
+        trail.settled() &&
+        seatClick.settled() &&
         typeof handoff !== 'number'
       ) {
         off?.();
@@ -542,6 +580,7 @@ export function createJourney(opts: {
     lanes: () => lanes,
     shown: () => shown,
     turn: () => turned,
+    click: () => click,
     docks: () => docks,
     viewport: () => viewport,
     setWebgl(on) {

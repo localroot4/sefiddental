@@ -155,12 +155,29 @@ under reduced motion, where the journey does not load):
   bevel once every 700 px of scroll, as strong as the scroll is fast (200 to 1600 px/s), fading
   over 0.3 s once it stops; at a dock the pointer's turn leads it (`pointerGlint`). Never on the
   flat logo mark of a hand-off. WebGL only.
-- The seat (`createSettle`): arriving at D2 to D6 after at least 0.25 s on the way, the courier's
+- The seat (`createSettle`): arriving at D2 to D6 (not the smile) after at least 0.25 s on the way, the courier's
   size rings once, about 3 % over and 1 % under, at rest within 0.5 s.
 - The logos (`BrandLogo.tsx`, the footer's mark part, globals.css `[data-logo-socket]`): while the
   courier carries the mark, its outline stays in the logo at 40 %, so a logo never looks broken;
   as the mark lands back (after at least 600 ms away) the outline spreads once from it and fades
   (700 ms, the driver's `data-courier-landed`).
+
+More of them (owner, 2026-11-18: «improve it a lot»), on the same terms:
+
+- The trail (`createTrail`, JourneyLayer's `[data-courier-trail]`): a comet tail of light in the
+  rim teal behind the travelling courier, the shown places of the last 0.3 s, each segment
+  thinner and fainter with its age; none at a dock, in a flat hand-off, hidden or across a jump.
+  Both tiers. The tick sleeps once it is empty.
+- The whip's burst (driver `Frame.burst`, globals.css `courier-mote`, `courier-flash`): where the
+  shown form swaps mid-whip (between 0.3 and 0.7), a flash and eight motes fly out half the
+  courier's size and fade, 550 ms, once. A jump swaps the form with none.
+- The seat's click (`createSeatClick`, `SEAT_CLICK`): as the dropping tooth first meets its slot
+  in the arch (back.out reaches 1) in a scroll down the page, the arch and the tooth rise together
+  by 2 % of the arch's width and settle (`sin` over 0.45 s), and the spark on the slot flashes
+  with them. Not on a load, a jump or a scroll back. The seat's ring no longer plays at the smile.
+- At 1024 px the restoration's tier card and the booking and FAQ blocks span the screen: the
+  travels out of D3 and into the footer have only the 24 px gutter, so they still run 3 to 3.5
+  px per scroll px and peek past the edge. Only a layout change would give them a lane.
 
 ## 4. Footer hand-off
 

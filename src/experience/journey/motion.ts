@@ -6,7 +6,15 @@
  * onto the pose exactly, so reverse scrolling and a reload stay exact; a jump (a reload, an anchor,
  * a programmatic scroll of more than half a viewport) is taken at once, not chased.
  */
-import { flatAmount, viewportTop, whipTurn, type Box, type Form, type Pose } from './pose';
+import {
+  flatAmount,
+  SEAT_CLICK,
+  viewportTop,
+  whipTurn,
+  type Box,
+  type Form,
+  type Pose,
+} from './pose';
 
 /** The spring's angular frequency (1/s): about 0.3 s to settle, critically damped. */
 const OMEGA = 16;
@@ -364,7 +372,8 @@ const smoothstep01 = (t: number): number => {
  * The seat at a dock (owner 2026-11-17: «a springy settle»): arriving at D2 to D6 from a travel,
  * the courier's size rings once, about 3 % over and 1 % under, and rests within SETTLE_S. Only after
  * SETTLE_AFTER s on the way, so a load at a dock or a scroll that wavers on its edge rings nothing;
- * never at the logos, where the hand-off draws the flat logo mark at its exact size.
+ * never at the logos, where the hand-off draws the flat logo mark at its exact size, nor at the
+ * smile, where the seat clicks (createSeatClick).
  */
 const SETTLE_AMP = 0.06;
 const SETTLE_TAU = 0.11;
@@ -397,7 +406,9 @@ export function createSettle(): Settle {
         docked = false;
         t = -1;
       } else {
-        if (!docked && away >= SETTLE_AFTER && at !== 'header' && at !== 'footer') t = 0;
+        // Not at the logos (the flat hand-off), nor at the smile, where the seat clicks instead.
+        if (!docked && away >= SETTLE_AFTER && at !== 'header' && at !== 'footer' && at !== 'smile')
+          t = 0;
         else if (t >= 0) t += Math.max(0, dt);
         away = 0;
         docked = true;
@@ -410,6 +421,94 @@ export function createSettle(): Settle {
       return (
         1 + SETTLE_AMP * Math.exp(-t / SETTLE_TAU) * Math.sin((2 * Math.PI * t) / SETTLE_PERIOD)
       );
+    },
+    settled: () => t < 0,
+  };
+}
+
+/**
+ * The light's trail (owner 2026-11-18: «a light trail behind the logo»): the shown places of the
+ * last TRAIL_S, kept only while the courier travels faster than TRAIL_MIN_PX a frame, each with
+ * its age (0 new, 1 gone), oldest first. None at a dock, hidden, in a logo's flat hand-off, while
+ * the intro hands it over (`live` false) or across a jump (taken at once, as createFollow's).
+ */
+export const TRAIL_S = 0.3;
+const TRAIL_MIN_PX = 1.5;
+
+export interface TrailPoint {
+  x: number;
+  y: number;
+  /** The courier's box side at that place (px). */
+  s: number;
+  age: number;
+}
+
+export interface Trail {
+  step(pose: Pose, place: Place, dt: number, viewportHeight: number, live: boolean): TrailPoint[];
+  /** Empty: no frame is needed for it. */
+  settled(): boolean;
+}
+
+export function createTrail(): Trail {
+  let points: { x: number; y: number; s: number; t: number }[] = [];
+  let time = 0;
+  let last: { x: number; y: number } | null = null;
+  return {
+    step(pose, place, dt, viewportHeight, live) {
+      time += Math.max(0, dt);
+      const moved = last ? Math.hypot(place.x - last.x, place.y - last.y) : 0;
+      const jump = moved > JUMP_VH * Math.max(1, viewportHeight);
+      last = { x: place.x, y: place.y };
+      if (!live || pose.hidden || jump) points = [];
+      else if (dt > 0 && pose.dock === null && flatAmount(pose) === 0 && moved >= TRAIL_MIN_PX) {
+        points.push({ x: place.x, y: place.y, s: place.scale, t: time });
+      }
+      points = points.filter((p) => time - p.t < TRAIL_S);
+      return points.map((p) => ({ x: p.x, y: p.y, s: p.s, age: (time - p.t) / TRAIL_S }));
+    },
+    settled: () => points.length === 0,
+  };
+}
+
+/**
+ * The seat's click at the smile (owner 2026-11-18: «the tooth seats into the arch»): as the
+ * dropping tooth first meets its slot (pose.ts SEAT_CLICK) in a scroll down the page, the arch and
+ * the tooth rise together once, `sin` over CLICK_S, by CLICK_LIFT of the arch's width at the peak,
+ * and the spark on the slot flashes with it. Not on a load at the smile, a jump or a scroll back.
+ */
+export const CLICK_S = 0.45;
+export const CLICK_LIFT = 0.02;
+
+export interface SeatClick {
+  /** 0..1 of the click this frame. */
+  step(pose: Pose, dt: number): number;
+  settled(): boolean;
+}
+
+export function createSeatClick(at = SEAT_CLICK): SeatClick {
+  let last: number | null = null;
+  let t = -1;
+  return {
+    step(pose, dt) {
+      const local =
+        !pose.hidden && pose.dock === 'smile' && pose.form === 'tooth' ? pose.local : null;
+      if (
+        local !== null &&
+        last !== null &&
+        dt > 0 &&
+        last < at &&
+        local >= at &&
+        local - last < 0.2
+      )
+        t = 0;
+      else if (t >= 0) t += Math.max(0, dt);
+      last = local;
+      if (t < 0) return 0;
+      if (t >= CLICK_S) {
+        t = -1;
+        return 0;
+      }
+      return Math.sin((Math.PI * t) / CLICK_S);
     },
     settled: () => t < 0,
   };

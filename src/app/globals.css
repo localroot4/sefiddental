@@ -462,6 +462,109 @@
   }
 }
 
+/* The courier's light trail and the whip's burst (journey/JourneyLayer.tsx): the rim teal, a
+   flash and eight motes that fly out half the courier's size and fade, once (550 ms). */
+[data-courier-trail] line {
+  stroke: #5fd3c8;
+}
+[data-theme='dark'] [data-courier-trail] line {
+  stroke: #7fe3d9;
+}
+[data-courier-burst] {
+  visibility: hidden;
+}
+[data-courier-burst][data-on] {
+  visibility: visible;
+}
+[data-courier-burst] > span {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 9999px;
+  opacity: 0;
+}
+[data-courier-burst] > [data-mote] {
+  width: 6px;
+  height: 6px;
+  margin: -3px;
+  background: #5fd3c8;
+  box-shadow: 0 0 8px 2px rgb(0 130 122 / 0.45);
+}
+[data-courier-burst] > [data-flash] {
+  width: calc(var(--d, 40px) * 1.6);
+  height: calc(var(--d, 40px) * 1.6);
+  margin: calc(var(--d, 40px) * -0.8);
+  background: radial-gradient(
+    circle,
+    rgb(95 211 200 / 0.6),
+    rgb(95 211 200 / 0.2) 40%,
+    transparent 70%
+  );
+}
+/* On the dark ground the light is white at its heart. */
+[data-theme='dark'] [data-courier-burst] > [data-mote] {
+  background: #e9fffc;
+  box-shadow: 0 0 8px 2px rgb(127 227 217 / 0.8);
+}
+[data-theme='dark'] [data-courier-burst] > [data-flash] {
+  background: radial-gradient(
+    circle,
+    rgb(255 255 255 / 0.8),
+    rgb(127 227 217 / 0.35) 35%,
+    transparent 70%
+  );
+}
+[data-courier-burst][data-on] > [data-mote] {
+  animation: courier-mote 550ms var(--ease-out) 1 both;
+}
+[data-courier-burst][data-on] > [data-flash] {
+  animation: courier-flash 320ms var(--ease-out) 1 both;
+}
+[data-mote]:nth-child(2) {
+  --a: 0deg;
+}
+[data-mote]:nth-child(3) {
+  --a: 45deg;
+}
+[data-mote]:nth-child(4) {
+  --a: 90deg;
+}
+[data-mote]:nth-child(5) {
+  --a: 135deg;
+}
+[data-mote]:nth-child(6) {
+  --a: 180deg;
+}
+[data-mote]:nth-child(7) {
+  --a: 225deg;
+}
+[data-mote]:nth-child(8) {
+  --a: 270deg;
+}
+[data-mote]:nth-child(9) {
+  --a: 315deg;
+}
+@keyframes courier-mote {
+  from {
+    opacity: 1;
+    transform: rotate(var(--a)) translateX(calc(var(--d, 40px) * 0.3)) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: rotate(var(--a)) translateX(var(--d, 40px)) scale(0.4);
+  }
+}
+@keyframes courier-flash {
+  from {
+    opacity: 0.9;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.3);
+  }
+}
+
 /* Cards that turn toward a fine pointer (scenes/dom/cardTilt.ts sets data-tilt from 1024 px with
    a fine pointer): a soft light follows the pointer over the card while data-lit is on. Above the
    content, never its events. */
