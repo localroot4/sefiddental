@@ -565,15 +565,27 @@
   }
 }
 
+/* A heading that waits for its rise (scenes/dom/reveal.ts) prints where it rests. */
+@media print {
+  [data-rise] {
+    opacity: 1 !important;
+    transform: none !important;
+    clip-path: none !important;
+  }
+}
+
 /* Cards that turn toward a fine pointer (scenes/dom/cardTilt.ts sets data-tilt from 1024 px with
    a fine pointer): a soft light follows the pointer over the card while data-lit is on. Above the
    content, never its events. */
 [data-tilt] {
   position: relative;
+  isolation: isolate;
 }
+/* Under the card's content, over its own background: the light never pales its text. */
 [data-tilt]::after {
   content: '';
   position: absolute;
+  z-index: -1;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;

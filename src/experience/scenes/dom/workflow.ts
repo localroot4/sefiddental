@@ -48,7 +48,7 @@ const FOCUS = { in: 0.2, hold: 0.08, out: 0.12 };
  * was 0.15 coming and 0.3 passed).
  */
 const COMING = { opacity: 0.06, scale: 0.94 };
-const PASSED = { opacity: 0.12, scale: 0.94 };
+const PASSED = { opacity: 0.12, scale: 0.96 };
 /** Warm overlay opacity of the last step; the first (the scan) stays cold. */
 const WARM_MAX = 0.36;
 /** Phones: a photo warms while its top moves from 80 % to 40 % of the viewport. */

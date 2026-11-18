@@ -284,6 +284,30 @@ describe('measureDocks', () => {
     ]);
   });
 
+  it('DK15 a heading that waits for its rise (24 px low): its text and the dock in it are measured where they rest', () => {
+    document.body.innerHTML = `
+      <main id="root">
+        <h2 id="h" data-rise="" style="transform: matrix(1, 0, 0, 1, 0, 24)">
+          <span id="t">دندانپزشکان</span><span id="d" data-dock="dentists"></span>
+        </h2>
+      </main>`;
+    scrollTo(0);
+    place(document.getElementById('h')!, { top: 524, left: 0, w: 600, h: 60 });
+    place(document.getElementById('d')!, { top: 530, left: 620, w: 48, h: 48 });
+    const real = globalThis.DOMMatrixReadOnly;
+    globalThis.DOMMatrixReadOnly = Matrix as unknown as typeof DOMMatrixReadOnly;
+    Object.defineProperty(Range.prototype, 'getClientRects', {
+      configurable: true,
+      value: () => [{ left: 100, top: 534, right: 500, bottom: 574, width: 400, height: 40 }],
+    });
+    const boxes = measureObstacles(document.getElementById('root')!);
+    const [dock] = measureDocks(document.getElementById('root')!);
+    delete (Range.prototype as { getClientRects?: unknown }).getClientRects;
+    globalThis.DOMMatrixReadOnly = real;
+    expect(boxes).toEqual([{ left: 100, top: 510, width: 400, height: 40, pin: null }]);
+    expect(dock).toMatchObject({ id: 'dentists', top: 506, left: 620 });
+  });
+
   it('DK3 the viewport is the client width, the window height and the scroll range', () => {
     Object.defineProperty(document.documentElement, 'scrollHeight', {
       configurable: true,

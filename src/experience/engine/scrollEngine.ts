@@ -23,7 +23,7 @@ import type { Tier, TierSettings } from '@/lib/qualityTier';
 
 import { coverRanges, isCovered } from '../core/gates';
 import { DOM_SCENES } from '../scenes/dom';
-import { revealHeading } from '../scenes/dom/reveal';
+import { readHeading, revealHeading, type HeadingRead } from '../scenes/dom/reveal';
 import { isSceneId } from '../scenes/registry';
 import type { DomScene, SceneContext, SceneDefinition, SceneId } from '../scenes/types';
 import { createFrameMonitor, type MonitorWindow } from '../tier/frameMonitor';
@@ -652,12 +652,6 @@ export function createScrollEngine(opts: {
         nearViewport: nearViewport(el),
       };
       const cleanup = scene.setup(ctx);
-      // Every section's heading comes in the same way (reveal.ts), but one inside a block that
-      // has an entrance of its own (the booking card's rise).
-      const heading = el.querySelector<HTMLElement>('h2');
-      if (heading && !heading.closest('[data-booking-card], [data-enter]')) {
-        cleanups.push(revealHeading(heading, wide));
-      }
       let added = false;
       for (const child of timeline.getChildren(false, true, true)) {
         if (before.has(child)) continue;
@@ -669,7 +663,17 @@ export function createScrollEngine(opts: {
     };
 
     if (wide) {
+      // Every section's headings come in the same way (reveal.ts), but one inside a block with an
+      // entrance of its own (the booking card's rise, compare's blocks). Read before any scene
+      // writes, risen after them all: no forced layout between.
+      const headings = present.flatMap(({ el }) =>
+        Array.from(el.querySelectorAll<HTMLElement>('h2')).filter(
+          (h) => !h.closest('[data-booking-card], [data-enter]'),
+        ),
+      );
+      const reads = new Map<HTMLElement, HeadingRead>(headings.map((h) => [h, readHeading(h)]));
       for (const scene of present) setupScene(scene);
+      for (const [heading, read] of reads) cleanups.push(revealHeading(heading, true, read));
     } else {
       // Under 1024 px (phone spec 1.4 step 4, rule 2.2-10): the creation cost of the far scenes
       // waits until they come near, and each setup is its own task, the first one too, so no task

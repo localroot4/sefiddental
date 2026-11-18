@@ -9,6 +9,8 @@
  */
 import { gsap } from 'gsap';
 
+import { RISE_ATTR } from '../../journey/attrs';
+
 import { phoneMotion } from './phone';
 
 /** A calm reveal (owner, 2026-11-13: no snap); the engine never runs under reduced motion. */
@@ -19,6 +21,7 @@ const CURTAIN_SCALE = 1.06;
 /** A section heading rises half its font size out of its own bottom edge (a mask), in 0.7 s. */
 const HEADING_S = 0.7;
 const HEADING_RISE = 0.5;
+const CLIP_PAD = 0.35;
 
 export function reveal(
   targets: ArrayLike<Element>,
@@ -67,35 +70,72 @@ export function reveal(
   return () => trigger.removeEventListener('focusin', onFocus);
 }
 
+/** Where a heading stands and its font size, read before any scene writes (scrollEngine.ts). */
+export interface HeadingRead {
+  top: number;
+  size: number;
+}
+
+export function readHeading(heading: HTMLElement): HeadingRead {
+  return {
+    top: heading.getBoundingClientRect().top,
+    size: parseFloat(getComputedStyle(heading).fontSize) || 16,
+  };
+}
+
 /**
  * A section's heading from 1024 px (owner 2026-11-18: «the sections come in softly»): it rises
  * HEADING_RISE of its font size out of its own bottom edge, as from behind a mask (a clip that
- * moves with the rise, so the line shows only inside its own box), and fades in, once, when it
- * reaches 85 % of the viewport. Under 1024 px, already behind the reader or with nothing to
- * reveal: nothing. A focus in its section ends it at once.
+ * moves with the rise, so the line shows only inside its own box; past its top and sides by
+ * CLIP_PAD so no mark above the line is cut), and fades in, once, when it reaches 85 % of the
+ * viewport (an IntersectionObserver). While it waits it carries RISE_ATTR: the journey measures it at rest. Under 1024 px,
+ * already behind the reader or with nothing to reveal: nothing. A focus in its section ends it.
  */
-export function revealHeading(heading: HTMLElement | null, wide: boolean): () => void {
-  if (heading === null || !wide) return () => {};
-  if (heading.getBoundingClientRect().top < window.innerHeight * 0.85) return () => {};
-  const d = Math.round((parseFloat(getComputedStyle(heading).fontSize) || 16) * HEADING_RISE);
+export function revealHeading(
+  heading: HTMLElement | null,
+  wide: boolean,
+  read: HeadingRead | null = heading ? readHeading(heading) : null,
+): () => void {
+  if (heading === null || read === null || !wide) return () => {};
+  if (read.top < window.innerHeight * 0.85) return () => {};
+  const d = Math.round(read.size * HEADING_RISE);
+  const pad = Math.round(read.size * CLIP_PAD);
+  heading.setAttribute(RISE_ATTR, '');
+  const done = (): void => heading.removeAttribute(RISE_ATTR);
   const tween = gsap.fromTo(
     heading,
-    { y: d, opacity: 0, clipPath: `inset(0px 0px ${d}px 0px)` },
+    { y: d, opacity: 0, clipPath: `inset(${-pad}px ${-pad}px ${d}px ${-pad}px)` },
     {
       y: 0,
       opacity: 1,
-      clipPath: 'inset(0px 0px 0px 0px)',
+      clipPath: `inset(${-pad}px ${-pad}px ${-pad}px ${-pad}px)`,
       duration: HEADING_S,
       ease: 'power3.out',
       immediateRender: true,
+      paused: true,
       clearProps: 'clipPath',
-      scrollTrigger: { trigger: heading, start: 'top 85%', once: true },
+      onComplete: done,
     },
   );
+  // An observer, not a ScrollTrigger: a once-only entrance needs no scroll position, and the
+  // engine's triggers stay the same whatever the scroll it starts at (T-EN2).
+  const seen = new IntersectionObserver(
+    (entries) => {
+      if (!entries.some((e) => e.isIntersecting || e.intersectionRatio > 0)) return;
+      seen.disconnect();
+      tween.play();
+    },
+    { rootMargin: '0px 0px -15% 0px' },
+  );
+  seen.observe(heading);
   const scope = heading.closest('section') ?? heading;
   const onFocus = (): void => {
     tween.progress(1);
   };
   scope.addEventListener('focusin', onFocus);
-  return () => scope.removeEventListener('focusin', onFocus);
+  return () => {
+    seen.disconnect();
+    scope.removeEventListener('focusin', onFocus);
+    done();
+  };
 }

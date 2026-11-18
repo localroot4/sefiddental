@@ -271,6 +271,18 @@ async function expectAccessible(
         unjudged.push(`${rule.id}: ${selector}`);
         continue;
       }
+      // As for the violations above: a block outside the viewport waiting in its reveal's start
+      // state (a heading's rise clips it, reveal.ts) is never seen so; it is judged once in view.
+      if (options.offscreenReveals) {
+        const outside = await page
+          .locator(selector)
+          .evaluate((el) => {
+            const r = el.getBoundingClientRect();
+            return r.bottom <= 0 || r.top >= window.innerHeight;
+          })
+          .catch(() => false);
+        if (outside) continue;
+      }
       const result = await pixelContrast(page, page.locator(selector));
       if (result.ratio < result.required) {
         unjudged.push(`${result.label} ${result.ratio.toFixed(2)}:1 < ${result.required}:1`);

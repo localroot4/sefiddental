@@ -6,6 +6,7 @@
  * so the pose holds it still during the pin. A box that is not rendered at this width (`display:
  * none`) is left out: the courier skips that station.
  */
+import { RISE_ATTR } from './attrs';
 import { STATIONS, type Box, type Dock, type DockId, type Viewport } from './pose';
 
 const IDS: ReadonlySet<string> = new Set(STATIONS.map((s) => s.id));
@@ -38,6 +39,36 @@ function homeRect(el: HTMLElement): { left: number; top: number; width: number; 
     width: rect.width,
     height: rect.height,
   };
+}
+
+/**
+ * A dock inside a heading that waits for its rise (reveal.ts revealHeading, RISE_ATTR) is drawn
+ * that heading's translation lower than it rests: taken back to where it rests (the dentists' D6
+ * docked 24 px low until a resize).
+ */
+function beforeRise(
+  el: Element,
+  rect: { left: number; top: number; width: number; height: number },
+): { left: number; top: number; width: number; height: number } {
+  const rise = el.closest<HTMLElement>(`[${RISE_ATTR}]`);
+  if (rise === null) return rect;
+  const style = getComputedStyle(rise);
+  if (style.transform === '' || style.transform === 'none') return rect;
+  const m = new DOMMatrixReadOnly(style.transform);
+  if (m.isIdentity) return rect;
+  const [ox = 0, oy = 0] = style.transformOrigin.split(' ').map(parseFloat);
+  const r = atRest(
+    {
+      left: rect.left,
+      top: rect.top,
+      right: rect.left + rect.width,
+      bottom: rect.top + rect.height,
+    },
+    rise.getBoundingClientRect(),
+    m,
+    { x: ox, y: oy },
+  );
+  return { left: r.left, top: r.top, width: r.right - r.left, height: r.bottom - r.top };
 }
 
 /** `--nav-h` in px: the sticky stages stick under the header. */
@@ -102,7 +133,7 @@ export function measureDocks(root: ParentNode = document): Dock[] {
   for (const el of root.querySelectorAll<HTMLElement>('[data-dock]')) {
     const id = el.dataset.dock;
     if (!isDockId(id) || el.getClientRects().length === 0) continue;
-    const rect = homeRect(el);
+    const rect = beforeRise(el, homeRect(el));
     if (!(rect.width > 0 && rect.height > 0)) continue;
     docks.push({ id, ...placeInFlow(el, rect, nav) });
   }
@@ -213,7 +244,7 @@ export function measureObstacles(root: Element): Box[] {
     // the box is taken where the element comes to rest, its transform undone. The booking card
     // too: it waits 24 px low for its rise on enter (scenes/dom/booking.ts), and the travel into
     // the footer passes it (CI run 157: planned around a heading 24 px low, crossed in WebKit).
-    const scrub = el.closest<HTMLElement>('[data-scrub], [data-booking-card]');
+    const scrub = el.closest<HTMLElement>(`[data-scrub], [data-booking-card], [${RISE_ATTR}]`);
     const style = scrub ? getComputedStyle(scrub) : null;
     const m = style ? new DOMMatrixReadOnly(style.transform) : null;
     if (scrub && style && m && !m.isIdentity) {

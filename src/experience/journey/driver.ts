@@ -305,6 +305,7 @@ export function createJourney(opts: {
   const seatClick = createSeatClick();
   let click = 0;
   let lastForm: Pose['form'] | null = null;
+  let lastAt = { x: Number.NaN, y: Number.NaN };
   let turned: Pose | null = null;
   let shown: Shown = { x: 0, y: 0, scale: 0, ...AT_REST };
   // The pose of the last frame may turn toward the pointer (motion.ts canTurn).
@@ -383,14 +384,18 @@ export function createJourney(opts: {
       shown = { ...shown, y: shown.y - click * CLICK_LIFT * arch.width };
     }
     const lights = trail.step(pose, shown, dt, viewport.height, born >= 1 && handoff === null);
-    // Mid-whip only: a jump takes the pose (and its form) at once, with no burst.
+    // Mid-whip only, and never across a jump (an anchor, the End key, a restored scroll): the
+    // turn takes the pose, and its form, at once there.
+    const jumped = Math.hypot(pose.x - lastAt.x, pose.y - lastAt.y) > 0.5 * viewport.height;
     const burst =
       lastForm !== null &&
       pose.form !== lastForm &&
       !pose.hidden &&
+      !jumped &&
       pose.whip > 0.3 &&
       pose.whip < 0.7;
     lastForm = pose.hidden ? null : pose.form;
+    lastAt = { x: pose.x, y: pose.y };
     // Back under the cards once the mark has faded, or once the glide is clear of them.
     if (lead && handoff === null && (mode !== 'glide' || !overCards(shown))) lead = false;
     const dim = Math.round(photoDim(pose) * 1000) / 1000;

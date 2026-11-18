@@ -19,6 +19,9 @@ export function cardTilt(cards: ArrayLike<HTMLElement>, on: boolean): () => void
   const removers = Array.from(cards).map((card) => {
     card.setAttribute('data-tilt', '');
     gsap.set(card, { transformPerspective: PERSPECTIVE_PX });
+    // gsap's first parse writes `translate: none` inline: the card's own 2 px hover lift (the CSS
+    // `translate`, Cards.tsx LINK_CARD) would stop. It composes with gsap's transform: let it be.
+    card.style.removeProperty('translate');
     const toX = gsap.quickTo(card, 'rotationX', { duration: FOLLOW_S, ease: 'power3.out' });
     const toY = gsap.quickTo(card, 'rotationY', { duration: FOLLOW_S, ease: 'power3.out' });
     const move = (event: PointerEvent): void => {
@@ -45,7 +48,8 @@ export function cardTilt(cards: ArrayLike<HTMLElement>, on: boolean): () => void
       card.removeEventListener('pointermove', move);
       card.removeEventListener('pointerleave', leave);
       gsap.killTweensOf(card, 'rotationX,rotationY');
-      gsap.set(card, { rotationX: 0, rotationY: 0 });
+      // After the engine's revert: no inline transform (nor translate, rotate, scale) stays.
+      gsap.set(card, { clearProps: 'transform' });
       card.removeAttribute('data-tilt');
       card.removeAttribute('data-lit');
       card.style.removeProperty('--mx');

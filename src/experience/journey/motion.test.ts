@@ -322,6 +322,13 @@ describe('pointer tilt and the seat at a dock', () => {
     for (let i = 0; i < 10; i += 1)
       out = intro.step(travel, { x: i * 6, y: 400, scale: 100 }, 1 / 60, 900, false);
     expect(out).toEqual([]);
+    // On a 120 Hz screen the trail keeps no more places than at 60 Hz (JourneyLayer's pool).
+    const fast = createTrail();
+    let hz: { age: number }[] = [];
+    for (let i = 0; i < 80; i += 1)
+      hz = fast.step(travel, { x: i * 3, y: 400, scale: 100 }, 1 / 120, 900, true);
+    expect(hz.length).toBeLessThanOrEqual(Math.ceil(TRAIL_S * 60) + 1);
+    expect(hz.at(-1)!.age).toBeLessThan(1 / 60 / TRAIL_S + 1e-9);
     // A jump (half the viewport in a frame) clears it.
     const jump = createTrail();
     for (let i = 0; i < 10; i += 1)

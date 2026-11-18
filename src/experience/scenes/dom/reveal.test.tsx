@@ -4,7 +4,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import { PHONE_MOTION } from './phone';
 import { reveal, revealHeading } from './reveal';
-import { killAll, registerScrollTrigger } from './sceneTest';
+import { killAll, observers, registerScrollTrigger } from './sceneTest';
 
 beforeAll(registerScrollTrigger);
 afterEach(killAll);
@@ -83,17 +83,22 @@ describe('reveal', () => {
     const cleanup = revealHeading(heading, true);
     expect(gsap.getProperty(heading, 'y')).toBe(20);
     expect(heading.style.opacity).toBe('0');
-    expect(heading.style.clipPath).toBe('inset(0px 0px 20px 0px)');
-    const [trigger] = ScrollTrigger.getAll();
-    expect([trigger?.trigger, trigger?.vars.start, trigger?.vars.once]).toEqual([
-      heading,
-      'top 85%',
-      true,
-    ]);
+    // The clip reaches past the heading's top and sides (0.35 of its size): nothing above the
+    // line is cut; while it waits the journey measures it at rest (RISE_ATTR).
+    expect(heading.style.clipPath).toBe('inset(-14px -14px 20px -14px)');
+    expect(heading.hasAttribute('data-rise')).toBe(true);
+    // No ScrollTrigger: an observer whose line is 85 % of the viewport plays it once.
+    expect(ScrollTrigger.getAll()).toHaveLength(0);
+    const watch = observers.at(-1)!;
+    expect([watch.targets, watch.options?.rootMargin]).toEqual([[heading], '0px 0px -15% 0px']);
+    watch.fire(new Map([[heading, 0.2]]));
+    expect(watch.disconnected).toBe(true);
+    expect(gsap.getTweensOf(heading)[0]?.paused()).toBe(false);
     // A focus in its section shows it at once, unclipped.
     host.dispatchEvent(new Event('focusin', { bubbles: true }));
     expect(heading.style.opacity).toBe('1');
     expect(heading.style.clipPath).toBe('');
+    expect(heading.hasAttribute('data-rise')).toBe(false);
     cleanup();
     const narrow = document.createElement('h2');
     document.body.append(narrow);
@@ -103,7 +108,7 @@ describe('reveal', () => {
     document.body.append(seen);
     revealHeading(seen, true)();
     revealHeading(null, true)();
-    expect(ScrollTrigger.getAll()).toHaveLength(1);
+    expect(observers).toHaveLength(1);
     expect(narrow.getAttribute('style')).toBeNull();
     expect(seen.getAttribute('style')).toBeNull();
   });

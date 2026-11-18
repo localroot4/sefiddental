@@ -19,7 +19,6 @@
  */
 import type { DomScene } from '../types';
 
-import { cardTilt } from './cardTilt';
 import { reveal } from './reveal';
 
 /** One card plus the column gap, in the row's own direction (RTL scrolls toward negative left). */
@@ -40,10 +39,6 @@ const scene: DomScene = {
     const { wide } = ctx.conditions;
     const cleanups = [
       wide ? reveal(row.children, row, true, 'y', true) : reveal([row], row, false, 'x'),
-      cardTilt(
-        row.children as HTMLCollectionOf<HTMLElement>,
-        wide && ctx.conditions.fine && ctx.settings.pointerParallax,
-      ),
     ];
     let frame = requestAnimationFrame(() => {
       frame = 0;

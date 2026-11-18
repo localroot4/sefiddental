@@ -434,6 +434,8 @@ export function createSettle(): Settle {
  */
 export const TRAIL_S = 0.3;
 const TRAIL_MIN_PX = 1.5;
+/** At most one place per 1/60 s: a 120 or 144 Hz screen keeps the same count (JourneyLayer's pool). */
+const TRAIL_STEP_S = 1 / 60 - 0.002;
 
 export interface TrailPoint {
   x: number;
@@ -453,6 +455,7 @@ export function createTrail(): Trail {
   let points: { x: number; y: number; s: number; t: number }[] = [];
   let time = 0;
   let last: { x: number; y: number } | null = null;
+  let kept = -Infinity;
   return {
     step(pose, place, dt, viewportHeight, live) {
       time += Math.max(0, dt);
@@ -460,8 +463,15 @@ export function createTrail(): Trail {
       const jump = moved > JUMP_VH * Math.max(1, viewportHeight);
       last = { x: place.x, y: place.y };
       if (!live || pose.hidden || jump) points = [];
-      else if (dt > 0 && pose.dock === null && flatAmount(pose) === 0 && moved >= TRAIL_MIN_PX) {
+      else if (
+        dt > 0 &&
+        pose.dock === null &&
+        flatAmount(pose) === 0 &&
+        moved >= TRAIL_MIN_PX &&
+        time - kept >= TRAIL_STEP_S
+      ) {
         points.push({ x: place.x, y: place.y, s: place.scale, t: time });
+        kept = time;
       }
       points = points.filter((p) => time - p.t < TRAIL_S);
       return points.map((p) => ({ x: p.x, y: p.y, s: p.s, age: (time - p.t) / TRAIL_S }));
