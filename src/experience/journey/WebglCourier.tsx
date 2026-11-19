@@ -27,6 +27,7 @@ import type { Pulse } from '../canvas/pulse';
 import { MODELS } from '../world/assets';
 import { brandGeometry } from '../world/brandGeometry';
 import { pageLeaving, useMolar, useRigLifetime } from '../scenes/webgl/hooks';
+import { isDark, watchTheme } from '../scenes/webgl/pass';
 import { damp, levelFromChoice, passViewport, ramp } from '../scenes/webgl/math';
 
 import { workflowBeats } from './beats';
@@ -41,6 +42,7 @@ import {
 } from './courierRig';
 import type { Journey } from './driver';
 import { CLICK_LIFT, MAX_PITCH, MAX_YAW } from './motion';
+import { createTrailRibbon } from './trailRibbon';
 import { archFrame, flatAmount, idleAmount, smoothstep, viewportTop, type Pose } from './pose';
 import { RESTORE_S, restoreParts } from './restore';
 /**
@@ -174,6 +176,13 @@ export function WebglCourier(props: {
     };
     canvas.addEventListener('webglcontextlost', onLost);
     canvas.addEventListener('webglcontextrestored', onRestored);
+    // The light's trail, in a pass of its own under the courier's (trailRibbon.ts).
+    const ribbon = createTrailRibbon();
+    let dark = isDark();
+    const offTheme = watchTheme(() => {
+      dark = isDark();
+      pulse.request();
+    });
     const choices = document.querySelector('[data-scene="restoration"] [data-choices]');
     const target = (dock: string | null): number =>
       dock === 'restoration' ? levelFromChoice(choices?.getAttribute('data-choice') ?? null) : 0;
@@ -239,11 +248,20 @@ export function WebglCourier(props: {
           String(p.hidden),
           String(target(p.dock)),
           String(document.documentElement.hasAttribute(COURIER_OFF_ATTR)),
+          String(journey.trail().length),
         )
         .join('|');
       const playing =
         p.dock === 'restoration' && (performance.now() - chosenAt) / 1000 < RESTORE_S + 0.1;
-      if (next !== signature || Math.abs(level - target(p.dock)) > 0.001 || !shown || playing) {
+      // The trail fades after the courier stops: a frame for each of its ages, and one to clear it.
+      const fading = journey.trail().length > 0;
+      if (
+        next !== signature ||
+        Math.abs(level - target(p.dock)) > 0.001 ||
+        !shown ||
+        playing ||
+        fading
+      ) {
         if (next !== signature) quietSince = performance.now();
         signature = next;
         pulse.request();
@@ -287,6 +305,11 @@ export function WebglCourier(props: {
           rig.arch.scene,
           rig.arch.camera,
         );
+      }
+
+      if (!off) {
+        const box = ribbon.update(journey.trail(), dark);
+        if (box) drawPass(gl, size, box, ribbon.scene, ribbon.camera);
       }
 
       if (!off && !pose.hidden && pose.opacity > 0.005 && pose.presence > 0.005) {
@@ -351,6 +374,8 @@ export function WebglCourier(props: {
     return () => {
       off();
       offAsk();
+      offTheme();
+      ribbon.dispose();
       canvas.removeEventListener('webglcontextlost', onLost);
       canvas.removeEventListener('webglcontextrestored', onRestored);
       journey.setWebgl(false);

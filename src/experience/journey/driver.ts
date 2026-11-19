@@ -131,6 +131,8 @@ export interface Journey {
   turn(): Pick<Pose, 'whip' | 'form' | 'rotation'> | null;
   /** 0..1 of the seat's click at the smile in the last frame (the arch rises with the tooth). */
   click(): number;
+  /** The light's trail of the last frame, oldest first (the WebGL courier draws it). */
+  trail(): readonly TrailPoint[];
   /** The lanes of the last measure (planned in idle time). */
   lanes(): Lanes | null;
   docks(): readonly Dock[];
@@ -304,6 +306,7 @@ export function createJourney(opts: {
   const trail = createTrail();
   const seatClick = createSeatClick();
   let click = 0;
+  let lights: TrailPoint[] = [];
   let lastForm: Pose['form'] | null = null;
   let lastAt = { x: Number.NaN, y: Number.NaN };
   let turned: Pose | null = null;
@@ -383,7 +386,7 @@ export function createJourney(opts: {
       const arch = archFrame(smileDock, scrollY, pose.local);
       shown = { ...shown, y: shown.y - click * CLICK_LIFT * arch.width };
     }
-    const lights = trail.step(pose, shown, dt, viewport.height, born >= 1 && handoff === null);
+    lights = trail.step(pose, shown, dt, viewport.height, born >= 1 && handoff === null);
     // Mid-whip only, and never across a jump (an anchor, the End key, a restored scroll): the
     // turn takes the pose, and its form, at once there.
     const jumped = Math.hypot(pose.x - lastAt.x, pose.y - lastAt.y) > 0.5 * viewport.height;
@@ -586,6 +589,7 @@ export function createJourney(opts: {
     shown: () => shown,
     turn: () => turned,
     click: () => click,
+    trail: () => lights,
     docks: () => docks,
     viewport: () => viewport,
     setWebgl(on) {

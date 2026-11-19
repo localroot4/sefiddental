@@ -37,6 +37,13 @@ vi.mock('../scenes/webgl/hooks', () => ({
   useMolar: () => ({}),
   useRigLifetime: () => {},
 }));
+vi.mock('../scenes/webgl/pass', () => ({
+  isDark: () => false,
+  watchTheme: () => () => {},
+}));
+vi.mock('./trailRibbon', () => ({
+  createTrailRibbon: () => ({ dispose() {} }),
+}));
 vi.mock('./courierRig', () => ({
   BOX_GROW: 1.5,
   createCourierRig: () => ({ setEnvironment() {} }),

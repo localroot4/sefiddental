@@ -41,12 +41,6 @@ import {
   seatAmount,
 } from './pose';
 
-/** The light's trail (motion.ts createTrail): segments (60 a second for TRAIL_S), the head's width
- * (of the box) and opacity. */
-const TRAIL_SEGMENTS = 20;
-const TRAIL_WIDTH = 0.22;
-const TRAIL_OPACITY = 0.32;
-
 /** The courier's box before its scale (px). */
 const BOX = 100;
 const TEETH = archLayout();
@@ -181,8 +175,6 @@ export default function JourneyLayer(props: {
   const glint = useRef<HTMLDivElement>(null);
   const spark = useRef<HTMLDivElement>(null);
   const levels = useRef<(SVGGElement | null)[]>([]);
-  const trailBox = useRef<SVGSVGElement>(null);
-  const trailLines = useRef<(SVGLineElement | null)[]>([]);
   const burstBox = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -191,7 +183,6 @@ export default function JourneyLayer(props: {
     let topShown = false;
     let placed: Frame['bands'] | null = null;
     let led: string | null = null;
-    let drawnTrail = false;
     const render = ({
       pose,
       shown,
@@ -203,7 +194,6 @@ export default function JourneyLayer(props: {
       lead,
       overHeader,
       holeOut,
-      trail,
       burst,
       click,
     }: Frame): void => {
@@ -382,37 +372,6 @@ export default function JourneyLayer(props: {
         }
       }
 
-      // The light's trail behind the travelling courier (both tiers): each segment thinner and
-      // fainter with its age (motion.ts createTrail). Unit segments placed and thickened by their
-      // transforms (a moved or resized SVG box is a layout shift, T-PH4), in an SVG of its own out
-      // of the courier's layer, shown only while it holds light.
-      const streak = trailBox.current;
-      const lit = trail.length > 1;
-      if (streak && (lit || drawnTrail)) {
-        if (lit !== drawnTrail) streak.toggleAttribute('data-on', lit);
-        drawnTrail = lit;
-        trailLines.current.forEach((line, i) => {
-          if (!line) return;
-          const a = trail[i];
-          const b = trail[i + 1];
-          if (!a || !b) {
-            line.style.setProperty('opacity', '0');
-            return;
-          }
-          const life = 1 - (a.age + b.age) / 2;
-          const length = Math.hypot(b.x - a.x, b.y - a.y);
-          const angle = (Math.atan2(b.y - a.y, b.x - a.x) * 180) / Math.PI;
-          const thick = Math.max(1, b.s * TRAIL_WIDTH * life);
-          line.setAttribute(
-            'transform',
-            `translate(${a.x} ${a.y}) rotate(${angle}) scale(${Math.max(0.01, length)} ${thick})`,
-          );
-          line.style.setProperty(
-            'opacity',
-            String(Math.round(TRAIL_OPACITY * life ** 1.5 * 1000) / 1000),
-          );
-        });
-      }
       // The whip's burst where the form swapped (globals.css courier-burst), once.
       const flare = burstBox.current;
       if (burst && flare) {
@@ -445,6 +404,8 @@ export default function JourneyLayer(props: {
         // The intro hand-off: its state now and how it ends (driver.ts).
         handoff: journey.handoff,
         handoffMode: journey.handoffMode,
+        // The light's trail the WebGL courier draws (trailRibbon.ts).
+        trail: journey.trail,
       };
     }
     return () => {
@@ -478,27 +439,6 @@ export default function JourneyLayer(props: {
           className="invisible absolute inset-x-0 top-0 bg-surface-sunken"
         />
       </div>
-      {/* The light's trail, under the courier (render; its colour is globals.css's). Its own fixed
-          SVG, out of the courier's layer: a full-screen box in that layer is a layout shift to the
-          browser at times (T-PH4, 0.048 on a phone), one of its own is not. */}
-      <svg
-        ref={trailBox}
-        data-courier-trail=""
-        aria-hidden="true"
-        className="pointer-events-none fixed inset-0 z-[1] size-full overflow-visible"
-      >
-        {Array.from({ length: TRAIL_SEGMENTS }, (_, i) => (
-          <line
-            key={i}
-            ref={(el) => {
-              trailLines.current[i] = el;
-            }}
-            x2="1"
-            strokeWidth="1"
-            opacity="0"
-          />
-        ))}
-      </svg>
       <div ref={setLayer} data-courier-layer="" aria-hidden="true">
         <Paint />
         <svg

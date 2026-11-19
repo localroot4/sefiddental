@@ -462,18 +462,9 @@
   }
 }
 
-/* The courier's light trail and the whip's burst (journey/JourneyLayer.tsx): the rim teal, a
-   flash and eight motes that fly out half the courier's size and fade, once (550 ms). */
-[data-courier-trail] {
-  display: none;
-  stroke: #5fd3c8;
-}
-[data-courier-trail][data-on] {
-  display: block;
-}
-[data-theme='dark'] [data-courier-trail] {
-  stroke: #7fe3d9;
-}
+/* The whip's burst (journey/JourneyLayer.tsx): a rim-teal flash and eight motes that fly out half
+   the courier's size and fade, once (550 ms). The light's trail is the WebGL courier's
+   (journey/trailRibbon.ts). */
 [data-courier-burst] {
   visibility: hidden;
 }

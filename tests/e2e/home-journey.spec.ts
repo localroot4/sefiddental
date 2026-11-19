@@ -567,6 +567,42 @@ test.describe('tier 2 frame cost', () => {
   });
 });
 
+test.describe('tier 2 layout cost', () => {
+  test.beforeEach(({ browserName }, testInfo) => {
+    test.skip(testInfo.project.name !== 'desktop-light', 'one width');
+    test.skip(browserName !== 'chromium', 'layout counts come from the Chrome DevTools Protocol');
+    test.setTimeout(180_000);
+  });
+
+  test('T-JN15 tier 2: a scroll lays the page out about once a wheel step, the trail on the GPU', async ({
+    page,
+  }, testInfo) => {
+    // Owner, 2026-11-19: an SVG trail in the DOM laid the page out on every frame it moved (four
+    // layouts a step); a laptop's frame monitor then dropped a tier and the workflow lost its pins.
+    await open(page, 'tier=2');
+    await expect.poll(() => probe<boolean>(page, 'webgl'), { timeout: 90_000 }).toBe(true);
+    await page.mouse.move(700, 450);
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Performance.enable');
+    const layouts = async (): Promise<number> =>
+      (await cdp.send('Performance.getMetrics')).metrics.find((m) => m.name === 'LayoutCount')!
+        .value;
+    const before = await layouts();
+    const steps = 120;
+    let longest = 0;
+    for (let i = 0; i < steps; i += 1) {
+      await page.mouse.wheel(0, 90);
+      await page.waitForTimeout(50);
+      longest = Math.max(longest, (await probe<unknown[]>(page, 'trail')).length);
+    }
+    const count = (await layouts()) - before;
+    await cdp.detach();
+    testInfo.annotations.push({ type: 'layouts', description: `${count} in ${steps} steps` });
+    expect(longest, 'the trail draws while the courier travels').toBeGreaterThan(3);
+    expect(count).toBeLessThan(2 * steps);
+  });
+});
+
 test.describe('tablet, DOM courier', () => {
   test.beforeEach(({}, testInfo) => {
     test.skip(testInfo.project.name !== 'tablet-light', 'tablet journey rows run in tablet-light');

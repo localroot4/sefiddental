@@ -164,10 +164,13 @@ under reduced motion, where the journey does not load):
 
 More of them (owner, 2026-11-18: «improve it a lot»), on the same terms:
 
-- The trail (`createTrail`, JourneyLayer's `[data-courier-trail]`): a comet tail of light in the
-  rim teal behind the travelling courier, the shown places of the last 0.3 s, each segment
-  thinner and fainter with its age; none at a dock, in a flat hand-off, hidden or across a jump.
-  Both tiers. The tick sleeps once it is empty.
+- The trail (`createTrail`, drawn by `trailRibbon.ts` in a WebGL pass under the courier's): a
+  comet tail of light in the rim teal behind the travelling courier, the shown places of the last
+  0.3 s, each place thinner and fainter with its age; none at a dock, in a flat hand-off, hidden
+  or across a jump. The tick sleeps once it is empty. Tier 2 and up only: as an SVG in the DOM it
+  laid the page out on every frame it moved (four times the layouts of a scroll), enough on a
+  laptop for the frame monitor to drop a tier and turn the pins off (owner, 2026-11-19: the
+  workflow lost its tooth beats).
 - The whip's burst (driver `Frame.burst`, globals.css `courier-mote`, `courier-flash`): where the
   shown form swaps mid-whip (between 0.3 and 0.7), a flash and eight motes fly out half the
   courier's size and fade, 550 ms, once. A jump swaps the form with none.
